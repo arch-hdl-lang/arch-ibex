@@ -53,6 +53,22 @@ stage 3.
      and rationale at a level the SV alone doesn't, and are still
      "upstream documentation" — including them in the spec stage
      improves capture quality without breaking spec-first isolation.
+   - **The immediate neighbor modules in both directions** —
+     producer modules driving this module's input ports, and
+     consumer modules sampling its output ports. The spec extractor
+     reads these specifically to identify *integration constraints*:
+     - **Consumer side**: "this output must be 0/1 in case X because
+       the consumer does Y" (e.g. decoder's `rf_we_o` for LOAD must
+       stay 0 because `wb_stage` OR-combines `rf_we_id` and
+       `rf_we_lsu`; a stuck-1 corrupts loaded data).
+     - **Producer side**: "this input is only meaningful when X"
+       (e.g. decoder's `branch_taken_i` is only consumed on the
+       second cycle of a BRANCH; on other cycles the value is
+       don't-care and may glitch).
+     The spec MUST capture these in a `## Integration constraints`
+     section so downstream stages don't violate them. This is the
+     methodology lesson from A4 — see
+     `feedback_unit_tests_dont_catch_integration.md` in memory.
    The agent produces `changes/port-<module>/specs/<module>/spec.md`.
    First creation is just `## Requirements` (no ADDED/MODIFIED/REMOVED
    prefix). Subsequent revisions use delta format.
