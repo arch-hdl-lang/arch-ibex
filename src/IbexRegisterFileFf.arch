@@ -1,0 +1,107 @@
+//! ibex_register_file_ff — flop-based RV32 GPR file for the Ibex core.
+//!
+//! Two combinational read ports (R1, R2) and one synchronous write port
+//! (W1). x0 is hardwired to WordZeroVal under DummyInstructions=0; the
+//! other 31 flops capture wdata_a_i on the next rising edge of clk_i
+//! when we_a_i is asserted and waddr_a_i decodes to a non-zero index.
+//! Asynchronous active-low reset (rst_ni) loads every flop with
+//! WordZeroVal independent of the clock.
+//!
+//! refs:
+//!   - "specs/register_file_ff/spec.md §Asynchronous reset clears all registers"
+//!   - "specs/register_file_ff/spec.md §Synchronous write on write-enable"
+//!   - "specs/register_file_ff/spec.md §Combinational read ports"
+//!   - "specs/register_file_ff/spec.md §Concurrent read-while-write returns old value"
+//!   - "specs/register_file_ff/spec.md §x0 reads as WordZeroVal under normal operation"
+//!   - "specs/register_file_ff/spec.md §Writes targeting x0 are dropped (DummyInstructions=0)"
+//!   - "specs/register_file_ff/spec.md §DataWidth parameterizes all data signals"
+//!
+//! Scope (per changes/port-ibex-register-file-ff/proposal.md): the in-scope
+//! parameter combination is RV32E=0, DummyInstructions=0, DataWidth=32,
+//! WordZeroVal=0. The SV port boundary still declares all four parameters
+//! and every upstream port (including test_en_i, dummy_instr_id_i,
+//! dummy_instr_wb_i) so that ibex_top.sv can instantiate this module
+//! without ripple. The DummyInstructions=1 and RV32E=1 paths are
+//! deferred — see the proposal for the carry-at-boundary rationale.
+
+domain SysDomain
+  freq_mhz: 100
+end domain SysDomain
+
+module ibex_register_file_ff
+  param RV32E:             const = 0;
+  param DataWidth:         const = 32;
+  param DummyInstructions: const = 0;
+  param WordZeroVal:       const = 0;
+
+  local param NUM_WORDS: const = 32;
+
+  port clk_i:            in Clock<SysDomain>;
+  port rst_ni:           in Reset<Async, Low>;
+
+  port test_en_i:        in Bool;
+  port dummy_instr_id_i: in Bool;
+  port dummy_instr_wb_i: in Bool;
+
+  port raddr_a_i:        in  UInt<5>;
+  port rdata_a_o:        out UInt<DataWidth>;
+  port raddr_b_i:        in  UInt<5>;
+  port rdata_b_o:        out UInt<DataWidth>;
+
+  port waddr_a_i:        in  UInt<5>;
+  port wdata_a_i:        in  UInt<DataWidth>;
+  port we_a_i:           in  Bool;
+
+  // ── Storage ────────────────────────────────────────────────────────────
+  // One flop per architectural register. Slot 0 is present in the array
+  // but is never driven by a write (see the seq block below) — under
+  // DummyInstructions=0 the slot retains its WordZeroVal reset value
+  // permanently, and the read mux returns WordZeroVal for raddr=0
+  // regardless. Async-low rst_ni forces every entry to WordZeroVal
+  // immediately, satisfying §"Asynchronous reset clears all registers".
+  reg rf_reg: Vec<UInt<DataWidth>, NUM_WORDS> reset rst_ni => 0;
+
+  default seq on clk_i rising;
+
+  // ── Write port ────────────────────────────────────────────────────────
+  // Implements §"Synchronous write on write-enable" and
+  // §"Writes targeting x0 are dropped". The address compare against
+  // 5'd0 drops any write whose waddr_a_i is zero, so x0 has no
+  // architecturally-visible flop. The single-driver rule is satisfied
+  // because exactly one slot (rf_reg[waddr_a_i]) is updated per cycle;
+  // unaddressed slots hold their previous value implicitly.
+  seq
+    if we_a_i and waddr_a_i != 5'd0
+      rf_reg[waddr_a_i] <= wdata_a_i;
+    end if
+  end seq
+
+  // ── Read ports ────────────────────────────────────────────────────────
+  // §"Combinational read ports" and §"x0 reads as WordZeroVal under
+  // normal operation". §"Concurrent read-while-write returns old value"
+  // is automatic: rf_reg[waddr_a_i] is sampled at the start of the
+  // cycle (rising-edge NBA semantics), so a read on the same address
+  // sees the pre-write value.
+  comb
+    if raddr_a_i == 5'd0
+      rdata_a_o = WordZeroVal;
+    else
+      rdata_a_o = rf_reg[raddr_a_i];
+    end if
+
+    if raddr_b_i == 5'd0
+      rdata_b_o = WordZeroVal;
+    else
+      rdata_b_o = rf_reg[raddr_b_i];
+    end if
+  end comb
+
+  // ── Unused-port sinks ─────────────────────────────────────────────────
+  // test_en_i is functionally unused in the FF flavour; the dummy_instr_*
+  // pair is unused under DummyInstructions=0 (carried only for the SV
+  // port boundary). XOR them into a discarded local so Verilator does
+  // not flag them as unused inputs — same idiom as upstream's
+  // unused_test_en / unused_dummy_instr sinks.
+  let _unused_test_en:     Bool = test_en_i;
+  let _unused_dummy_instr: Bool = dummy_instr_id_i ^ dummy_instr_wb_i;
+end module ibex_register_file_ff
