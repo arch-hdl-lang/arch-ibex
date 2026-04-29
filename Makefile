@@ -25,7 +25,11 @@ lint: filelist
 	verilator --lint-only -f $(BUILD_DIR)/ibex_soc.vc --top-module ibex_mini_soc
 
 test:
-	pytest tests/
+	# `-n auto --dist=loadfile`: parallelize across test files so each
+	# file's session-scoped fixtures (notably ibex_soc_filelist's
+	# fusesoc setup) build once per worker, not once per case. Falls
+	# back gracefully to sequential when pytest-xdist isn't installed.
+	pytest tests/ -n auto --dist=loadfile
 
 clean:
 	rm -rf $(BUILD_DIR)

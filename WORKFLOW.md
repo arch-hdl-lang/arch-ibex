@@ -44,8 +44,15 @@ stage 3.
    port list is fine.
 
 2. **Spec (isolated agent — SV-only)** — dispatch an `Agent` whose
-   readable inputs are *only* `~/github/ibex/rtl/ibex_<module>.sv` plus
-   any required package (`ibex_pkg.sv`, etc.) and `prim_*` it depends on.
+   readable inputs are *only*:
+   - `~/github/ibex/rtl/ibex_<module>.sv` plus any required package
+     (`ibex_pkg.sv`, etc.) and `prim_*` it depends on.
+   - **`~/github/ibex/doc/03_reference/<module>.rst`** (when one exists)
+     and any related higher-level reference pages (e.g. `pipeline_details.rst`,
+     `instruction_decode_execute.rst`). These capture upstream's intent
+     and rationale at a level the SV alone doesn't, and are still
+     "upstream documentation" — including them in the spec stage
+     improves capture quality without breaking spec-first isolation.
    The agent produces `changes/port-<module>/specs/<module>/spec.md`.
    First creation is just `## Requirements` (no ADDED/MODIFIED/REMOVED
    prefix). Subsequent revisions use delta format.
