@@ -30,12 +30,7 @@ ASFLAGS   := -march=$(MARCH) -mabi=$(MABI) -c -I.
 
 BUILD     ?= build
 
-PROGS     := timer_isr sw_isr ext_isr multictx_isr \
-             mscratch_csrfile mtvec_csrfile \
-             mepc_mcause_mtval_csrfile mstatus_csrfile \
-             mie_mip_csrfile mcountinhibit_csrfile \
-             mcycle_csrfile debug_csrs_csrfile \
-             hpm_csrs_csrfile
+PROGS     := timer_isr sw_isr ext_isr multictx_isr
 
 VMEMS     := $(PROGS:%=$(BUILD)/%.vmem)
 DISES     := $(PROGS:%=$(BUILD)/%.dis)

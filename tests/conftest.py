@@ -50,6 +50,40 @@ def _find_rdl2arch_riscv_root() -> Path:
 RDL_DIR = _find_rdl2arch_riscv_root() / "tests" / "rdl"
 
 
+def _find_arch_binary() -> Optional[str]:
+    """Locate the `arch` compiler binary. Honors $ARCH_BIN override; otherwise
+    walks the standard sibling-checkout fallbacks (any worktree under
+    github/arch-com* with a built target/{debug,release}/arch). Skips
+    macOS's `/usr/bin/arch` (a system tool, unrelated)."""
+    env = os.environ.get("ARCH_BIN")
+    if env and Path(env).is_file():
+        return env
+    candidates = [
+        REPO_ROOT.parent / "arch-com" / "target" / "release" / "arch",
+        REPO_ROOT.parent / "arch-com" / "target" / "debug" / "arch",
+    ]
+    # Allow any sibling worktree (e.g. arch-com-unpacked-ports) to provide
+    # the binary while the feature is still local.
+    for sibling in REPO_ROOT.parent.glob("arch-com*"):
+        for sub in ("target/release/arch", "target/debug/arch"):
+            candidates.append(sibling / sub)
+    for c in candidates:
+        if c.is_file():
+            return str(c)
+    which = shutil.which("arch")
+    if which and "arch-com" not in which and which != "/usr/bin/arch":
+        return which
+    return None
+
+
+@pytest.fixture(scope="session")
+def arch_bin() -> str:
+    path = _find_arch_binary()
+    if path is None:
+        pytest.skip("ARCH compiler not found (set ARCH_BIN=/path/to/arch)")
+    return path
+
+
 def _find_ibex_root() -> Optional[Path]:
     env = os.environ.get("IBEX_ROOT")
     if env:
@@ -191,10 +225,22 @@ def _fusesoc_setup(ibex_root: Path, build_root: Path, fusesoc_bin: str) -> Path:
 # in-tree under tests/cpu/soc/ instead. Keeping both would be a
 # duplicate-module-definition error.
 _SV_SHADOWED_BY_FORKS = {
-    # Phase 6.5: patched to route mscratch through our generated
-    # CsrFile (see `tests/cpu/soc/ibex_cs_registers_hybrid.sv`).
+    # Phase 6.5 (rdl2arch-riscv): patched to route mscratch through the
+    # generated CsrFile (`soc/ibex_cs_registers_hybrid.sv`).
     "ibex_cs_registers.sv",
 }
+
+
+def _arch_swap_sv() -> list[Path]:
+    """Every `*.sv` under `build/` is an ARCH-emitted swap that replaces
+    an upstream Ibex module of the same basename. Returned files are
+    appended to `extra_sv`, and their basenames are added on the fly
+    to `_SV_SHADOWED_BY_FORKS` so the upstream copy is filtered out of
+    the fusesoc-resolved filelist (`_strip_top_and_exe` uses that set).
+    """
+    if not ARCH_BUILD_DIR.is_dir():
+        return []
+    return sorted(p for p in ARCH_BUILD_DIR.glob("*.sv"))
 
 
 def _strip_top_and_exe(vc_path: Path) -> str:
@@ -242,6 +288,12 @@ def ibex_soc_filelist(
     """
     build_root = tmp_path_factory.mktemp("ibex_soc_build")
 
+    # 0. Discover ARCH-emitted swaps under `build/` and shadow their
+    #    upstream Ibex counterparts so the fusesoc-resolved .vc skips them.
+    arch_swaps = _arch_swap_sv()
+    for p in arch_swaps:
+        _SV_SHADOWED_BY_FORKS.add(p.name)
+
     # 1. Generate CLINT + PLIC .sv.
     generated_dir = build_root / "generated"
     gen_sv = _generate_clint_plic_sv(arch_bin, generated_dir)
@@ -276,6 +328,6 @@ def ibex_soc_filelist(
 
     return {
         "vc_path":   stripped_vc,
-        "extra_sv":  gen_sv + soc_sv + shared_sv,
+        "extra_sv":  gen_sv + soc_sv + shared_sv + arch_swaps,
         "build_dir": stripped_vc.parent,
     }

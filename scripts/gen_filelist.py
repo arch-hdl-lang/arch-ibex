@@ -27,7 +27,7 @@ from pathlib import Path
 # stays untouched; we just don't include those .sv lines in the filelist.
 SWAPPED: set[str] = {
     # Phase A targets — populated as each lands:
-    # "ibex_alu",
+    "ibex_alu",
     # "ibex_register_file_ff",
     # "ibex_counter",
     # "ibex_decoder",
@@ -67,7 +67,14 @@ def collect_upstream_ibex() -> list[Path]:
     rtl = ibex_root() / "rtl"
     if not rtl.is_dir():
         raise SystemExit(f"IBEX_ROOT/rtl not found at {rtl}")
-    return sorted(p for p in rtl.glob("*.sv") if p.stem not in SWAPPED)
+    files = [p for p in rtl.glob("*.sv") if p.stem not in SWAPPED]
+    # Verilator processes files in command-file order. Package files (those
+    # holding `package ... endpackage` typedefs) must precede every consumer
+    # that references `pkg_name::*`. Hoist `*_pkg.sv` to the front; the rest
+    # sort alphabetically.
+    pkgs    = sorted(p for p in files if p.stem.endswith("_pkg"))
+    others  = sorted(p for p in files if not p.stem.endswith("_pkg"))
+    return pkgs + others
 
 
 def collect_soc() -> list[Path]:

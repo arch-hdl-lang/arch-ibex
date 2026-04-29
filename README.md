@@ -77,7 +77,8 @@ See `project_ibex_arch_plan` in arch-com auto-memory. Phases:
 ## Status
 
 - ✅ Phase 0 — repo scaffolded
-- 🚧 Phase A1 — `IbexAlu.arch` (next)
+- ✅ Phase A1 — `IbexAlu.arch` (RV32B=None, swap clean; SoC lint + 4 ISR programs green)
+- 🚧 Phase A2 — `IbexRegisterFileFf.arch` (next)
 
 ## License
 
