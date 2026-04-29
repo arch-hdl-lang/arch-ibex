@@ -25,12 +25,12 @@ module ibex_counter
   /// 1, 32, 64. Bits above this index are tied to zero on every output.
   param CounterWidth: const = 32;
 
-  /// When non-zero, `counter_val_upd_o` carries the incremented next-value
-  /// of the counter; when 0 it is hard-wired to zero so synthesis can
-  /// infer a DSP block for the flip-flop storage. Compared to 0 in the
-  /// `upd_enable` Bool below so the ternary condition is 1-bit (avoids
-  /// a Verilator WIDTHTRUNC on the int → cond cast).
-  param ProvideValUpd: const = 1;
+  /// When 1, `counter_val_upd_o` carries the incremented next-value of
+  /// the counter; when 0 it is hard-wired to zero so synthesis can infer
+  /// a DSP block for the flip-flop storage. Declared with explicit
+  /// 1-bit width so it can be used directly as a ternary condition
+  /// without a Verilator WIDTHTRUNC on the int→cond truncation.
+  param ProvideValUpd[0:0]: const = 1'b1;
 
   port clk_i:  in Clock<SysDomain>;
 
@@ -102,12 +102,8 @@ module ibex_counter
   /// to 64 bits. Combinationally ungated by `counter_inc_i`. When
   /// `ProvideValUpd = 0` the output is hard-wired to zero; the
   /// compiler folds away the dead arm so synthesis sees a constant.
-  /// Explicitly compare the int parameter to 0 so the ternary condition
-  /// is a 1-bit Bool, sidestepping Verilator WIDTHTRUNC on the SV
-  /// `parameter int ProvideValUpd` → 1-bit conditional cast.
-  let upd_enable: Bool = ProvideValUpd != 0;
   let counter_val_upd_o =
-    upd_enable
+    ProvideValUpd
       ? (counter_q[CounterWidth-1:0] + 1).trunc<CounterWidth>().resize<64>()
       : 64'h0;
 end module ibex_counter
