@@ -1,0 +1,798 @@
+//! Ibex instruction decoder.
+//!
+//! Pure combinational decoder that consumes a 32-bit RISC-V instruction word
+//! and drives the ID-stage control plane: register-file selectors, immediate
+//! extractors, ALU operator and operand-mux selectors, multiplier/divider
+//! selectors, CSR access controls, LSU controls, and single-bit flags for
+//! jumps, branches, traps, and CSR-illegal detection. Configured here for
+//! RV32E=0, RV32M=RV32MFast, RV32B=RV32BNone, BranchTargetALU=0.
+//!
+//! refs:
+//!   - specs/decoder/spec.md §"Defaults when not overridden"
+//!   - specs/decoder/spec.md §"Immediate extraction"
+//!   - specs/decoder/spec.md §"Register addressing"
+//!   - specs/decoder/spec.md §"Register-file write enable"
+//!   - specs/decoder/spec.md §"Register read enables (rf_ren_a_o, rf_ren_b_o)"
+//!   - specs/decoder/spec.md §"ALU operator selection (per-opcode)"
+//!   - specs/decoder/spec.md §"ALU operand-A and operand-B mux selection"
+//!   - specs/decoder/spec.md §"Branch-target mux selection (bt_a_mux_sel_o, bt_b_mux_sel_o)"
+//!   - specs/decoder/spec.md §"Mult/Div control"
+//!   - specs/decoder/spec.md §"CSR control"
+//!   - specs/decoder/spec.md §"LSU control"
+//!   - specs/decoder/spec.md §"Control flag outputs"
+//!   - specs/decoder/spec.md §"Illegal-instruction aggregation"
+
+module ibex_decoder
+  /// RV32E variant flag — fixed 0 in scope (full 32-register RV32).
+  param RV32E[0:0]: const = 1'b0;
+  /// M-extension config — `RV32MFast = 2`. Param accepted at boundary.
+  param RV32M: const = 2;
+  /// Bit-manipulation config — `RV32BNone = 0`. Param accepted at boundary.
+  param RV32B: const = 0;
+  /// Separate branch-target ALU — fixed 0 in scope (BT outputs constant).
+  param BranchTargetALU[0:0]: const = 1'b0;
+
+  // ── Boundary-only ports (SVA samples; combinational body never reads) ──
+  port clk_i:  in Clock<SysDomain>;
+  port rst_ni: in Reset<Async, Low>;
+
+  // ── Datapath inputs ────────────────────────────────────────────────
+  port branch_taken_i:      in Bool;
+  port instr_first_cycle_i: in Bool;
+  port instr_rdata_i:       in UInt<32>;
+  port instr_rdata_alu_i:   in UInt<32>;
+  port illegal_c_insn_i:    in Bool;
+
+  // ── Single-bit flag outputs ────────────────────────────────────────
+  port illegal_insn_o:    out Bool;
+  port ebrk_insn_o:       out Bool;
+  port mret_insn_o:       out Bool;
+  port dret_insn_o:       out Bool;
+  port ecall_insn_o:      out Bool;
+  port wfi_insn_o:        out Bool;
+  port jump_set_o:        out Bool;
+  port icache_inval_o:    out Bool;
+
+  // ── Immediate-mux selectors ────────────────────────────────────────
+  port imm_a_mux_sel_o:   out UInt<1>;
+  port imm_b_mux_sel_o:   out UInt<3>;
+  port bt_a_mux_sel_o:    out UInt<2>;
+  port bt_b_mux_sel_o:    out UInt<3>;
+
+  // ── Decoded immediates (fixed slices of instr_rdata_i) ─────────────
+  port imm_i_type_o:      out UInt<32>;
+  port imm_s_type_o:      out UInt<32>;
+  port imm_b_type_o:      out UInt<32>;
+  port imm_u_type_o:      out UInt<32>;
+  port imm_j_type_o:      out UInt<32>;
+  port zimm_rs1_type_o:   out UInt<32>;
+
+  // ── Register file controls ─────────────────────────────────────────
+  port rf_wdata_sel_o:    out UInt<1>;
+  port rf_we_o:           out Bool;
+  port rf_raddr_a_o:      out UInt<5>;
+  port rf_raddr_b_o:      out UInt<5>;
+  port rf_waddr_o:        out UInt<5>;
+  port rf_ren_a_o:        out Bool;
+  port rf_ren_b_o:        out Bool;
+
+  // ── ALU controls ───────────────────────────────────────────────────
+  port alu_operator_o:    out UInt<7>;
+  port alu_op_a_mux_sel_o: out UInt<2>;
+  port alu_op_b_mux_sel_o: out UInt<1>;
+  port alu_multicycle_o:   out Bool;
+
+  // ── Mult/Div controls ──────────────────────────────────────────────
+  port mult_en_o:             out Bool;
+  port div_en_o:              out Bool;
+  port mult_sel_o:            out Bool;
+  port div_sel_o:             out Bool;
+  port multdiv_operator_o:    out UInt<2>;
+  port multdiv_signed_mode_o: out UInt<2>;
+
+  // ── CSR controls ───────────────────────────────────────────────────
+  port csr_access_o:      out Bool;
+  port csr_op_o:          out UInt<2>;
+  port csr_addr_o:        out UInt<12>;
+
+  // ── LSU controls ───────────────────────────────────────────────────
+  port data_req_o:           out Bool;
+  port data_we_o:            out Bool;
+  port data_type_o:          out UInt<2>;
+  port data_sign_extension_o: out Bool;
+
+  // ── Decoded jump/branch flags ──────────────────────────────────────
+  port jump_in_dec_o:     out Bool;
+  port branch_in_dec_o:   out Bool;
+
+  // ============================================================================
+  // Enum encodings (spec §"Enum encodings")
+  // ============================================================================
+
+  /// `opcode_e` encodings — instr_rdata_i[6:0].
+  let OPCODE_LOAD:     UInt<7> = 7'h03;
+  let OPCODE_MISC_MEM: UInt<7> = 7'h0F;
+  let OPCODE_OP_IMM:   UInt<7> = 7'h13;
+  let OPCODE_AUIPC:    UInt<7> = 7'h17;
+  let OPCODE_STORE:    UInt<7> = 7'h23;
+  let OPCODE_OP:       UInt<7> = 7'h33;
+  let OPCODE_LUI:      UInt<7> = 7'h37;
+  let OPCODE_BRANCH:   UInt<7> = 7'h63;
+  let OPCODE_JALR:     UInt<7> = 7'h67;
+  let OPCODE_JAL:      UInt<7> = 7'h6F;
+  let OPCODE_SYSTEM:   UInt<7> = 7'h73;
+
+  /// `alu_op_e` encodings — declaration-order integers from ibex_pkg.
+  /// Only the in-scope reachable subset is needed but a few extras are
+  /// listed for completeness of the operator-decoder arms.
+  let ALU_ADD:  UInt<7> = 7'd0;
+  let ALU_SUB:  UInt<7> = 7'd1;
+  let ALU_XOR:  UInt<7> = 7'd2;
+  let ALU_OR:   UInt<7> = 7'd3;
+  let ALU_AND:  UInt<7> = 7'd4;
+  let ALU_SRA:  UInt<7> = 7'd8;
+  let ALU_SRL:  UInt<7> = 7'd9;
+  let ALU_SLL:  UInt<7> = 7'd10;
+  let ALU_LT:   UInt<7> = 7'd25;
+  let ALU_LTU:  UInt<7> = 7'd26;
+  let ALU_GE:   UInt<7> = 7'd27;
+  let ALU_GEU:  UInt<7> = 7'd28;
+  let ALU_EQ:   UInt<7> = 7'd29;
+  let ALU_NE:   UInt<7> = 7'd30;
+  let ALU_SLT:  UInt<7> = 7'd43;
+  let ALU_SLTU: UInt<7> = 7'd44;
+
+  /// `op_a_sel_e` encodings.
+  let OP_A_REG_A:  UInt<2> = 2'd0;
+  let OP_A_CURRPC: UInt<2> = 2'd2;
+  let OP_A_IMM:    UInt<2> = 2'd3;
+
+  /// `op_b_sel_e` encodings.
+  let OP_B_REG_B: UInt<1> = 1'd0;
+  let OP_B_IMM:   UInt<1> = 1'd1;
+
+  /// `imm_a_sel_e` encodings.
+  let IMM_A_Z:    UInt<1> = 1'd0;
+  let IMM_A_ZERO: UInt<1> = 1'd1;
+
+  /// `imm_b_sel_e` encodings.
+  let IMM_B_I:       UInt<3> = 3'd0;
+  let IMM_B_S:       UInt<3> = 3'd1;
+  let IMM_B_B:       UInt<3> = 3'd2;
+  let IMM_B_U:       UInt<3> = 3'd3;
+  let IMM_B_J:       UInt<3> = 3'd4;
+  let IMM_B_INCR_PC: UInt<3> = 3'd5;
+
+  /// `rf_wd_sel_e` encodings.
+  let RF_WD_EX:  UInt<1> = 1'd0;
+  let RF_WD_CSR: UInt<1> = 1'd1;
+
+  /// `csr_op_e` encodings.
+  let CSR_OP_READ:  UInt<2> = 2'd0;
+  let CSR_OP_WRITE: UInt<2> = 2'd1;
+  let CSR_OP_SET:   UInt<2> = 2'd2;
+  let CSR_OP_CLEAR: UInt<2> = 2'd3;
+
+  /// `md_op_e` encodings.
+  let MD_OP_MULL: UInt<2> = 2'd0;
+  let MD_OP_MULH: UInt<2> = 2'd1;
+  let MD_OP_DIV:  UInt<2> = 2'd2;
+  let MD_OP_REM:  UInt<2> = 2'd3;
+
+  // ============================================================================
+  // Instruction field extraction
+  // ============================================================================
+
+  /// `instr_rdata_i` field aliases — used by the main (non-ALU) decoder.
+  let opcode: UInt<7> = instr_rdata_i[6:0];
+  let rd:     UInt<5> = instr_rdata_i[11:7];
+  let funct3: UInt<3> = instr_rdata_i[14:12];
+  let rs1:    UInt<5> = instr_rdata_i[19:15];
+  let rs2:    UInt<5> = instr_rdata_i[24:20];
+  let funct7: UInt<7> = instr_rdata_i[31:25];
+
+  /// `instr_rdata_alu_i` field aliases — used by the ALU-side decoder.
+  let opcode_alu: UInt<7> = instr_rdata_alu_i[6:0];
+  let funct3_alu: UInt<3> = instr_rdata_alu_i[14:12];
+  let funct7_alu: UInt<7> = instr_rdata_alu_i[31:25];
+
+  // ============================================================================
+  // Immediates — fixed bit-string functions of instr_rdata_i (spec §Immediate extraction)
+  // ============================================================================
+
+  let imm_i_type_o = {{20{instr_rdata_i[31]}}, instr_rdata_i[31:20]};
+  let imm_s_type_o = {{20{instr_rdata_i[31]}}, instr_rdata_i[31:25], instr_rdata_i[11:7]};
+  let imm_b_type_o = {{19{instr_rdata_i[31]}}, instr_rdata_i[31], instr_rdata_i[7],
+                       instr_rdata_i[30:25], instr_rdata_i[11:8], 1'b0};
+  let imm_u_type_o = {instr_rdata_i[31:12], 12'b0};
+  let imm_j_type_o = {{12{instr_rdata_i[31]}}, instr_rdata_i[19:12], instr_rdata_i[20],
+                       instr_rdata_i[30:21], 1'b0};
+  let zimm_rs1_type_o = {27'b0, instr_rdata_i[19:15]};
+
+  // ============================================================================
+  // Register addressing (spec §"Register addressing")
+  // ============================================================================
+
+  /// rs3 path is inert in scope (RV32B = RV32BNone); rf_raddr_a_o is the rs1
+  /// field unconditionally.
+  let rf_raddr_a_o = rs1;
+  let rf_raddr_b_o = rs2;
+  let rf_waddr_o   = rd;
+
+  // ============================================================================
+  // CSR address — driven unconditionally from instr[31:20] regardless of opcode
+  // (spec §Notes subtlety #6, §"CSR control").
+  // ============================================================================
+
+  let csr_addr_o = instr_rdata_i[31:20];
+
+  // ============================================================================
+  // Branch-target mux selectors are constant under BranchTargetALU=0
+  // (spec §"Branch-target mux selection").
+  // ============================================================================
+
+  let bt_a_mux_sel_o = OP_A_CURRPC;
+  let bt_b_mux_sel_o = IMM_B_I;
+
+  // ============================================================================
+  // alu_multicycle_o is constant 0 in scope (only set inside RV32B-only arms;
+  // spec §Notes "alu_multicycle_o is constant in scope").
+  // ============================================================================
+
+  let alu_multicycle_o = false;
+
+  // ============================================================================
+  // Internal wires driven by the main combinational block.
+  // ============================================================================
+
+  /// Pre-mask register-file write enable. Output rf_we_o = rf_we_w & ~illegal_insn_w.
+  wire rf_we_w:       Bool;
+  /// Pre-mask data_req / data_we — same masking convention.
+  wire data_req_w:    Bool;
+  wire data_we_w:     Bool;
+  wire jump_in_dec_w:    Bool;
+  wire jump_set_w:       Bool;
+  wire branch_in_dec_w:  Bool;
+  wire csr_access_w:     Bool;
+  wire icache_inval_w:   Bool;
+
+  wire rf_wdata_sel_w:  UInt<1>;
+  wire rf_ren_a_w:      Bool;
+  wire rf_ren_b_w:      Bool;
+  wire data_type_w:     UInt<2>;
+  wire data_sign_extension_w: Bool;
+  wire ebrk_insn_w:    Bool;
+  wire mret_insn_w:    Bool;
+  wire dret_insn_w:    Bool;
+  wire ecall_insn_w:   Bool;
+  wire wfi_insn_w:     Bool;
+
+  wire multdiv_operator_w:    UInt<2>;
+  wire multdiv_signed_mode_w: UInt<2>;
+
+  wire csr_op_internal_w: UInt<2>;
+  wire csr_illegal_w:     Bool;
+  wire illegal_main_w:    Bool;
+
+  // ============================================================================
+  // Main decode (spec §"Defaults when not overridden" / Notes "instr vs instr_alu")
+  // — drives every output that derives from instr_rdata_i.
+  // ============================================================================
+
+  comb
+    // ── Defaults (spec §"defaults from main decode block") ─────────────
+    jump_in_dec_w   = false;
+    jump_set_w      = false;
+    branch_in_dec_w = false;
+    icache_inval_w  = false;
+
+    multdiv_operator_w    = MD_OP_MULL;
+    multdiv_signed_mode_w = 2'b00;
+
+    rf_wdata_sel_w = RF_WD_EX;
+    rf_we_w        = false;
+    rf_ren_a_w     = false;
+    rf_ren_b_w     = false;
+
+    csr_access_w     = false;
+    csr_illegal_w    = false;
+    csr_op_internal_w = CSR_OP_READ;
+
+    data_we_w             = false;
+    data_type_w           = 2'b00;
+    data_sign_extension_w = false;
+    data_req_w            = false;
+
+    illegal_main_w = false;
+    ebrk_insn_w    = false;
+    mret_insn_w    = false;
+    dret_insn_w    = false;
+    ecall_insn_w   = false;
+    wfi_insn_w     = false;
+
+    // ── Per-opcode arms ────────────────────────────────────────────────
+    if opcode == OPCODE_JAL
+      // JAL — first cycle computes target, second cycle writes PC+4.
+      jump_in_dec_w = true;
+      if instr_first_cycle_i
+        // First cycle: rf_we = BranchTargetALU (=0 in scope), jump_set strobe.
+        rf_we_w    = BranchTargetALU;
+        jump_set_w = true;
+      else
+        rf_we_w = true;
+      end if
+    elsif opcode == OPCODE_JALR
+      // JALR — same shape as JAL. funct3 must be 000 else illegal.
+      jump_in_dec_w = true;
+      if instr_first_cycle_i
+        rf_we_w    = BranchTargetALU;
+        jump_set_w = true;
+      else
+        rf_we_w = true;
+      end if
+      rf_ren_a_w = true;
+      if funct3 != 3'b000
+        illegal_main_w = true;
+      end if
+    elsif opcode == OPCODE_BRANCH
+      // BRANCH — both registers read; flagged if funct3 in {010, 011}.
+      branch_in_dec_w = true;
+      rf_ren_a_w = true;
+      rf_ren_b_w = true;
+      if funct3 == 3'b010 or funct3 == 3'b011
+        illegal_main_w = true;
+      end if
+    elsif opcode == OPCODE_STORE
+      // STORE — funct3 picks word/half/byte; instr[14]=1 or funct3=011 illegal.
+      rf_ren_a_w = true;
+      rf_ren_b_w = true;
+      data_req_w = true;
+      data_we_w  = true;
+      if instr_rdata_i[14] == 1'b1
+        // Reserved encoding (or any funct3 with bit2 set).
+        illegal_main_w = true;
+      end if
+      if funct3 == 3'b000
+        data_type_w = 2'b10;
+      elsif funct3 == 3'b001
+        data_type_w = 2'b01;
+      elsif funct3 == 3'b010
+        data_type_w = 2'b00;
+      else
+        // funct3 ∈ {011, 1xx} — reserved.
+        illegal_main_w = true;
+      end if
+    elsif opcode == OPCODE_LOAD
+      // LOAD — funct3 picks size + sign-extension.
+      // NOTE: rf_we_w stays false — LOAD writebacks go through the
+      // LSU's separate rf_we_lsu path, which the writeback stage
+      // OR-combines with rf_we_id (`ibex_wb_stage.sv:245-246`).
+      // Asserting rf_we_w here would produce `addr | lsu_data` on
+      // every load. See spec §"Register-file write enable" §"LW does
+      // NOT set rf_we_o".
+      rf_ren_a_w = true;
+      data_req_w = true;
+      // ~instr_rdata_i[14]: spec formula for data_sign_extension_o on LOAD.
+      data_sign_extension_w = instr_rdata_i[14] == 1'b0;
+      if funct3 == 3'b000 or funct3 == 3'b100
+        data_type_w = 2'b10;
+      elsif funct3 == 3'b001 or funct3 == 3'b101
+        data_type_w = 2'b01;
+      elsif funct3 == 3'b010
+        data_type_w = 2'b00;
+      else
+        // funct3 ∈ {011, 110 (LWU), 111} — illegal in RV32.
+        illegal_main_w = true;
+      end if
+    elsif opcode == OPCODE_LUI
+      rf_we_w = true;
+    elsif opcode == OPCODE_AUIPC
+      rf_we_w = true;
+    elsif opcode == OPCODE_OP_IMM
+      // Register-immediate ALU. SLLI/SRLI/SRAI need funct7 sub-decode.
+      rf_ren_a_w = true;
+      rf_we_w    = true;
+      if funct3 == 3'b001
+        // SLLI requires instr[31:25] == 0; otherwise (RV32B-only) illegal.
+        if funct7 != 7'b0000000
+          illegal_main_w = true;
+        end if
+      elsif funct3 == 3'b101
+        // SRLI/SRAI — funct7 ∈ {0x00, 0x20}.
+        if funct7 != 7'b0000000 and funct7 != 7'b0100000
+          illegal_main_w = true;
+        end if
+      end if
+      // funct3 ∈ {000, 010, 011, 100, 110, 111}: all valid (ADDI/SLTI/SLTIU/XORI/ORI/ANDI).
+    elsif opcode == OPCODE_OP
+      // Register-register ALU + RV32M.
+      rf_ren_a_w = true;
+      rf_ren_b_w = true;
+      rf_we_w    = true;
+      if funct7 == 7'b0000001
+        // RV32M family. Permitted in scope (RV32MFast).
+        if funct3 == 3'b000
+          // MUL
+          multdiv_operator_w    = MD_OP_MULL;
+          multdiv_signed_mode_w = 2'b00;
+        elsif funct3 == 3'b001
+          // MULH (signed × signed)
+          multdiv_operator_w    = MD_OP_MULH;
+          multdiv_signed_mode_w = 2'b11;
+        elsif funct3 == 3'b010
+          // MULHSU (signed × unsigned)
+          multdiv_operator_w    = MD_OP_MULH;
+          multdiv_signed_mode_w = 2'b01;
+        elsif funct3 == 3'b011
+          // MULHU (unsigned × unsigned)
+          multdiv_operator_w    = MD_OP_MULH;
+          multdiv_signed_mode_w = 2'b00;
+        elsif funct3 == 3'b100
+          // DIV (signed)
+          multdiv_operator_w    = MD_OP_DIV;
+          multdiv_signed_mode_w = 2'b11;
+        elsif funct3 == 3'b101
+          // DIVU
+          multdiv_operator_w    = MD_OP_DIV;
+          multdiv_signed_mode_w = 2'b00;
+        elsif funct3 == 3'b110
+          // REM (signed)
+          multdiv_operator_w    = MD_OP_REM;
+          multdiv_signed_mode_w = 2'b11;
+        else
+          // funct3 == 3'b111: REMU
+          multdiv_operator_w    = MD_OP_REM;
+          multdiv_signed_mode_w = 2'b00;
+        end if
+      elsif funct7 == 7'b0000000
+        // RV32I base — every funct3 is a valid OP encoding (ADD, SLL, SLT,
+        // SLTU, XOR, SRL, OR, AND); no sub-arm needed here for legality.
+      elsif funct7 == 7'b0100000 and (funct3 == 3'b000 or funct3 == 3'b101)
+        // SUB / SRA — legal RV32I encodings under funct7=0x20.
+      else
+        // Any other {funct7, funct3} combination is RV32B-only or reserved.
+        illegal_main_w = true;
+      end if
+    elsif opcode == OPCODE_MISC_MEM
+      if funct3 == 3'b000
+        // FENCE — NOP at decode.
+      elsif funct3 == 3'b001
+        // FENCE.I — flush + jump-style restart of fetch.
+        jump_in_dec_w = true;
+        if instr_first_cycle_i
+          jump_set_w     = true;
+          icache_inval_w = true;
+        end if
+      else
+        illegal_main_w = true;
+      end if
+    elsif opcode == OPCODE_SYSTEM
+      if funct3 == 3'b000
+        // ECALL/EBREAK/MRET/DRET/WFI — funct12 in instr[31:20], rs1=rd=0.
+        if rs1 != 5'd0 or rd != 5'd0
+          illegal_main_w = true;
+        elsif instr_rdata_i[31:20] == 12'h000
+          ecall_insn_w = true;
+        elsif instr_rdata_i[31:20] == 12'h001
+          ebrk_insn_w = true;
+        elsif instr_rdata_i[31:20] == 12'h302
+          mret_insn_w = true;
+        elsif instr_rdata_i[31:20] == 12'h7B2
+          dret_insn_w = true;
+        elsif instr_rdata_i[31:20] == 12'h105
+          wfi_insn_w = true;
+        else
+          illegal_main_w = true;
+        end if
+      elsif funct3 == 3'b100
+        // funct3=100 is the reserved CSR slot — sets csr_illegal which
+        // OR's into illegal_insn (spec §"CSR control" illegal-funct3 case).
+        csr_illegal_w = true;
+      else
+        // CSR access (funct3 ∈ {001, 010, 011, 101, 110, 111}). instr[14]
+        // selects rs1 vs zimm; instr[13:12] selects WRITE/SET/CLEAR.
+        csr_access_w   = true;
+        rf_we_w        = true;
+        rf_wdata_sel_w = RF_WD_CSR;
+        if instr_rdata_i[14] == 1'b0
+          // Register-form CSR reads rs1.
+          rf_ren_a_w = true;
+        end if
+        // Map instr[13:12] → csr_op (WRITE/SET/CLEAR).
+        if instr_rdata_i[13:12] == 2'b01
+          csr_op_internal_w = CSR_OP_WRITE;
+        elsif instr_rdata_i[13:12] == 2'b10
+          csr_op_internal_w = CSR_OP_SET;
+        else
+          // 2'b11 → CSR_OP_CLEAR. (2'b00 path is funct3=000 / 100 above.)
+          csr_op_internal_w = CSR_OP_CLEAR;
+        end if
+      end if
+    else
+      // Default arm — unknown opcode; spec §"Illegal-instruction aggregation"
+      // case 1.
+      illegal_main_w = true;
+    end if
+  end comb
+
+  // ============================================================================
+  // Aggregate illegal_insn (spec §"Illegal-instruction aggregation").
+  // ============================================================================
+
+  /// illegal_insn = main-block flag OR csr_illegal OR compressed-illegal.
+  let illegal_insn_w: Bool = illegal_main_w or csr_illegal_w or illegal_c_insn_i;
+
+  // ============================================================================
+  // CSR-op zero-operand demote (spec §"CSR control" — SET/CLEAR with rs1=0
+  // demote to READ; CSRRSI/CSRRCI use the same rs1 field bits as zimm).
+  // ============================================================================
+
+  /// `csr_op_o` may be `CSR_OP_READ` even when the internal `csr_op` is SET or
+  /// CLEAR if rs1=0 (so no CSR write-side-effect is triggered). WRITE is not
+  /// demoted on rd=0 — that case still asserts `rf_we_o`.
+  let csr_op_o = ((csr_op_internal_w == CSR_OP_SET or
+                    csr_op_internal_w == CSR_OP_CLEAR) and
+                   rs1 == 5'd0)
+                  ? CSR_OP_READ
+                  : csr_op_internal_w;
+
+  // ============================================================================
+  // Illegal-mask machinery (spec §"Illegal-instruction aggregation"):
+  //   illegal_insn forces rf_we, data_req, data_we, jump_in_dec, jump_set,
+  //   branch_in_dec, csr_access to 0. Trap flags are NOT masked.
+  // ============================================================================
+
+  let illegal_insn_o = illegal_insn_w;
+  let rf_we_o        = rf_we_w        and not illegal_insn_w;
+  let data_req_o     = data_req_w     and not illegal_insn_w;
+  let data_we_o      = data_we_w      and not illegal_insn_w;
+  let jump_in_dec_o  = jump_in_dec_w  and not illegal_insn_w;
+  let jump_set_o     = jump_set_w     and not illegal_insn_w;
+  let branch_in_dec_o = branch_in_dec_w and not illegal_insn_w;
+  let csr_access_o   = csr_access_w   and not illegal_insn_w;
+
+  /// Trap flags are not masked by illegal_insn (spec §"Control flag outputs",
+  /// last paragraph).
+  let ebrk_insn_o = ebrk_insn_w;
+  let mret_insn_o = mret_insn_w;
+  let dret_insn_o = dret_insn_w;
+  let ecall_insn_o = ecall_insn_w;
+  let wfi_insn_o = wfi_insn_w;
+
+  /// Outputs that pass through unmasked.
+  let rf_wdata_sel_o = rf_wdata_sel_w;
+  let rf_ren_a_o     = rf_ren_a_w;
+  let rf_ren_b_o     = rf_ren_b_w;
+  let data_type_o    = data_type_w;
+  let data_sign_extension_o = data_sign_extension_w;
+  let icache_inval_o = icache_inval_w;
+  let multdiv_operator_o    = multdiv_operator_w;
+  let multdiv_signed_mode_o = multdiv_signed_mode_w;
+
+  // ============================================================================
+  // ALU-side decode (spec §"ALU operator selection" / "ALU operand-A and
+  // operand-B mux selection"). Drives every output sourced from instr_rdata_alu_i.
+  // ============================================================================
+
+  wire alu_operator_aw:     UInt<7>;
+  wire alu_op_a_mux_sel_aw: UInt<2>;
+  wire alu_op_b_mux_sel_aw: UInt<1>;
+  wire imm_a_mux_sel_aw:    UInt<1>;
+  wire imm_b_mux_sel_aw:    UInt<3>;
+  wire mult_sel_aw:         Bool;
+  wire div_sel_aw:          Bool;
+
+  comb
+    // ── Defaults (spec §"defaults from ALU-control block") ─────────────
+    alu_operator_aw     = ALU_SLTU;
+    alu_op_a_mux_sel_aw = OP_A_IMM;
+    alu_op_b_mux_sel_aw = OP_B_IMM;
+    imm_a_mux_sel_aw    = IMM_A_ZERO;
+    imm_b_mux_sel_aw    = IMM_B_I;
+    mult_sel_aw         = false;
+    div_sel_aw          = false;
+
+    if opcode_alu == OPCODE_JAL
+      // JAL: PC + J-immediate first cycle, PC + 4 (INCR_PC) second cycle.
+      alu_op_a_mux_sel_aw = OP_A_CURRPC;
+      alu_op_b_mux_sel_aw = OP_B_IMM;
+      alu_operator_aw     = ALU_ADD;
+      if instr_first_cycle_i
+        imm_b_mux_sel_aw = IMM_B_J;
+      else
+        imm_b_mux_sel_aw = IMM_B_INCR_PC;
+      end if
+    elsif opcode_alu == OPCODE_JALR
+      // JALR first cycle: rs1 + I-immediate; second cycle: PC + 4.
+      alu_op_b_mux_sel_aw = OP_B_IMM;
+      alu_operator_aw     = ALU_ADD;
+      if instr_first_cycle_i
+        alu_op_a_mux_sel_aw = OP_A_REG_A;
+        imm_b_mux_sel_aw    = IMM_B_I;
+      else
+        alu_op_a_mux_sel_aw = OP_A_CURRPC;
+        imm_b_mux_sel_aw    = IMM_B_INCR_PC;
+      end if
+    elsif opcode_alu == OPCODE_BRANCH
+      // First cycle: REG_A vs REG_B compare; funct3 picks the comparator.
+      // Second cycle (BranchTargetALU=0): PC + (taken ? B-imm : INCR_PC).
+      if instr_first_cycle_i
+        alu_op_a_mux_sel_aw = OP_A_REG_A;
+        alu_op_b_mux_sel_aw = OP_B_REG_B;
+        if funct3_alu == 3'b000
+          alu_operator_aw = ALU_EQ;
+        elsif funct3_alu == 3'b001
+          alu_operator_aw = ALU_NE;
+        elsif funct3_alu == 3'b100
+          alu_operator_aw = ALU_LT;
+        elsif funct3_alu == 3'b101
+          alu_operator_aw = ALU_GE;
+        elsif funct3_alu == 3'b110
+          alu_operator_aw = ALU_LTU;
+        else
+          // 3'b111 → BGEU. (010/011 are illegal in main block; arm value here
+          // is observable but masked downstream by illegal_insn.)
+          alu_operator_aw = ALU_GEU;
+        end if
+      else
+        alu_op_a_mux_sel_aw = OP_A_CURRPC;
+        alu_op_b_mux_sel_aw = OP_B_IMM;
+        alu_operator_aw     = ALU_ADD;
+        // spec §Notes subtlety #4: branch_taken_i selects between B-imm and
+        // INCR_PC even in BranchTargetALU=0 mode.
+        if branch_taken_i
+          imm_b_mux_sel_aw = IMM_B_B;
+        else
+          imm_b_mux_sel_aw = IMM_B_INCR_PC;
+        end if
+      end if
+    elsif opcode_alu == OPCODE_STORE
+      // rs1 + S-immediate. instr_alu[14]=1 keeps OP_B_REG_B (illegal anyway).
+      alu_op_a_mux_sel_aw = OP_A_REG_A;
+      if instr_rdata_alu_i[14] == 1'b1
+        alu_op_b_mux_sel_aw = OP_B_REG_B;
+      else
+        alu_op_b_mux_sel_aw = OP_B_IMM;
+      end if
+      imm_b_mux_sel_aw = IMM_B_S;
+      alu_operator_aw  = ALU_ADD;
+    elsif opcode_alu == OPCODE_LOAD
+      // rs1 + I-immediate.
+      alu_op_a_mux_sel_aw = OP_A_REG_A;
+      alu_op_b_mux_sel_aw = OP_B_IMM;
+      imm_b_mux_sel_aw    = IMM_B_I;
+      alu_operator_aw     = ALU_ADD;
+    elsif opcode_alu == OPCODE_LUI
+      // Zero + U-immediate.
+      alu_op_a_mux_sel_aw = OP_A_IMM;
+      alu_op_b_mux_sel_aw = OP_B_IMM;
+      imm_a_mux_sel_aw    = IMM_A_ZERO;
+      imm_b_mux_sel_aw    = IMM_B_U;
+      alu_operator_aw     = ALU_ADD;
+    elsif opcode_alu == OPCODE_AUIPC
+      // PC + U-immediate.
+      alu_op_a_mux_sel_aw = OP_A_CURRPC;
+      alu_op_b_mux_sel_aw = OP_B_IMM;
+      imm_b_mux_sel_aw    = IMM_B_U;
+      alu_operator_aw     = ALU_ADD;
+    elsif opcode_alu == OPCODE_OP_IMM
+      // rs1 + I-immediate; funct3 picks operator (with funct7 sub-decode for shifts).
+      alu_op_a_mux_sel_aw = OP_A_REG_A;
+      alu_op_b_mux_sel_aw = OP_B_IMM;
+      imm_b_mux_sel_aw    = IMM_B_I;
+      if funct3_alu == 3'b000
+        alu_operator_aw = ALU_ADD;
+      elsif funct3_alu == 3'b010
+        alu_operator_aw = ALU_SLT;
+      elsif funct3_alu == 3'b011
+        alu_operator_aw = ALU_SLTU;
+      elsif funct3_alu == 3'b100
+        alu_operator_aw = ALU_XOR;
+      elsif funct3_alu == 3'b110
+        alu_operator_aw = ALU_OR;
+      elsif funct3_alu == 3'b111
+        alu_operator_aw = ALU_AND;
+      elsif funct3_alu == 3'b001
+        // SLLI — funct7=0x00 in legal encoding.
+        alu_operator_aw = ALU_SLL;
+      else
+        // funct3 == 3'b101: SRLI (funct7=0x00) or SRAI (funct7=0x20).
+        if funct7_alu == 7'b0100000
+          alu_operator_aw = ALU_SRA;
+        else
+          alu_operator_aw = ALU_SRL;
+        end if
+      end if
+    elsif opcode_alu == OPCODE_OP
+      // Register-register ALU.
+      alu_op_a_mux_sel_aw = OP_A_REG_A;
+      alu_op_b_mux_sel_aw = OP_B_REG_B;
+      if funct7_alu == 7'b0000001
+        // RV32M: ALU passes through partial products via ADD; mult/div_sel
+        // pick which engine. funct3 selects mul vs div family.
+        alu_operator_aw = ALU_ADD;
+        if funct3_alu[2] == 1'b0
+          // funct3 ∈ {000, 001, 010, 011}: MUL/MULH/MULHSU/MULHU.
+          mult_sel_aw = true;
+        else
+          // funct3 ∈ {100..111}: DIV/DIVU/REM/REMU.
+          div_sel_aw = true;
+        end if
+      elsif funct7_alu == 7'b0100000 and funct3_alu == 3'b000
+        alu_operator_aw = ALU_SUB;
+      elsif funct7_alu == 7'b0100000 and funct3_alu == 3'b101
+        alu_operator_aw = ALU_SRA;
+      elsif funct7_alu == 7'b0000000
+        // RV32I base mapping — every funct3 is a legal R-type encoding.
+        if funct3_alu == 3'b000
+          alu_operator_aw = ALU_ADD;
+        elsif funct3_alu == 3'b001
+          alu_operator_aw = ALU_SLL;
+        elsif funct3_alu == 3'b010
+          alu_operator_aw = ALU_SLT;
+        elsif funct3_alu == 3'b011
+          alu_operator_aw = ALU_SLTU;
+        elsif funct3_alu == 3'b100
+          alu_operator_aw = ALU_XOR;
+        elsif funct3_alu == 3'b101
+          alu_operator_aw = ALU_SRL;
+        elsif funct3_alu == 3'b110
+          alu_operator_aw = ALU_OR;
+        else
+          // funct3 == 3'b111
+          alu_operator_aw = ALU_AND;
+        end if
+      end if
+      // Other funct7 values are RV32B-only or illegal — leave alu_operator_aw
+      // at the block default (ALU_SLTU). Spec §Notes "Default-arm fall-through
+      // values are observable" — main block flags illegal so the ALU output
+      // is masked downstream.
+    elsif opcode_alu == OPCODE_MISC_MEM
+      // FENCE: rs1 + I-immediate (NOP). FENCE.I (BranchTargetALU=0): PC + INCR_PC.
+      if funct3_alu == 3'b001
+        alu_op_a_mux_sel_aw = OP_A_CURRPC;
+        alu_op_b_mux_sel_aw = OP_B_IMM;
+        imm_b_mux_sel_aw    = IMM_B_INCR_PC;
+        alu_operator_aw     = ALU_ADD;
+      else
+        // FENCE / illegal misc-mem: REG_A + I-imm (operator ADD).
+        alu_op_a_mux_sel_aw = OP_A_REG_A;
+        alu_op_b_mux_sel_aw = OP_B_IMM;
+        alu_operator_aw     = ALU_ADD;
+      end if
+    elsif opcode_alu == OPCODE_SYSTEM
+      // CSR access uses imm_a_mux_sel = IMM_A_Z; instr_alu[14] picks rs1 vs IMM.
+      // SYSTEM funct3=000 (ECALL/etc.) keeps REG_A + IMM defaults.
+      if funct3_alu == 3'b000
+        alu_op_a_mux_sel_aw = OP_A_REG_A;
+        alu_op_b_mux_sel_aw = OP_B_IMM;
+      else
+        // CSR sub-arm.
+        imm_a_mux_sel_aw = IMM_A_Z;
+        if instr_rdata_alu_i[14] == 1'b1
+          alu_op_a_mux_sel_aw = OP_A_IMM;
+        else
+          alu_op_a_mux_sel_aw = OP_A_REG_A;
+        end if
+        // alu_op_b_mux_sel and operator left at block defaults; CSR result is
+        // routed via RF_WD_CSR so the ALU output is don't-care.
+      end if
+    end if
+    // No else — unknown opcodes leave ALU outputs at the block-level defaults
+    // (spec §Notes "Default-arm fall-through values are observable").
+  end comb
+
+  let alu_operator_o     = alu_operator_aw;
+  let alu_op_a_mux_sel_o = alu_op_a_mux_sel_aw;
+  let alu_op_b_mux_sel_o = alu_op_b_mux_sel_aw;
+  let imm_a_mux_sel_o    = imm_a_mux_sel_aw;
+  let imm_b_mux_sel_o    = imm_b_mux_sel_aw;
+  let mult_sel_o         = mult_sel_aw;
+  let div_sel_o          = div_sel_aw;
+
+  /// mult_en_o / div_en_o cross both decode sides — mult_sel/div_sel from
+  /// instr_alu, illegal_insn from instr (spec §"Mult/Div control").
+  let mult_en_o = mult_sel_aw and not illegal_insn_w;
+  let div_en_o  = div_sel_aw  and not illegal_insn_w;
+
+end module ibex_decoder
