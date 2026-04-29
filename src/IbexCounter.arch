@@ -64,23 +64,14 @@ module ibex_counter
   /// discards write bits that fall above `CounterWidth-1` (e.g. a
   /// high-half write at `CounterWidth = 32` reduces to "preserve the
   /// low half") without any parameter-conditional emission.
-  /// Pre-compute the full 64-bit "next state" candidates via `let`
-  /// indirections so the seq block writes a plain identifier slice
-  /// rather than a concat-then-slice in a single expression. This is
-  /// a workaround for an arch-com SV emitter that wraps inline concats
-  /// in `()` before slicing — `({a,b})[X:Y]` is invalid SystemVerilog
-  /// (concat-with-bit-select only parses without the parens).
-  let next_high_write: UInt<64> = {counter_val_i, counter_q[31:0]};
-  let next_low_write:  UInt<64> = {counter_q[63:32], counter_val_i};
-
   seq
     if counterh_we_i
       // counterh_we_i wins over counter_we_i: the high half is loaded
       // from counter_val_i, the low half is preserved.
-      counter_q[CounterWidth-1:0] <= next_high_write[CounterWidth-1:0];
+      counter_q[CounterWidth-1:0] <= {counter_val_i, counter_q[31:0]}[CounterWidth-1:0];
     elsif counter_we_i
       // Low half loaded from counter_val_i, high half preserved.
-      counter_q[CounterWidth-1:0] <= next_low_write[CounterWidth-1:0];
+      counter_q[CounterWidth-1:0] <= {counter_q[63:32], counter_val_i}[CounterWidth-1:0];
     elsif counter_inc_i
       // Wrap-on-overflow add at CounterWidth: the auto-widened `+ 1`
       // produces UInt<CounterWidth+1>; `.trunc<CounterWidth>()` brings
