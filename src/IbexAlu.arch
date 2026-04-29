@@ -1,70 +1,62 @@
-//! ---
-//! spec_md: changes/port-ibex-alu/specs/alu/spec.md
+//! ibex_alu — RISC-V integer ALU for the Ibex EX stage.
+//!
+//! Pure combinational ALU + shared adder + branch comparator. This
+//! implementation targets the `RV32B = RV32BNone` configuration: every
+//! RV32B-only operator falls through to `result_o = 0` while the adder
+//! and comparator side-bands stay valid for downstream consumers
+//! (LSU address generator, multdiv, branch unit).
+//!
 //! refs:
-//!   - "ibex_alu.sv:1-1400 (lowRISC, Apache-2.0)"
-//!   - "ibex_pkg.sv:85-189 (alu_op_e enum)"
-//! tags: [ibex, alu, comb, swap-out]
-//! ---
-//!
-//! Ibex ALU — RV32B = RV32BNone configuration.
-//!
-//! Replaces upstream `ibex_alu.sv` via the swap-out pattern: emits a
-//! SystemVerilog module of the same name, dropped into the SoC filelist
-//! while upstream's `rtl/ibex_alu.sv` is filtered out by
-//! `scripts/gen_filelist.py`.
-//!
-//! Constructs exercised: `module` (combinational), explicit width casts,
-//! `signed()` / `unsigned()` reinterpret for SLT/SRA dispatch, and the
-//! new `unpacked` Vec port modifier so `imd_val_q_i [2]` /
-//! `imd_val_d_o [2]` connect cleanly to upstream `ibex_ex_block.sv`'s
-//! unpacked-array nets.
+//!   - "specs/alu/spec.md §Adder produces unconditional sum of operands A and B"
+//!   - "specs/alu/spec.md §Subtraction and comparison operators drive the adder via two's-complement negation"
+//!   - "specs/alu/spec.md §Multdiv mux on the shared adder"
+//!   - "specs/alu/spec.md §Equality flag"
+//!   - "specs/alu/spec.md §Signed and unsigned comparator"
+//!   - "specs/alu/spec.md §Bitwise logic operators"
+//!   - "specs/alu/spec.md §Standard shifts (SLL, SRL, SRA)"
+//!   - "specs/alu/spec.md §RV32B-inert behavior"
+//!   - "specs/alu/spec.md §ADD / SUB operator exposes adder result on result_o"
+//!   - "specs/alu/spec.md §Comparison operators expose boolean result"
+//!   - "specs/alu/spec.md §imd_val_d_o and imd_val_we_o under RV32BNone"
 
-/// Ibex ALU — adder + comparator + logic + shift, all unconditional.
-///
-/// `adder_result_o` always equals `op_a + op_b` (or the multdiv operand
-/// pair when `multdiv_sel_i` asserts). LSU and branch unit consume it
-/// regardless of `operator_i`.
-///
-/// `is_equal_result_o` always equals `op_a == op_b`, regardless of
-/// `operator_i`. Used by branch logic independently of the comparator.
-///
-/// `result_o` is the operator-selected result. Returns 0 for any RV32B
-/// operator in this configuration. SLT / SLTU return the comparator
-/// bit zero-extended to 32 bits.
 module ibex_alu
-  // RV32B feature level. Only RV32BNone (0) is supported in this version
-  // of the module; other values still compile but route every RV32B
-  // operator to result = 0. Match the upstream `parameter rv32b_e
-  // RV32B = RV32BNone` slot at the SV port boundary.
+  /// `RV32B` is part of the port contract for parity with the upstream
+  /// pipeline; only the `RV32BNone` value (= 0) is exercised here.
   param RV32B: const = 0;
 
-  // ── Ports ────────────────────────────────────────────────────────────
-  port operator_i:           in UInt<7>;
-  port operand_a_i:          in UInt<32>;
-  port operand_b_i:          in UInt<32>;
-  port instr_first_cycle_i:  in Bool;
-  port multdiv_operand_a_i:  in UInt<33>;
-  port multdiv_operand_b_i:  in UInt<33>;
-  port multdiv_sel_i:        in Bool;
-  // Unpacked-array ports — interop with upstream ibex_ex_block.sv which
-  // declares the connecting nets as `logic [31:0] imd_val_q_alu [2]`.
-  port imd_val_q_i:          in  unpacked Vec<UInt<32>, 2>;
-  port imd_val_d_o:          out unpacked Vec<UInt<32>, 2>;
-  port imd_val_we_o:         out UInt<2>;
-  port adder_result_o:       out UInt<32>;
-  port adder_result_ext_o:   out UInt<34>;
-  port result_o:             out UInt<32>;
-  port comparison_result_o:  out Bool;
-  port is_equal_result_o:    out Bool;
+  // ── Inputs ──────────────────────────────────────────────────────────
+  port operator_i:          in UInt<7>;
+  port operand_a_i:         in UInt<32>;
+  port operand_b_i:         in UInt<32>;
+  port instr_first_cycle_i: in Bool;
+  port multdiv_operand_a_i: in UInt<33>;
+  port multdiv_operand_b_i: in UInt<33>;
+  port multdiv_sel_i:       in Bool;
 
-  // ── alu_op_e numeric encoding ────────────────────────────────────────
-  // Mirror the integer values that ibex_pkg.sv assigns (declaration
-  // order, packed 7-bit). Declared as 7-bit `let` constants rather than
-  // `local param const` so comparisons against `operator_i` stay
-  // width-clean (a `local param const` emits SV `localparam int` which
-  // would trigger Verilator WIDTHEXPAND warnings on every match).
-  // Only operators in the RV32B=None scope are named here; RV32B ops
-  // fall through to the default arm of the result mux.
+  /// Intermediate-value register file from the EX stage. Unused under
+  /// `RV32BNone` but consumed in a no-op pass-through below so the
+  /// signal is observably read (silences Verilator UNUSED on the
+  /// SoC top). Declared `unpacked` to match upstream Ibex's
+  /// `logic [31:0] imd_val_q_alu [2]` boundary in `ibex_ex_block.sv`
+  /// (spec §3.6 — unpacked-array port interop).
+  port imd_val_q_i: in unpacked Vec<UInt<32>, 2>;
+
+  // ── Outputs ─────────────────────────────────────────────────────────
+  /// Mirror unpacked shape for the write-back side; same upstream
+  /// boundary requirement as `imd_val_q_i`.
+  port imd_val_d_o: out unpacked Vec<UInt<32>, 2>;
+  port imd_val_we_o:        out UInt<2>;
+
+  port adder_result_o:      out UInt<32>;
+  port adder_result_ext_o:  out UInt<34>;
+  port result_o:            out UInt<32>;
+  port comparison_result_o: out Bool;
+  port is_equal_result_o:   out Bool;
+
+  // ── Operator encoding (see spec §"ALU operator encoding") ───────────
+  // Declared as `let` constants of UInt<7> so comparisons against
+  // `operator_i` are width-clean and do not trigger Verilator
+  // WIDTHEXPAND.
   let ALU_ADD:  UInt<7> = 7'd0;
   let ALU_SUB:  UInt<7> = 7'd1;
   let ALU_XOR:  UInt<7> = 7'd2;
@@ -82,101 +74,149 @@ module ibex_alu
   let ALU_SLT:  UInt<7> = 7'd43;
   let ALU_SLTU: UInt<7> = 7'd44;
 
-  // ── Adder ────────────────────────────────────────────────────────────
-  // The adder is shared between the ALU's arithmetic / comparison path
-  // and the multdiv unit's 33-bit accumulate. Subtraction and signed
-  // comparisons negate operand_b via one's-complement of `{op_b, 1'b0}`,
-  // and the +1 needed for two's complement comes from the always-1 LSB
-  // of `{op_a, 1'b1}`.
-  // ref: ibex_alu.sv:60-109
-  let adder_op_b_negate: Bool =
-    operator_i == ALU_SUB or
-    operator_i == ALU_EQ  or operator_i == ALU_NE  or
-    operator_i == ALU_GE  or operator_i == ALU_GEU or
-    operator_i == ALU_LT  or operator_i == ALU_LTU or
-    operator_i == ALU_SLT or operator_i == ALU_SLTU;
+  // ── Adder (spec §"Adder produces unconditional sum...",
+  //          §"Subtraction and comparison operators drive the adder...",
+  //          §"Multdiv mux on the shared adder") ─────────────────────
+  /// Subtract-class operators inject the two's-complement negation by
+  /// inverting the LSB-0-padded B-side; the LSB-1 on the A-side
+  /// supplies the +1 of two's-complement.
+  let op_b_negate: Bool =
+        (operator_i == ALU_SUB)  or
+        (operator_i == ALU_EQ)   or (operator_i == ALU_NE)  or
+        (operator_i == ALU_GE)   or (operator_i == ALU_GEU) or
+        (operator_i == ALU_LT)   or (operator_i == ALU_LTU) or
+        (operator_i == ALU_SLT)  or (operator_i == ALU_SLTU);
 
-  let adder_in_a: UInt<33> =
-    multdiv_sel_i ? multdiv_operand_a_i : {operand_a_i, 1'b1};
+  let adder_in_a_int: UInt<33> = {operand_a_i, 1'b1};
+  let adder_in_b_pad: UInt<33> = {operand_b_i, 1'b0};
+  let adder_in_b_int: UInt<33> = op_b_negate ? ~adder_in_b_pad : adder_in_b_pad;
 
-  let operand_b_neg: UInt<33> = ~{operand_b_i, 1'b0};
+  /// When `multdiv_sel_i` is high the multdiv unit drives both adder
+  /// inputs directly (it has already pre-shifted them by 1 if it
+  /// wanted the LSB-1 trick); otherwise we use the integer-ALU
+  /// operands above.
+  let adder_in_a: UInt<33> = multdiv_sel_i ? multdiv_operand_a_i : adder_in_a_int;
+  let adder_in_b: UInt<33> = multdiv_sel_i ? multdiv_operand_b_i : adder_in_b_int;
 
-  let adder_in_b: UInt<33> =
-    multdiv_sel_i     ? multdiv_operand_b_i :
-    adder_op_b_negate ? operand_b_neg :
-                        {operand_b_i, 1'b0};
+  /// 33-bit + 33-bit auto-widens to 34 bits; that is exactly the
+  /// extended sum the spec mandates on `adder_result_ext_o`.
+  let adder_sum_ext: UInt<34> = adder_in_a + adder_in_b;
 
-  let adder_sum: UInt<34> = adder_in_a + adder_in_b;
-  let adder_result: UInt<32> = adder_sum[32:1];
+  let adder_result_ext_o = adder_sum_ext;
+  let adder_result_o     = adder_sum_ext[32:1];
 
-  // ── Equality (independent of operator, consumed by branch logic) ─────
-  // ref: ibex_alu.sv:115-141
-  let is_equal: Bool = operand_a_i == operand_b_i;
+  // ── Equality flag (spec §"Equality flag") ───────────────────────────
+  /// Unconditionally derived from the adder; downstream picks an
+  /// operator that drives the subtract path when it wants `a == b`.
+  let is_equal_result_o = (adder_sum_ext[32:1] == 32'h0000_0000);
 
-  // ── Comparator ───────────────────────────────────────────────────────
-  // GE = !LT for both signed and unsigned (strict-less inverted gives
-  // greater-or-equal). EQ/NE derive from is_equal. SLT/SLTU mirror LT/LTU
-  // on the boolean output and additionally drive {31'b0, bit} on result_o.
-  // ref: ibex_alu.sv:115-180
-  let signed_lt: Bool = signed(operand_a_i) <  signed(operand_b_i);
-  let unsign_lt: Bool = operand_a_i           <  operand_b_i;
+  // ── Comparator (spec §"Signed and unsigned comparator") ────────────
+  let cmp_signed: Bool =
+        (operator_i == ALU_GE)  or
+        (operator_i == ALU_LT)  or
+        (operator_i == ALU_SLT);
 
-  let comparison_result: Bool =
-    operator_i == ALU_EQ   ? is_equal :
-    operator_i == ALU_NE   ? not is_equal :
-    operator_i == ALU_LT   ? signed_lt :
-    operator_i == ALU_LTU  ? unsign_lt :
-    operator_i == ALU_GE   ? not signed_lt :
-    operator_i == ALU_GEU  ? not unsign_lt :
-    operator_i == ALU_SLT  ? signed_lt :
-    operator_i == ALU_SLTU ? unsign_lt :
-                             false;
+  let a_msb: Bool = operand_a_i[31];
+  let b_msb: Bool = operand_b_i[31];
+  let diff_msb: Bool = adder_sum_ext[32];   // sign bit of (a - b)
 
-  // ── Logic ────────────────────────────────────────────────────────────
-  let xor_result: UInt<32> = operand_a_i ^ operand_b_i;
-  let or_result:  UInt<32> = operand_a_i | operand_b_i;
-  let and_result: UInt<32> = operand_a_i & operand_b_i;
+  wire is_greater_equal: Bool;
+  comb
+    if a_msb == b_msb
+      is_greater_equal = not diff_msb;
+    elsif cmp_signed
+      // Signed, MSBs differ: positive a (a_msb = 0) ≥ negative b.
+      is_greater_equal = not a_msb;
+    else
+      // Unsigned, MSBs differ: a is larger iff a's MSB is set.
+      is_greater_equal = a_msb;
+    end if
+  end comb
 
-  // ── Shifts (RISC-V shamt = operand_b[4:0]; upper bits ignored) ───────
-  // SRA: sign-extend op_a to 33 bits, arithmetic right shift via
-  // signed(), take the low 32 bits.
+  wire cmp_result: Bool;
+  comb
+    if (operator_i == ALU_GE) or (operator_i == ALU_GEU)
+      cmp_result = is_greater_equal;
+    elsif (operator_i == ALU_LT)  or (operator_i == ALU_LTU) or
+          (operator_i == ALU_SLT) or (operator_i == ALU_SLTU)
+      cmp_result = not is_greater_equal;
+    elsif operator_i == ALU_EQ
+      cmp_result = is_equal_result_o;
+    elsif operator_i == ALU_NE
+      cmp_result = not is_equal_result_o;
+    else
+      // Spec mandates the `default` arm folds to `is_equal_result_o`.
+      cmp_result = is_equal_result_o;
+    end if
+  end comb
+
+  let comparison_result_o = cmp_result;
+
+  // ── Shifter (spec §"Standard shifts (SLL, SRL, SRA)") ──────────────
+  /// Per spec §Notes, `instr_first_cycle_i = 1` is the only mode the
+  /// pipeline ever issues a single-cycle shift in under `RV32BNone`,
+  /// so the shift amount is always the low five bits of operand B.
+  /// We still consume `instr_first_cycle_i` below so it does not show
+  /// up as Verilator UNUSED on the SoC top.
   let shamt: UInt<5> = operand_b_i[4:0];
+
   let sll_result: UInt<32> = operand_a_i << shamt;
   let srl_result: UInt<32> = operand_a_i >> shamt;
-  let sra_in:  UInt<33> = {operand_a_i[31], operand_a_i};
-  let sra_out: UInt<33> = unsigned(signed(sra_in) >> shamt);
-  let sra_result: UInt<32> = sra_out[31:0];
+  /// SRA reinterprets operand A as signed before the right shift; the
+  /// SV backend lowers `>>` on SInt to arithmetic-shift `>>>`.
+  let sra_result: UInt<32> = unsigned(signed(operand_a_i) >> shamt);
 
-  // ── Drive outputs ────────────────────────────────────────────────────
+  // ── Result mux (spec §"ADD / SUB operator exposes adder result...",
+  //               §"Comparison operators expose boolean result",
+  //               §"Bitwise logic operators",
+  //               §"Standard shifts...",
+  //               §"RV32B-inert behavior") ────────────────────────────
+  wire result_w: UInt<32>;
   comb
-    adder_result_o      = adder_result;
-    adder_result_ext_o  = adder_sum;
-    is_equal_result_o   = is_equal;
-    comparison_result_o = comparison_result;
+    if (operator_i == ALU_ADD) or (operator_i == ALU_SUB)
+      result_w = adder_sum_ext[32:1];
+    elsif operator_i == ALU_AND
+      result_w = operand_a_i & operand_b_i;
+    elsif operator_i == ALU_OR
+      result_w = operand_a_i | operand_b_i;
+    elsif operator_i == ALU_XOR
+      result_w = operand_a_i ^ operand_b_i;
+    elsif operator_i == ALU_SLL
+      result_w = sll_result;
+    elsif operator_i == ALU_SRL
+      result_w = srl_result;
+    elsif operator_i == ALU_SRA
+      result_w = sra_result;
+    elsif (operator_i == ALU_EQ)  or (operator_i == ALU_NE)  or
+          (operator_i == ALU_GE)  or (operator_i == ALU_GEU) or
+          (operator_i == ALU_LT)  or (operator_i == ALU_LTU) or
+          (operator_i == ALU_SLT) or (operator_i == ALU_SLTU)
+      result_w = {31'b0, cmp_result};
+    else
+      // RV32B-inert: every RV32B-only operator yields zero on result_o
+      // under RV32BNone (spec §"RV32B-inert behavior").
+      result_w = 32'h0000_0000;
+    end if
+  end comb
 
-    result_o =
-      operator_i == ALU_ADD                              ? adder_result :
-      operator_i == ALU_SUB                              ? adder_result :
-      operator_i == ALU_XOR                              ? xor_result :
-      operator_i == ALU_OR                               ? or_result :
-      operator_i == ALU_AND                              ? and_result :
-      operator_i == ALU_SLL                              ? sll_result :
-      operator_i == ALU_SRL                              ? srl_result :
-      operator_i == ALU_SRA                              ? sra_result :
-      (operator_i == ALU_SLT or operator_i == ALU_SLTU)  ? {31'b0, comparison_result} :
-                                                           32'b0;
+  let result_o = result_w;
 
-    // RV32B-disabled pass-through. Upstream's ibex_alu also runs
-    // `imd_val_d = imd_val_q` in its default arm and `imd_val_we = 0`
-    // — keeps imd_val state unchanged when no RV32B multi-cycle op is
-    // active. Also keeps imd_val_q_i from being flagged UNUSED.
-    imd_val_d_o[0] = imd_val_q_i[0];
-    imd_val_d_o[1] = imd_val_q_i[1];
+  // ── Intermediate-value pass-through (spec §"imd_val_d_o and
+  //     imd_val_we_o under RV32BNone") ───────────────────────────────
+  /// Outputs are tied to zero per spec; the `_q*_unused` helpers fan
+  /// the (otherwise unused) `imd_val_q_i` lanes into a sink so they
+  /// are observably consumed at the SoC level.
+  let _q0_unused: UInt<32> = imd_val_q_i[0];
+  let _q1_unused: UInt<32> = imd_val_q_i[1];
+
+  comb
+    imd_val_d_o[0] = 32'h0000_0000;
+    imd_val_d_o[1] = 32'h0000_0000;
     imd_val_we_o   = 2'b00;
   end comb
 
-  // RV32B configurations / `instr_first_cycle_i` are reserved for Phase D
-  // (opentitan-config bitmanip). For now, neither input affects any
-  // output. Verilator may emit UNUSED on both — expected, will be
-  // consumed when Phase D adds the bitmanip operators.
+  /// `instr_first_cycle_i` is part of the contract but does not change
+  /// the `RV32BNone` shift amount. Touch it here so it is not flagged
+  /// as UNUSED at the SoC top.
+  let _ifc_unused: Bool = instr_first_cycle_i;
 end module ibex_alu
