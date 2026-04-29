@@ -25,12 +25,15 @@ arch-ibex/
 │   ├── obi_to_axi_lite.sv        # OBI ↔ AXI-Lite single-trans bridge
 │   └── ibex_cs_registers_hybrid.sv  # forks upstream CSR module name,
 │                                    # instantiates rdl2arch-riscv's CsrFile
-├── sw/ → tests/sw/       # RV32 ISR programs (timer/sw/ext/multictx)
+├── specs/                # source-of-truth port-contract specs (per module)
+├── changes/              # active swaps (proposal/spec/tasks) +
+│   └── archive/          # archived completed swaps
 ├── tests/                # pytest+cocotb harness; gates every swap
-└── scripts/
-    ├── build.sh                  # arch build over src/*.arch into build/
-    └── gen_filelist.py           # emit fusesoc filter list (skip swapped
-                                  # upstream Ibex modules; include build/*.sv)
+├── scripts/
+│   ├── build.sh                  # arch build over src/*.arch into build/
+│   └── gen_filelist.py           # emit fusesoc filter list (skip swapped
+│                                 # upstream Ibex modules; include build/*.sv)
+└── WORKFLOW.md           # spec-driven flow rules (adapted from OpenSpec)
 ```
 
 ## External dependencies (path-referenced for now)
