@@ -1,0 +1,30 @@
+# Build outputs
+build/*
+!build/.gitkeep
+*.sv.bak
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.cache/
+
+# Cocotb / verilator artifacts
+sim_build/
+*.vcd
+*.fst
+results.xml
+*.log
+
+# RV32 sw build
+tests/sw/build/
+
+# Editor
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Misc
+.DS_Store
