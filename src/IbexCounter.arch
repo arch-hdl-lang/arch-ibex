@@ -1,0 +1,113 @@
+//! Parameterizable up-counter backing the Ibex performance counters
+//! (`mcycle`, `minstret`, HPM event counters). Presents a uniform 64-bit
+//! interface (`counter_val_o`, `counter_val_upd_o`) regardless of the
+//! underlying physical width `CounterWidth`. Bits `[63:CounterWidth]` of
+//! every output are tied to zero. Storage is a single 64-bit register
+//! whose write/increment paths only touch bits `[CounterWidth-1:0]`, so
+//! the upper bits remain at their reset-zero value forever. Software
+//! writes arrive on the shared 32-bit `counter_val_i` bus and are routed
+//! to the low or high half via `counter_we_i` / `counterh_we_i`. The
+//! optional `counter_val_upd_o` output forwards the same-cycle
+//! incremented value (modulo `2^CounterWidth`) so a consumer can perform
+//! same-cycle CSR forwarding; when `ProvideValUpd = 0` the output is
+//! tied to zero so Xilinx tooling can infer a DSP block for the storage.
+//!
+//! refs:
+//!   - "specs/counter/spec.md §Asynchronous reset clears the counter"
+//!   - "specs/counter/spec.md §Increment advances the low CounterWidth bits and wraps"
+//!   - "specs/counter/spec.md §Bits above CounterWidth are tied to zero on counter_val_o"
+//!   - "specs/counter/spec.md §Write priority — any write beats increment"
+//!   - "specs/counter/spec.md §Half-word write semantics"
+//!   - "specs/counter/spec.md §counter_val_upd_o gating by ProvideValUpd"
+
+module ibex_counter
+  /// Number of physical counter bits. Allowed values per CSR-block scope:
+  /// 1, 32, 64. Bits above this index are tied to zero on every output.
+  param CounterWidth: const = 32;
+
+  /// When non-zero, `counter_val_upd_o` carries the incremented next-value
+  /// of the counter; when 0 it is hard-wired to zero so synthesis can
+  /// infer a DSP block for the flip-flop storage. Compared to 0 in the
+  /// `upd_enable` Bool below so the ternary condition is 1-bit (avoids
+  /// a Verilator WIDTHTRUNC on the int → cond cast).
+  param ProvideValUpd: const = 1;
+
+  port clk_i:  in Clock<SysDomain>;
+
+  /// Asynchronous, active-low reset. Polarity and synchronicity are
+  /// expressed on the port type so `reset rst_ni => 0` on the register
+  /// inherits the correct behavior (spec §Asynchronous reset clears
+  /// the counter).
+  port rst_ni: in Reset<Async, Low>;
+
+  port counter_inc_i: in Bool;
+  port counterh_we_i: in Bool;
+  port counter_we_i:  in Bool;
+  port counter_val_i: in UInt<32>;
+
+  port counter_val_o:     out UInt<64>;
+  port counter_val_upd_o: out UInt<64>;
+
+  /// Single 64-bit register. Bits `[63:CounterWidth]` are written only
+  /// by reset (to zero), so they remain zero forever and naturally
+  /// satisfy the "tied-zero high half" requirement without any
+  /// generate-time dispatch on `CounterWidth`.
+  reg counter_q: UInt<64> reset rst_ni => 0;
+
+  default seq on clk_i rising;
+
+  /// Write/increment priority and half-word routing — spec §Write
+  /// priority and §Half-word write semantics.
+  ///
+  /// All next-state expressions are computed at full 64-bit width and
+  /// then sliced to `[CounterWidth-1:0]` on the LHS. This automatically
+  /// discards write bits that fall above `CounterWidth-1` (e.g. a
+  /// high-half write at `CounterWidth = 32` reduces to "preserve the
+  /// low half") without any parameter-conditional emission.
+  /// Pre-compute the full 64-bit "next state" candidates via `let`
+  /// indirections so the seq block writes a plain identifier slice
+  /// rather than a concat-then-slice in a single expression. This is
+  /// a workaround for an arch-com SV emitter that wraps inline concats
+  /// in `()` before slicing — `({a,b})[X:Y]` is invalid SystemVerilog
+  /// (concat-with-bit-select only parses without the parens).
+  let next_high_write: UInt<64> = {counter_val_i, counter_q[31:0]};
+  let next_low_write:  UInt<64> = {counter_q[63:32], counter_val_i};
+
+  seq
+    if counterh_we_i
+      // counterh_we_i wins over counter_we_i: the high half is loaded
+      // from counter_val_i, the low half is preserved.
+      counter_q[CounterWidth-1:0] <= next_high_write[CounterWidth-1:0];
+    elsif counter_we_i
+      // Low half loaded from counter_val_i, high half preserved.
+      counter_q[CounterWidth-1:0] <= next_low_write[CounterWidth-1:0];
+    elsif counter_inc_i
+      // Wrap-on-overflow add at CounterWidth: the auto-widened `+ 1`
+      // produces UInt<CounterWidth+1>; `.trunc<CounterWidth>()` brings
+      // it back to the storage width and discards the carry-out, which
+      // is exactly the spec's `(counter + 1) mod 2^CounterWidth`.
+      counter_q[CounterWidth-1:0] <= (counter_q[CounterWidth-1:0] + 1).trunc<CounterWidth>();
+    end if
+  end seq
+
+  /// `counter_val_o` exposes the registered value directly. Bits
+  /// `[63:CounterWidth]` are tied to zero by construction (never
+  /// written after reset). Spec §Bits above CounterWidth are tied to
+  /// zero on counter_val_o.
+  let counter_val_o = counter_q;
+
+  /// `counter_val_upd_o` — spec §counter_val_upd_o gating by
+  /// ProvideValUpd. The published value is the wrap-add of the
+  /// *current* register (not the post-write next-state), zero-extended
+  /// to 64 bits. Combinationally ungated by `counter_inc_i`. When
+  /// `ProvideValUpd = 0` the output is hard-wired to zero; the
+  /// compiler folds away the dead arm so synthesis sees a constant.
+  /// Explicitly compare the int parameter to 0 so the ternary condition
+  /// is a 1-bit Bool, sidestepping Verilator WIDTHTRUNC on the SV
+  /// `parameter int ProvideValUpd` → 1-bit conditional cast.
+  let upd_enable: Bool = ProvideValUpd != 0;
+  let counter_val_upd_o =
+    upd_enable
+      ? (counter_q[CounterWidth-1:0] + 1).trunc<CounterWidth>().resize<64>()
+      : 64'h0;
+end module ibex_counter
