@@ -3,6 +3,9 @@ build/*
 !build/.gitkeep
 *.sv.bak
 
+# `arch build` side-effect intermediate-IR files written next to source
+src/*.archi
+
 # Python
 __pycache__/
 *.py[cod]

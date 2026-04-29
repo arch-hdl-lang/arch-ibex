@@ -25,17 +25,34 @@ arch-ibex/
 
 ## Per-swap workflow
 
+The flow uses two **isolated agent invocations** to keep the spec honest:
+the spec is written by an agent that sees only upstream SV; the `.arch`
+is written by an agent that sees only the spec. The orchestrator (the
+main session) wires the two together but never pastes SV snippets into
+the arch agent's prompt.
+
 1. **Propose** — write `changes/port-<module>/proposal.md` (intent, scope,
-   ARCH-construct choice, links to upstream `ibex_<module>.sv`).
-2. **Spec** — write `changes/port-<module>/specs/<module>/spec.md`. First
-   creation is just `## Requirements` (no ADDED/MODIFIED/REMOVED prefix).
-   Subsequent revisions use delta format
+   ARCH-construct choice, links to upstream `ibex_<module>.sv`). The
+   orchestrator writes this directly — proposals are about ARCH-side
+   choices, not bit-true behavior, so reading the SV header for the
+   port list is fine.
+2. **Spec (isolated agent — SV-only)** — dispatch an `Agent` whose
+   readable inputs are *only* `~/github/ibex/rtl/ibex_<module>.sv` plus
+   any required package (`ibex_pkg.sv`, etc.) and `prim_*` it depends on.
+   The agent produces `changes/port-<module>/specs/<module>/spec.md`.
+   First creation is just `## Requirements` (no ADDED/MODIFIED/REMOVED
+   prefix). Subsequent revisions use delta format
    (ADDED/MODIFIED/REMOVED Requirements).
 3. **Design** (optional) — only when a non-trivial ARCH design choice is
    made (e.g., "use `thread` not `fsm` for multdiv"). Skip for trivial swaps.
 4. **Tasks** — write `changes/port-<module>/tasks.md` with hierarchical
    checkboxes.
-5. **Implement** — write `src/<Module>.arch`, build, lint, run gate.
+5. **Implement (isolated agent — spec-only)** — dispatch a second `Agent`
+   whose readable inputs are *only* the change spec from step 2,
+   `arch-com/doc/ARCH_HDL_Specification.md`, and
+   `arch-com/doc/Arch_AI_Reference_Card.md`. The agent **must not** read
+   `ibex_*.sv`. It produces `src/<Module>.arch`. The orchestrator then
+   builds, lints, and runs the gate.
 6. **Gate** — `make build && make lint && make test` green; ISR cocotb
    suite + module-specific scenario tests pass.
 7. **Archive** — move `changes/port-<module>/` to
@@ -47,7 +64,8 @@ arch-ibex/
 Use RFC 2119 keywords (SHALL / MUST / SHOULD / MAY). Each requirement
 gets one or more Given/When/Then scenarios. Cite upstream
 `ibex_<module>.sv:LINE` as the bit-true reference inside scenario notes
-where it disambiguates.
+where it disambiguates. The spec agent is the only stage that may cite
+SV lines — `.arch` doc comments cite spec sections instead (see below).
 
 ```markdown
 # <Module> Specification
@@ -86,5 +104,9 @@ SV→ARCH swap** in a form that:
   potential cocotb assertion).
 
 The `.arch` source carries `///` front-matter doc comments for the
-ARCH-side design rationale (mapping from SV to constructs). Different
-audiences, no duplication.
+ARCH-side design rationale, citing **spec sections** (e.g.
+`//! ref: specs/<module>/spec.md §"Adder always produces unconditional sum"`).
+It must **not** cite `ibex_*.sv:LINE` — those references belong only in
+the spec. This separation lets a future ARCH refactor work from the
+spec alone without re-reading upstream SV. Different audiences, no
+duplication.

@@ -37,6 +37,12 @@ else
 fi
 
 for f in "${files[@]}"; do
-  echo "arch build $(basename "${f}")"
-  (cd "${BUILD_DIR}" && "${ARCH_BIN}" build "${f}")
+  # The SV module name is the upstream snake_case basename (e.g.
+  # `ibex_alu`), but our `.arch` source uses CamelCase (e.g. `IbexAlu.arch`).
+  # The conftest's swap-shadow logic matches on basename equality with the
+  # upstream `.sv` file, so the output must land at `build/<snake>.sv`.
+  arch_stem="$(basename "${f}" .arch)"
+  sv_stem="$(echo "${arch_stem}" | sed -E 's/([a-z0-9])([A-Z])/\1_\2/g; s/([A-Z]+)([A-Z][a-z])/\1_\2/g' | tr '[:upper:]' '[:lower:]')"
+  echo "arch build $(basename "${f}") → build/${sv_stem}.sv"
+  "${ARCH_BIN}" build -o "${BUILD_DIR}/${sv_stem}.sv" "${f}"
 done
