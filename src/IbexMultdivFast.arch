@@ -1,0 +1,720 @@
+//! ibex_multdiv_fast — multi-cycle RV32M multiplier / divider (fast variant).
+//!
+//! Walks an FSM across several clocks per RV32M instruction. Reuses the
+//! EX-block ALU's adder and zero-comparator combinationally — drives
+//! `alu_operand_*_o` and consumes `alu_adder_i` / `alu_adder_ext_i` /
+//! `equal_to_zero_i` the same cycle. The 16x16 multiplier kernel and
+//! the long-division shift-and-subtract loop are stitched together by
+//! the per-state combinational drives.
+//!
+//! refs:
+//!   §"Requirement: Multiplier FSM walks ALBL → ALBH → AHBL for MUL (3 cycles)"
+//!   §"Requirement: Multiplier FSM walks ALBL → ALBH → AHBL → AHBH for MULH/MULHSU/MULHU (4 cycles)"
+//!   §"Requirement: 16×16 kernel multiplier with sign-extension to 17 b each side"
+//!   §"Requirement: Result mux gates between divide and multiply paths via `div_sel_i`"
+//!   §"Requirement: Divider FSM sequence for non-zero non-overflow operands (37 cycles)"
+//!   §"Requirement: Divide-by-zero short-circuit (when `data_ind_timing_i = 0`)"
+//!   §"Requirement: Constant-time mode forces full 37-cycle divide (`data_ind_timing_i = 1`)"
+//!   §"Requirement: Signed overflow on `INT_MIN / -1` returns `INT_MIN` (DIV) or `0` (REM)"
+//!   §"Requirement: ALU operand exchange (cross-module same-cycle contract)"
+//!   §"Requirement: Intermediate-value lane assignment"
+//!   §"Requirement: Reset behaviour"
+//!   §"Requirement: `valid_o` is the OR of mult_valid and div_valid"
+
+module ibex_multdiv_fast
+
+  /// RV32M parameter — integer-encoded enum from `ibex_pkg.sv`.
+  /// 2 = RV32MFast (in scope). 3 = RV32MSingleCycle (out of scope; the
+  /// surrounding SoC does not instantiate that path). Implementation
+  /// always emits the multi-cycle kernel — the parameter is accepted
+  /// for port-list compatibility.
+  param RV32M: const = 2;
+
+  // ── Clock & reset ─────────────────────────────────────────────────────
+
+  /// Positive-edge clock for all flip-flops. (§"Reset behaviour")
+  port clk_i:  in Clock<SysDomain>;
+  /// Active-low asynchronous reset. (§"Reset behaviour")
+  port rst_ni: in Reset<Async, Low>;
+
+  // ── Decoder & enable inputs ──────────────────────────────────────────
+
+  /// Multiplier FSM enable; held by ID stage for the entire MUL/MULH.
+  port mult_en_i: in Bool;
+  /// Divider FSM enable; held by ID stage for the entire DIV/REM.
+  port div_en_i:  in Bool;
+  /// Static decoder mult-path select. Unused by the multdiv internals
+  /// (kept on the port list for symmetry with the slow variant).
+  port mult_sel_i: in Bool;
+  /// Static decoder divide-path select; gates result mux and lane-0
+  /// writeback. (§"Result mux gates between divide and multiply paths
+  /// via `div_sel_i`", §"Intermediate-value lane assignment")
+  port div_sel_i:  in Bool;
+
+  /// 2-bit operator selector — `md_op_e` from `ibex_pkg`:
+  /// 0=MD_OP_MULL, 1=MD_OP_MULH, 2=MD_OP_DIV, 3=MD_OP_REM.
+  port operator_i: in UInt<2>;
+  /// Per-operand signedness: bit 0 → op_a, bit 1 → op_b. (§"Enum encodings")
+  port signed_mode_i: in UInt<2>;
+
+  /// Source operand A (numerator for DIV/REM).
+  port op_a_i: in UInt<32>;
+  /// Source operand B (denominator for DIV/REM).
+  port op_b_i: in UInt<32>;
+
+  // ── ALU shared paths (cross-module combinational loop) ───────────────
+
+  /// 34-bit extended ALU adder result, sampled the same cycle as the
+  /// driver writes `alu_operand_*_o`. Bits [32:1] form `res_adder_h`
+  /// — the 32-bit difference view used by the divider. Bits [33] and [0]
+  /// are the LSB-injection cancellation noise. (§"ALU operand exchange")
+  port alu_adder_ext_i: in UInt<34>;
+  /// 32-bit adder result. Used for `MD_ABS_A`, `MD_ABS_B`, and
+  /// `MD_CHANGE_SIGN` to capture `-X = ~X+1`.
+  port alu_adder_i:     in UInt<32>;
+  /// Zero-comparator output from the ALU. Consumed only in `MD_IDLE`
+  /// to detect divide-by-zero. (§"Divide-by-zero short-circuit")
+  port equal_to_zero_i: in Bool;
+
+  /// CSR-driven constant-time mode. Suppresses the IDLE→FINISH
+  /// short-circuit so DIV/REM always take the full 37-cycle schedule.
+  /// (§"Constant-time mode forces full 37-cycle divide")
+  port data_ind_timing_i: in Bool;
+
+  /// 33-bit A operand fed to the EX-block ALU's shared adder. Format
+  /// is `{<32-bit value>, 1'b1}` every cycle — the LSB-1 injection
+  /// trick that materialises `~B+1` style subtractions through the
+  /// adder without a dedicated carry-in. (§"ALU operand exchange")
+  port alu_operand_a_o: out UInt<33>;
+  /// 33-bit B operand to the ALU adder, paired with `alu_operand_a_o`.
+  port alu_operand_b_o: out UInt<33>;
+
+  // ── Intermediate-value register file (shared with EX-stage flops) ────
+
+  /// Read-back of the 2x34-bit intermediate-value flop bank held in
+  /// the EX block. Lane 0 = partial product (mult) / partial remainder
+  /// (div). Lane 1 = absolute-valued denominator (div). (§"Intermediate-
+  /// value lane assignment")
+  port imd_val_q_i: in unpacked Vec<UInt<34>, 2>;
+  /// Write-data for the intermediate-value flop bank.
+  port imd_val_d_o: out unpacked Vec<UInt<34>, 2>;
+  /// Per-lane write enable. Bit 0 = lane 0 (mult or div); bit 1 = lane 1
+  /// (div only). (§"Intermediate-value lane assignment")
+  port imd_val_we_o: out UInt<2>;
+
+  // ── ID-stage handshake ────────────────────────────────────────────────
+
+  /// Back-pressure from the ID stage. The FSM holds in its terminal
+  /// state with `valid_o = 1` until this is acknowledged. (§"Multiplier
+  /// FSM walks ALBL → ALBH → AHBL for MUL", §"Divider FSM sequence")
+  port multdiv_ready_id_i: in Bool;
+
+  /// 32-bit final result word. Mux selected by `div_sel_i`. Only
+  /// meaningful when `valid_o = 1`. (§"Result mux gates between divide
+  /// and multiply paths")
+  port multdiv_result_o: out UInt<32>;
+
+  /// Result-valid pulse — `mult_valid | div_valid`. Held high under
+  /// back-pressure. (§"`valid_o` is the OR of mult_valid and div_valid")
+  port valid_o: out Bool;
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Operator-encoding constants (§"Enum encodings")
+  // ─────────────────────────────────────────────────────────────────────
+
+  /// MD_OP_MULL — low-32 product (signedness ignored).
+  let MD_OP_MULL: UInt<2> = 2'd0;
+  /// MD_OP_MULH — high-32 product (signedness honoured).
+  let MD_OP_MULH: UInt<2> = 2'd1;
+  /// MD_OP_DIV — quotient.
+  let MD_OP_DIV:  UInt<2> = 2'd2;
+  /// MD_OP_REM — remainder.
+  let MD_OP_REM:  UInt<2> = 2'd3;
+
+  // Multiplier FSM state encoding (§"Multiplier internal state — mult_fsm_e")
+  /// ALBL — compute op_a[15:0] * op_b[15:0]. Idle/start.
+  let ALBL: UInt<2> = 2'd0;
+  /// ALBH — op_a[15:0] * op_b[31:16] + accumulator.
+  let ALBH: UInt<2> = 2'd1;
+  /// AHBL — op_a[31:16] * op_b[15:0] + accumulator. Terminal for MULL.
+  let AHBL: UInt<2> = 2'd2;
+  /// AHBH — op_a[31:16] * op_b[31:16] + accumulator. Terminal for MULH.
+  let AHBH: UInt<2> = 2'd3;
+
+  // Divider FSM state encoding (§"Divider internal state — md_fsm_e")
+  /// Reset / quiescent. Captures divide-by-zero and seeds remainder.
+  let MD_IDLE:        UInt<3> = 3'd0;
+  /// Compute |op_a| via ALU adder.
+  let MD_ABS_A:       UInt<3> = 3'd1;
+  /// Compute |op_b| via ALU adder; seed remainder MSB.
+  let MD_ABS_B:       UInt<3> = 3'd2;
+  /// Long-division iteration body (counter 31 down to 1).
+  let MD_COMP:        UInt<3> = 3'd3;
+  /// Final iteration; commits quotient or remainder to lane 0.
+  let MD_LAST:        UInt<3> = 3'd4;
+  /// Conditional negation via the ALU adder.
+  let MD_CHANGE_SIGN: UInt<3> = 3'd5;
+  /// Hold valid_o high until acknowledged.
+  let MD_FINISH:      UInt<3> = 3'd6;
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Datapath registers (private to this unit; not part of imd_val file)
+  // §"Reset behaviour"
+  // ─────────────────────────────────────────────────────────────────────
+
+  /// Multiplier FSM state register. Reset → ALBL.
+  reg mult_state_q: UInt<2> reset rst_ni => 0;
+  /// Divider FSM state register. Reset → MD_IDLE.
+  reg md_state_q:   UInt<3> reset rst_ni => 0;
+  /// Long-division iteration counter (counts 31 → 1 in MD_COMP).
+  reg div_counter_q: UInt<5> reset rst_ni => 0;
+  /// Absolute-valued numerator captured at MD_ABS_A. Used to seed the
+  /// partial remainder MSB at MD_ABS_B and to feed numerator bits into
+  /// the partial remainder LSB during MD_COMP/MD_LAST.
+  reg op_numerator_q: UInt<32> reset rst_ni => 0;
+  /// Long-division quotient accumulator. Each MD_COMP iteration ORs in
+  /// `1 << div_counter_q` when the conditional subtract succeeds.
+  reg op_quotient_q:  UInt<32> reset rst_ni => 0;
+  /// Latched in MD_IDLE. Suppresses the sign-flip in MD_CHANGE_SIGN
+  /// for divide-by-zero so the all-ones sentinel survives the
+  /// constant-time path. (§"Constant-time mode forces full 37-cycle divide")
+  reg div_by_zero_q: Bool reset rst_ni => false;
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Decoded sign metadata (§"Divider FSM sequence for non-zero non-overflow operands")
+  // ─────────────────────────────────────────────────────────────────────
+
+  /// op_a treated as signed and is negative.
+  let div_sign_a: Bool = signed_mode_i[0:0] & op_a_i[31:31];
+  /// op_b treated as signed and is negative.
+  let div_sign_b: Bool = signed_mode_i[1:1] & op_b_i[31:31];
+  /// True when DIV result must be negated in MD_CHANGE_SIGN.
+  /// Suppressed on divide-by-zero so the seeded all-ones sentinel
+  /// survives. (§"Divide-by-zero short-circuit")
+  let div_change_sign: Bool = (div_sign_a ^ div_sign_b) & (~div_by_zero_q);
+  /// True when REM result must be negated — remainder takes sign of
+  /// the dividend.
+  let rem_change_sign: Bool = div_sign_a;
+
+  // ─────────────────────────────────────────────────────────────────────
+  // 16x16 kernel multiplier (§"16×16 kernel multiplier with sign-extension to 17 b each side")
+  // ─────────────────────────────────────────────────────────────────────
+
+  /// True when the active multiplicand pair is read as signed (i.e.
+  /// the AHxBH cycle of MULH). Drives 16-bit sign-extension of the
+  /// running accumulator.
+  let signed_mult: Bool = (operator_i != MD_OP_MULL);
+
+  /// `op_a[15:0]` slice — used in ALBL and ALBH cycles.
+  let op_a_lo: UInt<16> = op_a_i[15:0];
+  /// `op_a[31:16]` slice — used in AHBL and AHBH cycles.
+  let op_a_hi: UInt<16> = op_a_i[31:16];
+  /// `op_b[15:0]` slice — used in ALBL and AHBL cycles.
+  let op_b_lo: UInt<16> = op_b_i[15:0];
+  /// `op_b[31:16]` slice — used in ALBH and AHBH cycles.
+  let op_b_hi: UInt<16> = op_b_i[31:16];
+
+  /// Per-state multiplier inputs and 17-bit sign-extension bits.
+  /// Selected by `mult_state_q`. (§"16×16 kernel multiplier")
+  wire mult_op_a: UInt<16>;
+  wire mult_op_b: UInt<16>;
+  wire sign_a: Bool;
+  wire sign_b: Bool;
+  /// Per-state accumulator into the MAC — 34 b. (§"Multiplier FSM walks ALBL ...")
+  wire accum: UInt<34>;
+
+  comb
+    // ALBL default
+    mult_op_a = op_a_lo;
+    mult_op_b = op_b_lo;
+    sign_a    = false;
+    sign_b    = false;
+    accum     = 0;
+
+    if mult_state_q == ALBL
+      mult_op_a = op_a_lo;
+      mult_op_b = op_b_lo;
+      sign_a    = false;
+      sign_b    = false;
+      accum     = 0;
+    elsif mult_state_q == ALBH
+      mult_op_a = op_a_lo;
+      mult_op_b = op_b_hi;
+      sign_a    = false;
+      sign_b    = signed_mode_i[1:1] & op_b_i[31:31];
+      // accum = {18'b0, imd_val_q_i[0][31:16]}
+      accum = {18'b0, imd_val_q_i[0][31:16]};
+    elsif mult_state_q == AHBL
+      mult_op_a = op_a_hi;
+      mult_op_b = op_b_lo;
+      sign_a    = signed_mode_i[0:0] & op_a_i[31:31];
+      sign_b    = false;
+      // For MD_OP_MULL: accum = {18'b0, imd_val_q_i[0][31:16]}
+      // For MD_OP_MULH: accum = imd_val_q_i[0] (full 34 b signed)
+      if operator_i == MD_OP_MULL
+        accum = {18'b0, imd_val_q_i[0][31:16]};
+      else
+        accum = imd_val_q_i[0];
+      end if
+    else
+      // AHBH (MULH only)
+      mult_op_a = op_a_hi;
+      mult_op_b = op_b_hi;
+      sign_a    = signed_mode_i[0:0] & op_a_i[31:31];
+      sign_b    = signed_mode_i[1:1] & op_b_i[31:31];
+      // accum[17:0] = imd_val_q_i[0][33:16]; accum[33:18] = sign-extension
+      // of imd_val_q_i[0][33] when signed_mult, else 16'b0.
+      // Reads as: {{16{signed_mult & imd_val_q_i[0][33]}}, imd_val_q_i[0][33:16]}
+      accum = {{16{signed_mult & imd_val_q_i[0][33:33]}}, imd_val_q_i[0][33:16]};
+    end if
+  end comb
+
+  /// 17-bit signed multiplicand A (sign bit + 16-bit slice).
+  let mult_a_ext: SInt<17> = signed({sign_a, mult_op_a});
+  /// 17-bit signed multiplicand B.
+  let mult_b_ext: SInt<17> = signed({sign_b, mult_op_b});
+  /// 34-bit signed accumulator view.
+  let accum_signed: SInt<34> = signed(accum);
+  /// 35-bit signed MAC: a*b + accum. Top bit is redundant by the
+  /// 17-bit sign-extension proof in the spec — discarded by truncation.
+  /// `+%` wraps at the 35-bit width so we don't auto-widen to SInt<36>.
+  let mac_res_signed: SInt<35> = (mult_a_ext * mult_b_ext).resize<35>() +% accum_signed.resize<35>();
+  /// 35-bit unsigned view; bit 34 is redundant — dropped on truncation.
+  let mac_res_ext: UInt<35> = unsigned(mac_res_signed);
+  /// 34-bit kernel result (consumed by the FSM).
+  let mac_res: UInt<34> = mac_res_ext[33:0];
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Multiplier next-cycle MAC writeback (§"Multiplier FSM walks ...")
+  // ─────────────────────────────────────────────────────────────────────
+
+  /// `mac_res_d` — the value written into `imd_val_d_o[0]` for mult.
+  /// MULL uses a shift-and-concat trick to keep the running low half
+  /// of the product; MULH preserves the full 34-bit kernel sum.
+  wire mac_res_d: UInt<34>;
+  comb
+    if (operator_i == MD_OP_MULL) and (mult_state_q != ALBL)
+      // MULL cycles 2/3: low half drops out, low 16 b of mac_res
+      // concatenated with saved low 16 b of running product.
+      mac_res_d = {2'b00, mac_res[15:0], imd_val_q_i[0][15:0]};
+    else
+      // ALBL or MULH: write the raw kernel sum.
+      mac_res_d = mac_res;
+    end if
+  end comb
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Divider conditional-subtract step (§"Divider FSM sequence ... MD_COMP")
+  // ─────────────────────────────────────────────────────────────────────
+
+  /// 32-bit difference view of the ALU's extended adder result —
+  /// `alu_adder_ext_i[32:1]` strips the LSB-injection noise. This is
+  /// the "partial_remainder - divisor" candidate.
+  let res_adder_h: UInt<32> = alu_adder_ext_i[32:1];
+
+  /// Divisor stored in lane 1 of the imd_val file (low 32 b only).
+  let op_denominator_q: UInt<32> = imd_val_q_i[1][31:0];
+
+  /// Long-division comparison. The XOR-of-MSBs rule recovers the
+  /// correct decision when the partial remainder has overflowed the
+  /// 32-bit field. (§"Divider FSM sequence ... `is_greater_equal` rule")
+  wire is_greater_equal: Bool;
+  comb
+    if (imd_val_q_i[0][31:31] ^ op_denominator_q[31:31]) == 1'b0
+      // Same sign: subtract worked iff result is non-negative.
+      is_greater_equal = ~res_adder_h[31:31];
+    else
+      // Mixed sign: trust the partial remainder MSB.
+      is_greater_equal = imd_val_q_i[0][31:31];
+    end if
+  end comb
+
+  /// Conditional next-remainder (32 b).
+  let next_remainder: UInt<32> = is_greater_equal ? res_adder_h : imd_val_q_i[0][31:0];
+  /// One-hot mask for the current quotient bit.
+  let one_shift: UInt<32> = 32'd1 << div_counter_q;
+  /// Conditional next-quotient (32 b).
+  let next_quotient: UInt<32> = is_greater_equal ? (op_quotient_q | one_shift) : op_quotient_q;
+
+  // ─────────────────────────────────────────────────────────────────────
+  // FSM transition / hold flags
+  // ─────────────────────────────────────────────────────────────────────
+
+  /// Multiplier reaches its terminal cycle (AHBL for MULL, AHBH for MULH).
+  let mult_terminal: Bool =
+        (mult_state_q == AHBL and operator_i == MD_OP_MULL)
+      | (mult_state_q == AHBH and operator_i == MD_OP_MULH);
+  /// Multiplier valid pulse — only on the terminal cycle.
+  let mult_valid: Bool = mult_terminal;
+  /// Multiplier hold — terminal cycle reached but ID stage not ready.
+  let mult_hold: Bool = mult_valid & (~multdiv_ready_id_i);
+  /// Divider valid — only in MD_FINISH.
+  let div_valid: Bool = (md_state_q == MD_FINISH);
+  /// Divider hold — finishing but ID stage not ready.
+  let div_hold: Bool = div_valid & (~multdiv_ready_id_i);
+
+  /// State-register advance enables. (§"Multiplier FSM walks ..." line 98,
+  /// §"Divider FSM sequence ..." line 99)
+  let mult_en_internal: Bool = mult_en_i & (~mult_hold);
+  let div_en_internal:  Bool = div_en_i  & (~div_hold);
+  /// `multdiv_en` — gates lane-0 writeback. Either FSM advancing.
+  let multdiv_en: Bool = mult_en_internal | div_en_internal;
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Per-state ALU operand drives (§"ALU operand exchange")
+  // ─────────────────────────────────────────────────────────────────────
+
+  /// Active state determines the operand pair driven onto the ALU.
+  /// Multiplier is always treated as "neutral drives" — it does not
+  /// consume the ALU adder. The divider drives its full table.
+  wire alu_a_word: UInt<32>;
+  wire alu_b_word: UInt<32>;
+  comb
+    // Default — neutral drive (used when neither FSM is mid-divide).
+    // Shape matches MD_IDLE: 0 - op_b_i (harmless to the multiplier).
+    alu_a_word = 0;
+    alu_b_word = ~op_b_i;
+
+    if div_en_i
+      // Divider owns the ALU.
+      if md_state_q == MD_IDLE
+        // Compute 0 - op_b_i so equal_to_zero_i flags op_b_i == 0.
+        alu_a_word = 0;
+        alu_b_word = ~op_b_i;
+      elsif md_state_q == MD_ABS_A
+        // Compute -op_a_i.
+        alu_a_word = 0;
+        alu_b_word = ~op_a_i;
+      elsif md_state_q == MD_ABS_B
+        // Compute -op_b_i.
+        alu_a_word = 0;
+        alu_b_word = ~op_b_i;
+      elsif md_state_q == MD_COMP
+        // Partial-remainder minus divisor.
+        alu_a_word = imd_val_q_i[0][31:0];
+        alu_b_word = ~op_denominator_q;
+      elsif md_state_q == MD_LAST
+        alu_a_word = imd_val_q_i[0][31:0];
+        alu_b_word = ~op_denominator_q;
+      elsif md_state_q == MD_CHANGE_SIGN
+        // Compute -result.
+        alu_a_word = 0;
+        alu_b_word = ~imd_val_q_i[0][31:0];
+      else
+        // MD_FINISH — value ignored by consumer.
+        alu_a_word = 0;
+        alu_b_word = ~op_b_i;
+      end if
+    end if
+  end comb
+
+  /// Drive the 33-bit ALU operands with the LSB-1 injection trick.
+  /// (§"ALU operand exchange — width notes")
+  let alu_operand_a_o = {alu_a_word, 1'b1};
+  let alu_operand_b_o = {alu_b_word, 1'b1};
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Long-division op_remainder_d (next lane-0 value when div_sel_i = 1)
+  // §"Divider FSM sequence for non-zero non-overflow operands"
+  // §"Divide-by-zero short-circuit"
+  // ─────────────────────────────────────────────────────────────────────
+
+  /// Numerator bit selected by `div_counter_d` to be shifted into the
+  /// LSB of the partial remainder during MD_COMP. `div_counter_d` =
+  /// `div_counter_q - 1`, so the bit selector is `op_numerator_q[counter_q - 1]`.
+  /// At div_counter_q == 1 the next-counter is 0 → we inject bit 0.
+  let div_counter_minus_1: UInt<5> = (div_counter_q - 5'd1).trunc<5>();
+  let numerator_bit_in: Bool = op_numerator_q[div_counter_minus_1];
+
+  wire op_remainder_d: UInt<34>;
+  comb
+    // Default safe value (never observed because we always assign per state).
+    op_remainder_d = imd_val_q_i[0];
+
+    if md_state_q == MD_IDLE
+      // Seed the lane-0 register based on operator.
+      // DIV/DIVU: '1 (becomes -1 after MD_CHANGE_SIGN suppression).
+      // REM/REMU: {2'b0, op_a_i} (the dividend).
+      if operator_i == MD_OP_DIV
+        op_remainder_d = 34'h3_FFFF_FFFF;
+      else
+        // MD_OP_REM
+        op_remainder_d = {2'b00, op_a_i};
+      end if
+    elsif md_state_q == MD_ABS_A
+      // Carry the previous seed unchanged. (Lane 0 not written
+      // meaningfully here — but we keep imd_val_we_o[0] high so the
+      // EX block latches whatever the FSM has staged.)
+      op_remainder_d = imd_val_q_i[0];
+    elsif md_state_q == MD_ABS_B
+      // Seed partial remainder with the MSB of |op_a|.
+      // Note: at MD_ABS_B, the absolute-valued numerator was just
+      // captured into op_numerator_q on the prior clock edge, so we
+      // read op_numerator_q here.
+      op_remainder_d = {33'h0_0000_0000, op_numerator_q[31:31]};
+    elsif md_state_q == MD_COMP
+      // Shift-left next_remainder with the next numerator bit at LSB.
+      op_remainder_d = {1'b0, next_remainder, numerator_bit_in};
+    elsif md_state_q == MD_LAST
+      // Final iteration. For DIV: write the quotient. For REM: write
+      // the remainder. Both zero-extended into 34 b. Only [31:0] is
+      // observed by the consumer mux, so the top two bits are padding.
+      if operator_i == MD_OP_DIV
+        op_remainder_d = {2'b00, next_quotient};
+      else
+        // MD_OP_REM
+        op_remainder_d = {2'b00, next_remainder};
+      end if
+    elsif md_state_q == MD_CHANGE_SIGN
+      // Conditional negation of the lane-0 result via ALU adder.
+      if (operator_i == MD_OP_DIV) and div_change_sign
+        op_remainder_d = {2'b00, alu_adder_i};
+      elsif (operator_i == MD_OP_REM) and rem_change_sign
+        op_remainder_d = {2'b00, alu_adder_i};
+      else
+        op_remainder_d = imd_val_q_i[0];
+      end if
+    else
+      // MD_FINISH — hold.
+      op_remainder_d = imd_val_q_i[0];
+    end if
+  end comb
+
+  // ─────────────────────────────────────────────────────────────────────
+  // op_denominator_d (lane 1 write-data — divisor) §"Intermediate-value lane assignment"
+  // ─────────────────────────────────────────────────────────────────────
+
+  /// 32-bit divisor written to lane 1. Captured at MD_ABS_B; held by
+  /// the EX-block flop afterwards via "write the same value back".
+  wire op_denominator_d_word: UInt<32>;
+  comb
+    if md_state_q == MD_ABS_B
+      // |op_b_i| — alu_adder_i if signed-and-negative, else op_b_i.
+      op_denominator_d_word = div_sign_b ? alu_adder_i : op_b_i;
+    else
+      // Hold previous value.
+      op_denominator_d_word = op_denominator_q;
+    end if
+  end comb
+
+  // ─────────────────────────────────────────────────────────────────────
+  // imd_val_d_o lane drives §"Intermediate-value lane assignment"
+  // ─────────────────────────────────────────────────────────────────────
+
+  comb
+    // Lane 0 — multiplier vs. divider.
+    if div_sel_i
+      imd_val_d_o[0] = op_remainder_d;
+    else
+      imd_val_d_o[0] = mac_res_d;
+    end if
+    // Lane 1 — divisor with top two bits forced to zero.
+    imd_val_d_o[1] = {2'b00, op_denominator_d_word};
+  end comb
+
+  /// Lane-0 write-enable: anytime the multdiv FSM is advancing.
+  /// Lane-1 write-enable: only when the divider is advancing (so the
+  /// divisor stays stable for the rest of the operation).
+  let imd_val_we_o = {div_en_internal, multdiv_en};
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Final result mux (§"Result mux gates between divide and multiply paths")
+  // ─────────────────────────────────────────────────────────────────────
+
+  /// `multdiv_result_o` — pure combinational mux on `div_sel_i`.
+  let multdiv_result_o = div_sel_i ? imd_val_q_i[0][31:0] : mac_res_d[31:0];
+
+  /// `valid_o` — OR of mult_valid and div_valid. (§"`valid_o` is the
+  /// OR of mult_valid and div_valid")
+  let valid_o = mult_valid | div_valid;
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Multiplier next-state logic (§"Multiplier FSM walks ALBL ...")
+  // ─────────────────────────────────────────────────────────────────────
+
+  wire mult_state_d: UInt<2>;
+  comb
+    mult_state_d = mult_state_q;
+    if mult_state_q == ALBL
+      mult_state_d = ALBH;
+    elsif mult_state_q == ALBH
+      mult_state_d = AHBL;
+    elsif mult_state_q == AHBL
+      // Terminal for MULL → return to ALBL. For MULH → AHBH.
+      if operator_i == MD_OP_MULL
+        mult_state_d = ALBL;
+      else
+        mult_state_d = AHBH;
+      end if
+    else
+      // AHBH — terminal for MULH.
+      mult_state_d = ALBL;
+    end if
+  end comb
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Divider next-state logic (§"Divider FSM sequence")
+  // §"Divide-by-zero short-circuit"
+  // §"Constant-time mode forces full 37-cycle divide"
+  // ─────────────────────────────────────────────────────────────────────
+
+  wire md_state_d: UInt<3>;
+  comb
+    md_state_d = md_state_q;
+    if md_state_q == MD_IDLE
+      // Divide-by-zero short-circuit when not in constant-time mode.
+      if (~data_ind_timing_i) & equal_to_zero_i
+        md_state_d = MD_FINISH;
+      else
+        md_state_d = MD_ABS_A;
+      end if
+    elsif md_state_q == MD_ABS_A
+      md_state_d = MD_ABS_B;
+    elsif md_state_q == MD_ABS_B
+      md_state_d = MD_COMP;
+    elsif md_state_q == MD_COMP
+      // 31 iterations: counter 31, 30, ..., 1 → then advance to MD_LAST.
+      if div_counter_q == 5'd1
+        md_state_d = MD_LAST;
+      else
+        md_state_d = MD_COMP;
+      end if
+    elsif md_state_q == MD_LAST
+      md_state_d = MD_CHANGE_SIGN;
+    elsif md_state_q == MD_CHANGE_SIGN
+      md_state_d = MD_FINISH;
+    else
+      // MD_FINISH — go back to MD_IDLE when ID stage acks.
+      if multdiv_ready_id_i
+        md_state_d = MD_IDLE;
+      else
+        md_state_d = MD_FINISH;
+      end if
+    end if
+  end comb
+
+  // ─────────────────────────────────────────────────────────────────────
+  // div_counter next value (§"Divider FSM sequence")
+  // ─────────────────────────────────────────────────────────────────────
+
+  wire div_counter_d: UInt<5>;
+  comb
+    if md_state_q == MD_IDLE
+      div_counter_d = 5'd31;
+    elsif md_state_q == MD_ABS_A
+      div_counter_d = 5'd31;
+    elsif md_state_q == MD_ABS_B
+      div_counter_d = 5'd31;
+    elsif md_state_q == MD_COMP
+      div_counter_d = (div_counter_q - 5'd1).trunc<5>();
+    elsif md_state_q == MD_LAST
+      div_counter_d = div_counter_q;
+    elsif md_state_q == MD_CHANGE_SIGN
+      div_counter_d = div_counter_q;
+    else
+      // MD_FINISH — hold.
+      div_counter_d = div_counter_q;
+    end if
+  end comb
+
+  // ─────────────────────────────────────────────────────────────────────
+  // op_numerator next value (§"Divider FSM sequence ... MD_ABS_A")
+  // ─────────────────────────────────────────────────────────────────────
+
+  wire op_numerator_d: UInt<32>;
+  comb
+    if md_state_q == MD_ABS_A
+      // Capture |op_a_i|.
+      op_numerator_d = div_sign_a ? alu_adder_i : op_a_i;
+    elsif md_state_q == MD_IDLE
+      // Hold (will be overwritten next cycle in MD_ABS_A).
+      op_numerator_d = op_numerator_q;
+    else
+      // Held throughout MD_ABS_B / MD_COMP / MD_LAST / etc.
+      op_numerator_d = op_numerator_q;
+    end if
+  end comb
+
+  // ─────────────────────────────────────────────────────────────────────
+  // op_quotient next value (§"Divider FSM sequence ... MD_COMP")
+  // ─────────────────────────────────────────────────────────────────────
+
+  wire op_quotient_d: UInt<32>;
+  comb
+    if md_state_q == MD_ABS_A
+      // Reset before iterations begin.
+      op_quotient_d = 32'h0;
+    elsif md_state_q == MD_COMP
+      op_quotient_d = next_quotient;
+    elsif md_state_q == MD_LAST
+      op_quotient_d = next_quotient;
+    else
+      op_quotient_d = op_quotient_q;
+    end if
+  end comb
+
+  // ─────────────────────────────────────────────────────────────────────
+  // div_by_zero next value (§"Divide-by-zero short-circuit")
+  // Captured in MD_IDLE; held thereafter until the next MD_IDLE.
+  // ─────────────────────────────────────────────────────────────────────
+
+  wire div_by_zero_d: Bool;
+  comb
+    if md_state_q == MD_IDLE
+      div_by_zero_d = equal_to_zero_i;
+    else
+      div_by_zero_d = div_by_zero_q;
+    end if
+  end comb
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Sequential register updates (§"Reset behaviour")
+  // ─────────────────────────────────────────────────────────────────────
+
+  default seq on clk_i rising;
+
+  /// Multiplier state register — only advances when mult_en_internal is
+  /// high. Frozen on back-pressure via mult_hold.
+  seq
+    if mult_en_internal
+      mult_state_q <= mult_state_d;
+    end if
+  end seq
+
+  /// Divider state register — only advances when div_en_internal is
+  /// high. Frozen on back-pressure via div_hold.
+  seq
+    if div_en_internal
+      md_state_q <= md_state_d;
+    end if
+  end seq
+
+  /// Long-division iteration counter — only advances under div_en_internal.
+  seq
+    if div_en_internal
+      div_counter_q <= div_counter_d;
+    end if
+  end seq
+
+  /// |op_a| capture register.
+  seq
+    if div_en_internal
+      op_numerator_q <= op_numerator_d;
+    end if
+  end seq
+
+  /// Long-division quotient accumulator.
+  seq
+    if div_en_internal
+      op_quotient_q <= op_quotient_d;
+    end if
+  end seq
+
+  /// Divide-by-zero capture flag — latched at MD_IDLE.
+  seq
+    if div_en_internal
+      div_by_zero_q <= div_by_zero_d;
+    end if
+  end seq
+
+end module ibex_multdiv_fast
