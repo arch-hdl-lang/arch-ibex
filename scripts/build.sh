@@ -6,17 +6,39 @@
 #   scripts/build.sh IbexAlu          # build a single module by stem
 #
 # Environment:
-#   ARCH_BIN   path to `arch` binary (default: looked up on PATH)
+#   ARCH_BIN   path to `arch` binary (default: ../arch-com/target/{release,debug}/arch
+#              if present; otherwise `arch` on PATH, ignoring macOS /usr/bin/arch)
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC_DIR="${REPO_ROOT}/src"
 BUILD_DIR="${REPO_ROOT}/build"
-ARCH_BIN="${ARCH_BIN:-arch}"
 
-if ! command -v "${ARCH_BIN}" >/dev/null 2>&1; then
-  echo "error: '${ARCH_BIN}' not on PATH; set ARCH_BIN or build arch-com" >&2
+resolve_arch_bin() {
+  if [[ -n "${ARCH_BIN:-}" && -x "${ARCH_BIN}" ]]; then
+    echo "${ARCH_BIN}"; return
+  fi
+  for cand in \
+      "${REPO_ROOT}/../arch-com/target/release/arch" \
+      "${REPO_ROOT}/../arch-com/target/debug/arch"; do
+    if [[ -x "${cand}" ]]; then
+      echo "${cand}"; return
+    fi
+  done
+  # Fall back to PATH, but skip macOS /usr/bin/arch (an unrelated system tool).
+  local found
+  found="$(command -v arch || true)"
+  if [[ -n "${found}" && "${found}" != "/usr/bin/arch" ]]; then
+    echo "${found}"; return
+  fi
+  echo ""
+}
+
+ARCH_BIN="$(resolve_arch_bin)"
+if [[ -z "${ARCH_BIN}" ]]; then
+  echo "error: arch compiler not found." >&2
+  echo "  Build arch-com (cargo build --release in ~/github/arch-com) or set ARCH_BIN." >&2
   exit 1
 fi
 

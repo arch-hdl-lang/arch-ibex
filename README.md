@@ -3,16 +3,51 @@
 Port of [lowRISC Ibex](https://github.com/lowRISC/ibex) RV32IMC core to
 [ARCH HDL](https://github.com/arch-hdl-lang/arch-com), via hybrid swap-out:
 each Ibex SystemVerilog module is replaced one at a time with an ARCH
-equivalent emitting an SV module of the same name, validated by re-running
-the existing cocotb ISR test suite.
+equivalent that emits an SV module of the same name, validated by re-running
+the existing cocotb ISR test suite plus per-module unit tests.
 
 ## Goal
 
-Final state: a credible "ARCH expresses CPUs better than SV" demo — every
-major ARCH first-class construct (`pipeline`, `bus`, `fsm`, `thread`,
-`fifo`, `ram`, `arbiter`, `cam`, `handshake_channel`) exercised in its
-natural habitat inside a real RISC-V core, while keeping the existing
-RV32 ISR cocotb tests green throughout.
+A credible "ARCH expresses CPUs better than SV" demo — every major ARCH
+first-class construct (`pipeline`, `bus`, `fsm`, `thread`, `fifo`, `ram`,
+`arbiter`, `cam`, `handshake_channel`) exercised in its natural habitat
+inside a real RISC-V core, while keeping the existing RV32 ISR cocotb
+tests green throughout.
+
+## Quick start
+
+```bash
+# 1. Clone + sibling deps. Defaults assume ~/github/{arch-com,ibex,rdl2arch-riscv};
+#    override via env vars below if your layout differs.
+mkdir -p ~/github && cd ~/github
+git clone git@github.com:arch-hdl-lang/arch-ibex.git
+git clone git@github.com:arch-hdl-lang/arch-com.git
+git clone https://github.com/lowRISC/ibex.git
+git clone git@github.com:arch-hdl-lang/rdl2arch-riscv.git
+
+# 2. Build the arch compiler.
+cd arch-com && cargo build --release && cd ..
+
+# 3. Python deps.
+cd arch-ibex
+pip install -e ../rdl2arch-riscv
+pip install cocotb cocotb-tools fusesoc pytest pytest-xdist systemrdl-compiler
+
+# 4. System tools (macOS examples; adjust for your distro).
+brew install verilator riscv-gnu-toolchain    # need verilator >= 5.0
+
+# 5. Build all ARCH modules + run the gate.
+make build      # arch -> build/*.sv
+make test       # parallel pytest: SoC lint + 4 ISR programs + per-module units
+```
+
+If your checkouts live elsewhere, set:
+
+```bash
+export ARCH_BIN=/path/to/arch-com/target/release/arch
+export IBEX_ROOT=/path/to/ibex
+export RDL2ARCH_RISCV_ROOT=/path/to/rdl2arch-riscv
+```
 
 ## Layout
 
@@ -30,55 +65,64 @@ arch-ibex/
 │   └── archive/          # archived completed swaps
 ├── tests/                # pytest+cocotb harness; gates every swap
 ├── scripts/
-│   ├── build.sh                  # arch build over src/*.arch into build/
-│   └── gen_filelist.py           # emit fusesoc filter list (skip swapped
-│                                 # upstream Ibex modules; include build/*.sv)
+│   └── build.sh                  # arch build over src/*.arch into build/
 └── WORKFLOW.md           # spec-driven flow rules (adapted from OpenSpec)
 ```
 
-## External dependencies (path-referenced for now)
+## External dependencies
 
-- **Ibex checkout** at `$IBEX_ROOT` (default `~/github/ibex`) — provides
-  upstream `.sv` for all modules not yet swapped, plus `ibex_pkg.sv`.
-- **rdl2arch-riscv checkout** at `$RDL2ARCH_RISCV_ROOT` (default
-  `~/github/rdl2arch-riscv`) — provides the CSR-file generator
-  (`from rdl2arch_riscv import RiscvCsrExporter`) and RDL fixtures.
+Path-referenced for now (no submodules / lockfile):
+
+- **Ibex** at `$IBEX_ROOT` (default `~/github/ibex`) — provides upstream
+  `.sv` for all modules not yet swapped, plus `ibex_pkg.sv`.
+- **arch compiler** at `$ARCH_COM_ROOT` (default `~/github/arch-com`) —
+  built via `cargo build --release`. The `arch` binary is auto-discovered
+  by the test harness; override with `$ARCH_BIN`.
+- **rdl2arch-riscv** at `$RDL2ARCH_RISCV_ROOT` (default
+  `~/github/rdl2arch-riscv`) — CSR-file generator + RDL fixtures.
   Install editable: `pip install -e $RDL2ARCH_RISCV_ROOT`.
-- **arch compiler** — built from `$ARCH_COM_ROOT` (default
-  `~/github/arch-com`); `arch` binary on PATH.
-- **Toolchain** — `riscv64-elf-gcc` (Homebrew), `verilator >= 5.0`,
-  `fusesoc`, Python 3.11+ with `cocotb`, `cocotb-tools`, `pytest`.
+- **Toolchain**: `verilator >= 5.0`, `riscv64-elf-gcc`, `fusesoc`,
+  Python 3.11+ with `cocotb`, `cocotb-tools`, `pytest`, `pytest-xdist`.
+
+## Make targets
+
+```
+make build      # compile every src/*.arch into build/*.sv
+make test       # pytest (parallel) — full gate (SoC lint + ISRs + unit suites)
+make clean      # rm -rf build/
+```
+
+## Verification gate per swap
+
+1. `make build` — `arch build src/IbexFoo.arch` → `build/ibex_foo.sv`
+2. `pytest tests/test_soc_lint.py` — verilator lint on the swapped SoC
+3. `pytest tests/test_cpu_programs.py` — 4 ISR programs (timer, sw, ext,
+   multictx) all green
+4. `pytest tests/test_<module>_unit*.py` — per-module unit + regression
+5. After Phase C: `pytest tests/riscv_arch_tests/` — RV32IMC compliance
+
+`make test` runs items 2–4 in parallel via `pytest -n auto --dist=loadfile`.
 
 ## Plan
 
-See `project_ibex_arch_plan` in arch-com auto-memory. Phases:
+Phases (see `WORKFLOW.md` for the per-swap process):
 
 - **A** — 9 leaf-module swaps (Alu, RegFile, Counter, Decoder,
   CompressedDecoder, Multdiv, FetchFifo, LoadStoreUnit, PrefetchBuffer)
 - **B** — 5 composite-stage swaps (ExBlock, WbStage, IfStage, Controller,
   IdStage)
 - **C** — `IbexCore.arch` with **`pipeline` + internal `bus`** (the
-  linchpin — turns hybrid into a strong demo) + `IbexTop.arch` (small
-  config)
+  linchpin — turns hybrid into a strong demo) + `IbexTop.arch`
 - **D** — opentitan-config extensions (Icache with `ram`+`arbiter`+`cam`,
   PMP, debug triggers)
 
-## Verification gate per swap
-
-1. `scripts/build.sh` — `arch build src/IbexFoo.arch` → `build/IbexFoo.sv`
-2. `scripts/gen_filelist.py` — emit fusesoc filter list excluding swapped
-   upstream Ibex module(s), including build artifacts
-3. `verilator --lint-only` on the SoC
-4. `pytest tests/test_cpu_programs.py` — 4 ISR programs (timer, sw, ext,
-   multictx) all green
-5. `pytest tests/test_soc_lint.py` — SoC-level lint pass
-6. After Phase C: `pytest tests/riscv_arch_tests/` — RV32IMC compliance
-
 ## Status
 
-- ✅ Phase 0 — repo scaffolded
-- ✅ Phase A1 — `IbexAlu.arch` (RV32B=None, swap clean; SoC lint + 4 ISR programs green)
-- 🚧 Phase A2 — `IbexRegisterFileFf.arch` (next)
+Landed: A1 `IbexAlu`, A2 `IbexRegisterFileFf`, A3 `IbexCounter`,
+A4 `IbexDecoder`, A5 `IbexCompressedDecoder`, A6 `IbexMultdivFast`
+(`thread`-based).
+
+Next: A7 `IbexFetchFifo`.
 
 ## License
 
