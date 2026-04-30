@@ -1,0 +1,820 @@
+//! ibex_compressed_decoder — RVC / Zca / Zcb / Zcmp expander.
+//!
+//! Sits in Ibex's Instruction-Fetch (IF) stage between the prefetch buffer
+//! and the IF→ID pipeline registers. Translates each 16-bit RVC instruction
+//! into the bit-equivalent 32-bit RV32 encoding the main decoder accepts.
+//! The decoder is fully combinational for Zca/Zcb expansions; Zcmp
+//! (cm.push/cm.pop/cm.popret/cm.popretz/cm.mvsa01/cm.mva01s) drives an
+//! internal multi-cycle FSM that emits one expanded instruction per fetch
+//! cycle, with `gets_expanded_o` advertising sub-step state to the IF
+//! stage (held stable on `instr_i` until INSTR_EXPANDED_LAST is asserted).
+//!
+//! refs:
+//!   - spec §"32-bit pass-through"
+//!   - spec §"Zca quadrant 0 — c.addi4spn"
+//!   - spec §"Zca quadrant 0 — c.lw"
+//!   - spec §"Zca quadrant 0 — c.sw"
+//!   - spec §"Zcb quadrant 0 — c.lbu / c.lh / c.lhu / c.sb / c.sh"
+//!   - spec §"Zca quadrant 0 reserved funct3 codes"
+//!   - spec §"Zca quadrant 1 — c.addi / c.nop"
+//!   - spec §"Zca quadrant 1 — c.jal / c.j"
+//!   - spec §"Zca quadrant 1 — c.li"
+//!   - spec §"Zca quadrant 1 — c.lui / c.addi16sp"
+//!   - spec §"Zca quadrant 1 — c.srli / c.srai"
+//!   - spec §"Zca quadrant 1 — c.andi"
+//!   - spec §"Zca quadrant 1 — c.sub / c.xor / c.or / c.and"
+//!   - spec §"Zcb quadrant 1 — c.mul"
+//!   - spec §"Zcb quadrant 1 — zext.b / sext.b / zext.h / sext.h / not"
+//!   - spec §"Zca quadrant 1 — c.beqz / c.bnez"
+//!   - spec §"Zca quadrant 2 — c.slli"
+//!   - spec §"Zca quadrant 2 — c.lwsp"
+//!   - spec §"Zca quadrant 2 — c.mv / c.jr / c.add / c.jalr / c.ebreak"
+//!   - spec §"Zca quadrant 2 — c.swsp"
+//!   - spec §"Zca quadrant 2 reserved funct3 codes"
+//!   - spec §"Zcmp — cm.push multi-cycle expansion"
+//!   - spec §"Zcmp — cm.pop / cm.popret / cm.popretz multi-cycle expansion"
+//!   - spec §"Zcmp — cm.mvsa01 / cm.mva01s"
+//!   - spec §"Zcmp default reserved encodings"
+//!   - spec §"`is_compressed_o` is a pure LSB decode"
+//!   - spec §"`gets_expanded_o` gating on `valid_i`"
+//!   - spec §"Zcmp FSM stability when `valid_i = 0`"
+//!   - spec §"Pure pass-through when `instr_i[1:0]` is unknown / any"
+//!   - spec §"Enum encodings"
+//!   - spec §"Port contract"
+//!   - spec-notes item 1: non-idle FSM advance gates on `id_in_ready_i` alone
+
+domain SysDomain
+  freq_mhz: 100
+end domain SysDomain
+
+module ibex_compressed_decoder
+  /// `RV32ZC` selects the Zc subset. Per `proposal.md` the ARCH port locks
+  /// this to RV32ZcaZcbZcmp = 3 (full Zca + Zcb + Zcmp). Lower values are
+  /// retained as default placeholders for the parameter contract but do
+  /// not enable the Zcmp FSM (see `gen_zcmp` block below).
+  param RV32ZC: const = 3;
+
+  /// `ResetAll` chooses whether all internal flops carry an async reset.
+  /// The ARCH port locks this to 0; the only reset-bearing register is
+  /// `cm_state_q` (FSM state). Width-typed so the SV emission keeps the
+  /// 1-bit signature row-for-row with upstream.
+  param ResetAll[0:0]: const = 1'b0;
+
+  port clk_i:           in  Clock<SysDomain>;
+  /// Active-low async reset; resets `cm_state_q` to CmIdle. Polarity is
+  /// expressed on the type so the reset clause can stay positive.
+  port rst_ni:          in  Reset<Async, Low>;
+  port valid_i:         in  Bool;
+  port id_in_ready_i:   in  Bool;
+  port instr_i:         in  UInt<32>;
+  port instr_o:         out UInt<32>;
+  port is_compressed_o: out Bool;
+  port gets_expanded_o: out UInt<2>;
+  port illegal_instr_o: out Bool;
+
+  // ----------------------------------------------------------------------
+  // Enum encodings (spec §"Enum encodings")
+  // ----------------------------------------------------------------------
+
+  /// `instr_exp_e` integer values (ref: ibex_pkg::instr_exp_e). Plain
+  /// UInt<2> constants per project memory rule 6.
+  let INSTR_NOT_EXPANDED:  UInt<2> = 2'd0;
+  let INSTR_EXPANDED:      UInt<2> = 2'd1;
+  let INSTR_EXPANDED_LAST: UInt<2> = 2'd2;
+
+  /// `opcode_e` values used inside expanded instructions (ref: ibex_pkg).
+  let OPCODE_LOAD:   UInt<7> = 7'h03;
+  let OPCODE_OP_IMM: UInt<7> = 7'h13;
+  let OPCODE_STORE:  UInt<7> = 7'h23;
+  let OPCODE_OP:     UInt<7> = 7'h33;
+  let OPCODE_LUI:    UInt<7> = 7'h37;
+  let OPCODE_BRANCH: UInt<7> = 7'h63;
+  let OPCODE_JALR:   UInt<7> = 7'h67;
+  let OPCODE_JAL:    UInt<7> = 7'h6f;
+
+  /// Zcmp FSM state encoding (ref: spec §"Internal `cm_state_e`"). 8
+  /// states fit in 3 bits. We use UInt<3> rather than an enum so the
+  /// constants and the register share an integer type and so reset values
+  /// stay sized literals (project memory rule 5).
+  let CM_IDLE:           UInt<3> = 3'd0;
+  let CM_PUSH_STORE_REG: UInt<3> = 3'd1;
+  let CM_PUSH_DECR_SP:   UInt<3> = 3'd2;
+  let CM_POP_LOAD_REG:   UInt<3> = 3'd3;
+  let CM_POP_INCR_SP:    UInt<3> = 3'd4;
+  let CM_POP_ZERO_A0:    UInt<3> = 3'd5;
+  let CM_POP_RET_RA:     UInt<3> = 3'd6;
+  let CM_MV_SECOND_REG:  UInt<3> = 3'd7;
+
+  // ----------------------------------------------------------------------
+  // Helper: cm_rlist_top_reg
+  // ----------------------------------------------------------------------
+  /// Maps a 5-bit (post-`cm_rlist_init` promoted) rlist value to the 5-bit
+  /// register index of the *topmost* register currently in the rlist. The
+  /// 4-bit instruction field 4'd15 is promoted to 5'd16 by `cm_rlist_init`
+  /// so the table can disambiguate the {x26, x27} tail without aliasing
+  /// against shorter rlists. Values 0..3 are reserved (caught upstream as
+  /// `illegal_instr_o = 1` before this helper is read). The table is
+  /// derived directly from the Zcmp ABI register set
+  /// {ra, s0, s1, s2..s11} = {x1, x8, x9, x18..x27}.
+  function cm_rlist_top_reg(rlist: UInt<5>) -> UInt<5>
+    if rlist == 5'd4
+      return 5'd1;   // x1  = ra
+    elsif rlist == 5'd5
+      return 5'd8;   // x8  = s0
+    elsif rlist == 5'd6
+      return 5'd9;   // x9  = s1
+    elsif rlist == 5'd7
+      return 5'd18;  // x18 = s2
+    elsif rlist == 5'd8
+      return 5'd19;  // x19 = s3
+    elsif rlist == 5'd9
+      return 5'd20;  // x20 = s4
+    elsif rlist == 5'd10
+      return 5'd21;  // x21 = s5
+    elsif rlist == 5'd11
+      return 5'd22;  // x22 = s6
+    elsif rlist == 5'd12
+      return 5'd23;  // x23 = s7
+    elsif rlist == 5'd13
+      return 5'd24;  // x24 = s8
+    elsif rlist == 5'd14
+      return 5'd25;  // x25 = s9
+    elsif rlist == 5'd15
+      return 5'd26;  // x26 = s10 (only reachable via promoted 5'd16 then -1)
+    elsif rlist == 5'd16
+      return 5'd27;  // x27 = s11 (promoted from 4'd15)
+    else
+      return 5'd0;   // unreachable for legal rlists
+    end if
+  end function cm_rlist_top_reg
+
+  // ----------------------------------------------------------------------
+  // Helper: cm_rlist_init
+  // ----------------------------------------------------------------------
+  /// Widen the 4-bit rlist field to 5 bits with the special promotion of
+  /// 4'd15 → 5'd16. Lower values pass through (zero-extended).
+  function cm_rlist_init(r4: UInt<4>) -> UInt<5>
+    if r4 == 4'd15
+      return 5'd16;
+    else
+      return r4.zext<5>();
+    end if
+  end function cm_rlist_init
+
+  // ----------------------------------------------------------------------
+  // Helper: cm_stack_adj_base
+  // ----------------------------------------------------------------------
+  /// Base stack-adjust value (in bytes) per rlist, prior to the spimm
+  /// quanta. {16, 32, 48, 64} for rlist groups {4..7, 8..11, 12..14, 15}
+  /// respectively (spec §"Zcmp — cm.push multi-cycle expansion").
+  function cm_stack_adj_base(rlist: UInt<5>) -> UInt<7>
+    if rlist == 5'd4 or rlist == 5'd5 or rlist == 5'd6 or rlist == 5'd7
+      return 7'd16;
+    elsif rlist == 5'd8 or rlist == 5'd9 or rlist == 5'd10 or rlist == 5'd11
+      return 7'd32;
+    elsif rlist == 5'd12 or rlist == 5'd13 or rlist == 5'd14
+      return 7'd48;
+    else
+      return 7'd64;   // rlist == 5'd15 (s10) and 5'd16 (s11/promoted-15)
+    end if
+  end function cm_stack_adj_base
+
+  // ----------------------------------------------------------------------
+  // Helper: cm_stack_adj  (= base + spimm * 16)
+  // ----------------------------------------------------------------------
+  /// Total stack adjust in bytes. spimm field is 2 bits (`instr_i[3:2]`)
+  /// adding 0/16/32/48 to the base. Result fits in 7 bits (max 64+48=112).
+  function cm_stack_adj(rlist: UInt<5>, spimm: UInt<2>) -> UInt<7>
+    return (cm_stack_adj_base(rlist) + (spimm.zext<7>() << 4)).trunc<7>();
+  end function cm_stack_adj
+
+  // ----------------------------------------------------------------------
+  // Helper: cm_stack_adj_word  (= stack_adj/4 - 1) — first pop offset
+  // ----------------------------------------------------------------------
+  /// Word-index of the topmost pop's load address. For rlist=4, spimm=0,
+  /// stack_adj = 16, so word = 16/4 - 1 = 3 → off = 12 (matches scenario
+  /// `cm.pop {ra}, +16 first sub-step`). 5-bit result.
+  function cm_stack_adj_word(rlist: UInt<5>, spimm: UInt<2>) -> UInt<5>
+    return (cm_stack_adj(rlist, spimm) >> 2).trunc<5>() -% 5'd1;
+  end function cm_stack_adj_word
+
+  // ----------------------------------------------------------------------
+  // Helper: cm_mv_target — register decode for cm.mvsa01/cm.mva01s (the
+  // r1s'/r2s' fields). Maps 3-bit field rs to the 5-bit register index
+  // {(rs[2:1] > 0), (rs[2:1] == 0), rs[2:0]} per spec §"Zcmp —
+  // cm.mvsa01 / cm.mva01s".
+  // ----------------------------------------------------------------------
+  function cm_mv_target(rs: UInt<3>) -> UInt<5>
+    let hi: UInt<2> = rs[2:1];
+    let bit4: Bool = hi != 2'd0;
+    let bit3: Bool = hi == 2'd0;
+    return {bit4, bit3, rs};
+  end function cm_mv_target
+
+  // ----------------------------------------------------------------------
+  // Combinational decode
+  // ----------------------------------------------------------------------
+
+  /// FSM state register. Reset value is CM_IDLE; carries the only
+  /// reset-bearing flop in the module per `ResetAll = 0`.
+  reg cm_state_q: UInt<3> reset rst_ni => CM_IDLE;
+
+  /// `cm_rlist_q` and `cm_sp_offset_q` are the running rlist/offset
+  /// trackers used in the multi-step push/pop walks. Per `ResetAll = 0`
+  /// they are not reset (intentionally — only the FSM state determines
+  /// whether they are read).
+  reg cm_rlist_q:     UInt<5> reset none;
+  reg cm_sp_offset_q: SInt<7> reset none;
+
+  /// FSM next-state and tracker next-values. Pure combinational mux of
+  /// (current state, instr_i, valid_i, id_in_ready_i).
+  wire cm_state_d:     UInt<3>;
+  wire cm_rlist_d:     UInt<5>;
+  wire cm_sp_offset_d: SInt<7>;
+
+  /// Decoded outputs. `instr_d` is the expanded 32-bit word; gating into
+  /// `instr_o` and `gets_expanded_o` happens at the bottom of the comb
+  /// block where the final assignment to the output ports lives.
+  wire instr_d:    UInt<32>;
+  wire illegal_d:  Bool;
+  wire gets_exp_d: UInt<2>;
+
+  // Pre-extract handy fields.
+  let q:      UInt<2> = instr_i[1:0];   // quadrant
+  let f3:     UInt<3> = instr_i[15:13]; // funct3 within quadrant
+  let rlist4: UInt<4> = instr_i[7:4];   // Zcmp rlist field
+  let spimm:  UInt<2> = instr_i[3:2];   // Zcmp stack-adjust quanta
+
+  // Sub-quadrant selectors (only meaningful in specific arms; these
+  // are pure functions of `instr_i` and exist at module scope so the
+  // comb block stays free of `let` declarations — `let` is a
+  // module-scope construct in ARCH).
+  let f210:    UInt<3> = instr_i[12:10];      // q0/funct3=100 sub-dispatch
+  let f1110:   UInt<2> = instr_i[11:10];      // q1/funct3=100 sub-dispatch
+  let s765:    UInt<3> = {instr_i[12], instr_i[6:5]};  // q1/100/11 row
+  let z42:     UInt<3> = instr_i[4:2];        // Zcb extends sub-dispatch
+  let i6:      Bool    = instr_i[6];          // c.lh/c.lhu/c.sh half bit
+  let rs2_zero: Bool   = instr_i[6:2] == 5'b0; // c.mv/c.jr/c.add discriminator
+  let rd_zero:  Bool   = instr_i[11:7] == 5'b0; // c.jr/c.ebreak discriminator
+  let mv_sel:  UInt<2> = instr_i[6:5];        // mvsa01 vs mva01s
+  let r1s:     UInt<3> = instr_i[9:7];        // mv first reg field
+  let r2s:     UInt<3> = instr_i[4:2];        // mv second reg field
+  let r1s_reg: UInt<5> = cm_mv_target(r1s);
+  let r2s_reg: UInt<5> = cm_mv_target(r2s);
+
+  // Zcmp pre-computations (CmIdle uses fresh fields; running trackers
+  // are consumed in non-idle states).
+  let rlist_init_now:  UInt<5>  = cm_rlist_init(rlist4);
+  let stack_adj_now:   UInt<7>  = cm_stack_adj(rlist_init_now, spimm);
+  let neg_stack_adj_12: UInt<12> = 12'b0 -% stack_adj_now.zext<12>();
+  let pop_top_word_off: UInt<5> = cm_stack_adj_word(rlist_init_now, spimm);
+  let pop_top_byte_off: UInt<7> = pop_top_word_off.zext<7>() << 2;
+  let pop_top_imm12:   UInt<12> = pop_top_byte_off.zext<12>();
+  let top_reg_init:    UInt<5>  = cm_rlist_top_reg(rlist_init_now);
+  let top_reg_q:       UInt<5>  = cm_rlist_top_reg(cm_rlist_q);
+
+  // Running-store offset (sub-step k of cm.push): off = sp_offset_q*4 in bytes.
+  let push_off_bytes:  SInt<9>  = cm_sp_offset_q.sext<9>() *% signed(9'd4);
+  let push_imm12:      UInt<12> = unsigned(push_off_bytes.sext<12>());
+
+  // funct5 dispatch helpers for q2/funct3=101 (only popret/popretz are
+  // read directly; the others are pattern-matched inline against the
+  // raw `instr_i[12:8]` field for clarity).
+  let is_popretz: Bool   = instr_i[12:8] == 5'b11100;
+  let is_popret:  Bool   = instr_i[12:8] == 5'b11110;
+
+  let rlist_legal: Bool = rlist4 >= 4'd4;
+
+  comb
+    // ---- Defaults ---------------------------------------------------
+    instr_d       = instr_i;            // pass-through default (spec §"32-bit pass-through")
+    illegal_d     = false;
+    gets_exp_d    = INSTR_NOT_EXPANDED; // gated against valid_i below
+    cm_state_d    = cm_state_q;         // hold (spec §"Zcmp FSM stability")
+    cm_rlist_d    = cm_rlist_q;
+    cm_sp_offset_d = cm_sp_offset_q;
+
+    // ---- Quadrant dispatch -----------------------------------------
+    if q == 2'b00
+      // ============================================================
+      // Quadrant 0 (RVC)
+      // ============================================================
+      if f3 == 3'b000
+        // c.addi4spn — addi rd', x2, nzuimm
+        instr_d = {2'b0, instr_i[10:7], instr_i[12:11], instr_i[5],
+                   instr_i[6], 2'b00, 5'h02, 3'b000,
+                   2'b01, instr_i[4:2], OPCODE_OP_IMM};
+        if instr_i[12:5] == 8'b0
+          illegal_d = true;
+        end if
+
+      elsif f3 == 3'b010
+        // c.lw — lw rd', uimm(rs1')
+        instr_d = {5'b0, instr_i[5], instr_i[12:10], instr_i[6],
+                   2'b00, 2'b01, instr_i[9:7], 3'b010,
+                   2'b01, instr_i[4:2], OPCODE_LOAD};
+
+      elsif f3 == 3'b110
+        // c.sw — sw rs2', uimm(rs1')
+        instr_d = {5'b0, instr_i[5], instr_i[12], 2'b01, instr_i[4:2],
+                   2'b01, instr_i[9:7], 3'b010, instr_i[11:10],
+                   instr_i[6], 2'b00, OPCODE_STORE};
+
+      elsif f3 == 3'b100
+        // ----------------------------------------------------------
+        // Zcb quadrant 0 sub-quadrant — load/store byte/half
+        // (spec §"Zcb quadrant 0 …"). Locked port value RV32ZcaZcbZcmp
+        // enables this group; under RV32Zca only it would all be
+        // illegal, so guarded by RV32ZC >= 1.
+        // ----------------------------------------------------------
+
+        if f210 == 3'b000
+          // c.lbu — lbu rd', uimm(rs1')
+          instr_d = {10'b0, instr_i[5], instr_i[6], 2'b01, instr_i[9:7],
+                     3'b100, 2'b01, instr_i[4:2], OPCODE_LOAD};
+
+        elsif f210 == 3'b001 and not i6
+          // c.lhu — lhu rd', uimm(rs1') ; uimm = {instr_i[5], 1'b0}
+          instr_d = {10'b0, instr_i[5], 1'b0, 2'b01, instr_i[9:7],
+                     3'b101, 2'b01, instr_i[4:2], OPCODE_LOAD};
+
+        elsif f210 == 3'b001 and i6
+          // c.lh  — lh  rd', uimm(rs1')
+          instr_d = {10'b0, instr_i[5], 1'b0, 2'b01, instr_i[9:7],
+                     3'b001, 2'b01, instr_i[4:2], OPCODE_LOAD};
+
+        elsif f210 == 3'b010
+          // c.sb — sb rs2', uimm(rs1') ; uimm = {instr_i[5], instr_i[6]}
+          instr_d = {7'b0, 2'b01, instr_i[4:2], 2'b01, instr_i[9:7],
+                     3'b000, 3'b0, instr_i[5], instr_i[6], OPCODE_STORE};
+
+        elsif f210 == 3'b011 and not i6
+          // c.sh — sh rs2', uimm(rs1') ; instr_i[6] required = 0
+          instr_d = {7'b0, 2'b01, instr_i[4:2], 2'b01, instr_i[9:7],
+                     3'b001, 4'b0, instr_i[5], OPCODE_STORE};
+
+        elsif f210 == 3'b011 and i6
+          // c.sh reserved — instr_i[6] must be zero
+          illegal_d = true;
+
+        else
+          // f210 ∈ {3'b100, 3'b101, 3'b110, 3'b111} — all reserved
+          illegal_d = true;
+        end if
+
+      else
+        // f3 ∈ {001, 011, 101, 111} — reserved (c.fld/c.fsd/c.lq/c.sq)
+        illegal_d = true;
+      end if
+
+    elsif q == 2'b01
+      // ============================================================
+      // Quadrant 1 (RVC)
+      // ============================================================
+      if f3 == 3'b000
+        // c.addi / c.nop — addi rd, rd, sext(imm)
+        instr_d = {{6{instr_i[12]}}, instr_i[12], instr_i[6:2],
+                   instr_i[11:7], 3'b000, instr_i[11:7], OPCODE_OP_IMM};
+
+      elsif f3 == 3'b001 or f3 == 3'b101
+        // c.jal (rd=x1) / c.j (rd=x0) — jal rd, sext(imm)
+        instr_d = {instr_i[12], instr_i[8], instr_i[10:9], instr_i[6],
+                   instr_i[7], instr_i[2], instr_i[11], instr_i[5:3],
+                   {9{instr_i[12]}}, 4'b0, not instr_i[15], OPCODE_JAL};
+
+      elsif f3 == 3'b010
+        // c.li — addi rd, x0, sext(imm)
+        instr_d = {{6{instr_i[12]}}, instr_i[12], instr_i[6:2], 5'b0,
+                   3'b000, instr_i[11:7], OPCODE_OP_IMM};
+
+      elsif f3 == 3'b011
+        // c.lui (rd != x2) / c.addi16sp (rd == x2)
+        if instr_i[11:7] == 5'h02
+          // c.addi16sp — addi x2, x2, sext(nzimm)
+          instr_d = {{3{instr_i[12]}}, instr_i[4:3], instr_i[5],
+                     instr_i[2], instr_i[6], 4'b0, 5'h02, 3'b000,
+                     5'h02, OPCODE_OP_IMM};
+        else
+          // c.lui — lui rd, sext(imm)
+          instr_d = {{15{instr_i[12]}}, instr_i[6:2], instr_i[11:7],
+                     OPCODE_LUI};
+        end if
+        if {instr_i[12], instr_i[6:2]} == 6'b0
+          illegal_d = true;
+        end if
+
+      elsif f3 == 3'b100
+        // ----------------------------------------------------------
+        // q1/funct3=100 sub-quadrant: srli/srai/andi/sub/xor/or/and/
+        // c.mul/zext.b/sext.b/zext.h/sext.h/zext.w/c.not.
+        // Dispatch on instr_i[11:10] and instr_i[12]/instr_i[6:5]/
+        // instr_i[4:2] as per spec.
+        // ----------------------------------------------------------
+
+        if f1110 == 2'b00 or f1110 == 2'b01
+          // c.srli (f1110=00) / c.srai (f1110=01) — srli/srai rsd', rsd', shamt
+          instr_d = {1'b0, instr_i[10], 5'b0, instr_i[6:2], 2'b01,
+                     instr_i[9:7], 3'b101, 2'b01, instr_i[9:7],
+                     OPCODE_OP_IMM};
+          if instr_i[12]
+            illegal_d = true; // shamt[5] reserved for RV64
+          end if
+
+        elsif f1110 == 2'b10
+          // c.andi — andi rsd', rsd', sext(imm)
+          instr_d = {{6{instr_i[12]}}, instr_i[12], instr_i[6:2],
+                     2'b01, instr_i[9:7], 3'b111, 2'b01, instr_i[9:7],
+                     OPCODE_OP_IMM};
+
+        else
+          // f1110 == 2'b11
+          // sub/xor/or/and (instr_i[12]=0); c.mul / extends / c.not (instr_i[12]=1)
+
+          if s765 == 3'b000
+            // c.sub — sub rsd', rsd', rs2'
+            instr_d = {7'b0100000, 2'b01, instr_i[4:2], 2'b01,
+                       instr_i[9:7], 3'b000, 2'b01, instr_i[9:7],
+                       OPCODE_OP};
+          elsif s765 == 3'b001
+            // c.xor — xor rsd', rsd', rs2'
+            instr_d = {7'b0000000, 2'b01, instr_i[4:2], 2'b01,
+                       instr_i[9:7], 3'b100, 2'b01, instr_i[9:7],
+                       OPCODE_OP};
+          elsif s765 == 3'b010
+            // c.or — or rsd', rsd', rs2'
+            instr_d = {7'b0000000, 2'b01, instr_i[4:2], 2'b01,
+                       instr_i[9:7], 3'b110, 2'b01, instr_i[9:7],
+                       OPCODE_OP};
+          elsif s765 == 3'b011
+            // c.and — and rsd', rsd', rs2'
+            instr_d = {7'b0000000, 2'b01, instr_i[4:2], 2'b01,
+                       instr_i[9:7], 3'b111, 2'b01, instr_i[9:7],
+                       OPCODE_OP};
+          elsif s765 == 3'b100 or s765 == 3'b101
+            // c.subw / c.addw — RV64 only; reserved on RV32
+            illegal_d = true;
+          elsif s765 == 3'b110
+            // c.mul — mul rsd', rsd', rs2'
+            instr_d = {7'b0000001, 2'b01, instr_i[4:2], 2'b01,
+                       instr_i[9:7], 3'b000, 2'b01, instr_i[9:7],
+                       OPCODE_OP};
+          else
+            // s765 == 3'b111 — Zcb extends / not / reserved on instr_i[4:2]
+
+            if z42 == 3'b000
+              // c.zext.b — andi rsd', rsd', 0xff
+              instr_d = {4'b0, 8'hff, 2'b01, instr_i[9:7], 3'b111,
+                         2'b01, instr_i[9:7], OPCODE_OP_IMM};
+            elsif z42 == 3'b001
+              // c.sext.b — sext.b rsd', rsd' (Zbb)
+              instr_d = {7'b0110000, 5'b00100, 2'b01, instr_i[9:7],
+                         3'b001, 2'b01, instr_i[9:7], OPCODE_OP_IMM};
+            elsif z42 == 3'b010
+              // c.zext.h — zext.h rsd', rsd' (Zbb)
+              instr_d = {7'b0000100, 5'b0, 2'b01, instr_i[9:7],
+                         3'b100, 2'b01, instr_i[9:7], OPCODE_OP};
+            elsif z42 == 3'b011
+              // c.sext.h — sext.h rsd', rsd' (Zbb)
+              instr_d = {7'b0110000, 5'b00101, 2'b01, instr_i[9:7],
+                         3'b001, 2'b01, instr_i[9:7], OPCODE_OP_IMM};
+            elsif z42 == 3'b101
+              // c.not — xori rsd', rsd', -1
+              instr_d = {12'hfff, 2'b01, instr_i[9:7], 3'b100,
+                         2'b01, instr_i[9:7], OPCODE_OP_IMM};
+            else
+              // 3'b100 (c.zext.w RV64) and 3'b110/111 reserved
+              illegal_d = true;
+            end if
+          end if
+        end if
+
+      else
+        // f3 ∈ {110, 111} — c.beqz / c.bnez
+        instr_d = {{4{instr_i[12]}}, instr_i[6:5], instr_i[2], 5'b0,
+                   2'b01, instr_i[9:7], 2'b00, instr_i[13],
+                   instr_i[11:10], instr_i[4:3], instr_i[12],
+                   OPCODE_BRANCH};
+      end if
+
+    elsif q == 2'b10
+      // ============================================================
+      // Quadrant 2 (RVC)
+      // ============================================================
+      if f3 == 3'b000
+        // c.slli — slli rd, rd, shamt
+        instr_d = {7'b0, instr_i[6:2], instr_i[11:7], 3'b001,
+                   instr_i[11:7], OPCODE_OP_IMM};
+        if instr_i[12]
+          illegal_d = true; // shamt[5] reserved for RV64
+        end if
+
+      elsif f3 == 3'b010
+        // c.lwsp — lw rd, uimm(x2)
+        instr_d = {4'b0, instr_i[3:2], instr_i[12], instr_i[6:4],
+                   2'b00, 5'h02, 3'b010, instr_i[11:7], OPCODE_LOAD};
+        if instr_i[11:7] == 5'b0
+          illegal_d = true; // rd = x0 reserved
+        end if
+
+      elsif f3 == 3'b100
+        // c.mv / c.jr / c.add / c.jalr / c.ebreak (spec §"…c.mv …")
+
+        if not instr_i[12]
+          if not rs2_zero
+            // c.mv — add rd, x0, rs2
+            instr_d = {7'b0, instr_i[6:2], 5'b0, 3'b000,
+                       instr_i[11:7], OPCODE_OP};
+          else
+            // rs2 == 0
+            if not rd_zero
+              // c.jr — jalr x0, rs1, 0
+              instr_d = {12'b0, instr_i[11:7], 3'b000, 5'b0, OPCODE_JALR};
+            else
+              // c.jr x0 reserved
+              illegal_d = true;
+            end if
+          end if
+        else
+          // instr_i[12] == 1
+          if not rs2_zero
+            // c.add — add rd, rd, rs2
+            instr_d = {7'b0, instr_i[6:2], instr_i[11:7], 3'b000,
+                       instr_i[11:7], OPCODE_OP};
+          else
+            // rs2 == 0
+            if not rd_zero
+              // c.jalr — jalr x1, rs1, 0
+              instr_d = {12'b0, instr_i[11:7], 3'b000, 5'b1, OPCODE_JALR};
+            else
+              // c.ebreak — 32'h0010_0073
+              instr_d = 32'h00100073;
+            end if
+          end if
+        end if
+
+      elsif f3 == 3'b110
+        // c.swsp — sw rs2, uimm(x2)
+        instr_d = {4'b0, instr_i[8:7], instr_i[12], instr_i[6:2],
+                   5'h02, 3'b010, instr_i[11:9], 2'b00, OPCODE_STORE};
+
+      elsif f3 == 3'b101
+        // ============================================================
+        // Zcmp sub-quadrant — cm.push / cm.pop / cm.popret / cm.popretz
+        //                    / cm.mvsa01 / cm.mva01s
+        // (spec §"Zcmp …"). FSM-driven; the comb block below muxes
+        // expansion + next-state from (cm_state_q, instr_i, valid_i,
+        // id_in_ready_i). Per spec-notes item 1, non-idle FSM advance
+        // gates on `id_in_ready_i` alone (mirroring upstream RTL).
+        // The dispatch on instr_i[12:10] separates mvsa01/mva01s
+        // (3'b011) from push/pop/etc. (3'b110/3'b111).
+        // ============================================================
+        // Zcmp is always enabled at the locked port value
+        // RV32ZC = RV32ZcaZcbZcmp = 3 (per proposal.md). Lower values
+        // would land in the default reserved arm for cm.*.
+        if instr_i[12:10] == 3'b011
+          // ----- cm.mvsa01 / cm.mva01s -----------------------------
+
+          if cm_state_q == CM_IDLE
+            // First sub-step — emit step-1 expansion.
+            if mv_sel == 2'b01
+              // cm.mvsa01 step 1: addi r1s', a0, 0
+              instr_d = {12'b0, 5'd10, 3'b000, r1s_reg, OPCODE_OP_IMM};
+              gets_exp_d = INSTR_EXPANDED;
+              if valid_i and id_in_ready_i
+                cm_state_d = CM_MV_SECOND_REG;
+              end if
+            elsif mv_sel == 2'b11
+              // cm.mva01s step 1: addi a0, r1s', 0
+              instr_d = {12'b0, r1s_reg, 3'b000, 5'd10, OPCODE_OP_IMM};
+              gets_exp_d = INSTR_EXPANDED;
+              if valid_i and id_in_ready_i
+                cm_state_d = CM_MV_SECOND_REG;
+              end if
+            else
+              // mv_sel ∈ {2'b00, 2'b10} — reserved
+              illegal_d = true;
+            end if
+          else
+            // CmMvSecondReg — emit step-2 expansion. Per spec-notes
+            // item 1, advance on id_in_ready_i alone.
+            if mv_sel == 2'b01
+              // cm.mvsa01 step 2: addi r2s', a1, 0
+              instr_d = {12'b0, 5'd11, 3'b000, r2s_reg, OPCODE_OP_IMM};
+            elsif mv_sel == 2'b11
+              // cm.mva01s step 2: addi a1, r2s', 0
+              instr_d = {12'b0, r2s_reg, 3'b000, 5'd11, OPCODE_OP_IMM};
+            else
+              // unreachable — illegal would have prevented entry
+              instr_d = instr_i;
+              illegal_d = true;
+            end if
+            gets_exp_d = INSTR_EXPANDED_LAST;
+            if id_in_ready_i
+              cm_state_d = CM_IDLE;
+            end if
+          end if
+
+        elsif instr_i[12:8] == 5'b11000
+          // ----- cm.push -------------------------------------------
+          // sequence: store top-of-rlist down to ra, then addi sp.
+          // Negative immediate: -stack_adj as a 12-bit two's complement.
+          // We compute the 12-bit pattern by negating the unsigned magnitude.
+
+          // Illegal if rlist < 4.
+
+          if not rlist_legal
+            illegal_d = true;
+          else
+            if cm_state_q == CM_IDLE
+              // First sub-step — store the topmost rlist register at
+              // off = -4. sp_offset starts at -1 (word units).
+              // sw top_reg, -4(x2): I-immediate split for stores.
+              // imm = 12'hFFC = -4 → imm[11:5]=7'b1111111, imm[4:0]=5'b11100
+              instr_d = {7'b1111111, top_reg_init, 5'h02, 3'b010,
+                         5'b11100, OPCODE_STORE};
+              gets_exp_d = INSTR_EXPANDED;
+              if valid_i and id_in_ready_i
+                if rlist_init_now == 5'd4
+                  // single-store rlist — go directly to DECR_SP.
+                  cm_state_d = CM_PUSH_DECR_SP;
+                else
+                  cm_state_d = CM_PUSH_STORE_REG;
+                  // Track running rlist (decremented) and offset (−2 words).
+                  cm_rlist_d     = (rlist_init_now -% 5'd1);
+                  cm_sp_offset_d = signed(7'h7E);
+                end if
+              end if
+            elsif cm_state_q == CM_PUSH_STORE_REG
+              // Continue storing the next register. off = sp_offset_q*4.
+              instr_d = {push_imm12[11:5], top_reg_q, 5'h02, 3'b010,
+                         push_imm12[4:0], OPCODE_STORE};
+              gets_exp_d = INSTR_EXPANDED;
+              if id_in_ready_i
+                if cm_rlist_q == 5'd5
+                  // After storing s0 we are about to push ra; but if
+                  // cm_rlist_q reached 5 we still owe ra → continue.
+                  // Transition to DECR_SP only when cm_rlist_q == 4
+                  // (only ra remains, which is handled by re-entering
+                  // STORE_REG one more time before DECR_SP).
+                  cm_rlist_d     = (cm_rlist_q -% 5'd1);
+                  cm_sp_offset_d = (cm_sp_offset_q -% signed(7'd1));
+                end if
+                if cm_rlist_q == 5'd4
+                  // No more registers to store — final store was ra.
+                  cm_state_d = CM_PUSH_DECR_SP;
+                else
+                  cm_rlist_d     = (cm_rlist_q -% 5'd1);
+                  cm_sp_offset_d = (cm_sp_offset_q -% signed(7'd1));
+                end if
+              end if
+            else
+              // cm_state_q == CM_PUSH_DECR_SP — emit addi sp, sp, -adj.
+              instr_d = {neg_stack_adj_12, 5'h02, 3'b000, 5'h02, OPCODE_OP_IMM};
+              gets_exp_d = INSTR_EXPANDED_LAST;
+              if id_in_ready_i
+                cm_state_d = CM_IDLE;
+              end if
+            end if
+          end if
+
+        elsif instr_i[12:8] == 5'b11010 or
+              instr_i[12:8] == 5'b11100 or
+              instr_i[12:8] == 5'b11110
+          // ----- cm.pop / cm.popretz / cm.popret -------------------
+
+          if not rlist_legal
+            illegal_d = true;
+          else
+            if cm_state_q == CM_IDLE
+              // First sub-step — load topmost reg at the high end of
+              // the stack frame: off = (stack_adj/4 - 1) * 4.
+              instr_d = {pop_top_imm12, 5'h02, 3'b010, top_reg_init, OPCODE_LOAD};
+              gets_exp_d = INSTR_EXPANDED;
+              if valid_i and id_in_ready_i
+                if rlist_init_now == 5'd4
+                  // Only ra to pop — go directly to incr-sp.
+                  cm_state_d = CM_POP_INCR_SP;
+                else
+                  cm_state_d = CM_POP_LOAD_REG;
+                  cm_rlist_d     = (rlist_init_now -% 5'd1);
+                  // Next offset is one word below current top.
+                  cm_sp_offset_d = unsigned(pop_top_word_off).sext<7>() -% signed(7'd1);
+                end if
+              end if
+            elsif cm_state_q == CM_POP_LOAD_REG
+              // Continue loading the next register at decreasing offset.
+              instr_d = {push_imm12, 5'h02, 3'b010, top_reg_q, OPCODE_LOAD};
+              gets_exp_d = INSTR_EXPANDED;
+              if id_in_ready_i
+                if cm_rlist_q == 5'd4
+                  cm_state_d = CM_POP_INCR_SP;
+                else
+                  cm_rlist_d     = (cm_rlist_q -% 5'd1);
+                  cm_sp_offset_d = (cm_sp_offset_q -% signed(7'd1));
+                end if
+              end if
+            elsif cm_state_q == CM_POP_INCR_SP
+              // addi x2, x2, +stack_adj
+              instr_d = {stack_adj_now.zext<12>(), 5'h02, 3'b000,
+                         5'h02, OPCODE_OP_IMM};
+              if is_popretz
+                gets_exp_d = INSTR_EXPANDED;
+                if id_in_ready_i
+                  cm_state_d = CM_POP_ZERO_A0;
+                end if
+              elsif is_popret
+                gets_exp_d = INSTR_EXPANDED;
+                if id_in_ready_i
+                  cm_state_d = CM_POP_RET_RA;
+                end if
+              else
+                // plain cm.pop — final sub-step.
+                gets_exp_d = INSTR_EXPANDED_LAST;
+                if id_in_ready_i
+                  cm_state_d = CM_IDLE;
+                end if
+              end if
+            elsif cm_state_q == CM_POP_ZERO_A0
+              // addi a0, x0, 0 (cm_zero_a0 helper)
+              instr_d = {12'b0, 5'b0, 3'b000, 5'd10, OPCODE_OP_IMM};
+              gets_exp_d = INSTR_EXPANDED;
+              if id_in_ready_i
+                cm_state_d = CM_POP_RET_RA;
+              end if
+            else
+              // CM_POP_RET_RA — jalr x0, x1, 0  (cm_ret_ra helper)
+              instr_d = {12'b0, 5'd1, 3'b000, 5'b0, OPCODE_JALR};
+              gets_exp_d = INSTR_EXPANDED_LAST;
+              if id_in_ready_i
+                cm_state_d = CM_IDLE;
+              end if
+            end if
+          end if
+
+        else
+          // Zcmp default — funct5 doesn't match any cm.* encoding.
+          illegal_d = true;
+        end if
+
+      else
+        // q2 reserved funct3 ∈ {001, 011, 111}
+        illegal_d = true;
+      end if
+    end if  // q == 2'b11 → defaults already pass-through.
+  end comb
+
+  // ----------------------------------------------------------------------
+  // Output drivers
+  // ----------------------------------------------------------------------
+
+  /// `is_compressed_o` is a pure LSB decode (spec §"`is_compressed_o`
+  /// is a pure LSB decode") — no gating on valid_i or anything else.
+  let is_compressed_o = q != 2'b11;
+
+  /// `instr_o` reflects `instr_d`. Per spec-notes item 2, on the illegal
+  /// path the value is don't-care; we let the partially-built expansion
+  /// (or pass-through default) ride out.
+  let instr_o = instr_d;
+
+  /// `illegal_instr_o` reflects `illegal_d` directly.
+  let illegal_instr_o = illegal_d;
+
+  /// `gets_expanded_o` gating on `valid_i` (spec §"`gets_expanded_o`
+  /// gating on `valid_i`"). When the locked-in port value enables Zcmp
+  /// (RV32ZC ∈ {2, 3}), force INSTR_NOT_EXPANDED whenever valid_i = 0
+  /// so a phantom INSTR_EXPANDED cannot lock the IF/ID pipeline. When
+  /// Zcmp is disabled (RV32Zca / RV32ZcaZcb), the FSM is inert and the
+  /// output is permanently INSTR_NOT_EXPANDED.
+  wire gets_expanded_w: UInt<2>;
+  comb
+    if RV32ZC == 2 or RV32ZC == 3
+      if valid_i
+        gets_expanded_w = gets_exp_d;
+      else
+        gets_expanded_w = INSTR_NOT_EXPANDED;
+      end if
+    else
+      gets_expanded_w = INSTR_NOT_EXPANDED;
+    end if
+  end comb
+  let gets_expanded_o = gets_expanded_w;
+
+  // ----------------------------------------------------------------------
+  // FSM register update
+  // ----------------------------------------------------------------------
+
+  default seq on clk_i rising;
+
+  /// FSM advance is fully encoded in `cm_state_d`/`cm_rlist_d`/
+  /// `cm_sp_offset_d`, which hold the current value when nothing
+  /// should happen. The CmIdle arms gate on `valid_i and id_in_ready_i`;
+  /// non-idle arms gate on `id_in_ready_i` alone (spec-notes item 1)
+  /// — both implemented via the conditional updates in the comb block
+  /// above.
+  seq
+    cm_state_q     <= cm_state_d;
+    cm_rlist_q     <= cm_rlist_d;
+    cm_sp_offset_q <= cm_sp_offset_d;
+  end seq
+
+end module ibex_compressed_decoder
