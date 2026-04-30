@@ -36,6 +36,14 @@ def test_ibex_mini_soc_lints(
         "-Wno-WIDTHEXPAND",    # $readmemh vs. sized vectors — benign
         "-Wno-IMPORTSTAR",     # arch-com emits `import Pkg::*;` at $unit
         "-Wno-DECLFILENAME",   # our in-tree Ibex forks keep upstream module names
+        "-Wno-UNOPTFLAT",      # upstream ibex_ex_block.sv has an intended ALU↔multdiv
+                               # combinational loop on alu_adder_result_ext (the
+                               # multdiv shares the ALU's adder/comparator). With
+                               # the FSM-based multdiv Verilator's analysis
+                               # resolved it; the thread-based multdiv's nested
+                               # `_threads` submodule boundary makes Verilator
+                               # more conservative. The loop is functionally
+                               # identical and safe in practice.
         "--unroll-count", "72",  # required by prim_secded per Verilator#1266
         "-f", str(vc_path),
         "--top-module", "ibex_mini_soc",
