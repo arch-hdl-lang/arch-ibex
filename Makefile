@@ -3,18 +3,23 @@
 # Per-swap loop:
 #   1. write/edit src/IbexFoo.arch
 #   2. `make build`            -> arch -> build/ibex_foo.sv
-#   3. `make test`             -> SoC lint + ISR programs + unit suites
+#   3. `make lint`             -> verilator --lint-only on the swapped SoC
+#   4. `make test`             -> full gate (lint + ISR programs + unit suites)
 #
-# `make test` is the real gate. Standalone lint over the SoC requires
-# fusesoc-resolved vendor incdirs and is run inside tests/test_soc_lint.py.
+# Lint composes the SoC filelist via fusesoc (vendor incdirs / -D defines
+# come from the upstream Ibex core file); we route through the
+# tests/test_soc_lint.py harness rather than duplicating that logic.
 
-.PHONY: build test clean
+.PHONY: build lint test clean
 
 REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 BUILD_DIR := $(REPO_ROOT)/build
 
 build:
 	@bash scripts/build.sh
+
+lint:
+	pytest tests/test_soc_lint.py
 
 test:
 	# `-n auto --dist=loadfile`: parallelize across test files so each

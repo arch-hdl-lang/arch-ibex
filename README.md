@@ -88,14 +88,15 @@ Path-referenced for now (no submodules / lockfile):
 
 ```
 make build      # compile every src/*.arch into build/*.sv
-make test       # pytest (parallel) — full gate (SoC lint + ISRs + unit suites)
+make lint       # verilator --lint-only on the swapped SoC
+make test       # pytest (parallel) — full gate (lint + ISRs + unit suites)
 make clean      # rm -rf build/
 ```
 
 ## Verification gate per swap
 
 1. `make build` — `arch build src/IbexFoo.arch` → `build/ibex_foo.sv`
-2. `pytest tests/test_soc_lint.py` — verilator lint on the swapped SoC
+2. `make lint` — verilator --lint-only on the SoC
 3. `pytest tests/test_cpu_programs.py` — 4 ISR programs (timer, sw, ext,
    multictx) all green
 4. `pytest tests/test_<module>_unit*.py` — per-module unit + regression
