@@ -1,38 +1,23 @@
 //! ibex_multdiv_fast — multi-cycle RV32M multiplier / divider (fast variant).
 //!
-//! Thread-based port. The multi-cycle MUL and DIV sequences are expressed
-//! as straight-line `thread` bodies with explicit `wait 1 cycle` /
-//! `for i in 0..30` / `do … until` boundaries. There is no hand-rolled
-//! state register — the compiler lifts the per-thread state encoding into
-//! the auto-generated `_ibex_multdiv_fast_threads` submodule.
+//! Single-thread, dispatch-and-rejoin port. The thread waits at its head
+//! `wait until mult_en_i or div_en_i`, then a top-level `if/elsif/else`
+//! routes into one of four straight-line bodies (3-cycle MUL, 4-cycle
+//! MULH, 2-cycle div-by-zero short-circuit, or 37-cycle long divide).
+//! After the terminal `do … until multdiv_ready_id_i` of the chosen
+//! branch, the default thread loop carries the FSM back to the head
+//! wait.
 //!
-//! Four cooperating threads share the unit's outputs through `shared(or)`
-//! merging. At any given moment at most one is "active" (the others sit
-//! in their idle wait-states contributing zero), so the OR-merge
-//! degenerates into a clean mux. Mutual exclusion is a producer-side
-//! guarantee from the decoder: `mult_en_i` and `div_en_i` are never high
-//! simultaneously, and `operator_i` selects at most one of the two mult
-//! threads or one of the two div threads.
-//!
-//!   - `MullThread`     — 3-cycle ALBL → ALBH → AHBL walk for `MD_OP_MULL`.
-//!   - `MulhThread`     — 4-cycle ALBL → ALBH → AHBL → AHBH walk for
-//!                        `MD_OP_MULH` (covers `MULH`, `MULHSU`, `MULHU`
-//!                        via `signed_mode_i`).
-//!   - `DivShortThread` — `MD_IDLE → MD_FINISH` divide-by-zero shortcut
-//!                        (`equal_to_zero_i = 1` and `data_ind_timing_i = 0`).
-//!                        Two cycles total.
-//!   - `DivLongThread`  — `MD_IDLE → MD_ABS_A → MD_ABS_B → MD_COMP × 31 →
-//!                        MD_LAST → MD_CHANGE_SIGN → MD_FINISH` long-
-//!                        division walk. Owns the IDLE-state ALU operand
-//!                        drive (the short thread's IDLE state contributes
-//!                        zero to the OR-merge so the long thread's drive
-//!                        wins by default).
-//!
-//! The mult kernel (16x16 with 17-b sign-extension and a 34-b accumulator)
-//! is computed combinationally per state via the `MacRes` function. The
-//! divider co-opts the EX-block ALU's adder and zero-comparator through
-//! `alu_operand_*_o` / `alu_adder_*_i` / `equal_to_zero_i`; per the spec
-//! this is a same-cycle combinational exchange (no flop in the loop).
+//! Mutual exclusion across the four sequences is now structural (one
+//! thread can be in at most one branch at a time), so no `shared(or)`
+//! merging or quiescent-zero coordination is needed — every output is a
+//! single-driver. The IDLE-state ALU operand drive is held continuously
+//! at the head wait via the comb assigns ahead of `wait until`, so the
+//! `equal_to_zero_i` capture on the wait-exit edge sees the spec's
+//! `0 - op_b_i` adder result (post arch-com PR #234, which fixed the
+//! wait-exit comb-assign edge). The short-path predicate stays
+//! `op_b_i == 0` (not `equal_to_zero_i`) to dodge the dead-skid race
+//! where `wait 1 cycle` lowering momentarily drops the operand drive.
 //!
 //! refs:
 //!   §"Requirement: Multiplier FSM walks ALBL → ALBH → AHBL for MUL (3 cycles)"
@@ -90,12 +75,9 @@ module ibex_multdiv_fast
   port equal_to_zero_i:   in Bool;
   port data_ind_timing_i: in Bool;
 
-  // ── Outputs driven by threads (shared via OR-merge) ────────────────
-  /// Only `DivLongThread` actually drives these (and only outside its
-  /// IDLE-active gating); declared `shared(or)` for uniformity with the
-  /// rest of the thread-driven outputs.
-  port alu_operand_a_o: out UInt<33> shared(or);
-  port alu_operand_b_o: out UInt<33> shared(or);
+  // ── Outputs (single-driver: one thread, one branch active) ─────────
+  port alu_operand_a_o: out UInt<33>;
+  port alu_operand_b_o: out UInt<33>;
 
   /// Intermediate-value register-file ports — physically owned by the EX
   /// block. Lane 0 carries the partial product (mult) or partial
@@ -104,12 +86,12 @@ module ibex_multdiv_fast
   /// `logic [33:0] imd_val_q_alu [2]` boundary in `ibex_ex_block.sv`
   /// (project memory rule §3.6 — unpacked-array port modifier).
   port imd_val_q_i:  in unpacked Vec<UInt<34>, 2>;
-  port imd_val_d_o:  out unpacked Vec<UInt<34>, 2> shared(or);
-  port imd_val_we_o: out UInt<2> shared(or);
+  port imd_val_d_o:  out unpacked Vec<UInt<34>, 2>;
+  port imd_val_we_o: out UInt<2>;
 
   port multdiv_ready_id_i: in Bool;
-  port multdiv_result_o:   out UInt<32> shared(or);
-  port valid_o:            out Bool shared(or);
+  port multdiv_result_o:   out UInt<32>;
+  port valid_o:            out Bool;
 
   // ── Operator-encoding constants (§"Enum encodings") ─────────────────
   /// Declared as `let UInt<2>` rather than `local param const` to keep
@@ -139,16 +121,12 @@ module ibex_multdiv_fast
   // ── Short-path predicate ───────────────────────────────────────────
   /// IDLE → FINISH shortcut fires on a divide with zero divisor in
   /// non-constant-time mode (spec §"Divide-by-zero short-circuit").
-  /// Divide-by-zero short-circuit predicate. Spec uses
-  /// `equal_to_zero_i` (the ALU's `(adder == 0)` output) because
-  /// upstream's IDLE-state ALU drives compute `0 - op_b` and equality
-  /// detects op_b zero through the adder. We use `op_b_i == 0`
-  /// directly here — equivalent condition, but doesn't depend on the
-  /// ALU operand drives staying live across the thread compiler's
-  /// dead-skid sub-state in `wait 1 cycle` lowering. (DivShortThread
-  /// would otherwise spuriously fire mid-walk when DivLongThread's
-  /// dead-skid cycle drops `alu_operand_*_o` to 0, making
-  /// `equal_to_zero_i` momentarily true.)
+  /// Spec uses `equal_to_zero_i` (the ALU's `(adder == 0)` output)
+  /// because upstream's IDLE-state ALU drives compute `0 - op_b` and
+  /// equality detects op_b zero through the adder. We use
+  /// `op_b_i == 0` directly here — equivalent condition, but doesn't
+  /// depend on the ALU operand drives staying live across the thread
+  /// compiler's dead-skid sub-state in `wait 1 cycle` lowering.
   let short_path: Bool = (op_b_i == 32'h0000_0000) and not data_ind_timing_i;
 
   // ── 16x16 mult kernel helper (§"16×16 kernel multiplier …") ────────
@@ -181,164 +159,20 @@ module ibex_multdiv_fast
   end function IsGreaterEqual
 
   // ────────────────────────────────────────────────────────────────────
-  // MullThread — 3-cycle MUL walk
-  // (§"Multiplier FSM walks ALBL → ALBH → AHBL for MUL (3 cycles)")
+  // MultdivThread — single thread, dispatch-and-rejoin
+  //
+  // Head wait holds the IDLE-pattern ALU drives continuously; the
+  // wait-exit edge captures `equal_to_zero_i` for the divide-by-zero
+  // suppression flag. After the head wait, an if/elsif/else routes
+  // into one of four straight-line bodies; each body's terminal
+  // `do … until multdiv_ready_id_i` honours ID-stage back-pressure.
   // ────────────────────────────────────────────────────────────────────
-  thread MullThread on clk_i rising, rst_ni low
-    /// S0: idle. No comb drives — outputs default to zero (the
-    /// `shared(or)` quiescent value).
-    wait until mult_en_i and (operator_i == MD_OP_MULL);
-
-    /// Cycle 1 — ALBL: `(0, op_a[15:0]) × (0, op_b[15:0])`. accum = 0.
-    /// `mac_res_d = mac_res` (raw kernel output, zero-extended into the
-    /// full 34-b lane). Lane-0 we = 1 every cycle of multdiv
-    /// advancement (spec §"Intermediate-value lane assignment", lines
-    /// 605–612).
-    imd_val_d_o[0] = MacRes(false, op_a_i[15:0],
-                            false, op_b_i[15:0],
-                            34'h0_0000_0000);
-    imd_val_we_o = 2'b01;
-    wait 1 cycle;
-
-    /// Cycle 2 — ALBH: `(0, op_a[15:0]) × (signed_mode_i[1] & op_b[31],
-    /// op_b[31:16])` + `accum = {18'b0, imd_val_q_i[0][31:16]}`. For
-    /// `MD_OP_MULL` the writeback uses the shift-and-concat trick
-    /// `mac_res_d = {2'b0, mac_res[15:0], imd_val_q_i[0][15:0]}` — the
-    /// low 16 b of (al×bh + (al×bl)>>16) prepended onto the saved low
-    /// 16 b of AL×BL forms the bottom half of the running product.
-    imd_val_d_o[0] = {2'b00,
-                      MacRes(false,                          op_a_i[15:0],
-                             signed_mode_i[1] and op_b_i[31], op_b_i[31:16],
-                             {18'b0, imd_val_q_i[0][31:16]})[15:0],
-                      imd_val_q_i[0][15:0]};
-    imd_val_we_o = 2'b01;
-    wait 1 cycle;
-
-    /// Cycle 3 — AHBL (terminal): `(signed_mode_i[0] & op_a[31],
-    /// op_a[31:16]) × (0, op_b[15:0])` + `accum = {18'b0,
-    /// imd_val_q_i[0][31:16]}`. Drive the result and `valid_o = 1`,
-    /// hold via `do … until multdiv_ready_id_i` to honour ID-stage
-    /// back-pressure (spec §"Multiplier FSM walks ALBL → ALBH → AHBL
-    /// for MUL", lines 195–207).
-    do
-      imd_val_d_o[0] = {2'b00,
-                        MacRes(signed_mode_i[0] and op_a_i[31], op_a_i[31:16],
-                               false,                          op_b_i[15:0],
-                               {18'b0, imd_val_q_i[0][31:16]})[15:0],
-                        imd_val_q_i[0][15:0]};
-      imd_val_we_o = 2'b01;
-      multdiv_result_o = div_sel_i
-            ? imd_val_q_i[0][31:0]
-            : {MacRes(signed_mode_i[0] and op_a_i[31], op_a_i[31:16],
-                      false,                          op_b_i[15:0],
-                      {18'b0, imd_val_q_i[0][31:16]})[15:0],
-               imd_val_q_i[0][15:0]};
-      valid_o = true;
-    until multdiv_ready_id_i;
-  end thread MullThread
-
-  // ────────────────────────────────────────────────────────────────────
-  // MulhThread — 4-cycle MULH/MULHSU/MULHU walk
-  // (§"Multiplier FSM walks ALBL → ALBH → AHBL → AHBH for
-  //   MULH/MULHSU/MULHU (4 cycles)")
-  // ────────────────────────────────────────────────────────────────────
-  thread MulhThread on clk_i rising, rst_ni low
-    wait until mult_en_i and (operator_i == MD_OP_MULH);
-
-    /// Cycle 1 — ALBL (same kernel inputs as MullThread).
-    imd_val_d_o[0] = MacRes(false, op_a_i[15:0],
-                            false, op_b_i[15:0],
-                            34'h0_0000_0000);
-    imd_val_we_o = 2'b01;
-    wait 1 cycle;
-
-    /// Cycle 2 — ALBH (MULH variant): `mac_res_d = mac_res` (full 34 b,
-    /// no shift+concat trick). Preserves the running 34-b partial sum.
-    imd_val_d_o[0] = MacRes(false,                          op_a_i[15:0],
-                            signed_mode_i[1] and op_b_i[31], op_b_i[31:16],
-                            {18'b0, imd_val_q_i[0][31:16]});
-    imd_val_we_o = 2'b01;
-    wait 1 cycle;
-
-    /// Cycle 3 — AHBL (MULH variant): accum = the full 34-b
-    /// `imd_val_q_i[0]`. Sign-aware multiplicands for the high half of
-    /// op_a.
-    imd_val_d_o[0] = MacRes(signed_mode_i[0] and op_a_i[31], op_a_i[31:16],
-                            false,                          op_b_i[15:0],
-                            imd_val_q_i[0]);
-    imd_val_we_o = 2'b01;
-    wait 1 cycle;
-
-    /// Cycle 4 — AHBH (terminal). The 16-b right-shift between cycles
-    /// 3 and 4 is implicit in the accum slice: `imd_val_q_i[0][33:16]`
-    /// goes into accum[17:0] and a 16-b sign-extension of
-    /// `imd_val_q_i[0][33]` (gated by `signed_mult`) goes into
-    /// accum[33:18]. Effectively divides the running product by 2^16
-    /// before adding the AH×BH partial that contributes the bits
-    /// weighted at 2^32 (spec lines 228–240).
-    do
-      imd_val_d_o[0] = MacRes(
-            signed_mode_i[0] and op_a_i[31], op_a_i[31:16],
-            signed_mode_i[1] and op_b_i[31], op_b_i[31:16],
-            {{16{(signed_mode_i[0] or signed_mode_i[1]) and imd_val_q_i[0][33]}},
-             imd_val_q_i[0][33:16]});
-      imd_val_we_o = 2'b01;
-      multdiv_result_o = div_sel_i
-            ? imd_val_q_i[0][31:0]
-            : MacRes(
-                signed_mode_i[0] and op_a_i[31], op_a_i[31:16],
-                signed_mode_i[1] and op_b_i[31], op_b_i[31:16],
-                {{16{(signed_mode_i[0] or signed_mode_i[1]) and imd_val_q_i[0][33]}},
-                 imd_val_q_i[0][33:16]})[31:0];
-      valid_o = true;
-    until multdiv_ready_id_i;
-  end thread MulhThread
-
-  // ────────────────────────────────────────────────────────────────────
-  // DivShortThread — IDLE → FINISH divide-by-zero shortcut
-  // (§"Divide-by-zero short-circuit (when `data_ind_timing_i = 0`)")
-  // ────────────────────────────────────────────────────────────────────
-  thread DivShortThread on clk_i rising, rst_ni low
-    /// S0: gated lane-0 seed write on the IDLE-exit edge.  The seed is:
-    ///   - DIV/DIVU: `'1` (= 0xFFFFFFFF) — the all-ones sentinel.
-    ///   - REM/REMU: `{2'b0, op_a_i}` — the dividend passes through.
-    /// We do NOT drive `alu_operand_*_o` here (DivLongThread does, and
-    /// this thread's S0 quiescent contribution to those ports is zero
-    /// — the OR-merge yields DivLongThread's IDLE values).
-    if div_en_i and short_path and ((operator_i == MD_OP_DIV) or (operator_i == MD_OP_REM))
-      if operator_i == MD_OP_DIV
-        imd_val_d_o[0] = 34'h3_FFFF_FFFF;
-      else
-        imd_val_d_o[0] = {2'b00, op_a_i};
-      end if
-      imd_val_we_o = 2'b01;
-    end if
-    wait until div_en_i and short_path;
-
-    /// S1: MD_FINISH. `imd_val_q_i[0]` now holds the seed written above.
-    /// Drive `valid_o` and the result mux; hold until the ID stage
-    /// acknowledges via `multdiv_ready_id_i`.
-    do
-      multdiv_result_o = div_sel_i ? imd_val_q_i[0][31:0]
-                                   : 32'h0000_0000;
-      valid_o = true;
-    until multdiv_ready_id_i;
-  end thread DivShortThread
-
-  // ────────────────────────────────────────────────────────────────────
-  // DivLongThread — full long-division walk
-  // (§"Divider FSM sequence for non-zero non-overflow operands
-  //   (37 cycles)", §"Constant-time mode forces full 37-cycle divide")
-  // ────────────────────────────────────────────────────────────────────
-  thread DivLongThread on clk_i rising, rst_ni low
-    /// S0 — MD_IDLE.  Owns the IDLE ALU operand drive (spec §"ALU
-    /// operand exchange" table: `{0, 1}` and `{~op_b, 1}` so the
-    /// upstream ALU computes `0 - op_b_i` and the equality flag fires
-    /// for a zero divisor). Lane-0 seed write on IDLE-exit edge —
-    /// gets overwritten in subsequent states for the non-shortcut path
-    /// but the spec writes the seed unconditionally on IDLE-exit.
-    /// `div_by_zero_q ← equal_to_zero_i` is captured for later sign-
-    /// suppression in MD_CHANGE_SIGN (line 437).
+  thread MultdivThread on clk_i rising, rst_ni low
+    /// IDLE: drive the spec-prescribed `0 - op_b_i` ALU pattern so
+    /// `equal_to_zero_i` is meaningful at the wait-exit edge.
+    /// `div_by_zero_q ← equal_to_zero_i` is captured under the long-
+    /// divide gate so MD_CHANGE_SIGN can later suppress the sign-flip
+    /// on constant-time div-by-zero (spec line 437).
     alu_operand_a_o = {32'h0000_0000, 1'b1};
     alu_operand_b_o = {~op_b_i, 1'b1};
     if div_en_i and not short_path
@@ -349,129 +183,220 @@ module ibex_multdiv_fast
       end if
       imd_val_we_o = 2'b01;
       div_by_zero_q <= equal_to_zero_i;
+    elsif div_en_i and short_path and ((operator_i == MD_OP_DIV) or (operator_i == MD_OP_REM))
+      /// Short-path seed: lane 0 captures the FINISH-state result
+      /// (sentinel for DIV/DIVU, dividend pass-through for REM/REMU).
+      if operator_i == MD_OP_DIV
+        imd_val_d_o[0] = 34'h3_FFFF_FFFF;
+      else
+        imd_val_d_o[0] = {2'b00, op_a_i};
+      end if
+      imd_val_we_o = 2'b01;
     end if
-    wait until div_en_i and not short_path;
+    wait until mult_en_i or div_en_i;
 
-    /// S1 — MD_ABS_A. Drive `0 - op_a_i` through the ALU adder; capture
-    /// `op_numerator_q ← div_sign_a ? alu_adder_i : op_a_i` (the
-    /// absolute value). Reset `op_quotient_q` to 0. Lane-0 we = 1 (the
-    /// EX block's lane-0 flop captures whatever we drive — the spec
-    /// notes the value here is don't-care because ABS_B will overwrite
-    /// it).
-    alu_operand_a_o = {32'h0000_0000, 1'b1};
-    alu_operand_b_o = {~op_a_i, 1'b1};
-    op_numerator_q <= div_sign_a ? alu_adder_i : op_a_i;
-    op_quotient_q  <= 32'h0000_0000;
-    /// Hold lane-0 we high through the long divide (spec lines 605–612:
-    /// lane-0 we = `multdiv_en` every advancement cycle).
-    imd_val_d_o[0] = imd_val_q_i[0];
-    imd_val_we_o = 2'b01;
-    wait 1 cycle;
+    if mult_en_i and (operator_i == MD_OP_MULL)
+      // ── 3-cycle MUL walk (ALBL → ALBH → AHBL terminal) ──────────────
+      /// Cycle 1 — ALBL: `(0, op_a[15:0]) × (0, op_b[15:0])`. accum = 0.
+      /// `mac_res_d = mac_res` (raw kernel output, zero-extended into
+      /// the full 34-b lane). Lane-0 we = 1 every advancement cycle.
+      imd_val_d_o[0] = MacRes(false, op_a_i[15:0],
+                              false, op_b_i[15:0],
+                              34'h0_0000_0000);
+      imd_val_we_o = 2'b01;
+      wait 1 cycle;
 
-    /// S2 — MD_ABS_B. Drive `0 - op_b_i` through the ALU adder; capture
-    /// `op_denominator_d = div_sign_b ? alu_adder_i : op_b_i` into lane
-    /// 1 with the top two bits forced to zero. Seed lane 0 with
-    /// `{33'h0, op_numerator_q[31]}` — the partial remainder
-    /// preloaded with the absolute-valued numerator's MSB as the bit
-    /// being shifted in.
-    alu_operand_a_o = {32'h0000_0000, 1'b1};
-    alu_operand_b_o = {~op_b_i, 1'b1};
-    imd_val_d_o[1] = {2'b00, div_sign_b ? alu_adder_i : op_b_i};
-    imd_val_d_o[0] = {33'h0_0000_0000, op_numerator_q[31]};
-    imd_val_we_o = 2'b11;
-    wait 1 cycle;
-
-    /// S3..S33 — MD_COMP × 31 iterations. The spec's `div_counter_q`
-    /// walks 31 down to 1; in this thread we use loop index `i` such
-    /// that `div_counter_q = 31 - i` (so `i = 0..30`). Each iteration:
-    ///   - drive `(partial_rem << 1 | 1) - (divisor << 1 | 1)` to the
-    ///     ALU; receive `res_adder_h = alu_adder_ext_i[32:1]` back.
-    ///   - if `is_greater_equal`, accept the difference and OR a
-    ///     quotient bit at position `div_counter_q`; else keep the old
-    ///     partial remainder.
-    ///   - shift the new partial remainder left by 1 and inject
-    ///     `op_numerator_q[div_counter_q - 1]` (= bit `30 - i`) at the
-    ///     LSB.
-    for i in 0..30
-      alu_operand_a_o = {imd_val_q_i[0][31:0], 1'b1};
-      alu_operand_b_o = {~imd_val_q_i[1][31:0], 1'b1};
-      imd_val_d_o[0] = {1'b0,
-                        IsGreaterEqual(imd_val_q_i[0][31],
-                                       imd_val_q_i[1][31],
-                                       alu_adder_ext_i[32])
-                          ? alu_adder_ext_i[32:1]
-                          : imd_val_q_i[0][31:0],
-                        op_numerator_q[30 - i]};
-      imd_val_we_o   = 2'b01;
-      op_quotient_q  <= IsGreaterEqual(imd_val_q_i[0][31],
-                                       imd_val_q_i[1][31],
-                                       alu_adder_ext_i[32])
-                          ? (op_quotient_q | (32'h0000_0001 << (31 - i)))
-                          : op_quotient_q;
-    end for
-
-    /// S34 — MD_LAST. The 32nd subtract (counter = 0).  Same ALU
-    /// drives as MD_COMP. For MD_OP_DIV, write `{2'b0, next_quotient}`
-    /// into lane 0 — the quotient becomes the result lane that
-    /// MD_FINISH exposes. For MD_OP_REM, write `{2'b0, next_remainder}`
-    /// — the remainder is the result lane.
-    alu_operand_a_o = {imd_val_q_i[0][31:0], 1'b1};
-    alu_operand_b_o = {~imd_val_q_i[1][31:0], 1'b1};
-    if operator_i == MD_OP_DIV
+      /// Cycle 2 — ALBH: shift-and-concat trick for the low half of
+      /// the running product. `mac_res_d = {2'b0, mac_res[15:0],
+      /// imd_val_q_i[0][15:0]}`.
       imd_val_d_o[0] = {2'b00,
-                        IsGreaterEqual(imd_val_q_i[0][31],
-                                       imd_val_q_i[1][31],
-                                       alu_adder_ext_i[32])
-                          ? (op_quotient_q | 32'h0000_0001)
-                          : op_quotient_q};
-    else
-      imd_val_d_o[0] = {2'b00,
-                        IsGreaterEqual(imd_val_q_i[0][31],
-                                       imd_val_q_i[1][31],
-                                       alu_adder_ext_i[32])
-                          ? alu_adder_ext_i[32:1]
-                          : imd_val_q_i[0][31:0]};
-    end if
-    imd_val_we_o = 2'b01;
-    op_quotient_q <= IsGreaterEqual(imd_val_q_i[0][31],
-                                    imd_val_q_i[1][31],
-                                    alu_adder_ext_i[32])
-                       ? (op_quotient_q | 32'h0000_0001)
-                       : op_quotient_q;
-    wait 1 cycle;
+                        MacRes(false,                          op_a_i[15:0],
+                               signed_mode_i[1] and op_b_i[31], op_b_i[31:16],
+                               {18'b0, imd_val_q_i[0][31:16]})[15:0],
+                        imd_val_q_i[0][15:0]};
+      imd_val_we_o = 2'b01;
+      wait 1 cycle;
 
-    /// S35 — MD_CHANGE_SIGN. Drive `0 - imd_val_q_i[0][31:0]` through
-    /// the ALU adder; conditionally write the negated value back into
-    /// lane 0. For MD_OP_DIV, change sign iff `(div_sign_a ^
-    /// div_sign_b) & ~div_by_zero_q` (spec line 408 — divide-by-zero
-    /// suppresses the sign flip so the `'1` sentinel survives in
-    /// constant-time mode). For MD_OP_REM, change sign iff `div_sign_a`
-    /// (the remainder takes the sign of the dividend). Otherwise hold.
-    alu_operand_a_o = {32'h0000_0000, 1'b1};
-    alu_operand_b_o = {~imd_val_q_i[0][31:0], 1'b1};
-    if (operator_i == MD_OP_DIV)
-         ? ((div_sign_a != div_sign_b) and not div_by_zero_q)
-         : div_sign_a
-      imd_val_d_o[0] = {2'b00, alu_adder_i};
+      /// Cycle 3 — AHBL (terminal): expose the result and hold via
+      /// `do … until multdiv_ready_id_i`.
+      do
+        imd_val_d_o[0] = {2'b00,
+                          MacRes(signed_mode_i[0] and op_a_i[31], op_a_i[31:16],
+                                 false,                          op_b_i[15:0],
+                                 {18'b0, imd_val_q_i[0][31:16]})[15:0],
+                          imd_val_q_i[0][15:0]};
+        imd_val_we_o = 2'b01;
+        multdiv_result_o = div_sel_i
+              ? imd_val_q_i[0][31:0]
+              : {MacRes(signed_mode_i[0] and op_a_i[31], op_a_i[31:16],
+                        false,                          op_b_i[15:0],
+                        {18'b0, imd_val_q_i[0][31:16]})[15:0],
+                 imd_val_q_i[0][15:0]};
+        valid_o = true;
+      until multdiv_ready_id_i;
+
+    elsif mult_en_i and (operator_i == MD_OP_MULH)
+      // ── 4-cycle MULH walk (ALBL → ALBH → AHBL → AHBH terminal) ──────
+      /// Cycle 1 — ALBL.
+      imd_val_d_o[0] = MacRes(false, op_a_i[15:0],
+                              false, op_b_i[15:0],
+                              34'h0_0000_0000);
+      imd_val_we_o = 2'b01;
+      wait 1 cycle;
+
+      /// Cycle 2 — ALBH (MULH variant): full 34-b accum, no concat.
+      imd_val_d_o[0] = MacRes(false,                          op_a_i[15:0],
+                              signed_mode_i[1] and op_b_i[31], op_b_i[31:16],
+                              {18'b0, imd_val_q_i[0][31:16]});
+      imd_val_we_o = 2'b01;
+      wait 1 cycle;
+
+      /// Cycle 3 — AHBL (MULH variant): accum = full 34-b lane 0.
+      imd_val_d_o[0] = MacRes(signed_mode_i[0] and op_a_i[31], op_a_i[31:16],
+                              false,                          op_b_i[15:0],
+                              imd_val_q_i[0]);
+      imd_val_we_o = 2'b01;
+      wait 1 cycle;
+
+      /// Cycle 4 — AHBH (terminal). The 16-b right-shift between cycles
+      /// 3 and 4 is implicit in the accum slice: `imd_val_q_i[0][33:16]`
+      /// goes into accum[17:0] and a 16-b sign-extension of
+      /// `imd_val_q_i[0][33]` (gated by `signed_mult`) goes into
+      /// accum[33:18].
+      do
+        imd_val_d_o[0] = MacRes(
+              signed_mode_i[0] and op_a_i[31], op_a_i[31:16],
+              signed_mode_i[1] and op_b_i[31], op_b_i[31:16],
+              {{16{(signed_mode_i[0] or signed_mode_i[1]) and imd_val_q_i[0][33]}},
+               imd_val_q_i[0][33:16]});
+        imd_val_we_o = 2'b01;
+        multdiv_result_o = div_sel_i
+              ? imd_val_q_i[0][31:0]
+              : MacRes(
+                  signed_mode_i[0] and op_a_i[31], op_a_i[31:16],
+                  signed_mode_i[1] and op_b_i[31], op_b_i[31:16],
+                  {{16{(signed_mode_i[0] or signed_mode_i[1]) and imd_val_q_i[0][33]}},
+                   imd_val_q_i[0][33:16]})[31:0];
+        valid_o = true;
+      until multdiv_ready_id_i;
+
+    elsif div_en_i and short_path
+      // ── 2-cycle div-by-zero short-circuit (IDLE → FINISH) ───────────
+      /// Lane-0 seed was already written on the IDLE-exit edge above
+      /// (head-wait body). MD_FINISH: drive the result mux and
+      /// `valid_o`; hold until the ID stage acknowledges.
+      do
+        multdiv_result_o = div_sel_i ? imd_val_q_i[0][31:0]
+                                     : 32'h0000_0000;
+        valid_o = true;
+      until multdiv_ready_id_i;
+
     else
+      // ── 37-cycle long divide ────────────────────────────────────────
+      // div_en_i and not short_path. The IDLE-state seed write +
+      // div_by_zero_q capture already happened on the wait-exit edge.
+      //
+      // Sequence: ABS_A → ABS_B → COMP×31 → LAST → CHANGE_SIGN → FINISH.
+
+      /// MD_ABS_A: drive `0 - op_a_i`; capture `op_numerator_q`
+      /// (absolute value) and reset `op_quotient_q`. Lane-0 we = 1
+      /// (don't-care value, ABS_B will overwrite).
+      alu_operand_a_o = {32'h0000_0000, 1'b1};
+      alu_operand_b_o = {~op_a_i, 1'b1};
+      op_numerator_q <= div_sign_a ? alu_adder_i : op_a_i;
+      op_quotient_q  <= 32'h0000_0000;
       imd_val_d_o[0] = imd_val_q_i[0];
-    end if
-    imd_val_we_o = 2'b01;
-    wait 1 cycle;
+      imd_val_we_o = 2'b01;
+      wait 1 cycle;
 
-    /// S36 — MD_FINISH. Assert `valid_o`, expose
-    /// `imd_val_q_i[0][31:0]` through the result mux, and hold until
-    /// the ID stage acknowledges. Idle ALU operand drives are
-    /// re-emitted (matching the spec's MD_FINISH behaviour: drive
-    /// {0,1} and {~op_b, 1} as defaults) — the values do not affect
-    /// the result and they keep the ALU operands quiet at the visible
-    /// IDLE pattern across the FINISH→IDLE edge.
-    do
+      /// MD_ABS_B: drive `0 - op_b_i`; capture absolute-valued divisor
+      /// into lane 1 (top two bits forced 0). Seed lane 0 with
+      /// `{33'h0, op_numerator_q[31]}`.
       alu_operand_a_o = {32'h0000_0000, 1'b1};
       alu_operand_b_o = {~op_b_i, 1'b1};
-      multdiv_result_o = div_sel_i ? imd_val_q_i[0][31:0]
-                                   : 32'h0000_0000;
-      valid_o = true;
-    until multdiv_ready_id_i;
-  end thread DivLongThread
+      imd_val_d_o[1] = {2'b00, div_sign_b ? alu_adder_i : op_b_i};
+      imd_val_d_o[0] = {33'h0_0000_0000, op_numerator_q[31]};
+      imd_val_we_o = 2'b11;
+      wait 1 cycle;
+
+      /// MD_COMP × 31. `div_counter_q = 31 - i` (so `i = 0..30`).
+      /// Each iteration drives `(partial_rem << 1 | 1) - (divisor << 1
+      /// | 1)` and accepts the difference iff `is_greater_equal`,
+      /// shifting in `op_numerator_q[30 - i]` at the LSB.
+      for i in 0..30
+        alu_operand_a_o = {imd_val_q_i[0][31:0], 1'b1};
+        alu_operand_b_o = {~imd_val_q_i[1][31:0], 1'b1};
+        imd_val_d_o[0] = {1'b0,
+                          IsGreaterEqual(imd_val_q_i[0][31],
+                                         imd_val_q_i[1][31],
+                                         alu_adder_ext_i[32])
+                            ? alu_adder_ext_i[32:1]
+                            : imd_val_q_i[0][31:0],
+                          op_numerator_q[30 - i]};
+        imd_val_we_o   = 2'b01;
+        op_quotient_q  <= IsGreaterEqual(imd_val_q_i[0][31],
+                                         imd_val_q_i[1][31],
+                                         alu_adder_ext_i[32])
+                            ? (op_quotient_q | (32'h0000_0001 << (31 - i)))
+                            : op_quotient_q;
+      end for
+
+      /// MD_LAST: 32nd subtract. For DIV write `{2'b0, next_quotient}`
+      /// to lane 0; for REM write `{2'b0, next_remainder}`.
+      alu_operand_a_o = {imd_val_q_i[0][31:0], 1'b1};
+      alu_operand_b_o = {~imd_val_q_i[1][31:0], 1'b1};
+      if operator_i == MD_OP_DIV
+        imd_val_d_o[0] = {2'b00,
+                          IsGreaterEqual(imd_val_q_i[0][31],
+                                         imd_val_q_i[1][31],
+                                         alu_adder_ext_i[32])
+                            ? (op_quotient_q | 32'h0000_0001)
+                            : op_quotient_q};
+      else
+        imd_val_d_o[0] = {2'b00,
+                          IsGreaterEqual(imd_val_q_i[0][31],
+                                         imd_val_q_i[1][31],
+                                         alu_adder_ext_i[32])
+                            ? alu_adder_ext_i[32:1]
+                            : imd_val_q_i[0][31:0]};
+      end if
+      imd_val_we_o = 2'b01;
+      op_quotient_q <= IsGreaterEqual(imd_val_q_i[0][31],
+                                      imd_val_q_i[1][31],
+                                      alu_adder_ext_i[32])
+                         ? (op_quotient_q | 32'h0000_0001)
+                         : op_quotient_q;
+      wait 1 cycle;
+
+      /// MD_CHANGE_SIGN: drive `0 - imd_val_q_i[0][31:0]`; conditionally
+      /// write the negated value back into lane 0. For DIV, change sign
+      /// iff `(div_sign_a ^ div_sign_b) & ~div_by_zero_q`. For REM,
+      /// change sign iff `div_sign_a`.
+      alu_operand_a_o = {32'h0000_0000, 1'b1};
+      alu_operand_b_o = {~imd_val_q_i[0][31:0], 1'b1};
+      if (operator_i == MD_OP_DIV)
+           ? ((div_sign_a != div_sign_b) and not div_by_zero_q)
+           : div_sign_a
+        imd_val_d_o[0] = {2'b00, alu_adder_i};
+      else
+        imd_val_d_o[0] = imd_val_q_i[0];
+      end if
+      imd_val_we_o = 2'b01;
+      wait 1 cycle;
+
+      /// MD_FINISH: assert `valid_o`, expose `imd_val_q_i[0][31:0]`
+      /// through the result mux, hold until ID-stage ack. Idle ALU
+      /// operand drives are re-emitted (matching the spec's MD_FINISH
+      /// behaviour: drive {0,1} and {~op_b, 1}) — values do not affect
+      /// the result and they keep the ALU operands quiet at the IDLE
+      /// pattern across the FINISH→IDLE edge.
+      do
+        alu_operand_a_o = {32'h0000_0000, 1'b1};
+        alu_operand_b_o = {~op_b_i, 1'b1};
+        multdiv_result_o = div_sel_i ? imd_val_q_i[0][31:0]
+                                     : 32'h0000_0000;
+        valid_o = true;
+      until multdiv_ready_id_i;
+    end if
+  end thread MultdivThread
 end module ibex_multdiv_fast

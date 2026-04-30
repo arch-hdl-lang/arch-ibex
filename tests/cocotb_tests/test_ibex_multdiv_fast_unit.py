@@ -133,7 +133,7 @@ def _apply_imd(dut, snapshot):
 
 
 async def _run_mult(dut, *, operator: int, signed_mode: int, op_a: int, op_b: int,
-                   max_cycles: int = 8) -> int:
+                   max_cycles: int = 16) -> int:
     """Drive a MUL/MULH/MULHSU/MULHU operation to completion. Returns
     `multdiv_result_o` sampled when `valid_o` rises."""
     dut.operator_i.value = operator

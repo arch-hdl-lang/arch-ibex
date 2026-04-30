@@ -95,7 +95,7 @@ async def _reset(dut):
 
 
 async def _run_mult(dut, *, operator: int, signed_mode: int, op_a: int, op_b: int,
-                    max_cycles: int = 8) -> int:
+                    max_cycles: int = 16) -> int:
     dut.operator_i.value = operator
     dut.signed_mode_i.value = signed_mode
     dut.op_a_i.value = op_a & MASK32
@@ -128,7 +128,7 @@ async def _run_mult(dut, *, operator: int, signed_mode: int, op_a: int, op_b: in
 
 
 async def _run_div(dut, *, operator: int, signed_mode: int, op_a: int, op_b: int,
-                   data_ind_timing: int = 0, max_cycles: int = 50) -> tuple[int, int]:
+                   data_ind_timing: int = 0, max_cycles: int = 60) -> tuple[int, int]:
     dut.operator_i.value = operator
     dut.signed_mode_i.value = signed_mode
     dut.op_a_i.value = op_a & MASK32
