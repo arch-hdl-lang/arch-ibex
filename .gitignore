@@ -31,3 +31,9 @@ tests/sw/build/
 
 # Misc
 .DS_Store
+
+# Local-only session-state doc — referenced via memory, not in repo.
+# Kept local because it tracks in-progress arch-com worktree state,
+# next-session pickup notes, and decisions awaiting user confirmation
+# that don't belong in shared history.
+HANDOFF.md
