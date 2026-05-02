@@ -37,3 +37,4 @@ tests/sw/build/
 # next-session pickup notes, and decisions awaiting user confirmation
 # that don't belong in shared history.
 HANDOFF.md
+arch_sim_build/
