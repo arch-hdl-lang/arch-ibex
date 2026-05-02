@@ -127,11 +127,28 @@ stage 3.
    with running `pytest tests/test_<module>_unit_full.py` and
    triaging any failures. The orchestrator continues to step 9
    immediately. The regression agent reports back asynchronously:
-   - **All green** → quiet acknowledgement, swap is fully verified.
-   - **Failures** → the agent classifies each failure (arch bug
-     vs. spec ambiguity vs. test bug), produces a focused report, and
-     surfaces a `PushNotification`. The orchestrator pauses any
-     in-flight work to triage.
+   - **All green** → one-line acknowledgement, swap is fully verified.
+   - **Failures** → the agent MUST return a structured report so the
+     orchestrator can act without re-running tests. The report has
+     **one block per failing test** containing exactly:
+     1. **Test name** — fully-qualified pytest node ID, e.g.
+        `tests/test_<module>_unit_full.py::test_decoder_full[ALU_ADD]`.
+     2. **Failure mode** — one of `arch bug` / `spec ambiguity` /
+        `test bug` / `unclear`, with one sentence on why.
+     3. **Concrete repro** — the assertion text + the actual vs
+        expected values (e.g. `assert int(dut.result_o.value) == 0xF800_0000 — got 0x0800_0000`).
+     4. **Cocotb log tail** — last ~30 lines of the cocotb stderr
+        for that test (the section between `running test ...` and
+        the FAIL line). Do NOT paste the full log — only the tail
+        starting at the test's own banner.
+     5. **Suggested next action** — which file the orchestrator
+        should look at first (arch source line, spec section, test
+        line). One-liner.
+
+     The regression agent MUST NOT propose fixes or attempt to edit
+     files; its job is to compress the failure into a triage-ready
+     report. Surface the report via `PushNotification` so the
+     orchestrator can pause in-flight work.
 
 9. **Archive** — move `changes/port-<module>/` to
    `changes/archive/YYYY-MM-DD-port-<module>/`; merge/append the
