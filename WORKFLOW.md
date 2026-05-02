@@ -119,8 +119,61 @@ stage 3.
 7. **Basic gate** *(blocking)* — `make build` then
    `pytest tests/test_<module>_unit.py tests/test_soc_lint.py tests/test_cpu_programs.py`.
    The basic-suite + SoC lint + 4 ISR programs must pass to continue.
-   On failure: fix the arch (or escalate to spec triage if the test
-   reveals genuine ambiguity).
+
+   **On failure**, the orchestrator MUST NOT immediately fix the arch
+   or work around the failure. Instead, dispatch a **failure-triager
+   agent** (see step 7a) FIRST. The triager classifies the failure
+   into compiler-bug / design-bug / unclear with a minimal repro.
+   This rule exists because Phase A repeatedly burned hours on
+   refactors-around-compiler-bugs that turned out to need an
+   arch-com fix anyway — and after fixing arch-com, the refactor was
+   wasted work.
+
+7a. **Failure triage (isolated agent)** — when step 7 (or any later
+    step) fails, dispatch an `Agent` whose readable inputs are *only*:
+    - The failing `.arch` source file
+    - The verbatim error / diagnostic message (compiler error, lint
+      error, or cocotb assertion text + log tail)
+    - The failing test (cocotb body) if the failure was at test stage
+    - `arch-com/doc/ARCH_HDL_Specification.md`
+    - `~/.claude/projects/-Users-<user>-github-arch-ibex/memory/feedback_arch_syntax_pitfalls.md`
+      (known traps — first-pass match against this list)
+
+    The agent has Bash + Read + Write to a scratch dir. It iteratively
+    reduces the input by deleting unrelated declarations, simplifying
+    expressions, and substituting smaller widths/types — re-running
+    `arch build` (or whichever command failed) after each step — until
+    further reduction makes the error go away. Floor: ≤ 20 LoC.
+
+    The agent returns a structured report:
+    1. **Minimal repro** — verbatim ≤ 20 LoC `.arch` source.
+    2. **Error reproduced** — verbatim error text from running the
+       failing command on the minimal repro.
+    3. **Classification** — one of:
+       - `compiler bug` — the minimal repro is legal ARCH per
+         `ARCH_HDL_Specification.md` but compiler rejects it OR
+         lowers it incorrectly. Cite the spec section.
+       - `design bug` — the minimal repro violates a documented
+         language rule. Cite the rule (spec section or
+         feedback_arch_syntax_pitfalls.md item).
+       - `unclear` — neither classification fits cleanly. State why.
+    4. **Suggested next action** — one of:
+       - `compiler bug` → file an arch-com issue with this minimal
+         repro (orchestrator does the filing, not the triager).
+       - `design bug` → which line of the original `.arch` to fix,
+         and the corrected snippet (NOT applied — orchestrator
+         applies after review).
+       - `unclear` → ask user.
+
+    The triager MUST NOT modify the original `.arch`. MUST NOT file
+    issues itself. MUST NOT propose architectural refactors — only
+    point fixes for `design bug`. Its single job is to compress the
+    failure into a triage-ready artifact so the orchestrator can
+    decide compiler-vs-design without iterating in main context.
+
+    The orchestrator then either: files an arch-com issue (and pauses
+    for fix), applies the suggested point fix (after spot-check), or
+    escalates to user.
 
 8. **Background regression** *(non-blocking)* — once basic gate is
    green, dispatch a fourth `Agent` (run_in_background=true) tasked
@@ -149,6 +202,12 @@ stage 3.
      files; its job is to compress the failure into a triage-ready
      report. Surface the report via `PushNotification` so the
      orchestrator can pause in-flight work.
+
+     For each failure the regression agent classifies as `arch bug`
+     or `unclear`, the orchestrator (on resume) dispatches the
+     **failure-triager** (step 7a) to produce a minimal repro + final
+     classification before deciding whether to file an arch-com
+     issue or fix the design.
 
 9. **Archive** — move `changes/port-<module>/` to
    `changes/archive/YYYY-MM-DD-port-<module>/`; merge/append the
