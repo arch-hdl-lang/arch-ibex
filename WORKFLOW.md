@@ -38,10 +38,29 @@ and never pastes upstream SV into stages 2/3 or test assertion code into
 stage 3.
 
 1. **Propose** — write `changes/port-<module>/proposal.md` (intent, scope,
-   ARCH-construct choice, links to upstream `ibex_<module>.sv`). The
-   orchestrator writes this directly — proposals are about ARCH-side
-   choices, not bit-true behavior, so reading the SV header for the
-   port list is fine.
+   ARCH-construct choice, **construct enumeration**, links to upstream
+   `ibex_<module>.sv`). The orchestrator writes this directly —
+   proposals are about ARCH-side choices, not bit-true behavior, so
+   reading the SV header for the port list is fine.
+
+   **Construct enumeration** *(REQUIRED subsection)* — list every
+   first-class ARCH construct (`module`, `fsm`, `thread`, `fifo`,
+   `ram`, `cam`, `linklist`, `regfile`, `arbiter`, `counter`,
+   `pipeline`, `synchronizer`, `clkgate`) and for each one note one
+   of: **picked** / **rejected (one-sentence reason)** / **N/A
+   (out-of-shape)**. Reference: §8-§12 of
+   `arch-com/doc/ARCH_HDL_Specification.md`; §12.10 ("linklist vs
+   fifo vs ram — When to Use Which") is the triage cheat-sheet.
+
+   This is a forcing function, not box-ticking. Without it the
+   orchestrator (and the implementer agent dispatched downstream) defaults
+   to "plain `module`" because that's what the prior swap used —
+   even when a first-class construct would carry half the design for
+   free. Methodology lesson from A7 IbexFetchFifo: the `fifo`
+   construct didn't fit, but that conclusion was never written down,
+   so a future reader can't tell "considered, doesn't fit" from "never
+   considered." See
+   [Proposal format](#proposal-format) for the canonical layout.
 
 2. **Spec (isolated agent — SV-only)** — dispatch an `Agent` whose
    readable inputs are *only*:
@@ -320,6 +339,60 @@ stage 3.
    `specs/<module>/spec.md`. The full-regression test file stays under
    `tests/cocotb_tests/` and runs as part of the standing gate going
    forward (i.e. `pytest tests/` is the post-archive verification).
+
+## Proposal format
+
+```markdown
+# Proposal: Port `ibex_<module>` to ARCH
+
+## Intent
+One paragraph: what this swap replaces, what depth in the pipeline,
+which prior swap (Aₙ) it follows.
+
+## Scope
+**In scope** — list parameter values fixed in the SoC, behaviors
+covered. **Out of scope** — parameter modes / variants the swap
+explicitly does not address.
+
+## Construct enumeration
+Tabular dismissal of every first-class construct. One row per
+construct from §8-§12 of the ARCH HDL spec. Status is one of
+**picked** / **rejected: <one-sentence reason>** / **N/A**.
+
+| Construct      | Status | Reason |
+|----------------|--------|--------|
+| `module`       | picked | Bespoke output mux + state — handle directly. |
+| `fsm`          | rejected | No multi-cycle state-machine sequencing. |
+| `thread`       | rejected | No mid-walk yield / wait-cycle behavior. |
+| `fifo`         | rejected | `pop_data` exposes only the head; this module reads head+next+bypass simultaneously and has no clear port. |
+| `ram` / `cam`  | N/A | Not address-indexed access. |
+| `linklist`     | N/A | Not pointer-chained storage. |
+| `regfile`      | N/A | Not multi-port register array. |
+| `arbiter`      | N/A | Not request-grant arbitration. |
+| `counter`      | N/A | Not a freestanding count primitive. |
+| `pipeline`     | rejected | Bespoke alignment shouldn't ride a generic stage chain. |
+| `synchronizer` | N/A | Single clock domain. |
+| `clkgate`      | N/A | No clock gating. |
+
+(Adapt `picked` / `rejected` per swap. The point is to write down the
+dismissal, not to use these specific reasons.)
+
+## Approach
+What ARCH constructs / regs / wires the implementer is expected to
+use. Tentative — the implementer agent has the final call.
+
+## Verification gate
+Pass criteria for the basic gate + scope of the full regression.
+
+## Verification gate caveats
+Anything non-obvious about how to wire the testbench (e.g. shared-port
+modules need an external mock driver, combinational outputs need
+`Timer(1, "ns")` settle).
+
+## Reference
+Upstream path + LoC, neighbor producer + consumer module names + line
+ranges, related reference doc.
+```
 
 ## Spec format
 
