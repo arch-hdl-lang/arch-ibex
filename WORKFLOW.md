@@ -116,6 +116,77 @@ stage 3.
    read `ibex_*.sv`, the test files (`tests/cocotb_tests/test_<module>_unit*.py`),
    or any other `.arch` file. It produces `src/<Module>.arch`.
 
+6a. **Two-stage review** *(conditional — opt-in for non-trivial swaps)* —
+    if the module's spec has **≥ 3 Requirements**, the orchestrator
+    MUST run two review subagents on the implementer's output BEFORE
+    the basic gate (step 7). Adopted from
+    [`superpowers:subagent-driven-development`](https://github.com/obra/superpowers).
+
+    The threshold (≥ 3 Requirements) is the cost / payoff line: leaf
+    modules with 1–2 Requirements (`IbexCounter`, `IbexAlu`) are
+    cheap enough that runtime tests catch divergence faster than two
+    review round-trips. Modules with 3+ Requirements (`IbexDecoder`,
+    `IbexCompressedDecoder`, all of Phase B/C) have enough surface
+    that an implementer can satisfy individual Requirements while
+    silently violating an interaction between two of them — the A4
+    `rf_we_o = 1` LOAD bug was exactly this shape.
+
+    **Stage 1 — spec-compliance reviewer (isolated agent).** Inputs:
+    - The change's `specs/<module>/spec.md`.
+    - The implementer's `src/<Module>.arch` output.
+    - `arch-com/doc/ARCH_HDL_Specification.md` (so it can identify
+      construct-level mistakes; the reviewer does not need to know
+      arch-com internals).
+
+    The reviewer reads the `.arch` and verifies, line by line, that
+    every spec Requirement is covered AND no behavior outside the
+    spec was introduced. Returns:
+    - **✅ spec compliant**, OR
+    - **❌ issues found**: bullet list per issue, citing
+      `spec.md §<Requirement>` AND `<Module>.arch:<line>`. Categories:
+      *missing* (Requirement not implemented), *extra* (behavior the
+      spec doesn't authorize), *misinterpreted* (Requirement covered
+      with wrong semantics).
+
+    The reviewer MUST NOT modify the `.arch`. On `❌`, the
+    orchestrator dispatches the implementer subagent again with the
+    issue list as input, then re-runs Stage 1. Loop until ✅.
+
+    **Stage 2 — design-quality reviewer (isolated agent).** Only
+    runs after Stage 1 passes. Inputs:
+    - The implementer's `src/<Module>.arch` output (now spec-compliant).
+    - `~/.claude/projects/-Users-<user>-github-arch-ibex/memory/feedback_arch_syntax_pitfalls.md`
+      (the pitfall list — the reviewer flags any matched anti-pattern).
+
+    The reviewer verifies ARCH-side design quality:
+    - Is each `let` / `wire` / `reg` named for its purpose, not
+      its SV ancestor (no leaked `_q`/`_d` SV idiom unless the
+      construct mandates it)?
+    - Is the construct choice (`fsm` vs `thread` vs flat `seq`)
+      appropriate for the spec's complexity? Flag obvious
+      over-engineering.
+    - Does the source carry `///` doc comments citing
+      `specs/<module>/spec.md §<Requirement>` (not `ibex_*.sv:LINE`)?
+    - Any matches against the syntax-pitfalls list?
+
+    Returns:
+    - **✅ design clean**, OR
+    - **❌ issues found**: bullet list (Critical / Important / Minor)
+      with `<Module>.arch:<line>` references.
+
+    The reviewer MUST NOT modify the `.arch`. On `❌` for Critical
+    or Important issues, orchestrator re-dispatches the implementer.
+    Minor issues are noted but don't block the basic gate.
+
+    Both reviewers MUST NOT read the failing test file (`test_<m>_unit.py`)
+    or the cocotb assertion bodies — that's runtime verification's job.
+    Reviewer-stage isolation prevents the orchestrator from accidentally
+    feeding test-driven implementation hints back through the review loop.
+
+    **Skip 6a entirely** if the spec has < 3 Requirements. Note the
+    skip in the swap's `tasks.md` so future readers see the threshold
+    decision was applied, not forgotten.
+
 7. **Basic gate** *(blocking)* — `make build` then
    `pytest tests/test_<module>_unit.py tests/test_soc_lint.py tests/test_cpu_programs.py`.
    The basic-suite + SoC lint + 4 ISR programs must pass to continue.
