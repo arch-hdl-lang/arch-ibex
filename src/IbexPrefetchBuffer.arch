@@ -14,10 +14,38 @@ module ibex_prefetch_buffer
   /// ref: specs/prefetch_buffer/spec.md §Reset State
   param ResetAll[0:0]: const = 1'b0;
 
-  /// CPU always resets via a branch before executing; stored_addr_q / fetch_addr_q
-  /// are never observed in their unreset state. Opting out of the structural RDC
-  /// check preserves upstream Ibex behaviour 1:1.
-  /// ref: specs/prefetch_buffer/spec.md §Reset State
+  /// `pragma rdc_safe` is intentional and addresses a metastability
+  /// concern the strict RDC pass would otherwise flag on the unreset
+  /// `stored_addr_q` / `fetch_addr_q` registers (see below). The
+  /// suppression is sound under the upstream lowRISC reset-synchronisation
+  /// contract:
+  ///
+  ///   - `rst_ni` is delivered to this block already async-asserted but
+  ///     SYNC-DEASSERTED to `clk_i`, by a chip-level reset manager that
+  ///     instantiates `prim_rst_sync` (a 2FF "async assert, sync de-assert"
+  ///     synchroniser) per clock domain. See `vendor/lowrisc_ip/ip/prim/
+  ///     rtl/prim_rst_sync.sv` upstream.
+  ///   - With deassert-edge synchronisation upstream, no upstream register
+  ///     undergoes a mid-cycle async transition relative to this block's
+  ///     `clk_i`, so the reset-domain-crossing path that the RDC pass is
+  ///     warning about cannot produce a metastable transient downstream of
+  ///     `stored_addr_q` / `fetch_addr_q`.
+  ///
+  /// Upstream Ibex leaves these two address registers unreset for area
+  /// (one less reset mux per bit, ~64 muxes total) and relies on the
+  /// SoC's first-instruction-is-a-branch invariant for functional
+  /// correctness — the unreset values are overwritten before any
+  /// consumer samples them. This functional argument is documented in
+  /// the spec's Reset State Requirement; it is independent of the RDC
+  /// suppression rationale above.
+  ///
+  /// Caveat for SoC integrators: the arch-ibex `soc/ibex_mini_soc.sv`
+  /// wires `rst_sys_n = IO_RST_N` directly without a `prim_rst_sync`.
+  /// That is a simulation-only shortcut; a production integration MUST
+  /// place `prim_rst_sync` (or equivalent) between the external reset
+  /// pin and any Ibex block to honour this contract.
+  ///
+  /// ref: specs/prefetch_buffer/spec.md §"Reset State"
   pragma rdc_safe;
 
   port clk_i:  in Clock<SysDomain>;
