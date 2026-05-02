@@ -175,6 +175,18 @@ stage 3.
     for fix), applies the suggested point fix (after spot-check), or
     escalates to user.
 
+    **3-strike escalation rule** (adopted from
+    [`superpowers:systematic-debugging`](https://github.com/obra/superpowers)):
+    if three independent fix attempts on the same module have failed
+    — each one revealing a new symptom in a different place rather
+    than fully resolving the issue — STOP. Do not attempt a fourth
+    fix. The pattern is *architectural*, not local. Question the
+    construct choice (FSM vs thread, single-block vs split, this
+    abstraction vs that one) and surface a discussion to the user
+    before proceeding. This rule exists because A6 burned three
+    refactor cycles (FSM → 4 threads → 1 thread + dispatch-rejoin)
+    treating a structural problem as a sequence of local fixes.
+
 8. **Background regression** *(non-blocking)* — once basic gate is
    green, dispatch a fourth `Agent` (run_in_background=true) tasked
    with running `pytest tests/test_<module>_unit_full.py` and
@@ -203,13 +215,35 @@ stage 3.
      report. Surface the report via `PushNotification` so the
      orchestrator can pause in-flight work.
 
+     **When the regression agent reports multiple failures with
+     unrelated root causes** (different requirements, different
+     subsystems, no shared symptom), the orchestrator MUST dispatch
+     one failure-triager subagent PER failure in a single message —
+     not serially. Adopted from
+     [`superpowers:dispatching-parallel-agents`](https://github.com/obra/superpowers):
+     independent investigations should run concurrently. Sequential
+     triage of independent failures is exactly the kind of waste
+     that makes Phase B/C composite swaps slow.
+
      For each failure the regression agent classifies as `arch bug`
      or `unclear`, the orchestrator (on resume) dispatches the
      **failure-triager** (step 7a) to produce a minimal repro + final
      classification before deciding whether to file an arch-com
      issue or fix the design.
 
-9. **Archive** — move `changes/port-<module>/` to
+9. **Archive** — before archiving, the orchestrator MUST satisfy a
+   **fresh-evidence gate** (adopted from
+   [`superpowers:verification-before-completion`](https://github.com/obra/superpowers)):
+
+   - Re-run `make test` *in the current message* and paste the tail
+     showing total / pass / fail counts. Stale runs from earlier in
+     the session don't count — the gate is about evidence the
+     orchestrator can cite NOW, not "tests passed an hour ago."
+   - The archive step's commit message MUST quote that fresh count
+     (e.g. "26 passed, 5 errors (rdl2arch import; pre-existing)")
+     so future readers see the verification evidence inline.
+
+   Then move `changes/port-<module>/` to
    `changes/archive/YYYY-MM-DD-port-<module>/`; merge/append the
    change's `specs/<module>/spec.md` into the top-level
    `specs/<module>/spec.md`. The full-regression test file stays under
