@@ -80,7 +80,12 @@ Path-referenced for now (no submodules / lockfile):
   by the test harness; override with `$ARCH_BIN`.
 - **rdl2arch-riscv** at `$RDL2ARCH_RISCV_ROOT` (default
   `~/github/rdl2arch-riscv`) — CSR-file generator + RDL fixtures.
-  Install editable: `pip install -e $RDL2ARCH_RISCV_ROOT`.
+  Install editable: `pip install -e $RDL2ARCH_RISCV_ROOT`. It depends
+  on `rdl2arch`; if you already have that checked out at
+  `~/github/rdl2arch`, also `pip install -e ~/github/rdl2arch` so the
+  editable install points at the live source tree (otherwise pip will
+  resolve `rdl2arch` from PyPI or, worse, an old `.pth` to a deleted
+  worktree).
 - **Toolchain**: `verilator >= 5.0`, `riscv64-elf-gcc`, `fusesoc`,
   Python 3.11+ with `cocotb`, `cocotb-tools`, `pytest`, `pytest-xdist`.
 
