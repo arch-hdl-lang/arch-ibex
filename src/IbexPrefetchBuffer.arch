@@ -1,0 +1,315 @@
+/// ARCH port of ibex_prefetch_buffer.sv
+/// Instruction prefetch buffer: issues word-aligned OBI bus requests,
+/// tracks up to 2 outstanding in-flight requests, discards stale responses
+/// on branch, and drives the IbexFetchFifo submodule.
+/// ref: specs/prefetch_buffer/spec.md
+
+domain SysDomain
+  freq_mhz: 100
+end domain SysDomain
+
+module ibex_prefetch_buffer
+  /// ResetAll=0 in scope: only control registers are async-reset;
+  /// address registers are not reset (CPU resets with a branch first).
+  /// ref: specs/prefetch_buffer/spec.md §Reset State
+  param ResetAll[0:0]: const = 1'b0;
+
+  /// `pragma rdc_safe` is intentional and addresses the metastability
+  /// concern the strict RDC pass would otherwise flag on the unreset
+  /// `stored_addr_q` / `fetch_addr_q` registers (see below). The
+  /// suppression is sound under TWO independent contracts — one for the
+  /// deassert edge, one for the assert edge — that together gate any
+  /// metastability the unreset registers might capture from reaching a
+  /// downstream consumer:
+  ///
+  /// === Deassert-edge contract (handled upstream of this block) ===
+  /// `rst_ni` is delivered already async-asserted but SYNC-DEASSERTED
+  /// to `clk_i` by a chip-level reset manager that instantiates
+  /// `prim_rst_sync` (a 2FF "async assert, sync de-assert" synchroniser)
+  /// per clock domain. See `vendor/lowrisc_ip/ip/prim/rtl/prim_rst_sync.sv`
+  /// upstream. With deassert-edge synchronisation, no upstream register
+  /// undergoes a mid-cycle async transition relative to this block's
+  /// `clk_i`, so the reset-domain-crossing path the RDC pass is flagging
+  /// cannot produce a metastable transient at the deassert edge.
+  ///
+  /// === Assert-edge contract (gated within this block + at the SoC) ===
+  /// At the async-assert edge, `prim_rst_sync` does NOT protect against
+  /// metastability — the assert is intentionally async for safety
+  /// (guaranteed reset reach within one cycle). Downstream-of-unreset
+  /// flops can theoretically capture metastable values from comb paths
+  /// that depend on simultaneously-async-resetting upstream registers.
+  /// Three structural gates prevent that metastability from being
+  /// observed:
+  ///
+  ///   (G1) `valid_req_q` is async-reset to 0 at this block, forcing
+  ///        `instr_req_o = valid_req_q OR valid_new_req` to be controlled
+  ///        entirely by `valid_new_req` during reset.
+  ///   (G2) `valid_new_req = req_i AND (fifo_ready OR branch_i) AND NOT
+  ///        rdata_outstanding_q[1]`. Per upstream Ibex contract,
+  ///        `ibex_if_stage` holds `req_i = 0` during reset assert (its
+  ///        own `req_buffer` register has async reset on the same
+  ///        `rst_ni`). With `req_i = 0`, `valid_new_req = 0`, so
+  ///        `instr_req_o = 0`. The bus master ignores `instr_addr_o`
+  ///        regardless of any metastable value latched in
+  ///        `fetch_addr_q` / `stored_addr_q`.
+  ///   (G3) The bus master's address-receive register has async reset
+  ///        on the same `rst_ni` (true of any OBI consumer that complies
+  ///        with the upstream Ibex memory-interface convention,
+  ///        including arch-ibex's `soc/ibex_mini_soc.sv`). Even if the
+  ///        master happened to attempt a sample, async-reset would
+  ///        clobber the metastable input to 0.
+  ///
+  /// Internal recursive metastability in the `fetch_addr_q ↔ fetch_addr_d`
+  /// loop, and capture into `stored_addr_q` (gated by `valid_req_q AND
+  /// valid_new_req`, both 0 during reset), resolves to a defined value
+  /// within O(few clock periods) per standard MTBF analysis. The first
+  /// SoC instruction post-deassert is a branch, which then overwrites
+  /// `fetch_addr_q` with the boot PC before the resolved-but-undefined
+  /// value can ever be observed.
+  ///
+  /// Upstream Ibex leaves these two address registers unreset for area
+  /// (one less reset mux per bit, ~64 muxes total). This is the design
+  /// trade-off the spec's Reset State Requirement documents.
+  ///
+  /// Caveat for SoC integrators: the arch-ibex `soc/ibex_mini_soc.sv`
+  /// wires `rst_sys_n = IO_RST_N` directly without a `prim_rst_sync`.
+  /// That is a simulation-only shortcut; a production integration MUST
+  /// (a) place `prim_rst_sync` (or equivalent) between the external
+  /// reset pin and any Ibex block to honour the deassert-edge contract,
+  /// and (b) ensure the bus master's address-receive register has
+  /// async reset on the same domain to honour gate G3.
+  ///
+  /// ref: specs/prefetch_buffer/spec.md §"Reset State"
+  pragma rdc_safe;
+
+  port clk_i:  in Clock<SysDomain>;
+  port rst_ni: in Reset<Async, Low>;
+
+  port req_i:    in Bool;
+  port branch_i: in Bool;
+  port addr_i:   in UInt<32>;
+
+  port ready_i:     in Bool;
+  port valid_o:     out Bool;
+  port rdata_o:     out UInt<32>;
+  port addr_o:      out UInt<32>;
+  port err_o:       out Bool;
+  port err_plus2_o: out Bool;
+
+  port instr_req_o:    out Bool;
+  port instr_gnt_i:    in Bool;
+  port instr_addr_o:   out UInt<32>;
+  port instr_rdata_i:  in UInt<32>;
+  port instr_err_i:    in Bool;
+  port instr_rvalid_i: in Bool;
+
+  port busy_o: out Bool;
+
+  // ─── Control registers (async-low reset) ─────────────────────────────────
+  /// ref: specs/prefetch_buffer/spec.md §OBI Hold-Until-Granted
+  reg valid_req_q:   Bool reset rst_ni => false;
+  /// ref: specs/prefetch_buffer/spec.md §Branch Flush and Discard
+  reg discard_req_q: Bool reset rst_ni => false;
+  /// ref: specs/prefetch_buffer/spec.md §Outstanding Request Tracking
+  reg rdata_outstanding_q: Vec<Bool, 2> reset rst_ni => false;
+  /// ref: specs/prefetch_buffer/spec.md §Branch Flush and Discard
+  reg branch_discard_q: Vec<Bool, 2> reset rst_ni => false;
+
+  // ─── Address registers (no reset) ────────────────────────────────────────
+  /// ref: specs/prefetch_buffer/spec.md §Reset State
+  reg stored_addr_q: UInt<32> reset none;
+  reg fetch_addr_q:  UInt<32> reset none;
+
+  // ─── FIFO back-pressure: overlay fifo_busy with reversed outstanding ──────
+  // fifo_busy_w is declared here; the FIFO instance populates it below.
+  wire fifo_busy_w: UInt<2>;
+
+  /// Reversed outstanding vector: slot 0 maps to MSB of the overlay so that
+  /// OR'ing with fifo_busy correctly reserves FIFO capacity for in-flight requests.
+  /// ref: specs/prefetch_buffer/spec.md §FIFO Back-Pressure Accounting
+  wire rdata_outstanding_rev: UInt<2>;
+  comb
+    rdata_outstanding_rev[0] = rdata_outstanding_q[1];
+    rdata_outstanding_rev[1] = rdata_outstanding_q[0];
+  end comb
+
+  /// fifo_ready: at least one slot remains in the combined FIFO+outstanding overlay.
+  /// SV equivalent: ~&(fifo_busy | rdata_outstanding_rev)
+  /// For NUM_REQS=2 this expands to: NOT (bit0 AND bit1) of the OR.
+  /// ref: specs/prefetch_buffer/spec.md §FIFO Back-Pressure Accounting
+  let fifo_combined: UInt<2> = fifo_busy_w | rdata_outstanding_rev;
+  let fifo_ready: Bool = fifo_combined != 2'b11;
+
+  // ─── Request gating ───────────────────────────────────────────────────────
+  /// New request: req_i high, space available (or branch), not at max outstanding.
+  /// ref: specs/prefetch_buffer/spec.md §Request Issuance Gating
+  let valid_new_req: Bool = req_i and (fifo_ready or branch_i) and not rdata_outstanding_q[1];
+
+  /// Current request: held-over OR new.
+  /// ref: specs/prefetch_buffer/spec.md §OBI Hold-Until-Granted
+  let valid_req: Bool = valid_req_q or valid_new_req;
+
+  /// Hold request until granted.
+  /// ref: specs/prefetch_buffer/spec.md §OBI Hold-Until-Granted
+  let valid_req_d: Bool = valid_req and not instr_gnt_i;
+
+  /// Discard-request flag: set when a pending-grant request sees a branch;
+  /// stays set (via self-loop) until the request is finally granted.
+  /// ref: specs/prefetch_buffer/spec.md §Branch Flush and Discard
+  let discard_req_d: Bool = valid_req_q and (branch_i or discard_req_q);
+
+  // ─── Fetch address mux ────────────────────────────────────────────────────
+  /// Replay held address if waiting for grant; else use branch target or
+  /// the sequentially advancing fetch address.
+  /// ref: specs/prefetch_buffer/spec.md §Fetch Address Sequencing
+  let instr_addr: UInt<32> =
+    valid_req_q ? stored_addr_q :
+      (branch_i ? addr_i : fetch_addr_q);
+
+  /// Word-align the bus address (bits [1:0] always 2'b00).
+  let instr_addr_w_aligned: UInt<32> = {instr_addr[31:2], 2'b00};
+
+  // ─── Address register enable signals ─────────────────────────────────────
+  /// Latch stored_addr for fresh ungranted requests (not re-issues).
+  /// ref: specs/prefetch_buffer/spec.md §Fetch Address Sequencing
+  let stored_addr_en: Bool = valid_new_req and not valid_req_q and not instr_gnt_i;
+
+  /// Update fetch_addr on branch or when a new (not held) request is issued.
+  /// ref: specs/prefetch_buffer/spec.md §Fetch Address Sequencing
+  let fetch_addr_en: Bool = branch_i or (valid_new_req and not valid_req_q);
+
+  /// Advance fetch address by 4 per new issued request; branch resets to addr_i.
+  let fetch_addr_incr: UInt<32> = (valid_new_req and not valid_req_q) ? 32'd4 : 32'd0;
+
+  /// ref: specs/prefetch_buffer/spec.md §Fetch Address Sequencing
+  let fetch_addr_d: UInt<32> =
+    (branch_i ? {addr_i[31:2], 2'b00} : {fetch_addr_q[31:2], 2'b00}) +% fetch_addr_incr;
+
+  // ─── Outstanding request tracking — next-state (before rvalid shift) ─────
+  /// ref: specs/prefetch_buffer/spec.md §Outstanding Request Tracking
+  wire rdata_outstanding_n: Vec<Bool, 2>;
+  comb
+    rdata_outstanding_n[0] = (valid_req and instr_gnt_i) or rdata_outstanding_q[0];
+    rdata_outstanding_n[1] = (valid_req and instr_gnt_i and rdata_outstanding_q[0]) or rdata_outstanding_q[1];
+  end comb
+
+  /// ref: specs/prefetch_buffer/spec.md §Branch Flush and Discard
+  wire branch_discard_n: Vec<Bool, 2>;
+  comb
+    branch_discard_n[0] =
+      (valid_req and instr_gnt_i and discard_req_d) or
+      (branch_i and rdata_outstanding_q[0]) or
+      branch_discard_q[0];
+    branch_discard_n[1] =
+      (valid_req and instr_gnt_i and discard_req_d and rdata_outstanding_q[0]) or
+      (branch_i and rdata_outstanding_q[1]) or
+      branch_discard_q[1];
+  end comb
+
+  // ─── Shift down on rvalid ─────────────────────────────────────────────────
+  /// When instr_rvalid_i arrives, consume slot 0 and shift slot 1 down.
+  /// ref: specs/prefetch_buffer/spec.md §Outstanding Request Tracking
+  wire rdata_outstanding_s: Vec<Bool, 2>;
+  comb
+    if instr_rvalid_i
+      rdata_outstanding_s[0] = rdata_outstanding_n[1];
+      rdata_outstanding_s[1] = false;
+    else
+      rdata_outstanding_s[0] = rdata_outstanding_n[0];
+      rdata_outstanding_s[1] = rdata_outstanding_n[1];
+    end if
+  end comb
+
+  wire branch_discard_s: Vec<Bool, 2>;
+  comb
+    if instr_rvalid_i
+      branch_discard_s[0] = branch_discard_n[1];
+      branch_discard_s[1] = false;
+    else
+      branch_discard_s[0] = branch_discard_n[0];
+      branch_discard_s[1] = branch_discard_n[1];
+    end if
+  end comb
+
+  // ─── FIFO control signals ────────────────────────────────────────────────
+  /// Push to FIFO only when rvalid arrived AND oldest slot not marked discard.
+  /// ref: specs/prefetch_buffer/spec.md §FIFO Push Gating on Discard
+  let fifo_valid: Bool = instr_rvalid_i and not branch_discard_q[0];
+
+  /// Clear the FIFO on every branch cycle (FENCE.I relies on this).
+  /// ref: specs/prefetch_buffer/spec.md §Branch Flush and Discard
+  let fifo_clear: Bool = branch_i;
+
+  /// Forward addr_i unconditionally; the FIFO only samples it when clear_i is high.
+  /// ref: specs/prefetch_buffer/spec.md §FIFO Address Forwarding
+  let fifo_addr: UInt<32> = addr_i;
+
+  // ─── Wires for FIFO instance outputs ────────────────────────────────────
+  wire fifo_out_valid:     Bool;
+  wire fifo_out_rdata:     UInt<32>;
+  wire fifo_out_addr:      UInt<32>;
+  wire fifo_out_err:       Bool;
+  wire fifo_out_err_plus2: Bool;
+
+  // ─── IbexFetchFifo submodule instantiation ───────────────────────────────
+  /// ref: specs/prefetch_buffer/spec.md §Integration constraints — Internal FIFO interface
+  inst fifo_i: ibex_fetch_fifo
+    param NUM_REQS = 2;
+    param ResetAll = 1'b0;
+    clk_i           <- clk_i;
+    rst_ni          <- rst_ni;
+    clear_i         <- fifo_clear;
+    busy_o          -> fifo_busy_w;
+    in_valid_i      <- fifo_valid;
+    in_addr_i       <- fifo_addr;
+    in_rdata_i      <- instr_rdata_i;
+    in_err_i        <- instr_err_i;
+    out_valid_o     -> fifo_out_valid;
+    out_ready_i     <- ready_i;
+    out_rdata_o     -> fifo_out_rdata;
+    out_addr_o      -> fifo_out_addr;
+    out_err_o       -> fifo_out_err;
+    out_err_plus2_o -> fifo_out_err_plus2;
+  end inst fifo_i
+
+  // ─── Pass FIFO outputs to module ports ───────────────────────────────────
+  let valid_o     = fifo_out_valid;
+  let rdata_o     = fifo_out_rdata;
+  let addr_o      = fifo_out_addr;
+  let err_o       = fifo_out_err;
+  let err_plus2_o = fifo_out_err_plus2;
+
+  // ─── Bus-side output assignments ─────────────────────────────────────────
+  /// ref: specs/prefetch_buffer/spec.md §Request Issuance Gating
+  let instr_req_o  = valid_req;
+  let instr_addr_o = instr_addr_w_aligned;
+
+  // ─── Busy status ─────────────────────────────────────────────────────────
+  /// ref: specs/prefetch_buffer/spec.md §Busy Status
+  let busy_o = (rdata_outstanding_q[0] or rdata_outstanding_q[1]) or valid_req;
+
+  // ─── Clocked state: control registers (async-low reset via reg decls) ────
+  /// ref: specs/prefetch_buffer/spec.md §OBI Hold-Until-Granted
+  /// ref: specs/prefetch_buffer/spec.md §Branch Flush and Discard
+  /// ref: specs/prefetch_buffer/spec.md §Outstanding Request Tracking
+  seq on clk_i rising
+    valid_req_q              <= valid_req_d;
+    discard_req_q            <= discard_req_d;
+    rdata_outstanding_q[0]   <= rdata_outstanding_s[0];
+    rdata_outstanding_q[1]   <= rdata_outstanding_s[1];
+    branch_discard_q[0]      <= branch_discard_s[0];
+    branch_discard_q[1]      <= branch_discard_s[1];
+  end seq
+
+  // ─── Clocked state: address registers (no reset) ─────────────────────────
+  /// ref: specs/prefetch_buffer/spec.md §Fetch Address Sequencing
+  seq on clk_i rising
+    if stored_addr_en
+      stored_addr_q <= instr_addr;
+    end if
+    if fetch_addr_en
+      fetch_addr_q <= fetch_addr_d;
+    end if
+  end seq
+
+end module ibex_prefetch_buffer

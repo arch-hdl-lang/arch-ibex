@@ -1,0 +1,238 @@
+/// IbexFetchFifo — instruction-word FIFO at the head of Ibex's IF stage.
+/// Holds up to NUM_REQS+1 = 3 fetched 32-bit memory words plus per-word
+/// bus-error tags, and presents one re-aligned (16/32-bit, aligned/unaligned)
+/// instruction window per cycle to the compressed decoder.
+/// Spec: changes/port-fetch_fifo/specs/fetch_fifo/spec.md
+
+domain SysDomain
+  freq_mhz: 100
+end domain SysDomain
+
+module ibex_fetch_fifo
+  // NUM_REQS = number of in-flight bus requests; FIFO depth = NUM_REQS + 1.
+  param NUM_REQS: const = 2;
+  // ResetAll declared with explicit 1-bit width so it can be used directly
+  // as a ternary condition without WIDTHTRUNC (pitfall #12).
+  param ResetAll[0:0]: const = 1'b0;
+
+  port clk_i:  in Clock<SysDomain>;
+  port rst_ni: in Reset<Async, Low>;
+
+  /// spec §Clear flushes all entries and reseeds PC
+  port clear_i: in Bool;
+
+  /// spec §Depth and producer back-pressure — busy_o = upper NUM_REQS bits of valid_q
+  port busy_o: out UInt<NUM_REQS>;
+
+  /// spec §Single-write / single-aligned-pop FIFO discipline (push side)
+  /// and §Empty-FIFO bypass and idle behavior (bypass)
+  port in_valid_i: in Bool;
+  port in_addr_i:  in UInt<32>;
+  port in_rdata_i: in UInt<32>;
+  port in_err_i:   in Bool;
+
+  /// spec §Empty-FIFO bypass and idle behavior, §Unaligned 32-bit instruction
+  /// read straddles two sources, §Bus-error propagation across straddling
+  /// boundaries — the combinational read path.
+  port out_valid_o:     out Bool;
+  port out_ready_i:     in  Bool;
+  port out_addr_o:      out UInt<32>;
+  port out_rdata_o:     out UInt<32>;
+  port out_err_o:       out Bool;
+  port out_err_plus2_o: out Bool;
+
+  // FIFO depth (spec line 5: DEPTH = NUM_REQS + 1 = 3 in-scope).
+  local param DEPTH: const = NUM_REQS + 1;
+
+  // ── State registers ─────────────────────────────────────────────────────
+  /// spec §Reset state — only valid_q is async-reset (ResetAll=0 in scope);
+  /// data/err/PC flops are unreset and rely on the producer issuing a
+  /// clear-as-first-transaction post-reset.
+  reg valid_q: Vec<Bool, DEPTH> reset rst_ni => false;
+  reg rdata_q: Vec<UInt<32>, DEPTH> reset none;
+  reg err_q:   Vec<Bool, DEPTH>  reset none;
+  // Internal PC, in 31-bit half-word units (bit 0 hard-wired to 0 at the port).
+  reg instr_addr_q: UInt<31> reset none;
+
+  // ── Combinational read path ────────────────────────────────────────────
+  comb
+    // Wire the upper NUM_REQS entries of valid_q out as busy_o.
+    // For NUM_REQS=2, DEPTH=3: busy_o = {valid_q[2], valid_q[1]}.
+    /// spec §Depth and producer back-pressure
+    busy_o[0] = valid_q[1];
+    busy_o[1] = valid_q[2];
+
+    // out_addr_o: 31-bit internal PC with bit 0 hard-wired to 0.
+    /// spec §Port contract (out_addr_o), consumer-side bullet 5
+    out_addr_o = {instr_addr_q, 1'b0};
+  end comb
+
+  // Head/next-source words — bypass when the corresponding entry is invalid.
+  /// spec §Empty-FIFO bypass and idle behavior, §Unaligned 32-bit straddle
+  let rdata_head: UInt<32> = valid_q[0] ? rdata_q[0] : in_rdata_i;
+  let rdata_next: UInt<32> = valid_q[1] ? rdata_q[1] : in_rdata_i;
+  let err_head:   Bool     = valid_q[0] ? err_q[0]   : in_err_i;
+  let err_next:   Bool     = valid_q[1] ? err_q[1]   : in_err_i;
+
+  // Compressed-instruction classification at the head and at the half-word position.
+  /// spec §Single-write / single-aligned-pop FIFO discipline (compressed scenario)
+  /// and §Unaligned 32-bit (last scenario)
+  let aligned_is_compressed:   Bool = rdata_head[1:0]   != 2'b11;
+  let unaligned_is_compressed: Bool = rdata_head[17:16] != 2'b11;
+
+  // out_valid_o: aligned needs head OR bypass; unaligned needs head AND
+  // (compressed-upper-half OR a second source).
+  /// spec §Empty-FIFO bypass and idle behavior, §Unaligned 32-bit straddle
+  let valid_aligned:   Bool = valid_q[0] or in_valid_i;
+  let valid_unaligned: Bool = valid_q[0] and (unaligned_is_compressed or valid_q[1] or in_valid_i);
+
+  comb
+    if out_addr_o[1]
+      out_valid_o = valid_unaligned;
+    else
+      out_valid_o = valid_aligned;
+    end if
+  end comb
+
+  // out_rdata_o: aligned = rdata_head; unaligned = {next[15:0], head[31:16]}.
+  /// spec §Unaligned 32-bit instruction read straddles two sources
+  comb
+    if out_addr_o[1]
+      out_rdata_o = {rdata_next[15:0], rdata_head[31:16]};
+    else
+      out_rdata_o = rdata_head;
+    end if
+  end comb
+
+  // out_err_o: aligned = err_head; unaligned = head_err OR (next_err AND NOT
+  // unaligned-compressed). The unaligned-compressed case suppresses second-half err.
+  /// spec §Bus-error propagation across straddling boundaries
+  comb
+    if out_addr_o[1]
+      out_err_o = err_head or (err_next and not unaligned_is_compressed);
+    else
+      out_err_o = err_head;
+    end if
+  end comb
+
+  // out_err_plus2_o: aligned hard-wired 0; unaligned set only when err is from
+  // the second half AND first half is error-free AND the instruction straddles.
+  /// spec §Bus-error propagation across straddling boundaries (err_plus2 cases)
+  comb
+    if out_addr_o[1]
+      out_err_plus2_o = err_next and not err_head and not unaligned_is_compressed;
+    else
+      out_err_plus2_o = false;
+    end if
+  end comb
+
+  // pop_fifo: pop the head when consumer accepts AND (instruction occupies the
+  // whole head-word OR we're already on the upper half).
+  /// spec §Single-write / single-aligned-pop FIFO discipline,
+  /// §Unaligned 32-bit straddle (pop discipline)
+  let pop_fifo: Bool = out_ready_i and out_valid_o and ((not aligned_is_compressed) or out_addr_o[1]);
+
+  // addr_incr_two: half-word bump when the current instruction is compressed at
+  // the relevant alignment, full-word bump otherwise.
+  /// spec §Single-write / single-aligned-pop FIFO discipline (compressed),
+  /// §Unaligned compressed (no straddle)
+  let addr_incr_two: Bool = out_addr_o[1] ? unaligned_is_compressed : aligned_is_compressed;
+
+  // ── Next-state for valid_q / rdata_q / err_q ───────────────────────────
+  // Push-then-pop ordering (matches upstream ibex_fetch_fifo.sv:191-209):
+  // lowest_free_entry keys off pre-pop valid_q; valid_pushed is the
+  // post-push pre-pop vector; pop_fifo then shifts down by 1.
+  // The pop-then-push ordering breaks bypass+same-cycle-pop: empty FIFO,
+  // in_valid_i=1, consumer takes the bypass word — pop-first incorrectly
+  // stores the just-consumed word into slot 0, and the next PC reads stale
+  // data. Push-first keeps slot 0 empty (entry_en[0]=0 so rdata_q[0] holds).
+  // DEPTH=3 in scope — unrolled.
+  /// spec §Single-write / single-aligned-pop FIFO discipline (push side),
+  /// §Clear flushes all entries and reseeds PC (clear-wins semantics),
+  /// §Depth and producer back-pressure (push lands in lowest free slot)
+  let lowest_free_0: Bool = not valid_q[0];
+  let lowest_free_1: Bool = not valid_q[1] and valid_q[0];
+  let lowest_free_2: Bool = not valid_q[2] and valid_q[1];
+
+  let valid_pushed_0: Bool = valid_q[0] or (in_valid_i and lowest_free_0);
+  let valid_pushed_1: Bool = valid_q[1] or (in_valid_i and lowest_free_1);
+  let valid_pushed_2: Bool = valid_q[2] or (in_valid_i and lowest_free_2);
+
+  // Per-entry write enables: entry i is written when (a) pop shifts down
+  // from i+1 (which itself just got pushed or already held data) OR
+  // (b) bypass writes into the lowest free slot AND no pop is happening.
+  let entry_en_0: Bool = (valid_pushed_1 and pop_fifo) or (in_valid_i and lowest_free_0 and not pop_fifo);
+  let entry_en_1: Bool = (valid_pushed_2 and pop_fifo) or (in_valid_i and lowest_free_1 and not pop_fifo);
+  let entry_en_2: Bool = in_valid_i and lowest_free_2;
+
+  // Per-entry "next data": valid_q[i+1] ? rdata_q[i+1] : in_rdata_i for
+  // i<DEPTH-1; in_rdata_i for the top. Mirrors upstream lines 212-221.
+  let rdata_next_0: UInt<32> = valid_q[1] ? rdata_q[1] : in_rdata_i;
+  let rdata_next_1: UInt<32> = valid_q[2] ? rdata_q[2] : in_rdata_i;
+  let err_next_0:   Bool     = valid_q[1] ? err_q[1]   : in_err_i;
+  let err_next_1:   Bool     = valid_q[2] ? err_q[2]   : in_err_i;
+
+  wire valid_d: Vec<Bool, 3>;
+  wire rdata_d: Vec<UInt<32>, 3>;
+  wire err_d:   Vec<Bool, 3>;
+
+  comb
+    // pop_fifo shifts valid_pushed down by one; top becomes 0.
+    // clear_i then masks all valid bits low (clear wins over both push and pop).
+    if pop_fifo
+      valid_d[0] = valid_pushed_1 and not clear_i;
+      valid_d[1] = valid_pushed_2 and not clear_i;
+      valid_d[2] = false;
+    else
+      valid_d[0] = valid_pushed_0 and not clear_i;
+      valid_d[1] = valid_pushed_1 and not clear_i;
+      valid_d[2] = valid_pushed_2 and not clear_i;
+    end if
+
+    // Data/err: hold previous when not enabled (clear does NOT touch these;
+    // unreset under ResetAll=0 is safe because producer issues clear-then-valid
+    // out of reset, so stale-but-invalid never surfaces).
+    rdata_d[0] = entry_en_0 ? rdata_next_0 : rdata_q[0];
+    rdata_d[1] = entry_en_1 ? rdata_next_1 : rdata_q[1];
+    rdata_d[2] = entry_en_2 ? in_rdata_i   : rdata_q[2];
+
+    err_d[0] = entry_en_0 ? err_next_0 : err_q[0];
+    err_d[1] = entry_en_1 ? err_next_1 : err_q[1];
+    err_d[2] = entry_en_2 ? in_err_i   : err_q[2];
+  end comb
+
+  // Next-state for instr_addr_q.
+  /// spec §Clear flushes all entries and reseeds PC (PC = in_addr_i[31:1]),
+  /// §Single-write / single-aligned-pop FIFO discipline (PC += 4),
+  /// §Unaligned compressed (PC += 2)
+  let pc_incr: UInt<31> = addr_incr_two ? 31'd1 : 31'd2;
+  let pc_advance: Bool = out_ready_i and out_valid_o;
+
+  wire instr_addr_d: UInt<31>;
+  comb
+    if clear_i
+      instr_addr_d = in_addr_i[31:1];
+    elsif pc_advance
+      instr_addr_d = instr_addr_q +% pc_incr;
+    else
+      instr_addr_d = instr_addr_q;
+    end if
+  end comb
+
+  // ── Clocked next-state ─────────────────────────────────────────────────
+  seq on clk_i rising
+    valid_q[0] <= valid_d[0];
+    valid_q[1] <= valid_d[1];
+    valid_q[2] <= valid_d[2];
+
+    rdata_q[0] <= rdata_d[0];
+    rdata_q[1] <= rdata_d[1];
+    rdata_q[2] <= rdata_d[2];
+
+    err_q[0] <= err_d[0];
+    err_q[1] <= err_d[1];
+    err_q[2] <= err_d[2];
+
+    instr_addr_q <= instr_addr_d;
+  end seq
+end module ibex_fetch_fifo
