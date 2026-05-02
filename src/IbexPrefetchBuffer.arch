@@ -14,36 +14,70 @@ module ibex_prefetch_buffer
   /// ref: specs/prefetch_buffer/spec.md §Reset State
   param ResetAll[0:0]: const = 1'b0;
 
-  /// `pragma rdc_safe` is intentional and addresses a metastability
+  /// `pragma rdc_safe` is intentional and addresses the metastability
   /// concern the strict RDC pass would otherwise flag on the unreset
   /// `stored_addr_q` / `fetch_addr_q` registers (see below). The
-  /// suppression is sound under the upstream lowRISC reset-synchronisation
-  /// contract:
+  /// suppression is sound under TWO independent contracts — one for the
+  /// deassert edge, one for the assert edge — that together gate any
+  /// metastability the unreset registers might capture from reaching a
+  /// downstream consumer:
   ///
-  ///   - `rst_ni` is delivered to this block already async-asserted but
-  ///     SYNC-DEASSERTED to `clk_i`, by a chip-level reset manager that
-  ///     instantiates `prim_rst_sync` (a 2FF "async assert, sync de-assert"
-  ///     synchroniser) per clock domain. See `vendor/lowrisc_ip/ip/prim/
-  ///     rtl/prim_rst_sync.sv` upstream.
-  ///   - With deassert-edge synchronisation upstream, no upstream register
-  ///     undergoes a mid-cycle async transition relative to this block's
-  ///     `clk_i`, so the reset-domain-crossing path that the RDC pass is
-  ///     warning about cannot produce a metastable transient downstream of
-  ///     `stored_addr_q` / `fetch_addr_q`.
+  /// === Deassert-edge contract (handled upstream of this block) ===
+  /// `rst_ni` is delivered already async-asserted but SYNC-DEASSERTED
+  /// to `clk_i` by a chip-level reset manager that instantiates
+  /// `prim_rst_sync` (a 2FF "async assert, sync de-assert" synchroniser)
+  /// per clock domain. See `vendor/lowrisc_ip/ip/prim/rtl/prim_rst_sync.sv`
+  /// upstream. With deassert-edge synchronisation, no upstream register
+  /// undergoes a mid-cycle async transition relative to this block's
+  /// `clk_i`, so the reset-domain-crossing path the RDC pass is flagging
+  /// cannot produce a metastable transient at the deassert edge.
+  ///
+  /// === Assert-edge contract (gated within this block + at the SoC) ===
+  /// At the async-assert edge, `prim_rst_sync` does NOT protect against
+  /// metastability — the assert is intentionally async for safety
+  /// (guaranteed reset reach within one cycle). Downstream-of-unreset
+  /// flops can theoretically capture metastable values from comb paths
+  /// that depend on simultaneously-async-resetting upstream registers.
+  /// Three structural gates prevent that metastability from being
+  /// observed:
+  ///
+  ///   (G1) `valid_req_q` is async-reset to 0 at this block, forcing
+  ///        `instr_req_o = valid_req_q OR valid_new_req` to be controlled
+  ///        entirely by `valid_new_req` during reset.
+  ///   (G2) `valid_new_req = req_i AND (fifo_ready OR branch_i) AND NOT
+  ///        rdata_outstanding_q[1]`. Per upstream Ibex contract,
+  ///        `ibex_if_stage` holds `req_i = 0` during reset assert (its
+  ///        own `req_buffer` register has async reset on the same
+  ///        `rst_ni`). With `req_i = 0`, `valid_new_req = 0`, so
+  ///        `instr_req_o = 0`. The bus master ignores `instr_addr_o`
+  ///        regardless of any metastable value latched in
+  ///        `fetch_addr_q` / `stored_addr_q`.
+  ///   (G3) The bus master's address-receive register has async reset
+  ///        on the same `rst_ni` (true of any OBI consumer that complies
+  ///        with the upstream Ibex memory-interface convention,
+  ///        including arch-ibex's `soc/ibex_mini_soc.sv`). Even if the
+  ///        master happened to attempt a sample, async-reset would
+  ///        clobber the metastable input to 0.
+  ///
+  /// Internal recursive metastability in the `fetch_addr_q ↔ fetch_addr_d`
+  /// loop, and capture into `stored_addr_q` (gated by `valid_req_q AND
+  /// valid_new_req`, both 0 during reset), resolves to a defined value
+  /// within O(few clock periods) per standard MTBF analysis. The first
+  /// SoC instruction post-deassert is a branch, which then overwrites
+  /// `fetch_addr_q` with the boot PC before the resolved-but-undefined
+  /// value can ever be observed.
   ///
   /// Upstream Ibex leaves these two address registers unreset for area
-  /// (one less reset mux per bit, ~64 muxes total) and relies on the
-  /// SoC's first-instruction-is-a-branch invariant for functional
-  /// correctness — the unreset values are overwritten before any
-  /// consumer samples them. This functional argument is documented in
-  /// the spec's Reset State Requirement; it is independent of the RDC
-  /// suppression rationale above.
+  /// (one less reset mux per bit, ~64 muxes total). This is the design
+  /// trade-off the spec's Reset State Requirement documents.
   ///
   /// Caveat for SoC integrators: the arch-ibex `soc/ibex_mini_soc.sv`
   /// wires `rst_sys_n = IO_RST_N` directly without a `prim_rst_sync`.
   /// That is a simulation-only shortcut; a production integration MUST
-  /// place `prim_rst_sync` (or equivalent) between the external reset
-  /// pin and any Ibex block to honour this contract.
+  /// (a) place `prim_rst_sync` (or equivalent) between the external
+  /// reset pin and any Ibex block to honour the deassert-edge contract,
+  /// and (b) ensure the bus master's address-receive register has
+  /// async reset on the same domain to honour gate G3.
   ///
   /// ref: specs/prefetch_buffer/spec.md §"Reset State"
   pragma rdc_safe;
