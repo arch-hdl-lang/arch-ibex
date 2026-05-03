@@ -101,6 +101,25 @@ module ibex_load_store_unit
   reg handle_misaligned_q:      Bool     reset rst_ni => false;
   /// True from first request until last grant; drives busy_o.
   reg lsu_busy_q:               Bool     reset rst_ni => false;
+
+  /// Misaligned-only: set on the cycle of the SECOND grant, cleared on
+  /// the cycle of the FIRST rvalid. While set, the wait-rvalid state
+  /// suppresses response outputs (lsu_resp_valid_o etc.) and treats the
+  /// incoming rvalid as the "first" rvalid (capture upper bytes only,
+  /// don't advance to IDLE). When clear, the wait-rvalid state treats
+  /// the incoming rvalid as final (drive response, clear lsu_busy_q).
+  /// For aligned accesses this register stays 0 throughout — the only
+  /// rvalid IS the final one.
+  reg awaiting_first_mis_rvalid_q: Bool reset rst_ni => false;
+
+  /// 1-cycle delayed version of `handle_misaligned_q`. Used to gate
+  /// `lsu_req_done_o` for misaligned-second-grant detection: the comb
+  /// `handle_misaligned_q AND data_gnt_i` would fire on the FIRST
+  /// grant cycle too (handle_misaligned_q was just set, gnt is still
+  /// high in the same cycle — same-cycle aliasing). Using the delayed
+  /// version means the gate fires only when handle_misaligned_q was
+  /// ALREADY 1 BEFORE this cycle's grant arrived.
+  reg handle_misaligned_d:           Bool reset rst_ni => false;
   /// Bus error latched from first rvalid of a misaligned load.
   reg bus_err_q:                Bool     reset rst_ni => false;
 
@@ -298,6 +317,10 @@ module ibex_load_store_unit
     addr_last_o = addr_last_q;
 
     // ref: specs/load_store_unit/spec.md §"Requirement: busy_o"
+    // `lsu_busy_q` is the explicit ARCH analogue of upstream's
+    // `(ls_fsm_cs != IDLE)` — set when entering a non-idle FSM phase
+    // (WAIT_GNT, WAIT_GNT_MIS, WAIT_RVALID_MIS), cleared when
+    // returning to IDLE.
     busy_o = lsu_busy_q;
 
     // MemECC=0: integrity error outputs always 0
@@ -311,134 +334,163 @@ module ibex_load_store_unit
     // access — perfectly aligned with handle_misaligned_q.
     // ref: specs/load_store_unit/spec.md §"Requirement: Misaligned Access Split"
     addr_incr_req_o = handle_misaligned_q;
-    // lsu_rdata_valid_o / load_err_o / store_err_o / data_req_o / lsu_req_done_o
-    // / perf_load_o / perf_store_o / lsu_resp_valid_o driven from thread.
+
+    // ── Response outputs (driven combinationally from bus inputs) ─────
+    // Mirrors upstream `lsu_resp_valid_o = (rvalid | pmp_err_q) & (ls_fsm_cs == IDLE);`
+    // — the response gate `not lsu_busy_q` ensures lsu_resp_valid_o is
+    // suppressed during all non-IDLE phases (WAIT_GNT, WAIT_RVALID_MIS,
+    // etc.). For aligned with immediate grant, lsu_busy_q stays 0 and
+    // lsu_resp_valid_o tracks rvalid combinationally — coincident with
+    // the rvalid pulse, no FSM-state-transition latency.
+    // For misaligned: lsu_busy_q is high through WAIT_RVALID_MIS, so
+    // the first rvalid is suppressed; lsu_busy_q clears on the SECOND
+    // rvalid (the final), at which point lsu_resp_valid_o tracks it.
+    // ref: specs/load_store_unit/spec.md §"Requirement: lsu_resp_valid_o"
+    // ref: specs/load_store_unit/spec.md §"Requirement: lsu_rdata_valid_o"
+    // ref: specs/load_store_unit/spec.md §"Requirement: Error Reporting"
+    lsu_resp_valid_o  = (data_rvalid_i or pmp_err_q) and not lsu_busy_q;
+    lsu_rdata_valid_o = data_rvalid_i and not lsu_busy_q
+                        and not data_we_q and not data_bus_err_i and not pmp_err_q;
+    load_err_o  = lsu_resp_valid_o and bus_or_pmp_err and not data_we_q;
+    store_err_o = lsu_resp_valid_o and bus_or_pmp_err and data_we_q;
+
+    // data_req_o / lsu_req_done_o / perf_load_o / perf_store_o driven from thread.
   end comb
 
   // ── OBI sequencing thread ─────────────────────────────────────────
-  /// The thread implements the request/grant/rvalid FSM.
+  /// The thread is a SINGLE-STATE FSM that mirrors upstream's
+  /// `ls_fsm_cs` register transitions via the `lsu_busy_q` register:
   ///
-  /// Combined IDLE+first-grant is a single `do..until` so that `data_req_o`
-  /// tracks `lsu_req_i` combinatorially from IDLE (zero-cycle handshake when
-  /// `data_gnt_i` is high on the same cycle as `lsu_req_i`).
+  ///   - `lsu_busy_q == false` ↔ upstream `ls_fsm_cs == IDLE`. The LSU
+  ///     is either truly idle, OR is in the implicit "wait for rvalid"
+  ///     phase of an aligned access (which upstream handles in IDLE).
+  ///   - `lsu_busy_q == true` ↔ upstream `ls_fsm_cs ∈ {WAIT_GNT,
+  ///     WAIT_GNT_MIS, WAIT_RVALID_MIS, WAIT_RVALID_MIS_GNTS_DONE}`.
   ///
-  /// All seq assigns that must fire on the grant cycle are placed INSIDE
-  /// the relevant `do` body, conditional on the exit predicate, so that the
-  /// next state begins on the cycle immediately after grant (no dead-skid).
+  /// Response outputs (lsu_resp_valid_o, lsu_rdata_valid_o, load_err_o,
+  /// store_err_o) are driven combinationally at module scope, gated by
+  /// `not lsu_busy_q` — exactly upstream's `(rvalid | pmp_err) &
+  /// (ls_fsm_cs == IDLE)` pattern. This is the only way to satisfy the
+  /// spec's "lsu_resp_valid_o asserts on the rvalid cycle while FSM is
+  /// in IDLE" semantic without an FSM transition gating the comb.
   ///
-  /// A dead-skid IS kept between Phase 3 (first rvalid capture) and Phase 4
-  /// (final rvalid + response outputs) so that on the cycle of the first
-  /// rvalid `lsu_resp_valid_o` is NOT yet asserted — required by
-  /// `test_misaligned_access_split`.
+  /// The thread runs every cycle in a single `do { ... } until false;`
+  /// (single state — never exits) and processes all transitions via
+  /// register updates. State transitions are encoded as conditional
+  /// updates of `lsu_busy_q`, `handle_misaligned_q`, and
+  /// `awaiting_first_mis_rvalid_q`:
+  ///
+  ///   - First request cycle without immediate grant → enter WAIT_GNT
+  ///     (lsu_busy_q <= true).
+  ///   - Aligned first grant → return to IDLE (lsu_busy_q <= false if
+  ///     coming from WAIT_GNT, or stays IDLE if immediate grant).
+  ///   - Misaligned first grant → enter WAIT_RVALID_MIS (lsu_busy_q
+  ///     <= true, handle_misaligned_q <= true).
+  ///   - Misaligned second grant → arm
+  ///     awaiting_first_mis_rvalid_q (lsu_busy_q stays true).
+  ///   - Misaligned first rvalid → capture upper bytes, clear
+  ///     awaiting_first_mis_rvalid_q (lsu_busy_q stays true).
+  ///   - Misaligned second/final rvalid → return to IDLE
+  ///     (lsu_busy_q <= false).
   ///
   /// ref: specs/load_store_unit/spec.md §"Requirement: OBI-Handshake"
+  /// ref: specs/load_store_unit/spec.md §"Requirement: Misaligned Access Split"
+  /// ref: specs/load_store_unit/spec.md §"Requirement: busy_o"
   thread LsuReq on clk_i rising, rst_ni low
 
-    // ── Combined IDLE + first-grant ──────────────────────────────────
-    // `data_req_o` tracks `lsu_req_i` combinatorially in this state.
-    // Capture seq assigns fire on the grant cycle (lsu_req_i AND data_gnt_i).
-    // ref: specs/load_store_unit/spec.md §"Requirement: Performance Counter Pulses"
     do
-      data_req_o     = lsu_req_i;
+      // ── Comb outputs driven from this state ─────────────────────
+      // Drive request: high on initial req (lsu_req_i, in IDLE) OR
+      // while in WAIT_GNT (lsu_req_i held by ID/EX) OR while issuing
+      // the misaligned second transaction (handle_misaligned_q).
+      data_req_o     = lsu_req_i or handle_misaligned_q;
+
+      // Performance counters: pulse exactly on the FIRST cycle of a
+      // new request (lsu_busy_q==0 disambiguates from WAIT_GNT and
+      // misaligned re-issue, where lsu_req_i is also high).
+      // ref: specs/load_store_unit/spec.md §"Requirement: Performance Counter Pulses"
       perf_load_o    = lsu_req_i and not lsu_we_i and not lsu_busy_q;
       perf_store_o   = lsu_req_i and lsu_we_i and not lsu_busy_q;
-      // lsu_req_done_o pulses on the LAST grant only (aligned: this loop;
-      // misaligned: Phase 2). Suppressed here for misaligned first grant.
-      lsu_req_done_o = lsu_req_i and data_gnt_i and not split_misaligned_access;
-      if lsu_req_i
+
+      // lsu_req_done_o pulses on the LAST grant of a transaction:
+      //   - aligned: first (and only) grant — req+gnt without misaligned active.
+      //   - misaligned: second grant — handle_misaligned_d (the 1-cycle
+      //     delayed flag) AND gnt. Using the delayed flag avoids
+      //     same-cycle aliasing: handle_misaligned_q is set on the
+      //     first-grant cycle along with gnt, so testing
+      //     handle_misaligned_q AND gnt would falsely fire on the first
+      //     grant. handle_misaligned_d only goes high in the cycle AFTER
+      //     handle_misaligned_q does, so by the time we test
+      //     handle_misaligned_d AND gnt we know we're at the SECOND grant.
+      // ref: specs/load_store_unit/spec.md §"Requirement: lsu_req_done_o"
+      lsu_req_done_o = (lsu_req_i and data_gnt_i and not split_misaligned_access and not handle_misaligned_q)
+                       or (handle_misaligned_d and data_gnt_i);
+
+      // Maintain the 1-cycle delay register.
+      handle_misaligned_d <= handle_misaligned_q;
+
+      // ── Seq updates: encode FSM state transitions ───────────────
+      // First-cycle-of-request: capture LSU control regs. Gated by
+      // `not lsu_busy_q` so this fires only on the IDLE → request edge.
+      if lsu_req_i and not lsu_busy_q
         data_type_q     <= lsu_type_i;
         data_sign_ext_q <= lsu_sign_ext_i;
         data_we_q       <= lsu_we_i;
         rdata_offset_q  <= data_offset;
-        lsu_busy_q      <= true;
         bus_err_q       <= false;
-        if data_gnt_i
-          // Capture address on the grant cycle for both paths.
-          addr_last_q         <= data_addr;
-          pmp_err_q           <= data_pmp_err_i;
-          // For misaligned: enable second-transaction BE mux at next state
-          // (also drives addr_incr_req_o so ID/EX advances adder_result_ex_i).
-          handle_misaligned_q <= split_misaligned_access;
+      end if
+
+      // IDLE → WAIT_GNT: req asserted but no immediate grant. Enter
+      // non-idle (busy_o goes high next cycle).
+      if lsu_req_i and not data_gnt_i and not lsu_busy_q
+        lsu_busy_q <= true;
+      end if
+
+      // First grant (IDLE or WAIT_GNT → next state):
+      //   - Aligned: WAIT_GNT → IDLE (lsu_busy_q <= false), captures done.
+      //   - Misaligned: any → WAIT_RVALID_MIS (lsu_busy_q <= true,
+      //     handle_misaligned_q <= true). For the IDLE→WAIT_RVALID_MIS
+      //     case, lsu_busy_q transitions 0 → 1.
+      if lsu_req_i and data_gnt_i and not handle_misaligned_q
+        addr_last_q         <= data_addr;
+        pmp_err_q           <= data_pmp_err_i;
+        handle_misaligned_q <= split_misaligned_access;
+        if split_misaligned_access
+          lsu_busy_q <= true;       // entering WAIT_RVALID_MIS
+        else
+          lsu_busy_q <= false;      // returning to IDLE (aligned done)
         end if
       end if
-    until lsu_req_i and data_gnt_i;
 
-    if split_misaligned_access
+      // Misaligned-second-grant: WAIT_RVALID_MIS (handle_misaligned_q==1)
+      // gets second gnt. Update addr_last, OR pmp errors, clear
+      // handle_misaligned_q, arm awaiting_first_mis_rvalid_q. lsu_busy_q
+      // stays true (still in non-idle phase, awaiting both rvalids).
+      if handle_misaligned_q and data_gnt_i
+        addr_last_q                  <= data_addr;
+        pmp_err_q                    <= pmp_err_q or data_pmp_err_i;
+        handle_misaligned_q          <= false;
+        awaiting_first_mis_rvalid_q  <= true;
+      end if
 
-      // ── MISALIGNED PATH ──────────────────────────────────────────
-      // Phase 2: second OBI transaction.  addr_incr_req_o is driven by the
-      // static comb block via handle_misaligned_q (true here).  ID/EX takes
-      // 1 cycle to update adder_result_ex_i after addr_incr_req_o, but the
-      // first cycle of Phase 2 was the dead-skid handle_misaligned_q
-      // transition, so adder_result_ex_i is already valid by the loop body.
-      // ref: specs/load_store_unit/spec.md §"Requirement: Misaligned Access Split"
-      do
-        data_req_o     = 1;
-        lsu_req_done_o = data_gnt_i;
-        if data_gnt_i
-          addr_last_q         <= data_addr;
-          pmp_err_q           <= pmp_err_q or data_pmp_err_i;
-          handle_misaligned_q <= false;
-        end if
-      until data_gnt_i;
+      // Misaligned first-rvalid: capture upper bytes, clear awaiting.
+      // lsu_busy_q stays true (still need to wait for second rvalid).
+      if data_rvalid_i and awaiting_first_mis_rvalid_q
+        rdata_q                      <= data_rdata_i[31:8];
+        bus_err_q                    <= data_bus_err_i;
+        awaiting_first_mis_rvalid_q  <= false;
+      end if
 
-      // Phase 3: first rvalid — capture upper bytes on rvalid edge.
-      // No dead-skid before Phase 3: Phase 3 starts the cycle after second
-      // grant, so the FIRST rvalid is captured (not the second).
-      // lsu_req_done_o = data_gnt_i extends the pulse one cycle past the
-      // grant boundary so the output is visible at clock+1ns sampling.
-      do
-        lsu_req_done_o = data_gnt_i;
-        if data_rvalid_i
-          rdata_q   <= data_rdata_i[31:8];
-          bus_err_q <= data_bus_err_i;
-        end if
-      until data_rvalid_i;
-
-      // Dead-skid between Phase 3 and Phase 4: required so that on the cycle
-      // of the first rvalid `lsu_resp_valid_o` is NOT yet asserted.
-      // `lsu_busy_q <= false` provides the dead-skid AND clears busy after
-      // the LSU has captured the first rvalid.
-      lsu_busy_q <= false;
-
-      // Phase 4: second (final) rvalid — drive response outputs.
-      // ref: specs/load_store_unit/spec.md §"Requirement: lsu_resp_valid_o"
-      // ref: specs/load_store_unit/spec.md §"Requirement: lsu_rdata_valid_o"
-      // ref: specs/load_store_unit/spec.md §"Requirement: Error Reporting"
-      do
-        lsu_resp_valid_o  = data_rvalid_i or pmp_err_q;
-        lsu_rdata_valid_o = data_rvalid_i and not data_we_q
-                            and not data_bus_err_i and not bus_err_q and not pmp_err_q;
-        load_err_o  = (data_rvalid_i or pmp_err_q) and bus_or_pmp_err and not data_we_q;
-        store_err_o = (data_rvalid_i or pmp_err_q) and bus_or_pmp_err and data_we_q;
-      until data_rvalid_i or pmp_err_q;
-
-    else
-
-      // ── ALIGNED PATH ─────────────────────────────────────────────
-      // Wait for final rvalid OR a registered PMP error.
-      // lsu_req_done_o = data_gnt_i extends the pulse one cycle past the
-      // grant boundary so the output is visible at clock+1ns sampling.
-      // lsu_busy_q <= false fires inside the loop on rvalid exit so busy_o
-      // remains 1 throughout the rvalid wait.
-      // ref: specs/load_store_unit/spec.md §"Requirement: lsu_resp_valid_o"
-      // ref: specs/load_store_unit/spec.md §"Requirement: lsu_rdata_valid_o"
-      // ref: specs/load_store_unit/spec.md §"Requirement: Error Reporting"
-      do
-        lsu_resp_valid_o  = data_rvalid_i or pmp_err_q;
-        lsu_rdata_valid_o = data_rvalid_i and not data_we_q
-                            and not data_bus_err_i and not pmp_err_q;
-        load_err_o  = (data_rvalid_i or pmp_err_q) and bus_or_pmp_err and not data_we_q;
-        store_err_o = (data_rvalid_i or pmp_err_q) and bus_or_pmp_err and data_we_q;
-        lsu_req_done_o = data_gnt_i;
-        if data_rvalid_i or pmp_err_q
-          lsu_busy_q <= false;
-        end if
-      until data_rvalid_i or pmp_err_q;
-
-    end if
-
-    // Thread loops back to IDLE+first-grant automatically.
+      // Final rvalid (misaligned-second OR pmp_err in non-idle phase):
+      // clear busy → return to IDLE. NOTE: aligned-rvalid does NOT need
+      // to be handled here because aligned-rvalid arrives while
+      // lsu_busy_q is already 0 (we returned to IDLE on first grant);
+      // no register update needed for aligned response.
+      if (data_rvalid_i and not awaiting_first_mis_rvalid_q and lsu_busy_q)
+         or (pmp_err_q and lsu_busy_q)
+        lsu_busy_q <= false;
+      end if
+    until false;
 
   end thread LsuReq
 
