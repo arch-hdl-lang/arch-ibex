@@ -41,23 +41,7 @@ MODULES = [
     ("IbexCounter",            "test_ibex_counter_unit.py"),
     ("IbexDecoder",            "test_ibex_decoder_unit.py"),
     ("IbexCompressedDecoder",  "test_ibex_compressed_decoder_unit.py"),
-    pytest.param(
-        "IbexMultdivFast", "test_ibex_multdiv_fast_unit.py",
-        marks=pytest.mark.xfail(
-            strict=True,
-            reason=(
-                "arch-com sim_codegen bug: packed Vec output emits illegal "
-                "C++ array assignment (`_imd_val_d_o = 0;` on a uint64_t[2]). "
-                "Triggered when IbexMultdivFast's imd_val_q/d ports were "
-                "switched from `unpacked Vec` to packed Vec for B1 IbexExBlock "
-                "instantiation (per spec §624 `restructure to keep both sides "
-                "packed when the entire path is ARCH`). "
-                "Verilator (cocotb) per-module + SoC ISR programs all pass; "
-                "only the arch-sim equivalence backend is affected. "
-                "Tracking arch-com issue #264 (sim_codegen array-assignment bug)."
-            ),
-        ),
-    ),
+    ("IbexMultdivFast", "test_ibex_multdiv_fast_unit.py"),
 ]
 
 
