@@ -1,0 +1,413 @@
+/// IbexIfStage — Instruction-Fetch stage container for the Ibex pipeline.
+///
+/// Drives the next-PC mux, instantiates the prefetch buffer, expands
+/// compressed (RV32C) instructions, combines bus-side and PMP-side
+/// fetch errors, and latches the result into the IF->ID pipeline
+/// registers consumed by the ID stage.
+///
+/// Spec: changes/port-if_stage/specs/if_stage/spec.md
+///
+/// SoC parameter pinning (see spec):
+///   ICache=0, BranchPredictor=0, DummyInstructions=0, MemECC=0,
+///   PCIncrCheck=0, ResetAll=0, RV32ZC=3 (RV32ZcaZcbZcmp).
+///
+/// Construct: plain `module` outer container with two sub-instances
+/// (`IbexPrefetchBuffer`, `IbexCompressedDecoder`), one comb block for
+/// every Requirement's combinational path, two async-low-reset state
+/// regs (`instr_valid_id_q`, `instr_new_id_q`), and ten reset-free
+/// `port reg ... guard if_id_pipe_reg_we` IF->ID pipeline registers
+/// per Requirement 7's no-reset (ResetAll=0) discipline.
+
+/// Packed exception-cause struct delivered by the controller. The
+/// declaration order matches upstream `ibex_pkg::exc_cause_t`:
+/// `irq_int` is the MSB, then `irq_ext`, then `lower_cause[4:0]`.
+struct ExcCause
+  irq_int: Bool;
+  irq_ext: Bool;
+  lower_cause: UInt<5>;
+end struct ExcCause
+
+module ibex_if_stage
+  /// Toolchain-shaped params: pinned to the SoC's values, but declared
+  /// so the cocotb test runner's parameter overrides bind.
+  param ICache[0:0]: const = 1'd0;
+  param BranchPredictor[0:0]: const = 1'd0;
+  param DummyInstructions[0:0]: const = 1'd0;
+  param MemECC[0:0]: const = 1'd0;
+  param PCIncrCheck[0:0]: const = 1'd0;
+  param ResetAll[0:0]: const = 1'd0;
+  param RV32ZC: const = 3;
+  param DmHaltAddr: const = 32'h1A11_0800;
+  param DmExceptionAddr: const = 32'h1A11_0808;
+
+  /// ICache geometry parameters. With `ICache=0` the corresponding
+  /// outputs are tied to 0 (Requirement 10), but the port widths must
+  /// still be parameterised so they match the upstream port contract.
+  param IC_NUM_WAYS: const = 2;
+  param IC_INDEX_W: const = 8;
+  param TagSizeECC: const = 29;
+  param LineSizeECC: const = 72;
+
+  /// Upstream-shape params declared but unused under the SoC pinning
+  /// (`ICache=0`, `MemECC=0`, `DummyInstructions=0`). Required so the
+  /// `ibex_core` instantiation site in the SoC can pass them through
+  /// without Verilator raising PINNOTFOUND.
+  param ICacheECC[0:0]: const = 1'd0;
+  param ICacheTweakInfection[0:0]: const = 1'd0;
+  param BusSizeECC: const = 32;
+  param MemDataWidth: const = 32;
+  param RndCnstLfsrSeed[31:0]: const = 32'hac53_3bf4;
+  param RndCnstLfsrPerm[159:0]: const = 0;
+
+  // ── Clock + reset ─────────────────────────────────────────────────
+  port clk_i: in Clock<SysDomain>;
+  port rst_ni: in Reset<Async, Low>;
+
+  // ── Boot ──────────────────────────────────────────────────────────
+  port boot_addr_i: in UInt<32>;
+
+  // ── Instruction-bus side ──────────────────────────────────────────
+  port req_i: in Bool;
+  port instr_req_o: out Bool;
+  port instr_addr_o: out UInt<32>;
+  port instr_gnt_i: in Bool;
+  port instr_rvalid_i: in Bool;
+  port instr_rdata_i: in UInt<32>;
+  port instr_bus_err_i: in Bool;
+  port instr_intg_err_o: out Bool;
+
+  // ── ICache tieoff outputs (driven 0; Requirement 10) ──────────────
+  port ic_tag_req_o: out UInt<IC_NUM_WAYS>;
+  port ic_tag_write_o: out Bool;
+  port ic_tag_addr_o: out UInt<IC_INDEX_W>;
+  port ic_tag_wdata_o: out UInt<TagSizeECC>;
+  port ic_data_req_o: out UInt<IC_NUM_WAYS>;
+  port ic_data_write_o: out Bool;
+  port ic_data_addr_o: out UInt<IC_INDEX_W>;
+  port ic_data_wdata_o: out UInt<LineSizeECC>;
+  port ic_scr_key_req_o: out Bool;
+  port icache_ecc_error_o: out Bool;
+
+  // ── ICache read-back (unpacked Vec; absorbed) ─────────────────────
+  port ic_tag_rdata_i: in unpacked Vec<UInt<TagSizeECC>, IC_NUM_WAYS>;
+  port ic_data_rdata_i: in unpacked Vec<UInt<LineSizeECC>, IC_NUM_WAYS>;
+  port ic_scr_key_valid_i: in Bool;
+  port icache_enable_i: in Bool;
+  port icache_inval_i: in Bool;
+
+  // ── Dummy-instruction control (absorbed; DummyInstructions=0) ─────
+  port dummy_instr_en_i: in Bool;
+  port dummy_instr_mask_i: in UInt<3>;
+  port dummy_instr_seed_en_i: in Bool;
+  port dummy_instr_seed_i: in UInt<32>;
+
+  // ── IF->ID pipeline outputs ───────────────────────────────────────
+  port instr_valid_id_o: out Bool;
+  port instr_new_id_o: out Bool;
+  /// IF->ID pipeline registers using `pipe_reg<T, 1>` (preferred form
+  /// over the deprecated `port reg ... guard`). The `if if_id_pipe_reg_we`
+  /// gate in the seq block below provides the same write-enable
+  /// semantics. No `reset` clause → the regs have no reset arm under
+  /// ResetAll=0.
+  port instr_rdata_id_o: out pipe_reg<UInt<32>, 1>;
+  port instr_rdata_alu_id_o: out pipe_reg<UInt<32>, 1>;
+  port instr_rdata_c_id_o: out pipe_reg<UInt<16>, 1>;
+  port instr_is_compressed_id_o: out pipe_reg<Bool, 1>;
+  /// `gets_expanded_o` from `IbexCompressedDecoder` is `UInt<2>` per its
+  /// `.archi` (instr_exp_e encoding: NOT_EXPANDED=0, EXPANDED=1, EXPANDED_LAST=2).
+  port instr_gets_expanded_id_o: out pipe_reg<UInt<2>, 1>;
+  port instr_expanded_id_o: out pipe_reg<UInt<16>, 1>;
+  port illegal_c_insn_id_o: out pipe_reg<Bool, 1>;
+  port instr_fetch_err_o: out pipe_reg<Bool, 1>;
+  port instr_fetch_err_plus2_o: out pipe_reg<Bool, 1>;
+  port pc_id_o: out pipe_reg<UInt<32>, 1>;
+  port dummy_instr_id_o: out Bool;
+  port instr_bp_taken_o: out Bool;
+
+  // ── ID->IF control ────────────────────────────────────────────────
+  port instr_valid_clear_i: in Bool;
+  port id_in_ready_i: in Bool;
+  port pc_set_i: in Bool;
+  /// `pc_mux_i` encodes upstream `pc_sel_e`. PC_BOOT=0, PC_JUMP=1,
+  /// PC_EXC=2, PC_ERET=3, PC_DRET=4, PC_BP=5 (UInt<3>).
+  port pc_mux_i: in UInt<3>;
+  port nt_branch_mispredict_i: in Bool;
+  port nt_branch_addr_i: in UInt<32>;
+  /// `exc_pc_mux_i` encodes upstream `exc_pc_sel_e`. EXC_PC_EXC=0,
+  /// EXC_PC_IRQ=1, EXC_PC_DBD=2, EXC_PC_DBG_EXC=3 (UInt<2>).
+  port exc_pc_mux_i: in UInt<2>;
+  port exc_cause: in ExcCause;
+  port branch_target_ex_i: in UInt<32>;
+  port csr_mepc_i: in UInt<32>;
+  port csr_depc_i: in UInt<32>;
+  port csr_mtvec_i: in UInt<32>;
+  port csr_mtvec_init_o: out Bool;
+  port pmp_err_if_i: in Bool;
+  port pmp_err_if_plus2_i: in Bool;
+  port pc_if_o: out UInt<32>;
+  port if_busy_o: out Bool;
+  port pc_mismatch_alert_o: out Bool;
+
+  /// Enum encodings — `pc_sel_e` and `exc_pc_sel_e` from
+  /// `ibex_pkg.sv`. Plain integer literals are used at the comparison
+  /// / match sites below, matching the project's already-ported modules
+  /// (no `import ibex_pkg::*;` in the SV emission).
+  ///   pc_sel_e:     PC_BOOT=0, PC_JUMP=1, PC_EXC=2,
+  ///                 PC_ERET=3, PC_DRET=4, PC_BP=5
+  ///   exc_pc_sel_e: EXC_PC_EXC=0, EXC_PC_IRQ=1,
+  ///                 EXC_PC_DBD=2, EXC_PC_DBG_EXC=3
+
+  // ── Internal wires ────────────────────────────────────────────────
+  wire fetch_addr_n: UInt<32>;
+  wire branch_req: Bool;
+  wire prefetch_branch: Bool;
+  wire prefetch_addr: UInt<32>;
+  wire fetch_valid_raw: Bool;
+  wire fetch_valid: Bool;
+  wire fetch_ready: Bool;
+  wire fetch_rdata: UInt<32>;
+  wire fetch_addr: UInt<32>;
+  wire fetch_err: Bool;
+  wire fetch_err_plus2: Bool;
+  wire prefetch_busy: Bool;
+
+  wire instr_decompressed: UInt<32>;
+  wire illegal_c_insn: Bool;
+  wire instr_is_compressed: Bool;
+  wire instr_gets_expanded: UInt<2>;
+
+  wire if_instr_valid: Bool;
+  wire if_instr_rdata: UInt<32>;
+  wire if_instr_addr: UInt<32>;
+  wire if_instr_bus_err: Bool;
+  wire if_instr_pmp_err: Bool;
+  wire if_instr_err: Bool;
+  wire if_instr_err_plus2: Bool;
+  wire instr_err_to_prefetch: Bool;
+
+  wire exc_pc: UInt<32>;
+  wire irq_vec: UInt<5>;
+
+  wire instr_valid_id_d: Bool;
+  wire instr_new_id_d: Bool;
+  wire if_id_pipe_reg_we: Bool;
+
+  // ── State registers (Requirement 8) ───────────────────────────────
+  /// Spec §"Requirement 8". Two async-low-reset flops carrying the
+  /// "instruction sits in the IF->ID register" / "instruction just
+  /// landed" signals consumed by the ID stage.
+  reg instr_valid_id_q: Bool reset rst_ni => 1'b0;
+  reg instr_new_id_q: Bool reset rst_ni => 1'b0;
+
+  // ── Sub-module: prefetch buffer (Requirement 4) ───────────────────
+  /// Spec §"Requirement 4". The prefetch buffer drives the OBI
+  /// instruction bus and emits 32-bit fetched words. `ResetAll=0`
+  /// matches the pinned SoC config.
+  inst pb: ibex_prefetch_buffer
+    param ResetAll = 0;
+    clk_i           <- clk_i;
+    rst_ni          <- rst_ni;
+    req_i           <- req_i;
+    branch_i        <- prefetch_branch;
+    addr_i          <- prefetch_addr;
+    ready_i         <- fetch_ready;
+    valid_o         -> fetch_valid_raw;
+    rdata_o         -> fetch_rdata;
+    addr_o          -> fetch_addr;
+    err_o           -> fetch_err;
+    err_plus2_o     -> fetch_err_plus2;
+    instr_req_o     -> instr_req_o;
+    instr_gnt_i     <- instr_gnt_i;
+    instr_addr_o    -> instr_addr_o;
+    instr_rdata_i   <- instr_rdata_i;
+    instr_err_i     <- instr_err_to_prefetch;
+    instr_rvalid_i  <- instr_rvalid_i;
+    busy_o          -> prefetch_busy;
+  end inst pb
+
+  // ── Sub-module: compressed decoder (Requirement 5) ────────────────
+  /// Spec §"Requirement 5". RV32ZC=3 picks the full Zca+Zcb+Zcmp set;
+  /// `valid_i` is qualified by `~fetch_err` so a faulted fetch never
+  /// triggers compressed-instruction handling, and `id_in_ready_i` is
+  /// qualified by `~pc_set_i` so a pending branch stalls the decoder.
+  wire cd_valid_i: Bool;
+  wire cd_id_in_ready_i: Bool;
+  inst cd: ibex_compressed_decoder
+    param RV32ZC = RV32ZC;
+    param ResetAll = 0;
+    clk_i           <- clk_i;
+    rst_ni          <- rst_ni;
+    valid_i         <- cd_valid_i;
+    id_in_ready_i   <- cd_id_in_ready_i;
+    instr_i         <- if_instr_rdata;
+    instr_o         -> instr_decompressed;
+    is_compressed_o -> instr_is_compressed;
+    gets_expanded_o -> instr_gets_expanded;
+    illegal_instr_o -> illegal_c_insn;
+  end inst cd
+
+  // ── Combinational body ────────────────────────────────────────────
+  /// Spec §§"Requirement 1" through "Requirement 10" combinational
+  /// paths. Single block; each section header points at the
+  /// corresponding Requirement scenario.
+  comb
+    // Requirement 1 — exception PC mux + IRQ vector selector.
+    if exc_cause.irq_int
+      irq_vec = 5'd31;
+    else
+      irq_vec = exc_cause.lower_cause;
+    end if
+
+    // Spec §"Requirement 1" — exception PC mux. Match arms encode
+    // upstream `exc_pc_sel_e` (EXC_PC_EXC=0, EXC_PC_IRQ=1,
+    // EXC_PC_DBD=2, EXC_PC_DBG_EXC=3); integer literals are used
+    // because the let-bound enum-value names are runtime values, not
+    // compile-time patterns.
+    match exc_pc_mux_i
+      2'd0 => exc_pc = {csr_mtvec_i[31:8], 8'h00};        // EXC_PC_EXC
+      2'd1 => exc_pc = {csr_mtvec_i[31:8], 1'b0, irq_vec, 2'b00};  // EXC_PC_IRQ
+      2'd2 => exc_pc = DmHaltAddr;                         // EXC_PC_DBD
+      2'd3 => exc_pc = DmExceptionAddr;                    // EXC_PC_DBG_EXC
+      _    => exc_pc = {csr_mtvec_i[31:8], 8'h00};
+    end match
+
+    // Spec §"Requirement 2" — fetch address mux. Under BranchPredictor=0,
+    // `pc_mux_internal` collapses to `pc_mux_i` directly. Match arms
+    // encode upstream `pc_sel_e` (PC_BOOT=0, PC_JUMP=1, PC_EXC=2,
+    // PC_ERET=3, PC_DRET=4, PC_BP=5).
+    match pc_mux_i
+      3'd0 => fetch_addr_n = {boot_addr_i[31:8], 8'h80};   // PC_BOOT
+      3'd1 => fetch_addr_n = branch_target_ex_i;            // PC_JUMP
+      3'd2 => fetch_addr_n = exc_pc;                        // PC_EXC
+      3'd3 => fetch_addr_n = csr_mepc_i;                    // PC_ERET
+      3'd4 => fetch_addr_n = csr_depc_i;                    // PC_DRET
+      3'd5 => fetch_addr_n = {boot_addr_i[31:8], 8'h80};   // PC_BP
+      _    => fetch_addr_n = {boot_addr_i[31:8], 8'h80};
+    end match
+
+    // Requirement 3 — branch-request synthesis. `predict_branch_taken`
+    // hard-tied 0 under BranchPredictor=0, so `branch_req = pc_set_i`.
+    branch_req      = pc_set_i;
+    prefetch_branch = branch_req or nt_branch_mispredict_i;
+    if branch_req
+      prefetch_addr = {fetch_addr_n[31:1], 1'b0};
+    else
+      prefetch_addr = nt_branch_addr_i;
+    end if
+
+    // Requirement 4 — fetch-valid squash on misprediction; ready
+    // qualifier (DummyInstructions=0 → stall_dummy_instr=0).
+    fetch_valid = fetch_valid_raw and not nt_branch_mispredict_i;
+    fetch_ready = id_in_ready_i;
+
+    // Requirement 5 — compressed-decoder qualifiers.
+    cd_valid_i       = fetch_valid and not fetch_err;
+    cd_id_in_ready_i = id_in_ready_i and not pc_set_i;
+
+    // Requirement 6 — bus + PMP error combination. Under MemECC=0
+    // `instr_intg_err = 0` so `instr_err_to_prefetch = instr_bus_err_i`.
+    instr_err_to_prefetch = instr_bus_err_i;
+    if_instr_valid     = fetch_valid;
+    if_instr_rdata     = fetch_rdata;
+    if_instr_addr      = fetch_addr;
+    if_instr_bus_err   = fetch_err;
+    if_instr_pmp_err   = pmp_err_if_i
+                          or (if_instr_addr[1] and (not instr_is_compressed)
+                                and pmp_err_if_plus2_i);
+    if_instr_err       = if_instr_bus_err or if_instr_pmp_err;
+    if_instr_err_plus2 = ((if_instr_addr[1] and (not instr_is_compressed)
+                              and pmp_err_if_plus2_i)
+                            or fetch_err_plus2)
+                           and (not pmp_err_if_i);
+
+    // Requirement 7 — IF->ID pipeline-register write enable.
+    instr_valid_id_d  = (if_instr_valid and id_in_ready_i and (not pc_set_i))
+                          or (instr_valid_id_q and (not instr_valid_clear_i));
+    instr_new_id_d    = if_instr_valid and id_in_ready_i and (not pc_set_i);
+    if_id_pipe_reg_we = instr_new_id_d;
+
+    // Requirement 8 — registered outputs from the state regs.
+    instr_valid_id_o = instr_valid_id_q;
+    instr_new_id_o   = instr_new_id_q;
+
+    // Requirement 9 — `csr_mtvec_init_o` pulse on PC_BOOT branch.
+    csr_mtvec_init_o = (pc_mux_i == 3'd0) and pc_set_i;
+
+    // Requirement 10 — tieoffs (ICache off, BP off, DummyInstructions
+    // off, PCIncrCheck off, MemECC off).
+    ic_tag_req_o        = 0;
+    ic_tag_write_o      = 1'b0;
+    ic_tag_addr_o       = 0;
+    ic_tag_wdata_o      = 0;
+    ic_data_req_o       = 0;
+    ic_data_write_o     = 1'b0;
+    ic_data_addr_o      = 0;
+    ic_data_wdata_o     = 0;
+    ic_scr_key_req_o    = 1'b0;
+    icache_ecc_error_o  = 1'b0;
+    dummy_instr_id_o    = 1'b0;
+    instr_bp_taken_o    = 1'b0;
+    pc_mismatch_alert_o = 1'b0;
+    instr_intg_err_o    = 1'b0;
+
+    // Plumbing-only outputs.
+    pc_if_o   = fetch_addr;
+    if_busy_o = prefetch_busy;
+  end comb
+
+  // ── State register update (Requirement 8) ─────────────────────────
+  /// Spec §"Requirement 8". Both flops sample on rising clk_i with
+  /// async-low reset to 0 from the type-derived reset clauses.
+  seq on clk_i rising
+    instr_valid_id_q <= instr_valid_id_d;
+    instr_new_id_q   <= instr_new_id_d;
+  end seq
+
+  // ── IF->ID pipeline-register update (Requirement 7) ───────────────
+  /// Spec §"Requirement 7". Under ResetAll=0 the pipe regs have NO
+  /// reset arm; the `port reg ... guard if_id_pipe_reg_we` declaration
+  /// suppresses reset-arm emission, and the `if if_id_pipe_reg_we`
+  /// gate inside this seq block places the assignment under the
+  /// upstream-equivalent `if (if_id_pipe_reg_we) <= ...` write enable.
+  /// Under DummyInstructions=0, `instr_expanded_id_o` carries the same
+  /// 16-bit half-word as `instr_rdata_c_id_o` (the dummy-instr LFSR is
+  /// out of scope).
+  seq on clk_i rising
+    if if_id_pipe_reg_we
+      instr_rdata_id_o          <= instr_decompressed;
+      instr_rdata_alu_id_o      <= instr_decompressed;
+      instr_rdata_c_id_o        <= if_instr_rdata[15:0];
+      instr_is_compressed_id_o  <= instr_is_compressed;
+      instr_gets_expanded_id_o  <= instr_gets_expanded;
+      instr_expanded_id_o       <= if_instr_rdata[15:0];
+      illegal_c_insn_id_o       <= illegal_c_insn;
+      instr_fetch_err_o         <= if_instr_err;
+      instr_fetch_err_plus2_o   <= if_instr_err_plus2;
+      pc_id_o                   <= fetch_addr;
+    end if
+  end seq
+
+  // ── Unused-input absorbers (Requirement 10) ───────────────────────
+  /// Drain inputs that are unused under the SoC pinning so SoC-level
+  /// lint does not flag them as undriven loads. Vec inputs are reduced
+  /// scalar to obtain a single-bit absorber.
+  /// Per-lane absorbers. The single-pipe form `vec.reduce_or() != 0`
+  /// got SV-emitted without parens around the per-lane OR, which
+  /// triggered a WIDTHTRUNC against the `Bool` LHS. Splitting into
+  /// per-lane drains sidesteps the precedence issue.
+  let unused_ic_tag_rdata_0: UInt<29>  = ic_tag_rdata_i[0];
+  let unused_ic_tag_rdata_1: UInt<29>  = ic_tag_rdata_i[1];
+  let unused_ic_data_rdata_0: UInt<72> = ic_data_rdata_i[0];
+  let unused_ic_data_rdata_1: UInt<72> = ic_data_rdata_i[1];
+  let unused_ic_scr_key_valid: Bool   = ic_scr_key_valid_i;
+  let unused_icache_enable: Bool      = icache_enable_i;
+  let unused_icache_inval: Bool       = icache_inval_i;
+  let unused_dummy_instr_en: Bool     = dummy_instr_en_i;
+  let unused_dummy_instr_mask: Bool   = dummy_instr_mask_i != 0;
+  let unused_dummy_instr_seed_en: Bool = dummy_instr_seed_en_i;
+  let unused_dummy_instr_seed: Bool   = dummy_instr_seed_i != 0;
+  let unused_boot_addr_lo: Bool       = boot_addr_i[7:0] != 0;
+  let unused_csr_mtvec_lo: Bool       = csr_mtvec_i[7:0] != 0;
+  let unused_exc_cause_irq_int: Bool  = exc_cause.irq_int;
+  let unused_exc_cause_irq_ext: Bool  = exc_cause.irq_ext;
+end module ibex_if_stage
