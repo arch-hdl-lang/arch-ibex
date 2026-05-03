@@ -1,0 +1,231 @@
+//! ibex_ex_block — EX-stage container for the Ibex pipeline.
+//!
+//! Structural module that instantiates:
+//!   - `IbexAlu` (A1) as `alu_i`
+//!   - `IbexMultdivFast` (A6) as `multdiv_i`
+//!
+//! and wires the combinational cross-coupling loop between them:
+//! multdiv drives `alu_operand_*_o` → ALU adder → same-cycle
+//! `alu_adder_ext_i` / `alu_adder_i` / `equal_to_zero_i` back to
+//! multdiv.
+//!
+//! Fixed SoC parameters:
+//!   - RV32M = 2 (RV32MFast)
+//!   - RV32B = 0 (RV32BNone)
+//!   - BranchTargetALU = 0 (no dedicated branch-target adder)
+//!
+//! refs:
+//!   §"Requirement: multdiv_sel is the OR of mult_sel_i and div_sel_i"
+//!   §"Requirement: result_ex_o mux"
+//!   §"Requirement: imd_val_d_o mux (per-lane, 34-bit output)"
+//!   §"Requirement: imd_val_we_o mux"
+//!   §"Requirement: imd_val_q slice routing to ALU"
+//!   §"Requirement: branch_decision_o is wired from the ALU comparator"
+//!   §"Requirement: branch_target_o is wired from alu_adder_result_ex_o (BranchTargetALU = 0)"
+//!   §"Requirement: ex_valid_o combinational validity signal"
+//!   §"Requirement: Combinational cross-coupling loop between ALU and multdiv"
+
+domain SysDomain
+  freq_mhz: 100
+end domain SysDomain
+
+module ibex_ex_block
+  /// `RV32M`: multiplier variant. Fixed to 2 (RV32MFast) for the SoC.
+  param RV32M: const = 2;
+  /// `RV32B`: bitmanip. Fixed to 0 (RV32BNone) for the SoC.
+  param RV32B: const = 0;
+  /// `BranchTargetALU`: 1-bit param. Fixed to 0 (no dedicated BTA adder).
+  /// Declared as a width-qualified [0:0] param to avoid WIDTHTRUNC on
+  /// ternary conditions (pitfall #12 — the width-bracket syntax is
+  /// `param NAME[hi:lo]: const = value`).
+  param BranchTargetALU[0:0]: const = 1'b0;
+
+  // ── Clock & reset ────────────────────────────────────────────────────
+  port clk_i:  in Clock<SysDomain>;
+  port rst_ni: in Reset<Async, Low>;
+
+  // ── ALU inputs (to alu_i) ────────────────────────────────────────────
+  port alu_operator_i:          in UInt<7>;
+  port alu_operand_a_i:         in UInt<32>;
+  port alu_operand_b_i:         in UInt<32>;
+  port alu_instr_first_cycle_i: in Bool;
+
+  // ── BranchTargetALU inputs (unused when BranchTargetALU = 0) ────────
+  /// Wired to dummy `let` bindings to silence Verilator UNUSED warnings,
+  /// matching upstream's unused_bt_a_operand / unused_bt_b_operand pattern.
+  /// (spec §"branch_target_o is wired from alu_adder_result_ex_o (BranchTargetALU = 0)")
+  port bt_a_operand_i: in UInt<32>;
+  port bt_b_operand_i: in UInt<32>;
+
+  // ── Multdiv inputs (to multdiv_i) ────────────────────────────────────
+  port multdiv_operator_i:    in UInt<2>;
+  port mult_en_i:             in Bool;
+  port div_en_i:              in Bool;
+  port mult_sel_i:            in Bool;
+  port div_sel_i:             in Bool;
+  port multdiv_signed_mode_i: in UInt<2>;
+  port multdiv_operand_a_i:   in UInt<32>;
+  port multdiv_operand_b_i:   in UInt<32>;
+  port multdiv_ready_id_i:    in Bool;
+  port data_ind_timing_i:     in Bool;
+
+  // ── Intermediate-value register file (owned by EX-stage caller) ──────
+  /// 34-bit unpacked array matching upstream `logic [33:0] imd_val_q_i [2]`.
+  /// (spec §"Intermediate-value array width notes")
+  port imd_val_q_i: in unpacked Vec<UInt<34>, 2>;
+  port imd_val_d_o: out unpacked Vec<UInt<34>, 2>;
+  port imd_val_we_o: out UInt<2>;
+
+  // ── Outputs ──────────────────────────────────────────────────────────
+  port alu_adder_result_ex_o: out UInt<32>;
+  port result_ex_o:           out UInt<32>;
+  port branch_target_o:       out UInt<32>;
+  port branch_decision_o:     out Bool;
+  port ex_valid_o:            out Bool;
+
+  // ── Internal wires: ALU sub-module outputs ───────────────────────────
+  wire alu_result:         UInt<32>;
+  wire alu_adder_result:   UInt<32>;   // = alu_adder_result_ex_o
+  wire alu_adder_result_ext: UInt<34>;
+  wire alu_cmp_result:     Bool;
+  wire alu_is_equal_result: Bool;
+
+  wire alu_imd_val_d:  Vec<UInt<32>, 2>;
+  wire alu_imd_val_we: UInt<2>;
+
+  // ── Internal wires: multdiv sub-module outputs ───────────────────────
+  wire multdiv_result:       UInt<32>;
+  wire multdiv_valid:        Bool;
+  wire multdiv_alu_operand_a: UInt<33>;
+  wire multdiv_alu_operand_b: UInt<33>;
+  wire multdiv_imd_val_d:    Vec<UInt<34>, 2>;
+  wire multdiv_imd_val_we:   UInt<2>;
+
+  // ── Combinational mux selector ────────────────────────────────────────
+  /// (spec §"multdiv_sel is the OR of mult_sel_i and div_sel_i")
+  wire multdiv_sel: Bool;
+
+  // ── Slice imd_val_q_i to 32 bits for the ALU sub-module ─────────────
+  /// The ALU uses 32-bit intermediate values; the EX block receives 34-bit
+  /// values from the pipeline and strips the upper 2 bits.
+  /// (spec §"imd_val_q slice routing to ALU")
+  wire alu_imd_val_q: Vec<UInt<32>, 2>;
+
+  // ── Packed bridge wires for multdiv imd_val ports ─────────────────────
+  /// The external boundary ports imd_val_q_i / imd_val_d_o are declared
+  /// `unpacked Vec` for SoC interop.  The multdiv sub-module's ports are
+  /// now packed Vec (to match the ARCH-emitted packed wire on the parent
+  /// side).  These bridge wires copy the unpacked values lane-by-lane so
+  /// Verilator sees a packed-to-packed connection at the instantiation site.
+  wire multdiv_imd_val_q: Vec<UInt<34>, 2>;
+
+  // ── Unused BranchTargetALU operands (BranchTargetALU = 0) ────────────
+  let _unused_bt_a: UInt<32> = bt_a_operand_i;
+  let _unused_bt_b: UInt<32> = bt_b_operand_i;
+
+  // ── Sub-module: ALU ───────────────────────────────────────────────────
+  /// Purely combinational; no clock/reset ports.
+  /// (spec §"Sub-module instantiation §alu_i: IbexAlu")
+  inst alu_i: ibex_alu
+    param RV32B = 0;
+    operator_i          <- alu_operator_i;
+    operand_a_i         <- alu_operand_a_i;
+    operand_b_i         <- alu_operand_b_i;
+    instr_first_cycle_i <- alu_instr_first_cycle_i;
+    imd_val_q_i         <- alu_imd_val_q;
+    multdiv_operand_a_i <- multdiv_alu_operand_a;
+    multdiv_operand_b_i <- multdiv_alu_operand_b;
+    multdiv_sel_i       <- multdiv_sel;
+    imd_val_d_o         -> alu_imd_val_d;
+    imd_val_we_o        -> alu_imd_val_we;
+    adder_result_o      -> alu_adder_result;
+    adder_result_ext_o  -> alu_adder_result_ext;
+    result_o            -> alu_result;
+    comparison_result_o -> alu_cmp_result;
+    is_equal_result_o   -> alu_is_equal_result;
+  end inst alu_i
+
+  // ── Sub-module: MultdivFast ───────────────────────────────────────────
+  /// Multi-cycle FSM; receives clock and async-low reset.
+  /// (spec §"Sub-module instantiation §multdiv_i: IbexMultdivFast")
+  inst multdiv_i: ibex_multdiv_fast
+    param RV32M = 2;
+    clk_i              <- clk_i;
+    rst_ni             <- rst_ni;
+    mult_en_i          <- mult_en_i;
+    div_en_i           <- div_en_i;
+    mult_sel_i         <- mult_sel_i;
+    div_sel_i          <- div_sel_i;
+    operator_i         <- multdiv_operator_i;
+    signed_mode_i      <- multdiv_signed_mode_i;
+    op_a_i             <- multdiv_operand_a_i;
+    op_b_i             <- multdiv_operand_b_i;
+    alu_adder_ext_i    <- alu_adder_result_ext;
+    alu_adder_i        <- alu_adder_result;
+    equal_to_zero_i    <- alu_is_equal_result;
+    data_ind_timing_i  <- data_ind_timing_i;
+    imd_val_q_i        <- multdiv_imd_val_q;
+    multdiv_ready_id_i <- multdiv_ready_id_i;
+    alu_operand_a_o    -> multdiv_alu_operand_a;
+    alu_operand_b_o    -> multdiv_alu_operand_b;
+    imd_val_d_o        -> multdiv_imd_val_d;
+    imd_val_we_o       -> multdiv_imd_val_we;
+    multdiv_result_o   -> multdiv_result;
+    valid_o            -> multdiv_valid;
+  end inst multdiv_i
+
+  // ── Combinational logic block ─────────────────────────────────────────
+  comb
+    /// multdiv_sel: OR of the two static decoder outputs.
+    /// (spec §"multdiv_sel is the OR of mult_sel_i and div_sel_i")
+    multdiv_sel = mult_sel_i or div_sel_i;
+
+    /// Copy the unpacked external imd_val_q_i lanes into the packed bridge
+    /// wire for multdiv (lane-by-lane to satisfy Verilator's packed/unpacked
+    /// boundary rule at the sub-module instantiation site).
+    multdiv_imd_val_q[0] = imd_val_q_i[0];
+    multdiv_imd_val_q[1] = imd_val_q_i[1];
+
+    /// Slice imd_val_q_i from 34 bits down to 32 bits for the ALU.
+    /// Upper 2 bits are unused by the ALU under RV32BNone.
+    /// (spec §"imd_val_q slice routing to ALU")
+    alu_imd_val_q[0] = imd_val_q_i[0][31:0];
+    alu_imd_val_q[1] = imd_val_q_i[1][31:0];
+
+    /// imd_val_d_o mux: multdiv path selected when multdiv_sel = 1;
+    /// ALU path zero-extends the 32-bit lane to 34 bits.
+    /// Lane-by-lane assignment bridges the packed multdiv_imd_val_d wire
+    /// to the unpacked imd_val_d_o output port.
+    /// (spec §"imd_val_d_o mux (per-lane, 34-bit output)")
+    imd_val_d_o[0] = multdiv_sel ? multdiv_imd_val_d[0] : {2'b0, alu_imd_val_d[0]};
+    imd_val_d_o[1] = multdiv_sel ? multdiv_imd_val_d[1] : {2'b0, alu_imd_val_d[1]};
+
+    /// imd_val_we_o mux: select multdiv write-enables or ALU write-enables.
+    /// Under RV32BNone, alu_imd_val_we = 2'b00 always.
+    /// (spec §"imd_val_we_o mux")
+    imd_val_we_o = multdiv_sel ? multdiv_imd_val_we : alu_imd_val_we;
+
+    /// result_ex_o: select multdiv result or ALU result.
+    /// (spec §"result_ex_o mux")
+    result_ex_o = multdiv_sel ? multdiv_result : alu_result;
+
+    /// branch_decision_o: always from the ALU comparator.
+    /// (spec §"branch_decision_o is wired from the ALU comparator")
+    branch_decision_o = alu_cmp_result;
+
+    /// branch_target_o: with BranchTargetALU = 0, wired from the ALU's
+    /// adder result. (spec §"branch_target_o is wired from alu_adder_result_ex_o")
+    branch_target_o = alu_adder_result;
+
+    /// ex_valid_o: multdiv_sel ? multdiv_valid : ~(|alu_imd_val_we).
+    /// Under RV32BNone alu_imd_val_we = 2'b00 always, so ex_valid_o = 1
+    /// for all ALU-only operations.
+    /// (spec §"ex_valid_o combinational validity signal")
+    ex_valid_o = multdiv_sel ? multdiv_valid : not (alu_imd_val_we != 2'b00);
+  end comb
+
+  /// alu_adder_result_ex_o: directly from the ALU's adder output.
+  /// This feeds the LSU and, via branch_target_o, the IF stage.
+  let alu_adder_result_ex_o = alu_adder_result;
+
+end module ibex_ex_block

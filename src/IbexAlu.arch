@@ -36,15 +36,14 @@ module ibex_alu
   /// Intermediate-value register file from the EX stage. Unused under
   /// `RV32BNone` but consumed in a no-op pass-through below so the
   /// signal is observably read (silences Verilator UNUSED on the
-  /// SoC top). Declared `unpacked` to match upstream Ibex's
-  /// `logic [31:0] imd_val_q_alu [2]` boundary in `ibex_ex_block.sv`
-  /// (spec §3.6 — unpacked-array port interop).
-  port imd_val_q_i: in unpacked Vec<UInt<32>, 2>;
+  /// SoC top). Declared as packed Vec so that the ex_block parent's
+  /// internal wires (also packed) connect without a type mismatch.
+  /// The ex_block boundary ports remain unpacked for SoC interop.
+  port imd_val_q_i: in Vec<UInt<32>, 2>;
 
   // ── Outputs ─────────────────────────────────────────────────────────
-  /// Mirror unpacked shape for the write-back side; same upstream
-  /// boundary requirement as `imd_val_q_i`.
-  port imd_val_d_o: out unpacked Vec<UInt<32>, 2>;
+  /// Packed Vec to match the parent ex_block's internal wire type.
+  port imd_val_d_o: out Vec<UInt<32>, 2>;
   port imd_val_we_o:        out UInt<2>;
 
   port adder_result_o:      out UInt<32>;
