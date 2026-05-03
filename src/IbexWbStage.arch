@@ -1,0 +1,143 @@
+//! ibex_wb_stage — Writeback Stage for the Ibex pipeline (WritebackStage=0).
+//!
+//! With WritebackStage=0 the module is a purely combinational passthrough:
+//! it routes register-file write signals from ID/EX and the LSU directly
+//! to the register-file write port without any pipeline buffering.
+//!
+//! clk_i and rst_ni are declared for port-interface compatibility but are
+//! unused in the passthrough path (WritebackStage=1 is out of scope).
+//!
+//! refs:
+//!   - "changes/port-wb_stage/specs/wb_stage/spec.md §REQ-1: Address passthrough"
+//!   - "changes/port-wb_stage/specs/wb_stage/spec.md §REQ-2: Write-enable OR combination"
+//!   - "changes/port-wb_stage/specs/wb_stage/spec.md §REQ-3: Write-data masked-OR combiner"
+//!   - "changes/port-wb_stage/specs/wb_stage/spec.md §REQ-4: Ready always asserted"
+//!   - "changes/port-wb_stage/specs/wb_stage/spec.md §REQ-5: Performance counter — instruction retired"
+//!   - "changes/port-wb_stage/specs/wb_stage/spec.md §REQ-6: Performance counter — compressed instruction retired"
+//!   - "changes/port-wb_stage/specs/wb_stage/spec.md §REQ-7: Speculative performance counters tied zero"
+//!   - "changes/port-wb_stage/specs/wb_stage/spec.md §REQ-8: Dummy-instruction flag passthrough"
+//!   - "changes/port-wb_stage/specs/wb_stage/spec.md §REQ-9: WS=1-only outputs tied zero"
+
+domain SysDomain
+  freq_mhz: 100
+end domain SysDomain
+
+module ibex_wb_stage
+  // ── Parameters ────────────────────────────────────────────────────────
+  // All three parameters are declared for port-boundary compatibility with
+  // the upstream ibex_wb_stage.sv instantiation in ibex_core.sv. Only the
+  // in-scope combination (WritebackStage=0, DummyInstructions=0, ResetAll=0)
+  // is implemented.
+  param ResetAll:          const = 0;
+  param WritebackStage:    const = 0;
+  param DummyInstructions: const = 0;
+
+  // ── Clock / Reset (unused in WS=0, required for interface compat) ─────
+  port clk_i:  in Clock<SysDomain>;
+  port rst_ni: in Reset<Async, Low>;
+
+  // ── Instruction-status inputs (from ID/EX) ────────────────────────────
+  port en_wb_i:                   in Bool;
+  port instr_type_wb_i:           in UInt<2>;
+  port pc_id_i:                   in UInt<32>;
+  port instr_is_compressed_id_i:  in Bool;
+  port instr_perf_count_id_i:     in Bool;
+
+  // ── Pipeline ready / status outputs ──────────────────────────────────
+  port ready_wb_o:           out Bool;
+  port rf_write_wb_o:        out Bool;
+  port outstanding_load_wb_o:  out Bool;
+  port outstanding_store_wb_o: out Bool;
+  port pc_wb_o:              out UInt<32>;
+
+  // ── Performance-counter outputs ───────────────────────────────────────
+  port perf_instr_ret_wb_o:                  out Bool;
+  port perf_instr_ret_compressed_wb_o:       out Bool;
+  port perf_instr_ret_wb_spec_o:             out Bool;
+  port perf_instr_ret_compressed_wb_spec_o:  out Bool;
+
+  // ── Register-file write inputs from ID/EX ────────────────────────────
+  port rf_waddr_id_i:  in UInt<5>;
+  port rf_wdata_id_i:  in UInt<32>;
+  port rf_we_id_i:     in Bool;
+
+  // ── Dummy-instruction flag ─────────────────────────────────────────────
+  port dummy_instr_id_i: in Bool;
+
+  // ── Register-file write inputs from LSU ──────────────────────────────
+  port rf_wdata_lsu_i: in UInt<32>;
+  port rf_we_lsu_i:    in Bool;
+
+  // ── Data-forwarding output (tied 0 in WS=0) ──────────────────────────
+  port rf_wdata_fwd_wb_o: out UInt<32>;
+
+  // ── Register-file write outputs (to RF) ──────────────────────────────
+  port rf_waddr_wb_o: out UInt<5>;
+  port rf_wdata_wb_o: out UInt<32>;
+  port rf_we_wb_o:    out Bool;
+
+  // ── Dummy-instruction flag output ─────────────────────────────────────
+  port dummy_instr_wb_o: out Bool;
+
+  // ── LSU response inputs ───────────────────────────────────────────────
+  port lsu_resp_valid_i: in Bool;
+  port lsu_resp_err_i:   in Bool;
+
+  // ── Instruction-done output (tied 0 in WS=0) ─────────────────────────
+  port instr_done_wb_o: out Bool;
+
+  // ── Combinational logic ───────────────────────────────────────────────
+  // All outputs in WritebackStage=0 are purely combinational.
+  // No registers, no seq blocks.
+
+  comb
+    // REQ-1: Address passthrough — direct wire.
+    rf_waddr_wb_o = rf_waddr_id_i;
+
+    // REQ-2 & REQ-3: Write-enable OR combination and masked-OR data combiner.
+    // rf_we_id_i and rf_we_lsu_i are guaranteed mutually exclusive by the
+    // upstream assertion RFWriteFromOneSourceOnly (IC-1). The masked-OR
+    // combiner is safe because at most one enable is high at a time.
+    rf_we_wb_o = rf_we_id_i or rf_we_lsu_i;
+    rf_wdata_wb_o = ({32{rf_we_id_i}}  & rf_wdata_id_i) |
+                    ({32{rf_we_lsu_i}} & rf_wdata_lsu_i);
+
+    // REQ-4: Ready is constant 1 — passthrough never stalls the pipeline.
+    ready_wb_o = 1'b1;
+
+    // REQ-5: Non-speculative instruction-retire counter.
+    // Counted when: instruction is perf-countable, en_wb_i is asserted,
+    // and there is no LSU error response.
+    perf_instr_ret_wb_o = instr_perf_count_id_i and en_wb_i and
+                          not (lsu_resp_valid_i and lsu_resp_err_i);
+
+    // REQ-6: Compressed-instruction retire counter.
+    perf_instr_ret_compressed_wb_o = perf_instr_ret_wb_o and instr_is_compressed_id_i;
+
+    // REQ-7: Speculative counters are tied to 0 in WS=0.
+    perf_instr_ret_wb_spec_o           = 1'b0;
+    perf_instr_ret_compressed_wb_spec_o = 1'b0;
+
+    // REQ-8: Dummy-instruction flag wire-through (even when DI=0,
+    // preserved for port-interface compatibility).
+    dummy_instr_wb_o = dummy_instr_id_i;
+
+    // REQ-9: WS=1-only outputs tied zero.
+    outstanding_load_wb_o  = 1'b0;
+    outstanding_store_wb_o = 1'b0;
+    pc_wb_o                = 32'h0;
+    rf_write_wb_o          = 1'b0;
+    rf_wdata_fwd_wb_o      = 32'h0;
+    instr_done_wb_o        = 1'b0;
+  end comb
+
+  // ── Unused-port sinks (WS=0-irrelevant inputs) ───────────────────────
+  // Sink instr_type_wb_i and pc_id_i so lint does not report them as
+  // unread inputs. These ports exist only for port-boundary compatibility
+  // with ibex_core.sv; they are unused in the WS=0 passthrough path.
+  // clk_i and rst_ni (Clock/Reset types) are suppressed by -Wno-UNUSEDSIGNAL
+  // in the test runner build args.
+  let _unused_instr_type:  UInt<2>  = instr_type_wb_i;
+  let _unused_pc_id:       UInt<32> = pc_id_i;
+
+end module ibex_wb_stage
