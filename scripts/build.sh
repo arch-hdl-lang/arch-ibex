@@ -58,13 +58,36 @@ else
   done
 fi
 
+# Composite modules (Phase B+) instantiate leaf sub-modules and require
+# those sub-modules' `.archi` stubs to exist first.  Separate them so
+# leaf modules are always compiled before composites.
+# A module is "composite" if it contains an `inst ` block; leaf modules
+# do not. Run two passes: leaves first, composites second.
+leaf_files=()
+composite_files=()
 for f in "${files[@]}"; do
+  if grep -q $'^\s*inst ' "${f}" 2>/dev/null; then
+    composite_files+=("${f}")
+  else
+    leaf_files+=("${f}")
+  fi
+done
+ordered_files=("${leaf_files[@]}" "${composite_files[@]}")
+
+_build_one() {
+  local f="$1"
   # The SV module name is the upstream snake_case basename (e.g.
   # `ibex_alu`), but our `.arch` source uses CamelCase (e.g. `IbexAlu.arch`).
   # The conftest's swap-shadow logic matches on basename equality with the
   # upstream `.sv` file, so the output must land at `build/<snake>.sv`.
+  local arch_stem
   arch_stem="$(basename "${f}" .arch)"
+  local sv_stem
   sv_stem="$(echo "${arch_stem}" | sed -E 's/([a-z0-9])([A-Z])/\1_\2/g; s/([A-Z]+)([A-Z][a-z])/\1_\2/g' | tr '[:upper:]' '[:lower:]')"
   echo "arch build $(basename "${f}") → build/${sv_stem}.sv"
   "${ARCH_BIN}" build -o "${BUILD_DIR}/${sv_stem}.sv" "${f}"
+}
+
+for f in "${ordered_files[@]}"; do
+  _build_one "${f}"
 done

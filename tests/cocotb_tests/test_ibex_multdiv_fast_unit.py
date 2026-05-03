@@ -78,12 +78,47 @@ async def _start_clock(dut):
     cocotb.start_soon(Clock(dut.clk_i, CLK_PERIOD_NS, "ns").start())
 
 
+# Helpers for packed Vec<UInt<34>, 2> port access. Two backends, two APIs:
+#   - cocotb-verilator: packed → whole-value `handle.value = ...` (lane 0 in
+#     bits [33:0], lane 1 in bits [67:34]).
+#   - arch-sim:        `_ArchVecProxy` (no whole-value setter; per-element
+#     `handle[i].value = ...` even for packed Vec).
+# These helpers try the cocotb path and fall back to per-element on
+# AttributeError. See arch-com follow-up issue: extend `_ArchVecProxy` to
+# support whole-value access.
+_LANE_W = 34
+_LANE_M = (1 << _LANE_W) - 1
+
+
+def _read_imd_lane(handle, lane: int) -> int:
+    try:
+        return (int(handle.value) >> (lane * _LANE_W)) & _LANE_M
+    except (AttributeError, TypeError):
+        return int(handle[lane].value) & _LANE_M
+
+
+def _write_imd_both(handle, lane0: int, lane1: int) -> None:
+    try:
+        handle.value = ((lane1 & _LANE_M) << _LANE_W) | (lane0 & _LANE_M)
+    except (AttributeError, TypeError):
+        handle[0].value = lane0 & _LANE_M
+        handle[1].value = lane1 & _LANE_M
+
+
+def _write_imd_lane(handle, lane: int, value: int) -> None:
+    try:
+        cur = int(handle.value)
+        if lane == 0:
+            handle.value = (cur & (_LANE_M << _LANE_W)) | (value & _LANE_M)
+        else:
+            handle.value = (cur & _LANE_M) | ((value & _LANE_M) << _LANE_W)
+    except (AttributeError, TypeError):
+        handle[lane].value = value & _LANE_M
+
+
 def _zero_imd(dut):
     """Drive `imd_val_q_i` to 0 (initial state). Re-call between operations."""
-    # `imd_val_q_i` is an unpacked array of 2 × 34-bit. cocotb addresses
-    # the elements as `dut.imd_val_q_i[0/1]`.
-    dut.imd_val_q_i[0].value = 0
-    dut.imd_val_q_i[1].value = 0
+    _write_imd_both(dut.imd_val_q_i, 0, 0)
 
 
 async def _reset(dut):
@@ -117,19 +152,27 @@ def _snapshot_imd(dut):
     combinational re-evaluation with the new state, breaking the
     partial-product chain."""
     we = int(dut.imd_val_we_o.value)
-    d0 = int(dut.imd_val_d_o[0].value) & MASK34
-    d1 = int(dut.imd_val_d_o[1].value) & MASK34
+    d0 = _read_imd_lane(dut.imd_val_d_o, 0)
+    d1 = _read_imd_lane(dut.imd_val_d_o, 1)
     return we, d0, d1
 
 
 def _apply_imd(dut, snapshot):
     """Write the sampled d_o values into `imd_val_q_i` AFTER the rising
-    edge — modelling the EX-block flop bank's latch."""
+    edge — modelling the EX-block flop bank's latch.
+
+    Compose both lanes into a single `.value` write to avoid the
+    read-modify-write race that two single-lane writes would create
+    (the second write's `cur = int(handle.value)` could see stale data
+    from before the first write committed)."""
     we, d0, d1 = snapshot
-    if we & 0x1:
-        dut.imd_val_q_i[0].value = d0
-    if we & 0x2:
-        dut.imd_val_q_i[1].value = d1
+    if we == 0:
+        return
+    cur0 = _read_imd_lane(dut.imd_val_q_i, 0)
+    cur1 = _read_imd_lane(dut.imd_val_q_i, 1)
+    new0 = d0 if (we & 0x1) else cur0
+    new1 = d1 if (we & 0x2) else cur1
+    _write_imd_both(dut.imd_val_q_i, new0, new1)
 
 
 async def _run_mult(dut, *, operator: int, signed_mode: int, op_a: int, op_b: int,
@@ -403,7 +446,7 @@ async def imd_lane1_captured_at_abs_b(dut):
         await _alu_step(dut)
         if int(dut.valid_o.value) == 1:
             # Sample the latched lane-1 q value, which by now mirrors |op_b|.
-            final_lane1 = int(dut.imd_val_q_i[1].value) & MASK34
+            final_lane1 = _read_imd_lane(dut.imd_val_q_i, 1)
             break
     assert final_lane1 is not None, "valid_o never asserted"
     # Top 2 bits zero, lower 32 b = |op_b| = op_b (unsigned, op_b non-negative).

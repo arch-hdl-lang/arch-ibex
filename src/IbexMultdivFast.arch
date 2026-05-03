@@ -82,11 +82,11 @@ module ibex_multdiv_fast
   /// Intermediate-value register-file ports — physically owned by the EX
   /// block. Lane 0 carries the partial product (mult) or partial
   /// remainder (div). Lane 1 carries the absolute-valued divisor (div
-  /// only). Declared `unpacked` so the SV emission matches upstream's
-  /// `logic [33:0] imd_val_q_alu [2]` boundary in `ibex_ex_block.sv`
-  /// (project memory rule §3.6 — unpacked-array port modifier).
-  port imd_val_q_i:  in unpacked Vec<UInt<34>, 2>;
-  port imd_val_d_o:  out unpacked Vec<UInt<34>, 2>;
+  /// only). Declared as packed Vec so the ex_block parent's internal
+  /// wires (also packed) connect without a type mismatch.
+  /// The ex_block boundary ports remain unpacked for SoC interop.
+  port imd_val_q_i:  in Vec<UInt<34>, 2>;
+  port imd_val_d_o:  out Vec<UInt<34>, 2>;
   port imd_val_we_o: out UInt<2>;
 
   port multdiv_ready_id_i: in Bool;

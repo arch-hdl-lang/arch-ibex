@@ -54,9 +54,18 @@ async def _drive(dut, *, imd_q0=0, imd_q1=0, **kw):
     defaults.update(kw)
     for name, val in defaults.items():
         getattr(dut, name).value = val
-    # imd_val_q_i is an unpacked array; default both lanes to 0.
-    dut.imd_val_q_i[0].value = imd_q0
-    dut.imd_val_q_i[1].value = imd_q1
+    # imd_val_q_i is a packed Vec<UInt<32>, 2>. Two backends, two APIs:
+    #   - cocotb-verilator: packed → use whole-value `.value = ...` (lane 0
+    #     in bits [31:0], lane 1 in bits [63:32]).
+    #   - arch-sim:        `_ArchVecProxy` (no whole-value setter; needs
+    #     per-element `.[i].value = ...` even for packed Vec).
+    # Try cocotb-verilator first; fall back to per-element for arch-sim.
+    # See arch-com follow-up issue for proxy whole-value access support.
+    try:
+        dut.imd_val_q_i.value = ((imd_q1 & 0xFFFF_FFFF) << 32) | (imd_q0 & 0xFFFF_FFFF)
+    except (AttributeError, TypeError):
+        dut.imd_val_q_i[0].value = imd_q0
+        dut.imd_val_q_i[1].value = imd_q1
     await Timer(1, "ns")
 
 

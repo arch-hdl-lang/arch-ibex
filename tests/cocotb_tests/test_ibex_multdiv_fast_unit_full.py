@@ -45,23 +45,65 @@ async def _alu_step(dut):
     await Timer(1, "ns")
 
 
+# Helpers for packed Vec<UInt<34>, 2> port access. Two backends, two APIs:
+#   - cocotb-verilator: packed → whole-value `handle.value = ...` (lane 0 in
+#     bits [33:0], lane 1 in bits [67:34]).
+#   - arch-sim:        `_ArchVecProxy` (no whole-value setter; per-element
+#     `handle[i].value = ...` even for packed Vec).
+# Try cocotb path first; fall back to per-element on AttributeError.
+_LANE_W = 34
+_LANE_M = (1 << _LANE_W) - 1
+
+
+def _read_imd_lane(handle, lane: int) -> int:
+    try:
+        return (int(handle.value) >> (lane * _LANE_W)) & _LANE_M
+    except (AttributeError, TypeError):
+        return int(handle[lane].value) & _LANE_M
+
+
+def _write_imd_both(handle, lane0: int, lane1: int) -> None:
+    try:
+        handle.value = ((lane1 & _LANE_M) << _LANE_W) | (lane0 & _LANE_M)
+    except (AttributeError, TypeError):
+        handle[0].value = lane0 & _LANE_M
+        handle[1].value = lane1 & _LANE_M
+
+
+def _write_imd_lane(handle, lane: int, value: int) -> None:
+    try:
+        cur = int(handle.value)
+        if lane == 0:
+            handle.value = (cur & (_LANE_M << _LANE_W)) | (value & _LANE_M)
+        else:
+            handle.value = (cur & _LANE_M) | ((value & _LANE_M) << _LANE_W)
+    except (AttributeError, TypeError):
+        handle[lane].value = value & _LANE_M
+
+
 def _snapshot_imd(dut):
     """Sample imd_val_d_o + imd_val_we_o BEFORE the rising edge so we
     capture the cycle's combinational outputs that real EX-block flops
     would latch."""
     we = int(dut.imd_val_we_o.value)
-    d0 = int(dut.imd_val_d_o[0].value) & MASK34
-    d1 = int(dut.imd_val_d_o[1].value) & MASK34
+    d0 = _read_imd_lane(dut.imd_val_d_o, 0)
+    d1 = _read_imd_lane(dut.imd_val_d_o, 1)
     return we, d0, d1
 
 
 def _apply_imd(dut, snapshot):
-    """Write the snapshot into imd_val_q_i AFTER the rising edge."""
+    """Write the snapshot into imd_val_q_i AFTER the rising edge.
+
+    Compose both lanes into a single `.value` write to avoid the
+    read-modify-write race that two single-lane writes would create."""
     we, d0, d1 = snapshot
-    if we & 0x1:
-        dut.imd_val_q_i[0].value = d0
-    if we & 0x2:
-        dut.imd_val_q_i[1].value = d1
+    if we == 0:
+        return
+    cur0 = _read_imd_lane(dut.imd_val_q_i, 0)
+    cur1 = _read_imd_lane(dut.imd_val_q_i, 1)
+    new0 = d0 if (we & 0x1) else cur0
+    new1 = d1 if (we & 0x2) else cur1
+    _write_imd_both(dut.imd_val_q_i, new0, new1)
 
 
 async def _start_clock(dut):
@@ -69,8 +111,7 @@ async def _start_clock(dut):
 
 
 def _zero_imd(dut):
-    dut.imd_val_q_i[0].value = 0
-    dut.imd_val_q_i[1].value = 0
+    _write_imd_both(dut.imd_val_q_i, 0, 0)
 
 
 async def _reset(dut):
@@ -599,7 +640,7 @@ async def lane1_holds_divisor_through_compute(dut):
     # advances (not just MD_ABS_B). We assert at least one we and that
     # the lane-1 value held in the flop bank at completion equals op_b.
     assert lane1_we_count >= 1
-    assert (int(dut.imd_val_q_i[1].value) & MASK32) == op_b
+    assert (_read_imd_lane(dut.imd_val_q_i, 1) & MASK32) == op_b
 
 
 # ── Reset scenario (Requirement 11) ─────────────────────────────────────
