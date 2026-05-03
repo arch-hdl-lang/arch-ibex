@@ -78,42 +78,27 @@ async def _start_clock(dut):
     cocotb.start_soon(Clock(dut.clk_i, CLK_PERIOD_NS, "ns").start())
 
 
-# Helpers for packed Vec<UInt<34>, 2> port access. Two backends, two APIs:
-#   - cocotb-verilator: packed → whole-value `handle.value = ...` (lane 0 in
-#     bits [33:0], lane 1 in bits [67:34]).
-#   - arch-sim:        `_ArchVecProxy` (no whole-value setter; per-element
-#     `handle[i].value = ...` even for packed Vec).
-# These helpers try the cocotb path and fall back to per-element on
-# AttributeError. See arch-com follow-up issue: extend `_ArchVecProxy` to
-# support whole-value access.
+# Helpers for packed Vec<UInt<34>, 2> port access. Whole-value `.value`
+# access works on both cocotb-verilator and arch-sim (`_ArchVecProxy.value`,
+# per arch-com #265): lane 0 in bits [33:0], lane 1 in bits [67:34].
 _LANE_W = 34
 _LANE_M = (1 << _LANE_W) - 1
 
 
 def _read_imd_lane(handle, lane: int) -> int:
-    try:
-        return (int(handle.value) >> (lane * _LANE_W)) & _LANE_M
-    except (AttributeError, TypeError):
-        return int(handle[lane].value) & _LANE_M
+    return (int(handle.value) >> (lane * _LANE_W)) & _LANE_M
 
 
 def _write_imd_both(handle, lane0: int, lane1: int) -> None:
-    try:
-        handle.value = ((lane1 & _LANE_M) << _LANE_W) | (lane0 & _LANE_M)
-    except (AttributeError, TypeError):
-        handle[0].value = lane0 & _LANE_M
-        handle[1].value = lane1 & _LANE_M
+    handle.value = ((lane1 & _LANE_M) << _LANE_W) | (lane0 & _LANE_M)
 
 
 def _write_imd_lane(handle, lane: int, value: int) -> None:
-    try:
-        cur = int(handle.value)
-        if lane == 0:
-            handle.value = (cur & (_LANE_M << _LANE_W)) | (value & _LANE_M)
-        else:
-            handle.value = (cur & _LANE_M) | ((value & _LANE_M) << _LANE_W)
-    except (AttributeError, TypeError):
-        handle[lane].value = value & _LANE_M
+    cur = int(handle.value)
+    if lane == 0:
+        handle.value = (cur & (_LANE_M << _LANE_W)) | (value & _LANE_M)
+    else:
+        handle.value = (cur & _LANE_M) | ((value & _LANE_M) << _LANE_W)
 
 
 def _zero_imd(dut):
