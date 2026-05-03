@@ -1,0 +1,445 @@
+//! ---
+//! spec_md: changes/port-load_store_unit/specs/load_store_unit/spec.md
+//! tags: [lsu, obi, bus, thread, misaligned]
+//! ---
+//!
+//! Load Store Unit — ARCH HDL port of ibex_load_store_unit.sv.
+//!
+//! First Phase-A swap to exercise the `thread` first-class construct.
+//! The OBI data-memory interface type is documented as `bus BusObi` but the
+//! module declares individual flat ports to preserve exact SV signal names and
+//! to avoid unknown thread-to-bus-port-field comb semantics (see design.md).
+//!
+//! refs:
+//!   §"Requirement: OBI-Handshake"
+//!   §"Requirement: Misaligned Access Split"
+//!   §"Requirement: lsu_req_done_o"
+//!   §"Requirement: lsu_resp_valid_o"
+//!   §"Requirement: Error Reporting"
+
+domain SysDomain
+  freq_mhz: 100
+end domain SysDomain
+
+/// OBI (Open Bus Interface) data-memory interface type.
+/// Defines the protocol grouping for documentation and future bus-port use.
+/// Field names carry _o/_i suffixes so the flattened names match the upstream
+/// ibex_top.sv wiring (flat name = port_name + "_" + field_name).
+bus BusObi
+  req_o:     out Bool;
+  gnt_i:     in  Bool;
+  rvalid_i:  in  Bool;
+  bus_err_i: in  Bool;
+  pmp_err_i: in  Bool;
+  addr_o:    out UInt<32>;
+  we_o:      out Bool;
+  be_o:      out UInt<4>;
+  wdata_o:   out UInt<32>;
+  rdata_i:   in  UInt<32>;
+end bus BusObi
+
+module ibex_load_store_unit
+  //! ref: specs/load_store_unit/spec.md §"Purpose"
+
+  // MemECC=0: ECC not supported; outputs always 0.  Declared for port compatibility
+  // with ibex_core.sv which passes these params at instantiation.
+  param MemECC:       const = 0;
+  param MemDataWidth: const = 32;
+
+  port clk_i:  in Clock<SysDomain>;
+  port rst_ni: in Reset<Async, Low>;
+
+  // ── OBI data-memory interface (individual flat ports) ──────────────
+  // Declared as individual ports matching upstream SV names.
+  // ref: specs/load_store_unit/spec.md §"Requirement: OBI-Handshake"
+  port data_req_o:    out Bool;
+  port data_gnt_i:    in  Bool;
+  port data_rvalid_i: in  Bool;
+  port data_bus_err_i: in Bool;
+  port data_pmp_err_i: in Bool;
+  port data_addr_o:   out UInt<32>;
+  port data_we_o:     out Bool;
+  port data_be_o:     out UInt<4>;
+  port data_wdata_o:  out UInt<32>;
+  port data_rdata_i:  in  UInt<32>;
+
+  // ── ID/EX interface ────────────────────────────────────────────────
+  port lsu_we_i:          in Bool;
+  port lsu_type_i:        in UInt<2>;
+  port lsu_wdata_i:       in UInt<32>;
+  port lsu_sign_ext_i:    in Bool;
+  port lsu_rdata_o:       out UInt<32>;
+  port lsu_rdata_valid_o: out Bool;
+  port lsu_req_i:         in Bool;
+  port adder_result_ex_i: in UInt<32>;
+
+  port addr_incr_req_o:   out Bool;
+  port addr_last_o:       out UInt<32>;
+  port lsu_req_done_o:    out Bool;
+  port lsu_resp_valid_o:  out Bool;
+
+  // ── Exception outputs ──────────────────────────────────────────────
+  port load_err_o:              out Bool;
+  port load_resp_intg_err_o:    out Bool;
+  port store_err_o:             out Bool;
+  port store_resp_intg_err_o:   out Bool;
+
+  port busy_o:       out Bool;
+  port perf_load_o:  out Bool;
+  port perf_store_o: out Bool;
+
+  // ── Internal registers ─────────────────────────────────────────────
+  reg addr_last_q:              UInt<32> reset rst_ni => 0;
+  reg data_type_q:              UInt<2>  reset rst_ni => 0;
+  reg data_sign_ext_q:          Bool     reset rst_ni => false;
+  reg data_we_q:                Bool     reset rst_ni => false;
+  reg rdata_offset_q:           UInt<2>  reset rst_ni => 0;
+  /// Upper 24 bits of first misaligned rdata; assembled on second rvalid.
+  reg rdata_q:                  UInt<24> reset rst_ni => 0;
+  reg pmp_err_q:                Bool     reset rst_ni => false;
+  /// True while issuing the second transaction of a misaligned access.
+  reg handle_misaligned_q:      Bool     reset rst_ni => false;
+  /// True from first request until last grant; drives busy_o.
+  reg lsu_busy_q:               Bool     reset rst_ni => false;
+  /// Bus error latched from first rvalid of a misaligned load.
+  reg bus_err_q:                Bool     reset rst_ni => false;
+
+  // ── Combinational intermediates ────────────────────────────────────
+  /// ref: specs/load_store_unit/spec.md §"Requirement: Word-Aligned Address"
+  let data_offset: UInt<2>  = adder_result_ex_i[1:0];
+  let data_addr:   UInt<32> = {adder_result_ex_i[31:2], 2'b00};
+
+  /// ref: specs/load_store_unit/spec.md §"Requirement: Misaligned Access Split"
+  let split_misaligned_access: Bool =
+    (lsu_type_i == 2'b00 and data_offset != 2'b00) or
+    (lsu_type_i == 2'b01 and data_offset == 2'b11);
+
+  // ── Byte-enable (BE) mux ──────────────────────────────────────────
+  /// ref: specs/load_store_unit/spec.md §"Requirement: Byte-Enable Generation"
+  wire data_be: UInt<4>;
+  comb
+    if handle_misaligned_q
+      // Second transaction: use captured type and offset
+      if data_type_q == 2'b01
+        // Halfword misaligned (offset 3): second half BE always 0001
+        data_be = 4'b0001;
+      elsif rdata_offset_q == 2'b01
+        data_be = 4'b0001;
+      elsif rdata_offset_q == 2'b10
+        data_be = 4'b0011;
+      else
+        data_be = 4'b0111;
+      end if
+    else
+      // First (or only) transaction: use current inputs
+      if lsu_type_i == 2'b00
+        // Word
+        if data_offset == 2'b00
+          data_be = 4'b1111;
+        elsif data_offset == 2'b01
+          data_be = 4'b1110;
+        elsif data_offset == 2'b10
+          data_be = 4'b1100;
+        else
+          data_be = 4'b1000;
+        end if
+      elsif lsu_type_i == 2'b01
+        // Halfword
+        if data_offset == 2'b00
+          data_be = 4'b0011;
+        elsif data_offset == 2'b01
+          data_be = 4'b0110;
+        elsif data_offset == 2'b10
+          data_be = 4'b1100;
+        else
+          // offset 3, first half of misaligned halfword
+          data_be = 4'b1000;
+        end if
+      else
+        // Byte (lsu_type_i == 2'b10 or 2'b11)
+        if data_offset == 2'b00
+          data_be = 4'b0001;
+        elsif data_offset == 2'b01
+          data_be = 4'b0010;
+        elsif data_offset == 2'b10
+          data_be = 4'b0100;
+        else
+          data_be = 4'b1000;
+        end if
+      end if
+    end if
+  end comb
+
+  // ── Write-data rotation ───────────────────────────────────────────
+  /// ref: specs/load_store_unit/spec.md §"Requirement: Write-Data Rotation"
+  wire data_wdata_w: UInt<32>;
+  comb
+    if data_offset == 2'b01
+      data_wdata_w = {lsu_wdata_i[23:0], lsu_wdata_i[31:24]};
+    elsif data_offset == 2'b10
+      data_wdata_w = {lsu_wdata_i[15:0], lsu_wdata_i[31:16]};
+    elsif data_offset == 2'b11
+      data_wdata_w = {lsu_wdata_i[7:0], lsu_wdata_i[31:8]};
+    else
+      data_wdata_w = lsu_wdata_i;
+    end if
+  end comb
+
+  // ── Read-data extraction ──────────────────────────────────────────
+  /// ref: specs/load_store_unit/spec.md §"Requirement: Read-Data Extraction"
+
+  // Misaligned halfword reconstruction: {second_rdata[7:0], first_rdata[31:24]}
+  wire hword_mis: UInt<16>;
+  comb
+    hword_mis = {data_rdata_i[7:0], rdata_q[23:16]};
+  end comb
+
+  // Word assembly (aligned and misaligned)
+  wire rdata_w_ext: UInt<32>;
+  comb
+    if rdata_offset_q == 2'b01
+      rdata_w_ext = {data_rdata_i[7:0],  rdata_q[23:0]};
+    elsif rdata_offset_q == 2'b10
+      rdata_w_ext = {data_rdata_i[15:0], rdata_q[23:8]};
+    elsif rdata_offset_q == 2'b11
+      rdata_w_ext = {data_rdata_i[23:0], rdata_q[23:16]};
+    else
+      rdata_w_ext = data_rdata_i;
+    end if
+  end comb
+
+  // Halfword: select and sign/zero-extend
+  wire rdata_h_ext: UInt<32>;
+  comb
+    if rdata_offset_q == 2'b00
+      if data_sign_ext_q
+        rdata_h_ext = unsigned(signed(data_rdata_i[15:0]).sext<32>());
+      else
+        rdata_h_ext = data_rdata_i[15:0].zext<32>();
+      end if
+    elsif rdata_offset_q == 2'b01
+      if data_sign_ext_q
+        rdata_h_ext = unsigned(signed(data_rdata_i[23:8]).sext<32>());
+      else
+        rdata_h_ext = data_rdata_i[23:8].zext<32>();
+      end if
+    elsif rdata_offset_q == 2'b10
+      if data_sign_ext_q
+        rdata_h_ext = unsigned(signed(data_rdata_i[31:16]).sext<32>());
+      else
+        rdata_h_ext = data_rdata_i[31:16].zext<32>();
+      end if
+    else
+      // Misaligned halfword offset 3
+      if data_sign_ext_q
+        rdata_h_ext = unsigned(signed(hword_mis).sext<32>());
+      else
+        rdata_h_ext = hword_mis.zext<32>();
+      end if
+    end if
+  end comb
+
+  // Byte: select and sign/zero-extend
+  wire rdata_b_ext: UInt<32>;
+  comb
+    if rdata_offset_q == 2'b00
+      if data_sign_ext_q
+        rdata_b_ext = unsigned(signed(data_rdata_i[7:0]).sext<32>());
+      else
+        rdata_b_ext = data_rdata_i[7:0].zext<32>();
+      end if
+    elsif rdata_offset_q == 2'b01
+      if data_sign_ext_q
+        rdata_b_ext = unsigned(signed(data_rdata_i[15:8]).sext<32>());
+      else
+        rdata_b_ext = data_rdata_i[15:8].zext<32>();
+      end if
+    elsif rdata_offset_q == 2'b10
+      if data_sign_ext_q
+        rdata_b_ext = unsigned(signed(data_rdata_i[23:16]).sext<32>());
+      else
+        rdata_b_ext = data_rdata_i[23:16].zext<32>();
+      end if
+    else
+      if data_sign_ext_q
+        rdata_b_ext = unsigned(signed(data_rdata_i[31:24]).sext<32>());
+      else
+        rdata_b_ext = data_rdata_i[31:24].zext<32>();
+      end if
+    end if
+  end comb
+
+  // Final read-data mux by captured access type
+  wire rdata_ext: UInt<32>;
+  comb
+    if data_type_q == 2'b00
+      rdata_ext = rdata_w_ext;
+    elsif data_type_q == 2'b01
+      rdata_ext = rdata_h_ext;
+    else
+      rdata_ext = rdata_b_ext;
+    end if
+  end comb
+
+  // Error gating wire — bus error or PMP error on final rvalid
+  wire bus_or_pmp_err: Bool;
+  comb
+    bus_or_pmp_err = (data_rvalid_i and (data_bus_err_i or bus_err_q)) or pmp_err_q;
+  end comb
+
+  // ── Static combinational outputs ──────────────────────────────────
+  comb
+    // ref: specs/load_store_unit/spec.md §"Requirement: Word-Aligned Address"
+    data_addr_o  = data_addr;
+    data_we_o    = lsu_we_i;
+    data_be_o    = data_be;
+    data_wdata_o = data_wdata_w;
+
+    addr_last_o = addr_last_q;
+
+    // ref: specs/load_store_unit/spec.md §"Requirement: busy_o"
+    busy_o = lsu_busy_q;
+
+    // MemECC=0: integrity error outputs always 0
+    load_resp_intg_err_o  = false;
+    store_resp_intg_err_o = false;
+
+    // ref: specs/load_store_unit/spec.md §"Requirement: lsu_rdata_valid_o"
+    lsu_rdata_o = rdata_ext;
+
+    // addr_incr_req_o: 1 while issuing the second transaction of a misaligned
+    // access — perfectly aligned with handle_misaligned_q.
+    // ref: specs/load_store_unit/spec.md §"Requirement: Misaligned Access Split"
+    addr_incr_req_o = handle_misaligned_q;
+    // lsu_rdata_valid_o / load_err_o / store_err_o / data_req_o / lsu_req_done_o
+    // / perf_load_o / perf_store_o / lsu_resp_valid_o driven from thread.
+  end comb
+
+  // ── OBI sequencing thread ─────────────────────────────────────────
+  /// The thread implements the request/grant/rvalid FSM.
+  ///
+  /// Combined IDLE+first-grant is a single `do..until` so that `data_req_o`
+  /// tracks `lsu_req_i` combinatorially from IDLE (zero-cycle handshake when
+  /// `data_gnt_i` is high on the same cycle as `lsu_req_i`).
+  ///
+  /// All seq assigns that must fire on the grant cycle are placed INSIDE
+  /// the relevant `do` body, conditional on the exit predicate, so that the
+  /// next state begins on the cycle immediately after grant (no dead-skid).
+  ///
+  /// A dead-skid IS kept between Phase 3 (first rvalid capture) and Phase 4
+  /// (final rvalid + response outputs) so that on the cycle of the first
+  /// rvalid `lsu_resp_valid_o` is NOT yet asserted — required by
+  /// `test_misaligned_access_split`.
+  ///
+  /// ref: specs/load_store_unit/spec.md §"Requirement: OBI-Handshake"
+  thread LsuReq on clk_i rising, rst_ni low
+
+    // ── Combined IDLE + first-grant ──────────────────────────────────
+    // `data_req_o` tracks `lsu_req_i` combinatorially in this state.
+    // Capture seq assigns fire on the grant cycle (lsu_req_i AND data_gnt_i).
+    // ref: specs/load_store_unit/spec.md §"Requirement: Performance Counter Pulses"
+    do
+      data_req_o     = lsu_req_i;
+      perf_load_o    = lsu_req_i and not lsu_we_i and not lsu_busy_q;
+      perf_store_o   = lsu_req_i and lsu_we_i and not lsu_busy_q;
+      // lsu_req_done_o pulses on the LAST grant only (aligned: this loop;
+      // misaligned: Phase 2). Suppressed here for misaligned first grant.
+      lsu_req_done_o = lsu_req_i and data_gnt_i and not split_misaligned_access;
+      if lsu_req_i
+        data_type_q     <= lsu_type_i;
+        data_sign_ext_q <= lsu_sign_ext_i;
+        data_we_q       <= lsu_we_i;
+        rdata_offset_q  <= data_offset;
+        lsu_busy_q      <= true;
+        bus_err_q       <= false;
+        if data_gnt_i
+          // Capture address on the grant cycle for both paths.
+          addr_last_q         <= data_addr;
+          pmp_err_q           <= data_pmp_err_i;
+          // For misaligned: enable second-transaction BE mux at next state
+          // (also drives addr_incr_req_o so ID/EX advances adder_result_ex_i).
+          handle_misaligned_q <= split_misaligned_access;
+        end if
+      end if
+    until lsu_req_i and data_gnt_i;
+
+    if split_misaligned_access
+
+      // ── MISALIGNED PATH ──────────────────────────────────────────
+      // Phase 2: second OBI transaction.  addr_incr_req_o is driven by the
+      // static comb block via handle_misaligned_q (true here).  ID/EX takes
+      // 1 cycle to update adder_result_ex_i after addr_incr_req_o, but the
+      // first cycle of Phase 2 was the dead-skid handle_misaligned_q
+      // transition, so adder_result_ex_i is already valid by the loop body.
+      // ref: specs/load_store_unit/spec.md §"Requirement: Misaligned Access Split"
+      do
+        data_req_o     = 1;
+        lsu_req_done_o = data_gnt_i;
+        if data_gnt_i
+          addr_last_q         <= data_addr;
+          pmp_err_q           <= pmp_err_q or data_pmp_err_i;
+          handle_misaligned_q <= false;
+        end if
+      until data_gnt_i;
+
+      // Phase 3: first rvalid — capture upper bytes on rvalid edge.
+      // No dead-skid before Phase 3: Phase 3 starts the cycle after second
+      // grant, so the FIRST rvalid is captured (not the second).
+      // lsu_req_done_o = data_gnt_i extends the pulse one cycle past the
+      // grant boundary so the output is visible at clock+1ns sampling.
+      do
+        lsu_req_done_o = data_gnt_i;
+        if data_rvalid_i
+          rdata_q   <= data_rdata_i[31:8];
+          bus_err_q <= data_bus_err_i;
+        end if
+      until data_rvalid_i;
+
+      // Dead-skid between Phase 3 and Phase 4: required so that on the cycle
+      // of the first rvalid `lsu_resp_valid_o` is NOT yet asserted.
+      // `lsu_busy_q <= false` provides the dead-skid AND clears busy after
+      // the LSU has captured the first rvalid.
+      lsu_busy_q <= false;
+
+      // Phase 4: second (final) rvalid — drive response outputs.
+      // ref: specs/load_store_unit/spec.md §"Requirement: lsu_resp_valid_o"
+      // ref: specs/load_store_unit/spec.md §"Requirement: lsu_rdata_valid_o"
+      // ref: specs/load_store_unit/spec.md §"Requirement: Error Reporting"
+      do
+        lsu_resp_valid_o  = data_rvalid_i or pmp_err_q;
+        lsu_rdata_valid_o = data_rvalid_i and not data_we_q
+                            and not data_bus_err_i and not bus_err_q and not pmp_err_q;
+        load_err_o  = (data_rvalid_i or pmp_err_q) and bus_or_pmp_err and not data_we_q;
+        store_err_o = (data_rvalid_i or pmp_err_q) and bus_or_pmp_err and data_we_q;
+      until data_rvalid_i or pmp_err_q;
+
+    else
+
+      // ── ALIGNED PATH ─────────────────────────────────────────────
+      // Wait for final rvalid OR a registered PMP error.
+      // lsu_req_done_o = data_gnt_i extends the pulse one cycle past the
+      // grant boundary so the output is visible at clock+1ns sampling.
+      // lsu_busy_q <= false fires inside the loop on rvalid exit so busy_o
+      // remains 1 throughout the rvalid wait.
+      // ref: specs/load_store_unit/spec.md §"Requirement: lsu_resp_valid_o"
+      // ref: specs/load_store_unit/spec.md §"Requirement: lsu_rdata_valid_o"
+      // ref: specs/load_store_unit/spec.md §"Requirement: Error Reporting"
+      do
+        lsu_resp_valid_o  = data_rvalid_i or pmp_err_q;
+        lsu_rdata_valid_o = data_rvalid_i and not data_we_q
+                            and not data_bus_err_i and not pmp_err_q;
+        load_err_o  = (data_rvalid_i or pmp_err_q) and bus_or_pmp_err and not data_we_q;
+        store_err_o = (data_rvalid_i or pmp_err_q) and bus_or_pmp_err and data_we_q;
+        lsu_req_done_o = data_gnt_i;
+        if data_rvalid_i or pmp_err_q
+          lsu_busy_q <= false;
+        end if
+      until data_rvalid_i or pmp_err_q;
+
+    end if
+
+    // Thread loops back to IDLE+first-grant automatically.
+
+  end thread LsuReq
+
+end module ibex_load_store_unit
