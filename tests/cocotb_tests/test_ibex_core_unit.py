@@ -357,18 +357,24 @@ async def req6_branch_redirect(dut):
     await _start_clock(dut)
     await _reset(dut)
     await _serve_instr(dut, instr=INSTR_JAL)
-    # After the JAL retires the IF stage should re-issue instr_req_o
-    # with the branch target. Walk a few cycles to let the redirect
-    # propagate IF → squash → new fetch.
+    # After the JAL retires the IF stage will assert pc_set with
+    # pc_mux=PC_JUMP. The prefetch buffer's `instr_addr` mux holds
+    # `stored_addr_q` while a fresh prefetch request (= +4 from boot)
+    # is awaiting grant — so we need to drain that pending prefetch
+    # by granting it (its rdata is then discarded by branch_discard_q).
+    # Once the discard completes the IF stage re-issues `instr_req_o`
+    # with `branch_target_ex` (= 0x0010_0088).
     target = BOOT_FETCH_PC + 8  # 0x0010_0088
     for _ in range(16):
+        # Soak up any pending prefetches by granting them (rdata is
+        # zeros; the IF squashes them via branch_discard).
+        if int(dut.instr_req_o.value) == 1:
+            dut.instr_gnt_i.value = 1
         await RisingEdge(dut.clk_i)
+        dut.instr_gnt_i.value = 0
         await _settle(dut)
         if int(dut.instr_req_o.value) == 1 and int(dut.instr_addr_o.value) == target:
             return
-    # Aligned word fetch boundary may also be the immediately-prior
-    # word (0x0010_0084) for the second beat — accept either since the
-    # IF prefetch buffer issues word-aligned fetches.
     last_addr = int(dut.instr_addr_o.value)
     raise AssertionError(
         f"JAL redirect did not land at {target:#010x}; last instr_addr_o "
@@ -436,21 +442,21 @@ async def req8_lsu_stall_and_response(dut):
     dut.data_gnt_i.value = 1
     await RisingEdge(dut.clk_i)
     dut.data_gnt_i.value = 0
+    # Drive rvalid+rdata before the next rising edge. `rf_we_wb_o` is
+    # combinational on `lsu_rdata_valid` (= rf_we_lsu under SecureIbex=0,
+    # spec R21), so the pulse is visible WHILE rvalid is still asserted.
+    # We sample it after a settle (keeping rvalid high) before the next
+    # rising edge would clock it past.
     dut.data_rvalid_i.value = 1
     dut.data_rdata_i.value  = 0xCAFE_F00D
+    await _settle(dut)
+    saw_we = (int(dut.rf_we_wb_o.value) == 1)
+    if saw_we:
+        assert int(dut.rf_waddr_wb_o.value) == 6  # rd = x6 for LW
     await RisingEdge(dut.clk_i)
     dut.data_rvalid_i.value = 0
     dut.data_rdata_i.value  = 0
     await _settle(dut)
-    # rf_we_wb_o pulses on the response cycle (or the next one).
-    saw_we = False
-    for _ in range(4):
-        if int(dut.rf_we_wb_o.value) == 1:
-            saw_we = True
-            assert int(dut.rf_waddr_wb_o.value) == 6  # rd = x6 for LW
-            break
-        await RisingEdge(dut.clk_i)
-        await _settle(dut)
     assert saw_we, "WB stage did not pulse rf_we_wb_o on the load response"
 
 
@@ -642,22 +648,45 @@ async def req14_debug_entry(dut):
     await _serve_instr(dut, instr=INSTR_ADD)
     # Assert debug_req_i.
     dut.debug_req_i.value = 1
-    # Within a few cycles IF should redirect (controller takes the
-    # request in DECODE). We observe instr_req_o re-asserting at a new
-    # PC — the DM halt address. SoC binds DmHaltAddr=0; allow either
-    # 0x0000_0000 or any address ≠ boot_addr-prefixed (a redirect
-    # happened).
+    # Within a few cycles the controller takes the debug request and
+    # the IF stage's instr_addr_o redirects to the DM halt address
+    # (DmHaltAddr; upstream default 0x1A11_0800, SoC overrides to 0).
+    # The prefetch buffer surfaces the redirected address on
+    # `instr_addr_o` even when `instr_req_o` is held low (e.g. while
+    # outstanding prefetches drain). Grant + rvalid each pending
+    # prefetch as we go so outstanding doesn't fill the buffer.
     saw_redirect = False
-    for _ in range(16):
-        await RisingEdge(dut.clk_i)
-        await _settle(dut)
+    last_addr = 0
+    for _ in range(20):
         if int(dut.instr_req_o.value) == 1:
-            addr = int(dut.instr_addr_o.value)
-            if (addr & 0xFFFF_FF00) != BOOT_ADDR and addr != 0x0010_0084:
-                saw_redirect = True
-                break
+            dut.instr_gnt_i.value = 1
+        await RisingEdge(dut.clk_i)
+        dut.instr_gnt_i.value = 0
+        await _settle(dut)
+        # Reply to any pending grant with rvalid (zeros) so the
+        # prefetch outstanding counter drains.
+        # We can do this on the next cycle.
+        # Watch instr_addr_o — the prefetch redirect target.
+        addr = int(dut.instr_addr_o.value)
+        last_addr = addr
+        if (addr & 0xFFFF_FF00) != BOOT_ADDR and addr != 0x0010_0084:
+            saw_redirect = True
+            break
+        # Send rvalid for the prefetch we just granted (drain
+        # outstanding so subsequent prefetches can issue).
+        dut.instr_rvalid_i.value = 1
+        dut.instr_rdata_i.value  = 0
+        await RisingEdge(dut.clk_i)
+        dut.instr_rvalid_i.value = 0
+        await _settle(dut)
+        addr = int(dut.instr_addr_o.value)
+        last_addr = addr
+        if (addr & 0xFFFF_FF00) != BOOT_ADDR and addr != 0x0010_0084:
+            saw_redirect = True
+            break
     assert saw_redirect, (
-        "debug_req_i=1 did not produce a redirect away from the boot region"
+        f"debug_req_i=1 did not produce a redirect away from the boot region "
+        f"(last instr_addr_o = {last_addr:#010x})"
     )
     dut.debug_req_i.value = 0
 
@@ -702,17 +731,23 @@ async def req16_rf_no_ecc_passthrough(dut):
     Given a register read, when the RF presents `rf_rdata_a_ecc_i`,
     then `rf_rdata_a` immediately equals it. We exercise this via a
     LW that uses rs1=x5 = 0xCAFE_BABE; the LSU's data_addr_o equals
-    that value (proving the read passthrough into the operand mux).
+    `{rf_rdata_a[31:2], 2'b00}` per the LSU word-alignment requirement
+    (= 0xCAFE_BABC), which still proves the read passthrough.
     """
     await _start_clock(dut)
     await _reset(dut)
     dut.rf_rdata_a_ecc_i.value = 0xCAFE_BABE
     await _serve_instr(dut, instr=INSTR_LW)
+    # The LSU drives a word-aligned address on the bus (spec
+    # §"Requirement: Word-Aligned Address" in load_store_unit/spec.md);
+    # so 0xCAFE_BABE → 0xCAFE_BABC on data_addr_o. The low two bits
+    # show up in data_be_o instead.
+    expected_addr = 0xCAFE_BABE & 0xFFFF_FFFC
     for _ in range(8):
         await RisingEdge(dut.clk_i)
         await _settle(dut)
         if int(dut.data_req_o.value) == 1:
-            assert int(dut.data_addr_o.value) == 0xCAFE_BABE, (
+            assert int(dut.data_addr_o.value) == expected_addr, (
                 "RF read data must flow combinationally into the LSU adder"
             )
             return
@@ -792,20 +827,33 @@ async def req19_perf_counter_passthrough(dut):
     await _start_clock(dut)
     await _reset(dut)
     await _serve_instr(dut, instr=INSTR_BEQ_TAKEN)
-    # Walk a few cycles; perf_branch_o should pulse. We probe via the
-    # ID instance if exposed.
+    # `perf_branch_o` from the ID stage pulses for one cycle: the
+    # FIRST_CYCLE of the BEQ in ID (combinationally driven from
+    # `branch_in_dec` while id_fsm_q==FIRST_CYCLE). That cycle aligns
+    # with the rvalid pulse of _serve_instr, so we sample immediately
+    # after the rvalid handshake before the FSM clocks into MULTI_CYCLE.
     saw_pulse = False
-    for _ in range(8):
-        await RisingEdge(dut.clk_i)
-        await _settle(dut)
-        try:
-            if int(dut.id_stage_i.perf_branch_o.value) == 1:
+    try:
+        if int(dut.id_stage_i.perf_branch_o.value) == 1:
+            saw_pulse = True
+    except AttributeError:
+        # Hierarchical probe not exposed — fall back to skipping the
+        # detailed check (the pulse is internal-only).
+        saw_pulse = True
+    if not saw_pulse:
+        # If we missed the immediate pulse, walk a few cycles in case
+        # the IF→ID register hadn't updated yet (e.g. BEQ took an
+        # extra cycle to land).
+        for _ in range(8):
+            await RisingEdge(dut.clk_i)
+            await _settle(dut)
+            try:
+                if int(dut.id_stage_i.perf_branch_o.value) == 1:
+                    saw_pulse = True
+                    break
+            except AttributeError:
                 saw_pulse = True
                 break
-        except AttributeError:
-            # Hierarchical probe not available; the pulse is internal.
-            saw_pulse = True
-            break
     assert saw_pulse, "perf_branch pulse not observed on a BEQ"
 
 
@@ -863,16 +911,13 @@ async def req21_non_secure_aliases(dut):
     dut.data_gnt_i.value = 1
     await RisingEdge(dut.clk_i)
     dut.data_gnt_i.value = 0
+    # Drive rvalid+rdata; rf_we_wb_o is combinational on lsu_rdata_valid
+    # (alias rf_we_lsu, spec R21), so the pulse coincides with rvalid.
     dut.data_rvalid_i.value = 1
     dut.data_rdata_i.value  = 0x1234_5678
+    await _settle(dut)
+    pulses = 1 if int(dut.rf_we_wb_o.value) == 1 else 0
     await RisingEdge(dut.clk_i)
     dut.data_rvalid_i.value = 0
     await _settle(dut)
-    # rf_we_wb_o should pulse exactly once.
-    pulses = 0
-    for _ in range(6):
-        if int(dut.rf_we_wb_o.value) == 1:
-            pulses += 1
-        await RisingEdge(dut.clk_i)
-        await _settle(dut)
     assert pulses >= 1, "rf_we_wb_o did not pulse on the LSU response"

@@ -96,14 +96,19 @@ def core_full_runner(verilator_bin, tmp_path_factory):
     sim_build = tmp_path_factory.mktemp("core_full_sim_build")
     runner = get_runner("verilator")
     runner.build(
-        sources=[str(p) for p in (ARCH_SV_FILES + UPSTREAM_SV_FILES)],
+        # ibex_pkg.sv must come before any consumer using its enum
+        # types in parameter declarations — IbexCore.arch declares
+        # `param RV32M: ibex_pkg::rv32m_e = ...` natively (per
+        # arch-com PR #286), so Verilator needs the package parsed
+        # first.
+        sources=[str(p) for p in (UPSTREAM_SV_FILES + ARCH_SV_FILES)],
         hdl_toplevel="ibex_core",
         build_dir=str(sim_build),
         always=True,
         parameters={
             "RV32E":              0,
-            "RV32M":              2,
-            "RV32B":              0,
+            # RV32M / RV32B are enum-typed — defaults match SoC pinning;
+            # passing int via -G implicit-converts and trips ENUMVALUE.
             "BranchTargetALU":    0,
             "WritebackStage":     0,
             "ICache":             0,
@@ -124,6 +129,7 @@ def core_full_runner(verilator_bin, tmp_path_factory):
             "-Wno-UNOPTFLAT",
             "-Wno-PINCONNECTEMPTY",
             "-Wno-DECLFILENAME",
+            f"-I{IBEX_ROOT}/vendor/lowrisc_ip/ip/prim/rtl",
         ],
     )
     return runner, sim_build

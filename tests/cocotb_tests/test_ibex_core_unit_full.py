@@ -132,10 +132,15 @@ async def req3_instr_valid_clear_drops_register(dut):
     await _reset(dut)
     await _serve_instr(dut, instr=INSTR_BEQ_TAKEN)
     # rs1 = rs2 = x0 = 0 → BEQ taken. Watch for re-fetch at branch
-    # target = boot + 8.
+    # target = boot + 8. Drain pending prefetches each cycle (same
+    # pattern as basic-suite req6) so the redirect surfaces on
+    # instr_addr_o once the discard completes.
     target = BOOT_FETCH_PC + 8
     for _ in range(16):
+        if int(dut.instr_req_o.value) == 1:
+            dut.instr_gnt_i.value = 1
         await RisingEdge(dut.clk_i)
+        dut.instr_gnt_i.value = 0
         await _settle(dut)
         if int(dut.instr_req_o.value) == 1 and int(dut.instr_addr_o.value) == target:
             return
@@ -616,8 +621,14 @@ async def req21_no_response_filter(dut):
     the non-secure path SHALL trust the bus protocol and not filter
     the response. CS-3 puts the response-correspondence guarantee on
     the SoC. We cannot directly demonstrate "absence of filtering" at
-    this scope; we smoke-test that a normal response writes back."""
-    await req21_non_secure_aliases(dut)
+    this scope; we smoke-test that a normal response writes back.
+
+    The basic-suite `req21_non_secure_aliases` test exercises the same
+    path; we can't `await` it directly here because the cocotb-decorated
+    function is a `Test` object, not a coroutine — call its underlying
+    `.func` instead.
+    """
+    await req21_non_secure_aliases.func(dut)
 
 
 # ─────────────────────────────────────────────────────────────────────────

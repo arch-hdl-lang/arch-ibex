@@ -101,6 +101,15 @@ module ibex_load_store_unit
   reg handle_misaligned_q:      Bool     reset rst_ni => false;
   /// True from first request until last grant; drives busy_o.
   reg lsu_busy_q:               Bool     reset rst_ni => false;
+  /// Tracks "first request issued, waiting for first grant" — corresponds
+  /// to upstream `ls_fsm_cs == WAIT_GNT`. Latches the request so
+  /// `data_req_o` stays asserted across the WAIT_GNT phase even after
+  /// the upstream consumer (ID stage) drops `lsu_req_i` (under
+  /// `data_req_allowed = instr_first_cycle`, ID drops it after one
+  /// cycle). Set when `lsu_req_i` is seen without immediate `data_gnt_i`,
+  /// cleared on the cycle the first grant lands.
+  /// ref: specs/load_store_unit/spec.md §"Delayed grant — aligned access"
+  reg data_req_pending_q:       Bool     reset rst_ni => false;
 
   /// Misaligned-only: set on the cycle of the SECOND grant, cleared on
   /// the cycle of the FIRST rvalid. While set, the wait-rvalid state
@@ -356,9 +365,11 @@ module ibex_load_store_unit
 
     // ── Request-side comb outputs ───────────────────────────────────
     // Drive request: high on initial req (lsu_req_i, in IDLE) OR while in
-    // WAIT_GNT (lsu_req_i held by ID/EX) OR while issuing the misaligned
-    // second transaction (handle_misaligned_q).
-    data_req_o     = lsu_req_i or handle_misaligned_q;
+    // WAIT_GNT (held internally via `data_req_pending_q` since the C1
+    // ID stage drives `lsu_req_i` for one cycle only) OR while issuing
+    // the misaligned second transaction (handle_misaligned_q).
+    // ref: specs/load_store_unit/spec.md §"Delayed grant — aligned access"
+    data_req_o     = lsu_req_i or data_req_pending_q or handle_misaligned_q;
 
     // Performance counters: pulse exactly on the FIRST cycle of a new
     // request (lsu_busy_q==0 disambiguates from WAIT_GNT and misaligned
@@ -378,7 +389,7 @@ module ibex_load_store_unit
     //     time we test handle_misaligned_d AND gnt we know we're at the
     //     SECOND grant.
     // ref: specs/load_store_unit/spec.md §"Requirement: lsu_req_done_o"
-    lsu_req_done_o = (lsu_req_i and data_gnt_i and not split_misaligned_access and not handle_misaligned_q)
+    lsu_req_done_o = ((lsu_req_i or data_req_pending_q) and data_gnt_i and not split_misaligned_access and not handle_misaligned_q)
                      or (handle_misaligned_d and data_gnt_i);
   end comb
 
@@ -436,9 +447,12 @@ module ibex_load_store_unit
     end if
 
     // IDLE → WAIT_GNT: req asserted but no immediate grant. Enter
-    // non-idle (busy_o goes high next cycle).
+    // non-idle (busy_o goes high next cycle). Latch the held-request
+    // flop so `data_req_o` keeps asserting after the upstream consumer
+    // (ID stage) drops `lsu_req_i` — see `data_req_pending_q` decl.
     if lsu_req_i and not data_gnt_i and not lsu_busy_q
-      lsu_busy_q <= true;
+      lsu_busy_q          <= true;
+      data_req_pending_q  <= true;
     end if
 
     // First grant (IDLE or WAIT_GNT → next state):
@@ -446,10 +460,14 @@ module ibex_load_store_unit
     //   - Misaligned: any → WAIT_RVALID_MIS (lsu_busy_q <= true,
     //     handle_misaligned_q <= true). For the IDLE→WAIT_RVALID_MIS
     //     case, lsu_busy_q transitions 0 → 1.
-    if lsu_req_i and data_gnt_i and not handle_misaligned_q
+    // Use `(lsu_req_i or data_req_pending_q)` so we still capture grant
+    // when the upstream `lsu_req_i` has dropped but the LSU is holding
+    // the bus request via `data_req_pending_q` (WAIT_GNT phase).
+    if (lsu_req_i or data_req_pending_q) and data_gnt_i and not handle_misaligned_q
       addr_last_q         <= data_addr;
       pmp_err_q           <= data_pmp_err_i;
       handle_misaligned_q <= split_misaligned_access;
+      data_req_pending_q  <= false;
       if split_misaligned_access
         lsu_busy_q <= true;       // entering WAIT_RVALID_MIS
       else
