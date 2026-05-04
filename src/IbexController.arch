@@ -18,26 +18,15 @@
 /// state-dependent outputs). The latched decoder/LSU flops + mode
 /// flops are declared at fsm scope alongside the state.
 
+/// `ExcCause` / `Irqs` come from `IbexPkg` so the SoC can link
+/// controller + if_stage + id_stage into one elaboration without
+/// `Duplicate declaration of TYPEDEF` errors (was a B5-blocking issue
+/// before the package extraction).
+use IbexCoreSharedPkg;
+
 domain SysDomain
   freq_mhz: 100
 end domain SysDomain
-
-/// Packed exception-cause struct: {irq_int, irq_ext, lower_cause[4:0]}
-/// matches upstream `ibex_pkg::exc_cause_t`.
-struct ExcCause
-  irq_int: Bool;
-  irq_ext: Bool;
-  lower_cause: UInt<5>;
-end struct ExcCause
-
-/// Per-IRQ enable-qualified pending bits: {irq_fast[14:0], irq_external,
-/// irq_timer, irq_software}. Matches upstream `ibex_pkg::irqs_t`.
-struct Irqs
-  irq_software: Bool;
-  irq_timer: Bool;
-  irq_external: Bool;
-  irq_fast: UInt<15>;
-end struct Irqs
 
 /// Debug-cause register (3-bit upstream `dbg_cause_e`).
 /// Constants used:

@@ -86,6 +86,29 @@ _build_one() {
   sv_stem="$(echo "${arch_stem}" | sed -E 's/([a-z0-9])([A-Z])/\1_\2/g; s/([A-Z]+)([A-Z][a-z])/\1_\2/g' | tr '[:upper:]' '[:lower:]')"
   echo "arch build $(basename "${f}") → build/${sv_stem}.sv"
   "${ARCH_BIN}" build -o "${BUILD_DIR}/${sv_stem}.sv" "${f}"
+
+  # When a consumer `use`s a package via .archi auto-resolution,
+  # `arch build -o` inlines the package contents into the consumer's
+  # own .sv (alongside the `import Pkg::*;`). When all consumer SVs
+  # are linked together at SoC elaboration, Verilator sees N
+  # duplicate `package <Name>;` declarations and errors with
+  # MODDUP. The standalone `ibex_<pkg>.sv` (built from the package
+  # source itself) is the canonical declaration; consumer SVs need
+  # only the `import` line. Strip the inlined `package ... endpackage`
+  # blocks from any non-package consumer SV.
+  if [[ "${arch_stem}" != "IbexCoreSharedPkg" ]]; then
+    local sv_path="${BUILD_DIR}/${sv_stem}.sv"
+    if [[ -f "${sv_path}" ]] && grep -q '^import IbexCoreSharedPkg::\*;' "${sv_path}"; then
+      # Delete the `package IbexCoreSharedPkg; ... endpackage` block in
+      # place. The package occurrence is contiguous and starts at
+      # column 0; awk between its open and close lines.
+      awk '
+        /^package IbexCoreSharedPkg;/ { in_pkg = 1; next }
+        in_pkg && /^endpackage$/      { in_pkg = 0; next }
+        !in_pkg                        { print }
+      ' "${sv_path}" > "${sv_path}.tmp" && mv "${sv_path}.tmp" "${sv_path}"
+    fi
+  fi
 }
 
 for f in "${ordered_files[@]}"; do
