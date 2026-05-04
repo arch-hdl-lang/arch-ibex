@@ -237,10 +237,25 @@ def _arch_swap_sv() -> list[Path]:
     appended to `extra_sv`, and their basenames are added on the fly
     to `_SV_SHADOWED_BY_FORKS` so the upstream copy is filtered out of
     the fusesoc-resolved filelist (`_strip_top_and_exe` uses that set).
+
+    Package SVs (those whose first non-blank line is `package <Name>;`)
+    are returned first so consumer SVs that `import <Name>::*;` see the
+    declaration before they need it. Verilator processes the filelist
+    in order; a package import before its declaration produces
+    `Package/class '<Name>' not found, needs to be predeclared`.
     """
     if not ARCH_BUILD_DIR.is_dir():
         return []
-    return sorted(p for p in ARCH_BUILD_DIR.glob("*.sv"))
+    all_sv = sorted(p for p in ARCH_BUILD_DIR.glob("*.sv"))
+    pkg_sv: list[Path] = []
+    other_sv: list[Path] = []
+    for p in all_sv:
+        # Cheap content sniff: scan the head for a top-level `package` line.
+        head = "\n".join(p.read_text().splitlines()[:30])
+        is_pkg = any(line.lstrip().startswith("package ") and line.rstrip().endswith(";")
+                     for line in head.splitlines())
+        (pkg_sv if is_pkg else other_sv).append(p)
+    return pkg_sv + other_sv
 
 
 def _strip_top_and_exe(vc_path: Path) -> str:

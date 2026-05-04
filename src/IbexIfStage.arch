@@ -18,14 +18,9 @@
 /// `port reg ... guard if_id_pipe_reg_we` IF->ID pipeline registers
 /// per Requirement 7's no-reset (ResetAll=0) discipline.
 
-/// Packed exception-cause struct delivered by the controller. The
-/// declaration order matches upstream `ibex_pkg::exc_cause_t`:
-/// `irq_int` is the MSB, then `irq_ext`, then `lower_cause[4:0]`.
-struct ExcCause
-  irq_int: Bool;
-  irq_ext: Bool;
-  lower_cause: UInt<5>;
-end struct ExcCause
+/// `ExcCause` comes from `IbexPkg` so controller / if_stage / id_stage
+/// can co-link without duplicate-typedef errors at SoC elaboration.
+use IbexCoreSharedPkg;
 
 module ibex_if_stage
   /// Toolchain-shaped params: pinned to the SoC's values, but declared

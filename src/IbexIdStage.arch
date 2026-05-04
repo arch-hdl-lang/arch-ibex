@@ -1,0 +1,945 @@
+/// IbexIdStage — Instruction-Decode/Issue stage for the Ibex pipeline.
+///
+/// Composite container that instantiates `ibex_decoder` (A4) and
+/// `ibex_controller` (B4) and wires their cross-coupling: ALU/branch
+/// operand muxes, LSU request handshake, RF read/write address
+/// routing, multdiv intermediate-value pipeline pair, branch-set /
+/// jump-set pulse generation (with the 2-cycle `branch_set_raw_q`
+/// flop path), and the 2-state ID FSM (FIRST_CYCLE / MULTI_CYCLE)
+/// that aggregates stall sources (stall_ld_hz | stall_mem |
+/// stall_multdiv | stall_jump | stall_branch | stall_alu).
+///
+/// Spec: changes/port-id_stage/specs/id_stage/spec.md
+///   - 16 Requirements
+///   - 15 Caller-side rules (CS-1..CS-15)
+///   - 12 Spec notes (N-1..N-12)
+///
+/// SoC parameter pinning (per spec §"Pinned parameter values"):
+///   RV32E=0, RV32M=RV32MFast, RV32B=RV32BNone, BranchTargetALU=0,
+///   WritebackStage=0, BranchPredictor=0, DataIndTiming=0, MemECC=0.
+///
+/// Construct: outer `module ibex_id_stage` with two `inst` blocks
+/// (`decoder_i`, `controller_i`), four latched flops
+/// (`id_fsm_q`, `imd_val_q[2]`, `branch_set_raw_q`,
+/// `branch_jump_set_done_q`), and a single comb block plus several
+/// module-scope `let` continuous-assigns mirroring upstream's block
+/// boundaries (Spec note N-5).
+
+domain SysDomain
+  freq_mhz: 100
+end domain SysDomain
+
+/// `ExcCause` / `Irqs` types come from `IbexPkg`. Sharing via package
+/// avoids the duplicate-typedef-at-file-scope issue Verilator flags
+/// when multiple consumer SVs (controller, if_stage, id_stage) get
+/// linked into one elaboration.
+use IbexCoreSharedPkg;
+
+module ibex_id_stage
+  // ── SoC parameter pinning (Spec §"Pinned parameter values") ─────────
+  param RV32E[0:0]: const = 1'd0;
+  param RV32M: const = 2;                           // RV32MFast
+  param RV32B: const = 0;                           // RV32BNone
+  param BranchTargetALU[0:0]: const = 1'd0;
+  param WritebackStage[0:0]: const = 1'd0;
+  param BranchPredictor[0:0]: const = 1'd0;
+  param DataIndTiming[0:0]: const = 1'd0;
+  param MemECC[0:0]: const = 1'd0;
+
+  // ── Clock + reset ────────────────────────────────────────────────────
+  port clk_i:  in Clock<SysDomain>;
+  port rst_ni: in Reset<Async, Low>;
+
+  // ── IF-stage interface ──────────────────────────────────────────────
+  port instr_valid_i:           in  Bool;
+  port instr_rdata_i:           in  UInt<32>;
+  port instr_rdata_alu_i:       in  UInt<32>;
+  port instr_rdata_c_i:         in  UInt<16>;
+  port instr_is_compressed_i:   in  Bool;
+  port instr_bp_taken_i:        in  Bool;
+  port illegal_c_insn_i:        in  Bool;
+  port instr_fetch_err_i:       in  Bool;
+  port instr_fetch_err_plus2_i: in  Bool;
+  port pc_id_i:                 in  UInt<32>;
+  port instr_exec_i:            in  Bool;
+  port instr_req_o:             out Bool;
+  port instr_first_cycle_id_o:  out Bool;
+  port instr_valid_clear_o:     out Bool;
+  port id_in_ready_o:           out Bool;
+  port icache_inval_o:          out Bool;
+
+  // ── Branch / jump control ────────────────────────────────────────────
+  port branch_decision_i:       in  Bool;
+  port pc_set_o:                out Bool;
+  port pc_mux_o:                out UInt<3>;
+  port nt_branch_mispredict_o:  out Bool;
+  port nt_branch_addr_o:        out UInt<32>;
+  port exc_pc_mux_o:            out UInt<2>;
+  port exc_cause_o:             out ExcCause;
+
+  // ── EX-block interface ───────────────────────────────────────────────
+  port ex_valid_i:              in  Bool;
+  port alu_operator_ex_o:       out UInt<7>;
+  port alu_operand_a_ex_o:      out UInt<32>;
+  port alu_operand_b_ex_o:      out UInt<32>;
+  /// `imd_val_we_ex_i` and `imd_val_d_ex_i` are driven by EX (CS-12).
+  /// `imd_val_d_ex_i` and `imd_val_q_ex_o` use unpacked Vec to match
+  /// upstream's `[33:0] imd_val_*[2]` shape — the cocotb tests probe
+  /// the lanes as `imd_val_d_ex_i[0]` / `imd_val_q_ex_o[0]`.
+  port imd_val_we_ex_i:         in  UInt<2>;
+  port imd_val_d_ex_i:          in  unpacked Vec<UInt<34>, 2>;
+  port imd_val_q_ex_o:          out unpacked Vec<UInt<34>, 2>;
+  port bt_a_operand_o:          out UInt<32>;
+  port bt_b_operand_o:          out UInt<32>;
+  port result_ex_i:             in  UInt<32>;
+
+  // ── Multdiv interface ────────────────────────────────────────────────
+  port mult_en_ex_o:            out Bool;
+  port div_en_ex_o:             out Bool;
+  port mult_sel_ex_o:           out Bool;
+  port div_sel_ex_o:            out Bool;
+  port multdiv_operator_ex_o:   out UInt<2>;
+  port multdiv_signed_mode_ex_o: out UInt<2>;
+  port multdiv_operand_a_ex_o:  out UInt<32>;
+  port multdiv_operand_b_ex_o:  out UInt<32>;
+  port multdiv_ready_id_o:      out Bool;
+
+  // ── CSR interface ────────────────────────────────────────────────────
+  port csr_access_o:            out Bool;
+  port csr_op_o:                out UInt<2>;
+  port csr_addr_o:              out UInt<12>;
+  port csr_op_en_o:             out Bool;
+  port csr_save_if_o:           out Bool;
+  port csr_save_id_o:           out Bool;
+  port csr_save_wb_o:           out Bool;
+  port csr_restore_mret_id_o:   out Bool;
+  port csr_restore_dret_id_o:   out Bool;
+  port csr_save_cause_o:        out Bool;
+  port csr_mtval_o:             out UInt<32>;
+  port priv_mode_i:             in  UInt<2>;
+  port csr_mstatus_tw_i:        in  Bool;
+  port illegal_csr_insn_i:      in  Bool;
+  port csr_rdata_i:             in  UInt<32>;
+  port data_ind_timing_i:       in  Bool;
+
+  // ── LSU interface ────────────────────────────────────────────────────
+  port lsu_req_o:               out Bool;
+  port lsu_we_o:                out Bool;
+  port lsu_type_o:              out UInt<2>;
+  port lsu_sign_ext_o:          out Bool;
+  port lsu_wdata_o:             out UInt<32>;
+  port lsu_resp_valid_i:        in  Bool;
+  port lsu_req_done_i:          in  Bool;
+  port lsu_addr_incr_req_i:     in  Bool;
+  port lsu_addr_last_i:         in  UInt<32>;
+  port lsu_load_err_i:          in  Bool;
+  port lsu_load_resp_intg_err_i: in  Bool;
+  port lsu_store_err_i:         in  Bool;
+  port lsu_store_resp_intg_err_i: in  Bool;
+  port expecting_load_resp_o:   out Bool;
+  port expecting_store_resp_o:  out Bool;
+
+  // ── Interrupt / debug interface ──────────────────────────────────────
+  port csr_mstatus_mie_i:       in  Bool;
+  port irq_pending_i:           in  Bool;
+  port irqs_i:                  in  Irqs;
+  port irq_nm_i:                in  Bool;
+  port nmi_mode_o:              out Bool;
+  port debug_req_i:             in  Bool;
+  port debug_single_step_i:     in  Bool;
+  port debug_ebreakm_i:         in  Bool;
+  port debug_ebreaku_i:         in  Bool;
+  port trigger_match_i:         in  Bool;
+  port debug_mode_o:            out Bool;
+  port debug_mode_entering_o:   out Bool;
+  port debug_cause_o:           out UInt<3>;
+  port debug_csr_save_o:        out Bool;
+
+  // ── Register-file interface ──────────────────────────────────────────
+  port rf_raddr_a_o:            out UInt<5>;
+  port rf_rdata_a_i:            in  UInt<32>;
+  port rf_raddr_b_o:            out UInt<5>;
+  port rf_rdata_b_i:            in  UInt<32>;
+  port rf_ren_a_o:              out Bool;
+  port rf_ren_b_o:              out Bool;
+  port rf_waddr_id_o:           out UInt<5>;
+  port rf_wdata_id_o:           out UInt<32>;
+  port rf_we_id_o:              out Bool;
+  port rf_rd_a_wb_match_o:      out Bool;
+  port rf_rd_b_wb_match_o:      out Bool;
+  port rf_waddr_wb_i:           in  UInt<5>;
+  port rf_wdata_fwd_wb_i:       in  UInt<32>;
+  port rf_write_wb_i:           in  Bool;
+
+  // ── Writeback-stage interface ────────────────────────────────────────
+  port en_wb_o:                 out Bool;
+  port instr_type_wb_o:         out UInt<2>;
+  port instr_perf_count_id_o:   out Bool;
+  port ready_wb_i:              in  Bool;
+  port outstanding_load_wb_i:   in  Bool;
+  port outstanding_store_wb_i:  in  Bool;
+
+  // ── Top-level / miscellaneous ────────────────────────────────────────
+  port ctrl_busy_o:             out Bool;
+  port illegal_insn_o:          out Bool;
+  port instr_id_done_o:         out Bool;
+
+  // ── Performance counters ─────────────────────────────────────────────
+  port perf_jump_o:             out Bool;
+  port perf_branch_o:           out Bool;
+  port perf_tbranch_o:          out Bool;
+  port perf_dside_wait_o:       out Bool;
+  port perf_mul_wait_o:         out Bool;
+  port perf_div_wait_o:         out Bool;
+
+  // ====================================================================
+  // Enum encodings (from upstream ibex_pkg)
+  // ====================================================================
+
+  /// `id_fsm_e`: FIRST_CYCLE=0, MULTI_CYCLE=1 (Spec §Latched state regs).
+  let FIRST_CYCLE: UInt<1> = 1'd0;
+  let MULTI_CYCLE: UInt<1> = 1'd1;
+
+  /// `op_a_sel_e` (decoder).
+  let OP_A_REG_A:  UInt<2> = 2'd0;
+  let OP_A_FWD:    UInt<2> = 2'd1;
+  let OP_A_CURRPC: UInt<2> = 2'd2;
+  let OP_A_IMM:    UInt<2> = 2'd3;
+
+  /// `op_b_sel_e`.
+  let OP_B_REG_B: UInt<1> = 1'd0;
+  let OP_B_IMM:   UInt<1> = 1'd1;
+
+  /// `imm_a_sel_e`.
+  let IMM_A_Z:    UInt<1> = 1'd0;
+  let IMM_A_ZERO: UInt<1> = 1'd1;
+
+  /// `imm_b_sel_e` — full 7-arm under `g_no_btalu_muxes`.
+  let IMM_B_I:         UInt<3> = 3'd0;
+  let IMM_B_S:         UInt<3> = 3'd1;
+  let IMM_B_B:         UInt<3> = 3'd2;
+  let IMM_B_U:         UInt<3> = 3'd3;
+  let IMM_B_J:         UInt<3> = 3'd4;
+  let IMM_B_INCR_PC:   UInt<3> = 3'd5;
+  let IMM_B_INCR_ADDR: UInt<3> = 3'd6;
+
+  /// `rf_wd_sel_e`.
+  let RF_WD_EX:  UInt<1> = 1'd0;
+  let RF_WD_CSR: UInt<1> = 1'd1;
+
+  /// `csr_op_e`.
+  let CSR_OP_READ:  UInt<2> = 2'd0;
+  let CSR_OP_WRITE: UInt<2> = 2'd1;
+  let CSR_OP_SET:   UInt<2> = 2'd2;
+  let CSR_OP_CLEAR: UInt<2> = 2'd3;
+
+  /// `csr_num_e` subset (only the flush-skip targets matter here).
+  let CSR_MSCRATCH: UInt<12> = 12'h340;
+  let CSR_MEPC:     UInt<12> = 12'h341;
+
+  /// `wb_instr_type_e`: WB_INSTR_LOAD=0, WB_INSTR_STORE=1, WB_INSTR_OTHER=2.
+  let WB_INSTR_OTHER: UInt<2> = 2'd2;
+
+  /// Privilege-level encoding (spec §"Requirement 3").
+  let PRIV_LVL_M: UInt<2> = 2'd3;
+
+  // ====================================================================
+  // Internal wires (decoder + controller cross-coupling + comb intermediates)
+  // ====================================================================
+
+  // ── Decoder outputs (named per spec §Sub-module instances) ──────────
+  wire illegal_insn_dec:    Bool;
+  wire ebrk_insn:           Bool;
+  wire mret_insn_dec:       Bool;
+  wire dret_insn_dec:       Bool;
+  wire ecall_insn_dec:      Bool;
+  wire wfi_insn_dec:        Bool;
+  wire jump_set_dec:        Bool;
+  wire icache_inval_dec:    Bool;
+
+  wire imm_a_mux_sel:        UInt<1>;
+  wire imm_b_mux_sel_dec:    UInt<3>;
+  wire bt_a_mux_sel:         UInt<2>;
+  wire bt_b_mux_sel:         UInt<3>;
+
+  wire imm_i_type:           UInt<32>;
+  wire imm_s_type:           UInt<32>;
+  wire imm_b_type:           UInt<32>;
+  wire imm_u_type:           UInt<32>;
+  wire imm_j_type:           UInt<32>;
+  wire zimm_rs1_type:        UInt<32>;
+
+  wire rf_wdata_sel:         UInt<1>;
+  wire rf_we_dec:            Bool;
+  wire rf_raddr_a_dec:       UInt<5>;
+  wire rf_raddr_b_dec:       UInt<5>;
+  wire rf_waddr_dec:         UInt<5>;
+  wire rf_ren_a_dec:         Bool;
+  wire rf_ren_b_dec:         Bool;
+
+  wire alu_operator:         UInt<7>;
+  wire alu_op_a_mux_sel_dec: UInt<2>;
+  wire alu_op_b_mux_sel_dec: UInt<1>;
+  wire alu_multicycle_dec:   Bool;
+
+  wire mult_en_dec:          Bool;
+  wire div_en_dec:           Bool;
+  wire mult_sel_dec:         Bool;
+  wire div_sel_dec:          Bool;
+  wire multdiv_operator:     UInt<2>;
+  wire multdiv_signed_mode:  UInt<2>;
+
+  wire csr_access_dec:       Bool;
+  wire csr_op_dec:           UInt<2>;
+  wire csr_addr_dec:         UInt<12>;
+
+  wire lsu_req_dec:          Bool;
+  wire lsu_we:               Bool;
+  wire lsu_type:             UInt<2>;
+  wire lsu_sign_ext:         Bool;
+
+  wire jump_in_dec:          Bool;
+  wire branch_in_dec:        Bool;
+
+  // ── Controller outputs ──────────────────────────────────────────────
+  wire ctrl_busy_w:          Bool;
+  wire instr_valid_clear_w:  Bool;
+  wire id_in_ready_w:        Bool;
+  wire controller_run:       Bool;
+  wire instr_req_w:          Bool;
+  wire pc_set_w:             Bool;
+  wire pc_mux_w:             UInt<3>;
+  wire nt_branch_mispredict_w: Bool;
+  wire exc_pc_mux_w:         UInt<2>;
+  wire exc_cause_w:          ExcCause;
+  wire wb_exception:         Bool;
+  wire id_exception:         Bool;
+  wire nmi_mode_w:           Bool;
+  wire debug_cause_w:        UInt<3>;
+  wire debug_csr_save_w:     Bool;
+  wire debug_mode_w:         Bool;
+  wire debug_mode_entering_w: Bool;
+  wire csr_save_if_w:        Bool;
+  wire csr_save_id_w:        Bool;
+  wire csr_save_wb_w:        Bool;
+  wire csr_restore_mret_id_w: Bool;
+  wire csr_restore_dret_id_w: Bool;
+  wire csr_save_cause_w:     Bool;
+  wire csr_mtval_w:          UInt<32>;
+  wire flush_id:             Bool;
+  wire perf_jump_w:          Bool;
+  wire perf_tbranch_w:       Bool;
+
+  // ── Comb intermediates ──────────────────────────────────────────────
+  wire imm_b:               UInt<32>;
+  wire alu_operand_a:       UInt<32>;
+  wire rf_wdata_id_w:       UInt<32>;
+
+
+  wire id_fsm_d:            UInt<1>;
+  wire stall_multdiv:       Bool;
+  wire stall_jump:          Bool;
+  wire stall_branch:        Bool;
+  wire stall_alu:           Bool;
+  wire rf_we_raw:           Bool;
+  wire branch_set_raw_d:    Bool;
+  wire branch_not_set:      Bool;
+  wire jump_set_raw:        Bool;
+  wire perf_branch_w:       Bool;
+
+  wire mult_en_id:          Bool;
+  wire div_en_id:           Bool;
+
+  // ====================================================================
+  // Latched state regs (Spec §"Latched state regs", §"Requirement 1")
+  // ====================================================================
+
+  /// `id_fsm_q ∈ {FIRST_CYCLE, MULTI_CYCLE}`. Updated only when
+  /// `instr_executing` is asserted (Spec note N-4). Reset to FIRST_CYCLE.
+  reg id_fsm_q: UInt<1> reset rst_ni => 0;
+
+  /// Per-lane multdiv intermediate-value registers (Spec §"Requirement 8").
+  /// Per-lane WE from `imd_val_we_ex_i`. Reset to scalar 0 (lowers to
+  /// per-lane zeros — Vec reset uses scalar form).
+  reg imd_val_q: Vec<UInt<34>, 2> reset rst_ni => 0;
+
+  /// `branch_set_raw_q` — always-write flop (Spec note N-3). Reset to 0.
+  /// Holds the cycle-N+1 branch-set pulse for the 2-cycle branch path.
+  reg branch_set_raw_q: Bool reset rst_ni => 1'b0;
+
+  /// `branch_jump_set_done_q` — sticky dedup flag, clears via
+  /// `instr_valid_clear_o` (Spec note N-9, CS-9). Always-write flop.
+  reg branch_jump_set_done_q: Bool reset rst_ni => 1'b0;
+
+  // ====================================================================
+  // Sub-module instantiations
+  // ====================================================================
+
+  /// `decoder_i` — `ibex_decoder` (A4). Pure combinational; clk/rst
+  /// connected for boundary-only SVA. Drives the per-instruction control
+  /// vector (operator, mux selectors, immediates, RF addr/we/ren, LSU
+  /// type/we/sign_ext, mult/div enables, CSR access fields, jump/branch
+  /// flags, illegal-instr / mret / dret / ecall / wfi / ebrk / fence.i).
+  inst decoder_i: ibex_decoder
+    param RV32E = 0;
+    param RV32M = 2;
+    param RV32B = 0;
+    param BranchTargetALU = 0;
+    clk_i               <- clk_i;
+    rst_ni              <- rst_ni;
+    branch_taken_i      <- branch_taken;
+    instr_first_cycle_i <- instr_first_cycle;
+    instr_rdata_i       <- instr_rdata_i;
+    instr_rdata_alu_i   <- instr_rdata_alu_i;
+    illegal_c_insn_i    <- illegal_c_insn_i;
+    illegal_insn_o      -> illegal_insn_dec;
+    ebrk_insn_o         -> ebrk_insn;
+    mret_insn_o         -> mret_insn_dec;
+    dret_insn_o         -> dret_insn_dec;
+    ecall_insn_o        -> ecall_insn_dec;
+    wfi_insn_o          -> wfi_insn_dec;
+    jump_set_o          -> jump_set_dec;
+    icache_inval_o      -> icache_inval_dec;
+    imm_a_mux_sel_o     -> imm_a_mux_sel;
+    imm_b_mux_sel_o     -> imm_b_mux_sel_dec;
+    bt_a_mux_sel_o      -> bt_a_mux_sel;
+    bt_b_mux_sel_o      -> bt_b_mux_sel;
+    imm_i_type_o        -> imm_i_type;
+    imm_s_type_o        -> imm_s_type;
+    imm_b_type_o        -> imm_b_type;
+    imm_u_type_o        -> imm_u_type;
+    imm_j_type_o        -> imm_j_type;
+    zimm_rs1_type_o     -> zimm_rs1_type;
+    rf_wdata_sel_o      -> rf_wdata_sel;
+    rf_we_o             -> rf_we_dec;
+    rf_raddr_a_o        -> rf_raddr_a_dec;
+    rf_raddr_b_o        -> rf_raddr_b_dec;
+    rf_waddr_o          -> rf_waddr_dec;
+    rf_ren_a_o          -> rf_ren_a_dec;
+    rf_ren_b_o          -> rf_ren_b_dec;
+    alu_operator_o      -> alu_operator;
+    alu_op_a_mux_sel_o  -> alu_op_a_mux_sel_dec;
+    alu_op_b_mux_sel_o  -> alu_op_b_mux_sel_dec;
+    alu_multicycle_o    -> alu_multicycle_dec;
+    mult_en_o           -> mult_en_dec;
+    div_en_o            -> div_en_dec;
+    mult_sel_o          -> mult_sel_dec;
+    div_sel_o           -> div_sel_dec;
+    multdiv_operator_o  -> multdiv_operator;
+    multdiv_signed_mode_o -> multdiv_signed_mode;
+    csr_access_o        -> csr_access_dec;
+    csr_op_o            -> csr_op_dec;
+    csr_addr_o          -> csr_addr_dec;
+    data_req_o          -> lsu_req_dec;
+    data_we_o           -> lsu_we;
+    data_type_o         -> lsu_type;
+    data_sign_extension_o -> lsu_sign_ext;
+    jump_in_dec_o       -> jump_in_dec;
+    branch_in_dec_o     -> branch_in_dec;
+  end inst decoder_i
+
+  /// `controller_i` — `ibex_controller` (B4). 9-active-state FSM that
+  /// sequences reset → boot → fetch → decode/execute and arbitrates
+  /// IRQ/debug/exception/WFI disruptions. Drives the IF→ID handshake
+  /// (`id_in_ready_o`, `instr_valid_clear_o`), the redirect strobe
+  /// (`pc_set_o`, `pc_mux_o`), and CSR save/restore signals.
+  inst controller_i: ibex_controller
+    param WritebackStage = 0;
+    param BranchPredictor = 0;
+    param MemECC = 0;
+    clk_i                  <- clk_i;
+    rst_ni                 <- rst_ni;
+    illegal_insn_i         <- illegal_insn_w;
+    ecall_insn_i           <- ecall_insn_dec;
+    mret_insn_i            <- mret_insn_dec;
+    dret_insn_i            <- dret_insn_dec;
+    wfi_insn_i             <- wfi_insn_dec;
+    ebrk_insn_i            <- ebrk_insn;
+    csr_pipe_flush_i       <- csr_pipe_flush;
+    instr_valid_i          <- instr_valid_i;
+    instr_i                <- instr_rdata_i;
+    instr_compressed_i     <- instr_rdata_c_i;
+    instr_is_compressed_i  <- instr_is_compressed_i;
+    instr_bp_taken_i       <- instr_bp_taken_i;
+    instr_fetch_err_i      <- instr_fetch_err_i;
+    instr_fetch_err_plus2_i <- instr_fetch_err_plus2_i;
+    pc_id_i                <- pc_id_i;
+    instr_exec_i           <- instr_exec_i;
+    lsu_addr_last_i        <- lsu_addr_last_i;
+    load_err_i             <- lsu_load_err_i;
+    store_err_i            <- lsu_store_err_i;
+    mem_resp_intg_err_i    <- mem_resp_intg_err;
+    branch_set_i           <- branch_set;
+    branch_not_set_i       <- branch_not_set;
+    jump_set_i             <- jump_set;
+    csr_mstatus_mie_i      <- csr_mstatus_mie_i;
+    irq_pending_i          <- irq_pending_i;
+    irqs_i                 <- irqs_i;
+    irq_nm_ext_i           <- irq_nm_i;
+    debug_req_i            <- debug_req_i;
+    debug_single_step_i    <- debug_single_step_i;
+    debug_ebreakm_i        <- debug_ebreakm_i;
+    debug_ebreaku_i        <- debug_ebreaku_i;
+    trigger_match_i        <- trigger_match_i;
+    priv_mode_i            <- priv_mode_i;
+    stall_id_i             <- stall_id;
+    stall_wb_i             <- stall_wb;
+    ready_wb_i             <- ready_wb_i;
+    ctrl_busy_o            -> ctrl_busy_w;
+    instr_valid_clear_o    -> instr_valid_clear_w;
+    id_in_ready_o          -> id_in_ready_w;
+    controller_run_o       -> controller_run;
+    instr_req_o            -> instr_req_w;
+    pc_set_o               -> pc_set_w;
+    pc_mux_o               -> pc_mux_w;
+    nt_branch_mispredict_o -> nt_branch_mispredict_w;
+    exc_pc_mux_o           -> exc_pc_mux_w;
+    exc_cause_o            -> exc_cause_w;
+    wb_exception_o         -> wb_exception;
+    id_exception_o         -> id_exception;
+    nmi_mode_o             -> nmi_mode_w;
+    debug_cause_o          -> debug_cause_w;
+    debug_csr_save_o       -> debug_csr_save_w;
+    debug_mode_o           -> debug_mode_w;
+    debug_mode_entering_o  -> debug_mode_entering_w;
+    csr_save_if_o          -> csr_save_if_w;
+    csr_save_id_o          -> csr_save_id_w;
+    csr_save_wb_o          -> csr_save_wb_w;
+    csr_restore_mret_id_o  -> csr_restore_mret_id_w;
+    csr_restore_dret_id_o  -> csr_restore_dret_id_w;
+    csr_save_cause_o       -> csr_save_cause_w;
+    csr_mtval_o            -> csr_mtval_w;
+    flush_id_o             -> flush_id;
+    perf_jump_o            -> perf_jump_w;
+    perf_tbranch_o         -> perf_tbranch_w;
+  end inst controller_i
+
+  // ====================================================================
+  // Top-level let bindings (continuous assigns — Spec note N-5)
+  // ====================================================================
+
+  /// Constants under our pinning (Spec §"Requirement 11", §N-6).
+  /// `branch_taken = 1` (DataIndTiming=0, g_nosec_branch_taken).
+  let branch_taken: Bool = 1'b1;
+
+  /// `mem_resp_intg_err` collapses to 0 under MemECC=0.
+  let mem_resp_intg_err: Bool = lsu_load_resp_intg_err_i or lsu_store_resp_intg_err_i;
+
+  /// Multdiv combined-enable: drives FSM arms.
+  let multdiv_en_dec: Bool = mult_en_dec or div_en_dec;
+
+  /// `instr_first_cycle` — used by decoder, EX, and FSM helpers
+  /// (Spec §"Requirement 12").
+  let instr_first_cycle: Bool = instr_valid_i and (id_fsm_q == FIRST_CYCLE);
+
+  /// Under WritebackStage=0:
+  ///   stall_ld_hz = 0 (no load-use hazard with no WB stage)
+  ///   stall_wb    = 0
+  ///   instr_executing_spec = instr_valid_i & ~instr_fetch_err_i & controller_run
+  ///   instr_executing      = instr_executing_spec
+  /// (Spec §"gen_no_stall_mem arm", CS-13.)
+  let stall_ld_hz: Bool = 1'b0;
+  let stall_wb:    Bool = 1'b0;
+  let instr_executing_spec: Bool =
+    instr_valid_i and (not instr_fetch_err_i) and controller_run;
+  let instr_executing: Bool = instr_executing_spec;
+
+  /// RF read-data forwarding: under WB=0 the decoder operands are the
+  /// raw RF read ports.
+  let rf_rdata_a_fwd: UInt<32> = rf_rdata_a_i;
+  let rf_rdata_b_fwd: UInt<32> = rf_rdata_b_i;
+
+  /// `data_req_allowed` per N-12 — under WB=0, exactly the FIRST_CYCLE.
+  let data_req_allowed: Bool = instr_first_cycle;
+
+  /// `multicycle_done` per Spec §"gen_no_stall_mem arm".
+  /// For loads/stores, retire on `lsu_resp_valid_i`; otherwise on
+  /// `ex_valid_i` (single-cycle ALU, multdiv last-cycle).
+  let multicycle_done: Bool =
+    lsu_req_dec ? lsu_resp_valid_i : ex_valid_i;
+
+  /// `stall_mem`: load/store waiting for response, OR in FIRST_CYCLE
+  /// of a load/store (haven't issued the request retire-cycle yet).
+  let stall_mem: Bool =
+    instr_valid_i and (lsu_req_dec and ((not lsu_resp_valid_i) or instr_first_cycle));
+
+  /// Aggregated stall (Spec §"Requirement 9").
+  let stall_id: Bool =
+    stall_ld_hz or stall_mem or stall_multdiv or stall_jump or stall_branch or stall_alu;
+
+  /// `instr_done` per Spec §"Requirement 9", CS-8: flush_id blocks
+  /// retire **this** cycle (separate from instr_valid_clear_o which
+  /// kills the IF→ID register **next** cycle).
+  let instr_done: Bool =
+    (not stall_id) and (not flush_id) and instr_executing;
+
+  /// LSU operand-mux override (Spec §"Requirement 4", §"Requirement 5").
+  /// On a misaligned-second-half address, force operand-A to OP_A_FWD
+  /// (so the ALU adds the second half), operand-B to OP_B_IMM, and the
+  /// immediate-B mux to IMM_B_INCR_ADDR (= 4).
+  let alu_op_a_mux_sel: UInt<2> =
+    lsu_addr_incr_req_i ? OP_A_FWD : alu_op_a_mux_sel_dec;
+  let alu_op_b_mux_sel: UInt<1> =
+    lsu_addr_incr_req_i ? OP_B_IMM : alu_op_b_mux_sel_dec;
+  let imm_b_mux_sel: UInt<3> =
+    lsu_addr_incr_req_i ? IMM_B_INCR_ADDR : imm_b_mux_sel_dec;
+
+  /// `imm_a` mux (Spec §"Requirement 4"): IMM_A_Z → zimm_rs1_type, else 0.
+  let imm_a: UInt<32> =
+    (imm_a_mux_sel == IMM_A_Z) ? zimm_rs1_type : 32'h0;
+
+  /// Operand-B mux (Spec §"Requirement 5"): OP_B_IMM picks the imm
+  /// stack, else rs2 forwarded from the RF.
+  let alu_operand_b: UInt<32> =
+    (alu_op_b_mux_sel == OP_B_IMM) ? imm_b : rf_rdata_b_fwd;
+
+  /// Read-enable gating (Spec §"Requirement 2"): suppress the decoder's
+  /// raw rf_ren when invalid / fetch-error / illegal.
+  let rf_ren_a: Bool =
+    instr_valid_i and (not instr_fetch_err_i) and (not illegal_insn_w) and rf_ren_a_dec;
+  let rf_ren_b: Bool =
+    instr_valid_i and (not instr_fetch_err_i) and (not illegal_insn_w) and rf_ren_b_dec;
+
+  /// Illegal-instruction aggregation (Spec §"Requirement 3").
+  /// `illegal_dret_insn`: DRET outside debug mode.
+  /// `illegal_umode_insn`: MRET in non-M mode, or WFI in non-M with TW.
+  let illegal_dret_insn: Bool = dret_insn_dec and (not debug_mode_w);
+  let illegal_umode_insn: Bool =
+    (priv_mode_i != PRIV_LVL_M)
+      and (mret_insn_dec or (csr_mstatus_tw_i and wfi_insn_dec));
+  let illegal_insn_w: Bool =
+    instr_valid_i and (illegal_insn_dec or illegal_csr_insn_i
+      or illegal_dret_insn or illegal_umode_insn);
+
+  /// Branch-set / jump-set derivation (Spec §"Requirement 10").
+  /// Under BranchTargetALU=0 the `g_branch_set_flop` arm makes
+  /// `branch_set_raw` the **flopped** version.
+  let branch_set_raw: Bool = branch_set_raw_q;
+  let branch_set: Bool = branch_set_raw and (not branch_jump_set_done_q);
+  let jump_set:   Bool = jump_set_raw   and (not branch_jump_set_done_q);
+  let branch_jump_set_done_d: Bool =
+    (branch_set_raw or jump_set_raw or branch_jump_set_done_q)
+      and (not instr_valid_clear_w);
+
+  /// CSR pipe-flush + op-enable (Spec §"Requirement 14", N-10).
+  /// Skip-flush set: csr_addr ∈ {MSCRATCH, MEPC}.
+  let no_flush_csr_addr: Bool =
+    (csr_addr_dec == CSR_MSCRATCH) or (csr_addr_dec == CSR_MEPC);
+  /// `csr_op_en_o` is high only on the retire cycle of a CSR-access
+  /// instruction — 1-cycle pulse, not a level (N-10).
+  let csr_op_en_w: Bool =
+    csr_access_dec and instr_executing and instr_id_done_w;
+  let csr_pipe_flush: Bool =
+    csr_op_en_w
+      and ((csr_op_dec == CSR_OP_WRITE) or (csr_op_dec == CSR_OP_SET) or (csr_op_dec == CSR_OP_CLEAR))
+      and (not no_flush_csr_addr);
+
+  /// `instr_id_done_o` and `en_wb_o` collapse to `instr_done` under WB=0.
+  let instr_id_done_w: Bool = instr_done;
+
+  // ====================================================================
+  // Single comb block: ALU operand-A mux, immediate-B mux,
+  // RF write-data mux, ID-FSM next-state + stall generation.
+  // (Spec §"Combinational logic blocks", §"Requirement 9".)
+  // ====================================================================
+
+  comb
+    // ── alu_operand_a mux (Spec §"Requirement 4") ────────────────────
+    if alu_op_a_mux_sel == OP_A_REG_A
+      alu_operand_a = rf_rdata_a_fwd;
+    elsif alu_op_a_mux_sel == OP_A_FWD
+      alu_operand_a = lsu_addr_last_i;
+    elsif alu_op_a_mux_sel == OP_A_CURRPC
+      alu_operand_a = pc_id_i;
+    elsif alu_op_a_mux_sel == OP_A_IMM
+      alu_operand_a = imm_a;
+    else
+      alu_operand_a = pc_id_i;
+    end if
+
+    // ── imm_b mux (Spec §"Requirement 5", full 7-arm under
+    //    `g_no_btalu_muxes`) ─────────────────────────────────────────
+    if imm_b_mux_sel == IMM_B_I
+      imm_b = imm_i_type;
+    elsif imm_b_mux_sel == IMM_B_S
+      imm_b = imm_s_type;
+    elsif imm_b_mux_sel == IMM_B_B
+      imm_b = imm_b_type;
+    elsif imm_b_mux_sel == IMM_B_U
+      imm_b = imm_u_type;
+    elsif imm_b_mux_sel == IMM_B_J
+      imm_b = imm_j_type;
+    elsif imm_b_mux_sel == IMM_B_INCR_PC
+      imm_b = instr_is_compressed_i ? 32'h2 : 32'h4;
+    elsif imm_b_mux_sel == IMM_B_INCR_ADDR
+      imm_b = 32'h4;
+    else
+      imm_b = 32'h4;
+    end if
+
+    // ── rf_wdata_id mux (Spec §"Requirement 6") ──────────────────────
+    if rf_wdata_sel == RF_WD_EX
+      rf_wdata_id_w = result_ex_i;
+    elsif rf_wdata_sel == RF_WD_CSR
+      rf_wdata_id_w = csr_rdata_i;
+    else
+      rf_wdata_id_w = result_ex_i;
+    end if
+
+    // ── ID-FSM next-state + stall generation
+    //    (Spec §"Requirement 9", §"ID-FSM next-state and stall generation
+    //    (one big always_comb)"). Defaults first; arms override. ─────
+    id_fsm_d         = id_fsm_q;
+    rf_we_raw        = rf_we_dec;
+    stall_multdiv    = 1'b0;
+    stall_jump       = 1'b0;
+    stall_branch     = 1'b0;
+    stall_alu        = 1'b0;
+    branch_set_raw_d = 1'b0;
+    branch_not_set   = 1'b0;
+    jump_set_raw     = 1'b0;
+    perf_branch_w    = 1'b0;
+
+    if instr_executing_spec
+      if id_fsm_q == FIRST_CYCLE
+        // Priority encoding of the four mutually-exclusive arms (N-1).
+        if lsu_req_dec
+          // Load/store (WritebackStage=0): always go to MULTI_CYCLE.
+          id_fsm_d = MULTI_CYCLE;
+        elsif multdiv_en_dec
+          if not ex_valid_i
+            // Multdiv miss — stall and move to MULTI_CYCLE.
+            id_fsm_d      = MULTI_CYCLE;
+            rf_we_raw     = 1'b0;
+            stall_multdiv = 1'b1;
+          end if
+          // Single-cycle MUL fast path: defaults hold (id_fsm_d stays
+          // FIRST_CYCLE, rf_we_raw stays = rf_we_dec, no stall).
+        elsif branch_in_dec
+          // BranchTargetALU=0, DataIndTiming=0: branch always takes
+          // 2 cycles when taken; 1 cycle when not-taken.
+          id_fsm_d         = branch_decision_i ? MULTI_CYCLE : FIRST_CYCLE;
+          stall_branch     = branch_decision_i;
+          branch_set_raw_d = branch_decision_i;
+          perf_branch_w    = 1'b1;
+        elsif jump_in_dec
+          // BranchTargetALU=0: jump always takes 2 cycles.
+          id_fsm_d     = MULTI_CYCLE;
+          stall_jump   = 1'b1;
+          jump_set_raw = jump_set_dec;
+        elsif alu_multicycle_dec
+          stall_alu = 1'b1;
+          id_fsm_d  = MULTI_CYCLE;
+          rf_we_raw = 1'b0;
+        else
+          id_fsm_d = FIRST_CYCLE;
+        end if
+      elsif id_fsm_q == MULTI_CYCLE
+        // For multdiv: rf_we_raw gates on ex_valid_i (rest follows).
+        if multdiv_en_dec
+          rf_we_raw = rf_we_dec and ex_valid_i;
+        end if
+        if multicycle_done and ready_wb_i
+          id_fsm_d = FIRST_CYCLE;
+        else
+          stall_multdiv = multdiv_en_dec;
+          stall_branch  = branch_in_dec;
+          stall_jump    = jump_in_dec;
+        end if
+      else
+        id_fsm_d = FIRST_CYCLE;
+      end if
+    end if
+  end comb
+
+  // ====================================================================
+  // Sequential blocks (Spec §"Latched state regs", §"Requirement 1")
+  // ====================================================================
+
+  /// `id_fsm_q` — flop-side enable on `instr_executing` (NOT
+  /// `instr_executing_spec`; see N-4). Under WB=0 they're equal but the
+  /// structural separation must be preserved.
+  seq on clk_i rising
+    if instr_executing
+      id_fsm_q <= id_fsm_d;
+    end if
+  end seq
+
+  /// `imd_val_q[i]` — per-lane WE from `imd_val_we_ex_i[i]` (Spec
+  /// §"Requirement 8", CS-12). Lane updates on the next clock edge;
+  /// `imd_val_q_ex_o` reflects the flopped value continuously.
+  seq on clk_i rising
+    if imd_val_we_ex_i[0]
+      imd_val_q[0] <= imd_val_d_ex_i[0];
+    end if
+    if imd_val_we_ex_i[1]
+      imd_val_q[1] <= imd_val_d_ex_i[1];
+    end if
+  end seq
+
+  /// `branch_set_raw_q` — always-write flop (N-3). Holds the cycle-N+1
+  /// pulse for the 2-cycle branch path (CS-5).
+  seq on clk_i rising
+    branch_set_raw_q <= branch_set_raw_d;
+  end seq
+
+  /// `branch_jump_set_done_q` — sticky dedup, clears via
+  /// `instr_valid_clear_o` (N-9, CS-9). Always-write flop.
+  seq on clk_i rising
+    branch_jump_set_done_q <= branch_jump_set_done_d;
+  end seq
+
+  // ====================================================================
+  // Output drivers — pure pass-throughs, tieoffs, and bundle muxes.
+  // (Spec §"Combinational logic blocks", §"Requirement 16".)
+  // ====================================================================
+
+  // ── IF-stage interface pass-throughs ────────────────────────────────
+  let instr_req_o            = instr_req_w;
+  let instr_first_cycle_id_o = instr_first_cycle;
+  let instr_valid_clear_o    = instr_valid_clear_w;
+  let id_in_ready_o          = id_in_ready_w;
+  let icache_inval_o         = icache_inval_dec;     // CS-15: dangles externally
+
+  // ── Branch / jump pass-throughs + tieoffs ───────────────────────────
+  let pc_set_o               = pc_set_w;
+  let pc_mux_o               = pc_mux_w;
+  let nt_branch_mispredict_o = nt_branch_mispredict_w;  // CS-14: const 0
+  let nt_branch_addr_o       = 32'd0;                   // BranchPredictor=0
+  let exc_pc_mux_o           = exc_pc_mux_w;
+  let exc_cause_o            = exc_cause_w;
+
+  // ── EX-block interface ──────────────────────────────────────────────
+  let alu_operator_ex_o  = alu_operator;
+  let alu_operand_a_ex_o = alu_operand_a;
+  let alu_operand_b_ex_o = alu_operand_b;
+  /// BTALU tieoffs — `g_no_btalu_muxes` arm (N-2).
+  let bt_a_operand_o = 32'h0;
+  let bt_b_operand_o = 32'h0;
+
+  /// `imd_val_q_ex_o` — continuous round-trip of the multdiv carry/
+  /// partial-sum flop pair (CS-12). Per-lane assignment matches the
+  /// upstream unpacked-array shape.
+  comb
+    imd_val_q_ex_o[0] = imd_val_q[0];
+    imd_val_q_ex_o[1] = imd_val_q[1];
+  end comb
+
+  // ── Multdiv interface (Spec §"Requirement 13") ──────────────────────
+  /// `mult_en_id` / `div_en_id` are wires declared above; assign them
+  /// here. (Drop the `let ... : Bool = ...` form — that re-declares
+  /// the name and clashes with the wire decl in emitted SV.)
+  comb
+    mult_en_id = instr_executing ? mult_en_dec : 1'b0;
+    div_en_id  = instr_executing ? div_en_dec  : 1'b0;
+  end comb
+  let mult_en_ex_o            = mult_en_id;
+  let div_en_ex_o             = div_en_id;
+  let mult_sel_ex_o           = mult_sel_dec;          // raw
+  let div_sel_ex_o            = div_sel_dec;           // raw
+  let multdiv_operator_ex_o   = multdiv_operator;      // raw
+  let multdiv_signed_mode_ex_o = multdiv_signed_mode;  // raw
+  let multdiv_operand_a_ex_o  = rf_rdata_a_fwd;
+  let multdiv_operand_b_ex_o  = rf_rdata_b_fwd;
+  let multdiv_ready_id_o      = ready_wb_i;            // pinned 1 under WB=0
+
+  // ── CSR interface ───────────────────────────────────────────────────
+  let csr_access_o          = csr_access_dec;
+  let csr_op_o              = csr_op_dec;
+  let csr_addr_o            = csr_addr_dec;
+  let csr_op_en_o           = csr_op_en_w;
+  let csr_save_if_o         = csr_save_if_w;
+  let csr_save_id_o         = csr_save_id_w;
+  let csr_save_wb_o         = csr_save_wb_w;
+  let csr_restore_mret_id_o = csr_restore_mret_id_w;
+  let csr_restore_dret_id_o = csr_restore_dret_id_w;
+  let csr_save_cause_o      = csr_save_cause_w;
+  let csr_mtval_o           = csr_mtval_w;
+
+  // ── LSU interface (Spec §"Requirement 7") ───────────────────────────
+  /// `lsu_req` = `instr_executing & data_req_allowed & lsu_req_dec`.
+  /// Under WB=0, data_req_allowed = instr_first_cycle, so lsu_req_o is
+  /// high for exactly 1 cycle (CS-6).
+  let lsu_req_o = instr_executing and data_req_allowed and lsu_req_dec;
+  let lsu_we_o = lsu_we;                          // raw, ungated
+  let lsu_type_o = lsu_type;                      // raw, ungated
+  let lsu_sign_ext_o = lsu_sign_ext;              // raw, ungated
+  let lsu_wdata_o = rf_rdata_b_fwd;               // raw, ungated
+
+  /// expecting_*_resp_o (Spec §"Requirement 7"): asserted in MULTI_CYCLE
+  /// while waiting for the LSU response. Drop the `: Bool` annotation —
+  /// with it, ARCH treats this as a fresh `let` decl that shadows the
+  /// port (duplicate-definition error); without it, it's a port-driving
+  /// continuous assign (matches the `let lsu_we_o = ...` pattern just
+  /// above).
+  let expecting_load_resp_o =
+    instr_valid_i and lsu_req_dec and (not instr_first_cycle) and (not lsu_we);
+  let expecting_store_resp_o =
+    instr_valid_i and lsu_req_dec and (not instr_first_cycle) and lsu_we;
+
+  // ── IRQ / debug pass-throughs ───────────────────────────────────────
+  let nmi_mode_o            = nmi_mode_w;
+  let debug_mode_o          = debug_mode_w;
+  let debug_mode_entering_o = debug_mode_entering_w;
+  let debug_cause_o         = debug_cause_w;
+  let debug_csr_save_o      = debug_csr_save_w;
+
+  // ── Register-file ports ─────────────────────────────────────────────
+  let rf_raddr_a_o = rf_raddr_a_dec;
+  let rf_raddr_b_o = rf_raddr_b_dec;
+  let rf_ren_a_o   = rf_ren_a;
+  let rf_ren_b_o   = rf_ren_b;
+  let rf_waddr_id_o = rf_waddr_dec;
+  let rf_wdata_id_o = rf_wdata_id_w;
+  /// `rf_we_id_o = rf_we_raw & instr_executing & ~illegal_csr_insn_i`
+  /// (Spec §"Requirement 6"). Even though `rf_we_raw` is already gated
+  /// by FSM defaults, the extra `instr_executing` and illegal-CSR
+  /// guards are required to suppress writes on flushed/illegal cycles.
+  let rf_we_id_o = rf_we_raw and instr_executing and (not illegal_csr_insn_i);
+  /// WB-bypass match outputs are constant 0 under WB=0 (Spec §"Req 16").
+  let rf_rd_a_wb_match_o = 1'b0;
+  let rf_rd_b_wb_match_o = 1'b0;
+
+  // ── Writeback-stage interface (most absorbed under WB=0) ───────────
+  let en_wb_o               = instr_done;
+  let instr_type_wb_o       = WB_INSTR_OTHER;
+  let instr_perf_count_id_o =
+    (not ebrk_insn) and (not ecall_insn_dec) and (not illegal_insn_dec)
+      and (not illegal_csr_insn_i) and (not instr_fetch_err_i);
+
+  // ── Top-level / misc ────────────────────────────────────────────────
+  let ctrl_busy_o    = ctrl_busy_w;
+  let illegal_insn_o = illegal_insn_w;
+  let instr_id_done_o = instr_id_done_w;
+
+  // ── Performance counter pulses (Spec §"Requirement 15") ─────────────
+  let perf_jump_o       = perf_jump_w;
+  let perf_branch_o     = perf_branch_w;
+  let perf_tbranch_o    = perf_tbranch_w;
+  let perf_dside_wait_o = instr_executing and lsu_req_dec and (not lsu_resp_valid_i);
+  let perf_mul_wait_o   = stall_multdiv and mult_en_dec;
+  let perf_div_wait_o   = stall_multdiv and div_en_dec;
+
+  // ====================================================================
+  // Unused-input absorbers (Spec §"Requirement 16", N-6, N-7, N-11)
+  // ====================================================================
+
+  /// `lsu_req_done_i` — dead under WritebackStage=0 (N-7). Use
+  /// `lsu_resp_valid_i` for multicycle-done; never touch this input.
+  let unused_lsu_req_done: Bool = lsu_req_done_i;
+  /// `data_ind_timing_i` — pinned 0; only the inert DataIndTiming arm
+  /// references it (N-6).
+  let unused_data_ind_timing: Bool = data_ind_timing_i;
+  /// WB-stage inputs (rf_waddr_wb / rf_wdata_fwd_wb / rf_write_wb /
+  /// outstanding_load_wb / outstanding_store_wb) — all absorbed.
+  let unused_rf_waddr_wb: UInt<5>      = rf_waddr_wb_i;
+  let unused_rf_wdata_fwd_wb: UInt<32> = rf_wdata_fwd_wb_i;
+  let unused_rf_write_wb: Bool         = rf_write_wb_i;
+  let unused_outstanding_load_wb:  Bool = outstanding_load_wb_i;
+  let unused_outstanding_store_wb: Bool = outstanding_store_wb_i;
+  /// `wb_exception` and `id_exception` — controller-side exception
+  /// outputs, not consumed locally under WB=0 (N-11).
+  let unused_wb_exception: Bool = wb_exception;
+  let unused_id_exception: Bool = id_exception;
+
+end module ibex_id_stage

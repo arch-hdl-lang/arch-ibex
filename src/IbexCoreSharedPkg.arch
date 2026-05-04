@@ -1,0 +1,26 @@
+/// Shared types used by `ibex_controller` (B4), `ibex_if_stage` (B3),
+/// and `ibex_id_stage` (B5). Declared in a package so all three SVs
+/// can `import IbexPkg::*;` and link without "Duplicate declaration of
+/// TYPEDEF" errors. Without the package, each consumer's emitted SV
+/// declares its own `typedef struct ExcCause` at file scope, and
+/// Verilator rejects the redeclaration when linking the SoC.
+package IbexCoreSharedPkg
+
+  /// Packed exception-cause struct delivered by the controller. Matches
+  /// upstream `ibex_pkg::exc_cause_t` (irq_int, irq_ext, lower_cause[4:0]).
+  struct ExcCause
+    irq_int: Bool;
+    irq_ext: Bool;
+    lower_cause: UInt<5>;
+  end struct ExcCause
+
+  /// Per-IRQ enable-qualified pending bits. Matches upstream
+  /// `ibex_pkg::irqs_t`.
+  struct Irqs
+    irq_software: Bool;
+    irq_timer: Bool;
+    irq_external: Bool;
+    irq_fast: UInt<15>;
+  end struct Irqs
+
+end package IbexCoreSharedPkg

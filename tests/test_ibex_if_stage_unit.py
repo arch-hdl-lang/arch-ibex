@@ -32,6 +32,7 @@ TESTS_DIR = Path(__file__).parent
 REPO_ROOT = TESTS_DIR.parent
 COCOTB_TESTS_DIR = TESTS_DIR / "cocotb_tests"
 BUILD_DIR = REPO_ROOT / "build"
+SHARED_PKG_SV         = BUILD_DIR / "ibex_core_shared_pkg.sv"
 IF_STAGE_SV           = BUILD_DIR / "ibex_if_stage.sv"
 PREFETCH_BUFFER_SV    = BUILD_DIR / "ibex_prefetch_buffer.sv"
 FETCH_FIFO_SV         = BUILD_DIR / "ibex_fetch_fifo.sv"
@@ -49,7 +50,7 @@ def if_stage_runner(verilator_bin, tmp_path_factory):
     """
     from cocotb_tools.runner import get_runner
 
-    for sv in [IF_STAGE_SV, PREFETCH_BUFFER_SV, FETCH_FIFO_SV,
+    for sv in [SHARED_PKG_SV, IF_STAGE_SV, PREFETCH_BUFFER_SV, FETCH_FIFO_SV,
                COMPRESSED_DECODER_SV]:
         if not sv.is_file():
             pytest.skip(f"missing {sv}; run `make build` first")
@@ -58,6 +59,7 @@ def if_stage_runner(verilator_bin, tmp_path_factory):
     runner = get_runner("verilator")
     runner.build(
         sources=[
+            str(SHARED_PKG_SV),
             str(FETCH_FIFO_SV),
             str(PREFETCH_BUFFER_SV),
             str(COMPRESSED_DECODER_SV),

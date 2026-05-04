@@ -27,6 +27,7 @@ TESTS_DIR = Path(__file__).parent
 REPO_ROOT = TESTS_DIR.parent
 COCOTB_TESTS_DIR = TESTS_DIR / "cocotb_tests"
 BUILD_DIR = REPO_ROOT / "build"
+SHARED_PKG_SV = BUILD_DIR / "ibex_core_shared_pkg.sv"
 CONTROLLER_SV = BUILD_DIR / "ibex_controller.sv"
 
 
@@ -44,7 +45,7 @@ def controller_runner(verilator_bin, tmp_path_factory):
     sim_build = tmp_path_factory.mktemp("controller_sim_build")
     runner = get_runner("verilator")
     runner.build(
-        sources=[str(CONTROLLER_SV)],
+        sources=[str(SHARED_PKG_SV), str(CONTROLLER_SV)],
         hdl_toplevel="ibex_controller",
         build_dir=str(sim_build),
         always=True,
