@@ -1,0 +1,1105 @@
+//! IbexCore — top-level CPU module of the Ibex core.
+//!
+//! Replaces upstream `ibex_core.sv` (~2023 LoC; ~600 effective under
+//! SoC pinning). Composes the four pipeline-stage sub-modules
+//! (`IbexIfStage`, `IbexIdStage`, `IbexExBlock`, `IbexLoadStoreUnit`,
+//! `IbexWbStage`) plus the upstream-SV `ibex_cs_registers` (kept
+//! upstream per spec note N-2; instantiated via a hand-written
+//! `ibex_cs_registers.archi` stub).
+//!
+//! The construct is `module ibex_core` (not `pipeline IbexCore`).
+//! Per spec §N-19 the implementer is free to pick the construct;
+//! per proposal Risks §3 plain `module` is the documented fallback.
+//! Reasons:
+//!   - the upstream is structurally a flat module — every cross-stage
+//!     edge is combinational; the only state lives inside the sub-
+//!     modules. A `pipeline` would inject framework `valid_r` flops
+//!     that don't exist upstream.
+//!   - the cross-stage rule for `pipeline` rejects backward refs
+//!     skipping ≥1 stage; the EX→ID multdiv `imd_val_d_ex` feedback
+//!     (spec R5) is exactly such a backward ref.
+//!   - SV-instance inside a pipeline stage is unproven tooling
+//!     (proposal Risks §3a); plain `module` makes it boring `inst`.
+//!
+//! SoC parameter pinning (spec §"Pinned parameter values"):
+//!   RV32E=0, RV32M=RV32MFast(=2), RV32B=RV32BNone(=0),
+//!   BranchTargetALU=0, WritebackStage=0, ICache=0,
+//!   BranchPredictor=0, DbgTriggerEn=0, MemECC=0, DataIndTiming=0,
+//!   DummyInstructions=0, PMPEnable=0, SecureIbex=0, ResetAll=0,
+//!   RegFileECC=0.
+//!
+//! Spec: changes/port-ibex_core/specs/ibex_core/spec.md
+//!   - 21 Requirements
+//!   - 10 caller-side rules (CS-1..CS-10)
+//!   - 13 producer-side rules (PS-1..PS-13)
+//!   - 36 spec notes (N-1..N-36)
+//! Per spec note N-2: ibex_cs_registers stays upstream-SV
+//! (instantiated via `ibex_cs_registers.archi`).
+
+use IbexCoreSharedPkg;
+
+domain SysDomain
+  freq_mhz: 100
+end domain SysDomain
+
+module ibex_core
+  // ── Const params (snapped to SoC pin values) ─────────────────────────
+  /// `RV32E`: 1-bit.  Pinned to 0 (full 32-entry RF).  See spec §pin.
+  param RV32E[0:0]: const = 1'd0;
+  /// `RV32M`: 2-bit `rv32m_e` enum.  Pinned to RV32MFast.
+  param RV32M: ibex_pkg::rv32m_e = ibex_pkg::RV32MFast;
+  /// `RV32B`: 2-bit `rv32b_e` enum.  Pinned to RV32BNone.
+  param RV32B: ibex_pkg::rv32b_e = ibex_pkg::RV32BNone;
+  /// `BranchTargetALU`: pinned 0 (no dedicated branch-target adder).
+  param BranchTargetALU[0:0]: const = 1'd0;
+  /// `WritebackStage`: pinned 0 (passthrough WB stage).
+  param WritebackStage[0:0]: const = 1'd0;
+  /// `ICache`: pinned 0 (icache disabled).
+  param ICache[0:0]: const = 1'd0;
+  /// `BranchPredictor`: pinned 0 (no BP).
+  param BranchPredictor[0:0]: const = 1'd0;
+  /// `DbgTriggerEn`: pinned 0 (no debug triggers).
+  param DbgTriggerEn[0:0]: const = 1'd0;
+  /// `MemECC`: pinned 0 (no memory ECC).
+  param MemECC[0:0]: const = 1'd0;
+  /// `DataIndTiming`: pinned 0 (no DIT).
+  param DataIndTiming[0:0]: const = 1'd0;
+  /// `DummyInstructions`: pinned 0 (no dummy instr LFSR).
+  param DummyInstructions[0:0]: const = 1'd0;
+  /// `PMPEnable`: pinned 0 (no PMP).
+  param PMPEnable[0:0]: const = 1'd0;
+  /// `SecureIbex`: pinned 0 (non-secure).
+  param SecureIbex[0:0]: const = 1'd0;
+  /// `ResetAll`: pinned 0 (default reset behavior).
+  param ResetAll[0:0]: const = 1'd0;
+  /// `RegFileECC`: pinned 0 (no RF ECC).
+  param RegFileECC[0:0]: const = 1'd0;
+
+  /// `RV32ZC`: enum forwarded to IF stage (pinned RV32ZcaZcbZcmp = 3).
+  param RV32ZC: const = 3;
+
+  /// `DmHaltAddr`: forwarded to IF stage.  Default upstream
+  /// 32'h1A11_0800; the SoC overrides to 0.  We use the upstream
+  /// default as the param pin — the SoC's instance binding overrides.
+  param DmHaltAddr: const = 437323776;
+  /// `DmExceptionAddr`: forwarded to IF stage.  Same shape as DmHaltAddr.
+  param DmExceptionAddr: const = 437323784;
+
+  /// MHPM counters: forwarded to CSRs.
+  param MHPMCounterNum: const = 0;
+  param MHPMCounterWidth: const = 40;
+
+  /// Bus / I-cache widths: forwarded to IF stage.  Under MemECC=0
+  /// MemDataWidth = 32; BUS_SIZE = 32.
+  param BusSizeECC: const = 32;
+  param TagSizeECC: const = 29;
+  param LineSizeECC: const = 72;
+  param MemDataWidth: const = 32;
+  param IC_NUM_WAYS: const = 2;
+  param IC_INDEX_W: const = 8;
+  param ICacheECC[0:0]: const = 1'd0;
+  param ICacheTweakInfection[0:0]: const = 1'd0;
+  param PCIncrCheck[0:0]: const = 1'd0;
+
+  /// LFSR seed/perm: forwarded to IF stage.
+  param RndCnstLfsrSeed[31:0]: const = 32'd2891135988;
+  param RndCnstLfsrPerm[159:0]: const = 160'd0;
+
+  /// PMP defaults (forwarded to CSRs; sunk under PMPEnable=0).
+  param PMPGranularity: const = 0;
+  param PMPNumRegions: const = 4;
+  param DbgHwBreakNum: const = 1;
+
+  /// `RegFileDataWidth`: ibex_top localparam (= 32 under RegFileECC=0).
+  /// Threaded as a parameter to ibex_core in ibex_top.sv:343.
+  /// Pinned to 32; not consumed at this scope.
+  param RegFileDataWidth: const = 32;
+
+  /// Debug Module address window (forwarded to ID controller via
+  /// IbexIdStage's `DmBaseAddr` / `DmAddrMask`-equivalent paths).
+  /// Currently unused at IbexCore scope under our pinning; the
+  /// controller's halt address comes from `DmHaltAddr`.
+  param DmBaseAddr[31:0]: const = 32'h1A11_0000;
+  param DmAddrMask[31:0]: const = 32'h0000_0FFF;
+
+  /// PMP-reset structured parameters (`pmp_cfg_t [PMP_MAX_REGIONS]`,
+  /// `[PMP_ADDR_MSB:0] [PMP_MAX_REGIONS]`, `pmp_mseccfg_t`) are
+  /// passed by upstream `ibex_top.sv` unconditionally to its
+  /// `ibex_core` instance.  Under PMPEnable=0 these are unused
+  /// (spec R20).  arch-com cannot natively express SV
+  /// `parameter ibex_pkg::pmp_cfg_t NAME[PMP_MAX_REGIONS]` typed
+  /// parameters; declaring them as bare `const = 0` produces a
+  /// parameter-binding type mismatch when ibex_top connects them
+  /// (Verilator V3Width.cpp:2594 InitArray internal error).
+  /// See `changes/port-ibex_core/spec-notes.md` for the open-question
+  /// trade-off; the SoC-lint gate is documented there.
+  /// PMP-reset structured params — declared natively as upstream
+  /// `pmp_cfg_t [N]`, `[W:0] [N]`, and scalar `pmp_mseccfg_t` so
+  /// `ibex_top` can pass typed values through and we can forward
+  /// them on to `cs_registers_i`. Under PMPEnable=0 these are sunk.
+  param PMPRstCfg:     ibex_pkg::pmp_cfg_t [16]   = ibex_pkg::PmpCfgRst;
+  param PMPRstAddr:    UInt<34> [16]              = ibex_pkg::PmpAddrRst;
+  param PMPRstMsecCfg: ibex_pkg::pmp_mseccfg_t    = ibex_pkg::PmpMseccfgRst;
+
+  /// Misc CSR ID params (forwarded to CSRs).
+  param CsrMvendorId[31:0]: const = 32'd0;
+  param CsrMimpId[31:0]: const = 32'd0;
+
+  // ── Clock + reset ────────────────────────────────────────────────────
+  port clk_i:  in Clock<SysDomain>;
+  port rst_ni: in Reset<Async, Low>;
+
+  // ── Hart identity / boot ────────────────────────────────────────────
+  port hart_id_i:    in UInt<32>;
+  port boot_addr_i:  in UInt<32>;
+
+  // ── Instruction memory interface (OBI) ──────────────────────────────
+  port instr_req_o:    out Bool;
+  port instr_gnt_i:    in  Bool;
+  port instr_rvalid_i: in  Bool;
+  port instr_addr_o:   out UInt<32>;
+  port instr_rdata_i:  in  UInt<32>;
+  port instr_err_i:    in  Bool;
+
+  // ── Data memory interface (OBI) ─────────────────────────────────────
+  port data_req_o:    out Bool;
+  port data_gnt_i:    in  Bool;
+  port data_rvalid_i: in  Bool;
+  port data_we_o:     out Bool;
+  port data_be_o:     out UInt<4>;
+  port data_addr_o:   out UInt<32>;
+  port data_wdata_o:  out UInt<32>;
+  port data_rdata_i:  in  UInt<32>;
+  port data_err_i:    in  Bool;
+
+  // ── Register-file interface (RF lives outside in ibex_top) ──────────
+  port dummy_instr_id_o: out Bool;
+  port dummy_instr_wb_o: out Bool;
+  port rf_raddr_a_o:     out UInt<5>;
+  port rf_raddr_b_o:     out UInt<5>;
+  port rf_waddr_wb_o:    out UInt<5>;
+  port rf_we_wb_o:       out Bool;
+  port rf_wdata_wb_ecc_o: out UInt<32>;
+  port rf_rdata_a_ecc_i: in  UInt<32>;
+  port rf_rdata_b_ecc_i: in  UInt<32>;
+
+  // ── ICache RAM interface (off under ICache=0; ports still bind) ─────
+  port ic_tag_req_o:        out UInt<IC_NUM_WAYS>;
+  port ic_tag_write_o:      out Bool;
+  port ic_tag_addr_o:       out UInt<IC_INDEX_W>;
+  port ic_tag_wdata_o:      out UInt<TagSizeECC>;
+  port ic_tag_rdata_i:      in  unpacked Vec<UInt<TagSizeECC>, IC_NUM_WAYS>;
+  port ic_data_req_o:       out UInt<IC_NUM_WAYS>;
+  port ic_data_write_o:     out Bool;
+  port ic_data_addr_o:      out UInt<IC_INDEX_W>;
+  port ic_data_wdata_o:     out UInt<LineSizeECC>;
+  port ic_data_rdata_i:     in  unpacked Vec<UInt<LineSizeECC>, IC_NUM_WAYS>;
+  port ic_scr_key_valid_i:  in  Bool;
+  port ic_scr_key_req_o:    out Bool;
+
+  // ── Interrupt inputs ────────────────────────────────────────────────
+  port irq_software_i: in Bool;
+  port irq_timer_i:    in Bool;
+  port irq_external_i: in Bool;
+  port irq_fast_i:     in UInt<15>;
+  port irq_nm_i:       in Bool;
+  port irq_pending_o:  out Bool;
+
+  // ── Debug ───────────────────────────────────────────────────────────
+  port debug_req_i:         in  Bool;
+  /// `crash_dump_o`: 5-field crash dump record (current_pc, next_pc,
+  /// last_data_addr, exception_pc, exception_addr).  Emitted as a
+  /// flat 5×32-bit packed vector to stay compatible with upstream's
+  /// `crash_dump_t` shape without introducing a new shared struct
+  /// (per spec note N-14, the struct lives in `ibex_pkg`; we pack
+  /// the same field order).
+  port crash_dump_o:        out UInt<160>;
+  port double_fault_seen_o: out Bool;
+
+  // ── CPU control / alerts ────────────────────────────────────────────
+  /// `fetch_enable_i`: 4-bit mubi.  Under SecureIbex=0 only bit 0
+  /// is consumed (spec R10).
+  port fetch_enable_i:        in  UInt<4>;
+  port alert_minor_o:         out Bool;
+  port alert_major_internal_o: out Bool;
+  port alert_major_bus_o:     out Bool;
+  /// `core_busy_o`: 4-bit mubi pattern (IbexMuBiOn=4'b0101 or
+  /// IbexMuBiOff=4'b1010).  Per spec note N-34, the full mubi
+  /// pattern is exported under non-secure.
+  port core_busy_o:           out UInt<4>;
+
+  // ── RVFI port stubs (out of scope per spec note N-1) ─────────────────
+  /// Per spec N-1, the RVFI tracking pipeline is not implemented.
+  /// However, upstream `ibex_top.sv` (kept upstream) instantiates
+  /// `ibex_core` and connects RVFI output ports unconditionally
+  /// when its `RVFI=true` core flag is set (the SoC lint target uses
+  /// `ibex_top_tracing` which sets RVFI=true).  We expose the ports
+  /// at the IbexCore boundary and tie every RVFI output to `0` so the
+  /// SV binding succeeds without producing any tracking pipeline state.
+  /// (See spec note N-1 last paragraph: "the only RVFI-related artifact
+  /// that should be preserved is `unused_illegal_insn_id`".)
+  port rvfi_valid:            out Bool;
+  port rvfi_order:            out UInt<64>;
+  port rvfi_insn:             out UInt<32>;
+  port rvfi_trap:             out Bool;
+  port rvfi_halt:             out Bool;
+  port rvfi_intr:             out Bool;
+  port rvfi_mode:             out UInt<2>;
+  port rvfi_ixl:              out UInt<2>;
+  port rvfi_rs1_addr:         out UInt<5>;
+  port rvfi_rs2_addr:         out UInt<5>;
+  port rvfi_rs3_addr:         out UInt<5>;
+  port rvfi_rs1_rdata:        out UInt<32>;
+  port rvfi_rs2_rdata:        out UInt<32>;
+  port rvfi_rs3_rdata:        out UInt<32>;
+  port rvfi_rd_addr:          out UInt<5>;
+  port rvfi_rd_wdata:         out UInt<32>;
+  port rvfi_pc_rdata:         out UInt<32>;
+  port rvfi_pc_wdata:         out UInt<32>;
+  port rvfi_mem_addr:         out UInt<32>;
+  port rvfi_mem_rmask:        out UInt<4>;
+  port rvfi_mem_wmask:        out UInt<4>;
+  port rvfi_mem_rdata:        out UInt<32>;
+  port rvfi_mem_wdata:        out UInt<32>;
+  port rvfi_ext_pre_mip:      out UInt<32>;
+  port rvfi_ext_post_mip:     out UInt<32>;
+  port rvfi_ext_nmi:          out Bool;
+  port rvfi_ext_nmi_int:      out Bool;
+  port rvfi_ext_debug_req:    out Bool;
+  port rvfi_ext_debug_mode:   out Bool;
+  port rvfi_ext_rf_wr_suppress: out Bool;
+  port rvfi_ext_mcycle:       out UInt<64>;
+  port rvfi_ext_mhpmcounters:    out unpacked Vec<UInt<32>, 10>;
+  port rvfi_ext_mhpmcountersh:   out unpacked Vec<UInt<32>, 10>;
+  port rvfi_ext_ic_scr_key_valid: out Bool;
+  port rvfi_ext_irq_valid:    out Bool;
+  port rvfi_ext_expanded_insn_valid: out Bool;
+  port rvfi_ext_expanded_insn:    out UInt<16>;
+  port rvfi_ext_expanded_insn_last: out Bool;
+
+  // ── Constants (let bindings) ────────────────────────────────────────
+  /// Multi-bit mubi encoding (spec note N-7).
+  /// `IbexMuBiOn = 4'b0101` (= 5), `IbexMuBiOff = 4'b1010` (= 10).
+  let IBEX_MU_BI_ON:  UInt<4> = 4'd5;
+  let IBEX_MU_BI_OFF: UInt<4> = 4'd10;
+
+  /// `wb_instr_type_e::WB_INSTR_OTHER` = 2 (spec R15 binding).
+  let WB_INSTR_OTHER: UInt<2> = 2'd2;
+
+  // ── Internal wires: IF→ID register pair ──────────────────────────────
+  /// `instr_valid_id`, `instr_rdata_id`, `instr_rdata_alu_id`,
+  /// `instr_rdata_c_id`, `instr_is_compressed_id`, etc.
+  /// Spec R3 (IF→ID handshake).
+  wire instr_valid_id:        Bool;
+  wire instr_new_id:          Bool;
+  wire instr_rdata_id:        UInt<32>;
+  wire instr_rdata_alu_id:    UInt<32>;
+  wire instr_rdata_c_id:      UInt<16>;
+  wire instr_is_compressed_id: Bool;
+  wire instr_gets_expanded_id: UInt<2>;
+  wire instr_expanded_id:     UInt<16>;
+  wire instr_bp_taken_id:     Bool;
+  wire instr_fetch_err:       Bool;
+  wire instr_fetch_err_plus2: Bool;
+  wire illegal_c_insn_id:     Bool;
+  wire dummy_instr_id:        Bool;
+  wire pc_if:                 UInt<32>;
+  wire pc_id:                 UInt<32>;
+  wire instr_intg_err:        Bool;
+
+  // ── ID→IF redirect wires ─────────────────────────────────────────────
+  wire instr_valid_clear:     Bool;
+  wire pc_set:                Bool;
+  wire pc_mux_id:             UInt<3>;
+  wire nt_branch_mispredict:  Bool;
+  wire nt_branch_addr:        UInt<32>;
+  wire exc_pc_mux_id:         UInt<2>;
+  wire exc_cause:             ExcCause;
+  wire icache_inval:          Bool;
+  wire instr_req_int:         Bool;
+  wire instr_first_cycle_id:  Bool;
+  wire id_in_ready:           Bool;
+  wire pc_mismatch_alert:     Bool;
+  wire if_busy:               Bool;
+
+  // ── ID→EX dispatch wires ─────────────────────────────────────────────
+  wire alu_operator_ex:       UInt<7>;
+  wire alu_operand_a_ex:      UInt<32>;
+  wire alu_operand_b_ex:      UInt<32>;
+  wire bt_a_operand:          UInt<32>;
+  wire bt_b_operand:          UInt<32>;
+  wire mult_en_ex:            Bool;
+  wire div_en_ex:             Bool;
+  wire mult_sel_ex:           Bool;
+  wire div_sel_ex:            Bool;
+  wire multdiv_operator_ex:   UInt<2>;
+  wire multdiv_signed_mode_ex: UInt<2>;
+  wire multdiv_operand_a_ex:  UInt<32>;
+  wire multdiv_operand_b_ex:  UInt<32>;
+  wire multdiv_ready_id:      Bool;
+
+  // ── EX↔ID multdiv intermediate-value feedback (spec R5) ──────────────
+  /// Per N-3/N-4: `imd_val_q_ex` flop lives in `id_stage_i`.
+  /// EX combinationally drives `imd_val_d_ex` + `imd_val_we_ex`;
+  /// ID flops them into `imd_val_q_ex` next cycle and re-presents.
+  /// Both .arch sub-modules declare these as `unpacked Vec`.
+  wire imd_val_we_ex:         UInt<2>;
+  wire imd_val_d_ex:          unpacked Vec<UInt<34>, 2>;
+  wire imd_val_q_ex:          unpacked Vec<UInt<34>, 2>;
+
+  // ── EX→ID/IF/LSU result wires ────────────────────────────────────────
+  wire alu_adder_result_ex:   UInt<32>;
+  wire result_ex:             UInt<32>;
+  wire branch_target_ex:      UInt<32>;
+  wire branch_decision:       Bool;
+  wire ex_valid:              Bool;
+
+  // ── LSU req/resp wires ───────────────────────────────────────────────
+  wire data_req_out:          Bool;
+  wire lsu_we:                Bool;
+  wire lsu_type:              UInt<2>;
+  wire lsu_wdata:             UInt<32>;
+  wire lsu_sign_ext:          Bool;
+  wire rf_wdata_lsu:          UInt<32>;
+  wire lsu_rdata_valid:       Bool;
+  wire lsu_req:               Bool;
+  wire lsu_req_done:          Bool;
+  wire lsu_addr_incr_req:     Bool;
+  wire lsu_addr_last:         UInt<32>;
+  wire lsu_resp_valid:        Bool;
+  wire lsu_load_err_raw:      Bool;
+  wire lsu_load_resp_intg_err: Bool;
+  wire lsu_store_err_raw:     Bool;
+  wire lsu_store_resp_intg_err: Bool;
+  wire lsu_busy:              Bool;
+  wire perf_load:             Bool;
+  wire perf_store:            Bool;
+
+  // ── Non-secure LSU error / RF-write aliases (spec R21) ───────────────
+  wire lsu_load_err:          Bool;
+  wire lsu_store_err:         Bool;
+  wire lsu_resp_err:          Bool;
+  wire rf_we_lsu:             Bool;
+
+  // ── ID outputs ───────────────────────────────────────────────────────
+  wire ctrl_busy:             Bool;
+  wire illegal_insn_id:       Bool;
+  wire instr_id_done:         Bool;
+  wire perf_jump:             Bool;
+  wire perf_branch:           Bool;
+  wire perf_tbranch:          Bool;
+  wire perf_dside_wait:       Bool;
+  wire perf_mul_wait:         Bool;
+  wire perf_div_wait:         Bool;
+  wire perf_iside_wait:       Bool;
+
+  // ── ID→CSR access dispatch ───────────────────────────────────────────
+  wire csr_access:            Bool;
+  wire csr_op:                UInt<2>;
+  wire csr_addr:              UInt<12>;
+  wire csr_op_en:             Bool;
+  wire csr_save_if:           Bool;
+  wire csr_save_id:           Bool;
+  wire csr_save_wb:           Bool;
+  wire csr_restore_mret_id:   Bool;
+  wire csr_restore_dret_id:   Bool;
+  wire csr_save_cause:        Bool;
+  wire csr_mtval:             UInt<32>;
+  wire csr_wdata:             UInt<32>;
+
+  // ── CSR→ID outputs ───────────────────────────────────────────────────
+  wire priv_mode_id:          UInt<2>;
+  wire priv_mode_lsu:         UInt<2>;
+  wire csr_mstatus_tw:        Bool;
+  wire illegal_csr_insn_id:   Bool;
+  wire csr_rdata:             UInt<32>;
+  wire csr_mstatus_mie:       Bool;
+  wire irq_pending_int:       Bool;
+  wire irqs_int:              Irqs;
+  wire nmi_mode:              Bool;
+  wire csr_mepc:              UInt<32>;
+  wire crash_dump_mtval:      UInt<32>;
+  wire csr_depc:              UInt<32>;
+  wire csr_mtvec:             UInt<32>;
+  wire csr_mtvec_init:        Bool;
+  wire data_ind_timing:       Bool;
+  wire dummy_instr_en:        Bool;
+  wire dummy_instr_mask:      UInt<3>;
+  wire dummy_instr_seed_en:   Bool;
+  wire dummy_instr_seed:      UInt<32>;
+  wire icache_enable:         Bool;
+  wire icache_ecc_error:      Bool;
+  wire csr_shadow_err:        Bool;
+
+  // ── Debug-mode signals ───────────────────────────────────────────────
+  wire debug_mode:            Bool;
+  wire debug_mode_entering:   Bool;
+  wire debug_cause:           UInt<3>;
+  wire debug_csr_save:        Bool;
+  wire debug_single_step:     Bool;
+  wire debug_ebreakm:         Bool;
+  wire debug_ebreaku:         Bool;
+  wire trigger_match:         Bool;
+
+  // ── PMP CSR outputs (sunk under PMPEnable=0) ─────────────────────────
+  wire csr_pmp_cfg:           unpacked Vec<UInt<6>, 4>;
+  wire csr_pmp_addr:          unpacked Vec<UInt<34>, 4>;
+  wire csr_pmp_mseccfg:       UInt<3>;
+
+  // ── PMP request errors (spec R20: tied 0 under PMPEnable=0) ──────────
+  /// `pmp_req_err[2]` indexed: 0=PMP_I, 1=PMP_I2, 2=PMP_D.
+  wire pmp_req_err:           UInt<3>;
+
+  // ── RF read / write internal wires ───────────────────────────────────
+  wire rf_raddr_a:            UInt<5>;
+  wire rf_raddr_b:            UInt<5>;
+  wire rf_waddr_id:           UInt<5>;
+  wire rf_wdata_id:           UInt<32>;
+  wire rf_we_id:              Bool;
+  wire rf_ren_a:              Bool;
+  wire rf_ren_b:              Bool;
+  wire rf_rd_a_wb_match:      Bool;
+  wire rf_rd_b_wb_match:      Bool;
+  wire rf_rdata_a:            UInt<32>;
+  wire rf_rdata_b:            UInt<32>;
+  wire rf_waddr_wb:           UInt<5>;
+  wire rf_wdata_wb:           UInt<32>;
+  wire rf_we_wb:              Bool;
+  wire rf_wdata_fwd_wb:       UInt<32>;
+  wire rf_write_wb:           Bool;
+  wire rf_ecc_err_comb:       Bool;
+
+  // ── WB-stage signals ─────────────────────────────────────────────────
+  wire ready_wb:              Bool;
+  wire en_wb:                 Bool;
+  wire instr_perf_count_id:   Bool;
+  wire outstanding_load_wb:   Bool;
+  wire outstanding_store_wb:  Bool;
+  wire pc_wb:                 UInt<32>;
+  wire perf_instr_ret_wb:                 Bool;
+  wire perf_instr_ret_compressed_wb:      Bool;
+  wire perf_instr_ret_wb_spec:            Bool;
+  wire perf_instr_ret_compressed_wb_spec: Bool;
+  wire dummy_instr_wb:        Bool;
+  wire instr_done_wb:         Bool;
+  wire expecting_load_resp_id: Bool;
+  wire expecting_store_resp_id: Bool;
+
+  // ── Lint-sink wires (per spec note N-23) ─────────────────────────────
+  /// `unused_fetch_enable = ^fetch_enable_i[3:1]` absorbs bits[3:1].
+  wire unused_fetch_enable:   Bool;
+  /// `unused_illegal_insn_id = illegal_insn_id` (RVFI sink under N-1).
+  wire unused_illegal_insn_id: Bool;
+
+  // ── Sub-module: IF stage (spec R3) ───────────────────────────────────
+  /// Per spec §"Sub-module instances §if_stage_i".
+  inst if_stage_i: ibex_if_stage
+    param ICache             = 1'd0;
+    param BranchPredictor    = 1'd0;
+    param DummyInstructions  = 1'd0;
+    param MemECC             = 1'd0;
+    param PCIncrCheck        = 1'd0;
+    param ResetAll           = 1'd0;
+    param RV32ZC             = RV32ZC;
+    param DmHaltAddr         = DmHaltAddr;
+    param DmExceptionAddr    = DmExceptionAddr;
+    param IC_NUM_WAYS        = IC_NUM_WAYS;
+    param IC_INDEX_W         = IC_INDEX_W;
+    param TagSizeECC         = TagSizeECC;
+    param LineSizeECC        = LineSizeECC;
+    param ICacheECC          = 1'd0;
+    param ICacheTweakInfection = 1'd0;
+    param BusSizeECC         = BusSizeECC;
+    param MemDataWidth       = MemDataWidth;
+    param RndCnstLfsrSeed    = RndCnstLfsrSeed;
+    param RndCnstLfsrPerm    = RndCnstLfsrPerm;
+    clk_i                <- clk_i;
+    rst_ni               <- rst_ni;
+    boot_addr_i          <- boot_addr_i;
+    req_i                <- (instr_req_int and fetch_enable_i[0]);
+    instr_req_o          -> instr_req_o;
+    instr_addr_o         -> instr_addr_o;
+    instr_gnt_i          <- instr_gnt_i;
+    instr_rvalid_i       <- instr_rvalid_i;
+    instr_rdata_i        <- instr_rdata_i;
+    instr_bus_err_i      <- instr_err_i;
+    instr_intg_err_o     -> instr_intg_err;
+    ic_tag_req_o         -> ic_tag_req_o;
+    ic_tag_write_o       -> ic_tag_write_o;
+    ic_tag_addr_o        -> ic_tag_addr_o;
+    ic_tag_wdata_o       -> ic_tag_wdata_o;
+    ic_data_req_o        -> ic_data_req_o;
+    ic_data_write_o      -> ic_data_write_o;
+    ic_data_addr_o       -> ic_data_addr_o;
+    ic_data_wdata_o      -> ic_data_wdata_o;
+    ic_scr_key_req_o     -> ic_scr_key_req_o;
+    icache_ecc_error_o   -> icache_ecc_error;
+    ic_tag_rdata_i       <- ic_tag_rdata_i;
+    ic_data_rdata_i      <- ic_data_rdata_i;
+    ic_scr_key_valid_i   <- ic_scr_key_valid_i;
+    icache_enable_i      <- icache_enable;
+    icache_inval_i       <- icache_inval;
+    dummy_instr_en_i     <- dummy_instr_en;
+    dummy_instr_mask_i   <- dummy_instr_mask;
+    dummy_instr_seed_en_i <- dummy_instr_seed_en;
+    dummy_instr_seed_i   <- dummy_instr_seed;
+    instr_valid_id_o     -> instr_valid_id;
+    instr_new_id_o       -> instr_new_id;
+    instr_rdata_id_o     -> instr_rdata_id;
+    instr_rdata_alu_id_o -> instr_rdata_alu_id;
+    instr_rdata_c_id_o   -> instr_rdata_c_id;
+    instr_is_compressed_id_o -> instr_is_compressed_id;
+    instr_gets_expanded_id_o -> instr_gets_expanded_id;
+    instr_expanded_id_o  -> instr_expanded_id;
+    illegal_c_insn_id_o  -> illegal_c_insn_id;
+    instr_fetch_err_o    -> instr_fetch_err;
+    instr_fetch_err_plus2_o -> instr_fetch_err_plus2;
+    pc_id_o              -> pc_id;
+    dummy_instr_id_o     -> dummy_instr_id;
+    instr_bp_taken_o     -> instr_bp_taken_id;
+    instr_valid_clear_i  <- instr_valid_clear;
+    id_in_ready_i        <- id_in_ready;
+    pc_set_i             <- pc_set;
+    pc_mux_i             <- pc_mux_id;
+    nt_branch_mispredict_i <- nt_branch_mispredict;
+    nt_branch_addr_i     <- nt_branch_addr;
+    exc_pc_mux_i         <- exc_pc_mux_id;
+    exc_cause            <- exc_cause;
+    branch_target_ex_i   <- branch_target_ex;
+    csr_mepc_i           <- csr_mepc;
+    csr_depc_i           <- csr_depc;
+    csr_mtvec_i          <- csr_mtvec;
+    csr_mtvec_init_o     -> csr_mtvec_init;
+    pmp_err_if_i         <- pmp_req_err[0];
+    pmp_err_if_plus2_i   <- pmp_req_err[1];
+    pc_if_o              -> pc_if;
+    if_busy_o            -> if_busy;
+    pc_mismatch_alert_o  -> pc_mismatch_alert;
+  end inst if_stage_i
+
+  // ── Sub-module: ID stage (spec R3, R4, R5, R6, R11, R12, R13, R14) ──
+  /// Per spec §"Sub-module instances §id_stage_i".
+  inst id_stage_i: ibex_id_stage
+    param RV32E             = 1'd0;
+    param RV32M             = 2;
+    param RV32B             = 0;
+    param BranchTargetALU   = 1'd0;
+    param WritebackStage    = 1'd0;
+    param BranchPredictor   = 1'd0;
+    param DataIndTiming     = 1'd0;
+    param MemECC            = 1'd0;
+    clk_i                <- clk_i;
+    rst_ni               <- rst_ni;
+    instr_valid_i        <- instr_valid_id;
+    instr_rdata_i        <- instr_rdata_id;
+    instr_rdata_alu_i    <- instr_rdata_alu_id;
+    instr_rdata_c_i      <- instr_rdata_c_id;
+    instr_is_compressed_i <- instr_is_compressed_id;
+    instr_bp_taken_i     <- instr_bp_taken_id;
+    illegal_c_insn_i     <- illegal_c_insn_id;
+    instr_fetch_err_i    <- instr_fetch_err;
+    instr_fetch_err_plus2_i <- instr_fetch_err_plus2;
+    pc_id_i              <- pc_id;
+    instr_exec_i         <- fetch_enable_i[0];
+    instr_req_o          -> instr_req_int;
+    instr_first_cycle_id_o -> instr_first_cycle_id;
+    instr_valid_clear_o  -> instr_valid_clear;
+    id_in_ready_o        -> id_in_ready;
+    icache_inval_o       -> icache_inval;
+    branch_decision_i    <- branch_decision;
+    pc_set_o             -> pc_set;
+    pc_mux_o             -> pc_mux_id;
+    nt_branch_mispredict_o -> nt_branch_mispredict;
+    nt_branch_addr_o     -> nt_branch_addr;
+    exc_pc_mux_o         -> exc_pc_mux_id;
+    exc_cause_o          -> exc_cause;
+    ex_valid_i           <- ex_valid;
+    alu_operator_ex_o    -> alu_operator_ex;
+    alu_operand_a_ex_o   -> alu_operand_a_ex;
+    alu_operand_b_ex_o   -> alu_operand_b_ex;
+    imd_val_we_ex_i      <- imd_val_we_ex;
+    imd_val_d_ex_i       <- imd_val_d_ex;
+    imd_val_q_ex_o       -> imd_val_q_ex;
+    bt_a_operand_o       -> bt_a_operand;
+    bt_b_operand_o       -> bt_b_operand;
+    result_ex_i          <- result_ex;
+    mult_en_ex_o         -> mult_en_ex;
+    div_en_ex_o          -> div_en_ex;
+    mult_sel_ex_o        -> mult_sel_ex;
+    div_sel_ex_o         -> div_sel_ex;
+    multdiv_operator_ex_o -> multdiv_operator_ex;
+    multdiv_signed_mode_ex_o -> multdiv_signed_mode_ex;
+    multdiv_operand_a_ex_o -> multdiv_operand_a_ex;
+    multdiv_operand_b_ex_o -> multdiv_operand_b_ex;
+    multdiv_ready_id_o   -> multdiv_ready_id;
+    csr_access_o         -> csr_access;
+    csr_op_o             -> csr_op;
+    csr_addr_o           -> csr_addr;
+    csr_op_en_o          -> csr_op_en;
+    csr_save_if_o        -> csr_save_if;
+    csr_save_id_o        -> csr_save_id;
+    csr_save_wb_o        -> csr_save_wb;
+    csr_restore_mret_id_o -> csr_restore_mret_id;
+    csr_restore_dret_id_o -> csr_restore_dret_id;
+    csr_save_cause_o     -> csr_save_cause;
+    csr_mtval_o          -> csr_mtval;
+    priv_mode_i          <- priv_mode_id;
+    csr_mstatus_tw_i     <- csr_mstatus_tw;
+    illegal_csr_insn_i   <- illegal_csr_insn_id;
+    csr_rdata_i          <- csr_rdata;
+    data_ind_timing_i    <- data_ind_timing;
+    lsu_req_o            -> lsu_req;
+    lsu_we_o             -> lsu_we;
+    lsu_type_o           -> lsu_type;
+    lsu_sign_ext_o       -> lsu_sign_ext;
+    lsu_wdata_o          -> lsu_wdata;
+    lsu_resp_valid_i     <- lsu_resp_valid;
+    lsu_req_done_i       <- lsu_req_done;
+    lsu_addr_incr_req_i  <- lsu_addr_incr_req;
+    lsu_addr_last_i      <- lsu_addr_last;
+    lsu_load_err_i       <- lsu_load_err;
+    lsu_load_resp_intg_err_i <- lsu_load_resp_intg_err;
+    lsu_store_err_i      <- lsu_store_err;
+    lsu_store_resp_intg_err_i <- lsu_store_resp_intg_err;
+    expecting_load_resp_o -> expecting_load_resp_id;
+    expecting_store_resp_o -> expecting_store_resp_id;
+    csr_mstatus_mie_i    <- csr_mstatus_mie;
+    irq_pending_i        <- irq_pending_int;
+    irqs_i               <- irqs_int;
+    irq_nm_i             <- irq_nm_i;
+    nmi_mode_o           -> nmi_mode;
+    debug_req_i          <- debug_req_i;
+    debug_single_step_i  <- debug_single_step;
+    debug_ebreakm_i      <- debug_ebreakm;
+    debug_ebreaku_i      <- debug_ebreaku;
+    trigger_match_i      <- trigger_match;
+    debug_mode_o         -> debug_mode;
+    debug_mode_entering_o -> debug_mode_entering;
+    debug_cause_o        -> debug_cause;
+    debug_csr_save_o     -> debug_csr_save;
+    rf_raddr_a_o         -> rf_raddr_a;
+    rf_rdata_a_i         <- rf_rdata_a;
+    rf_raddr_b_o         -> rf_raddr_b;
+    rf_rdata_b_i         <- rf_rdata_b;
+    rf_ren_a_o           -> rf_ren_a;
+    rf_ren_b_o           -> rf_ren_b;
+    rf_waddr_id_o        -> rf_waddr_id;
+    rf_wdata_id_o        -> rf_wdata_id;
+    rf_we_id_o           -> rf_we_id;
+    rf_rd_a_wb_match_o   -> rf_rd_a_wb_match;
+    rf_rd_b_wb_match_o   -> rf_rd_b_wb_match;
+    rf_waddr_wb_i        <- rf_waddr_wb;
+    rf_wdata_fwd_wb_i    <- rf_wdata_fwd_wb;
+    rf_write_wb_i        <- rf_write_wb;
+    en_wb_o              -> en_wb;
+    instr_type_wb_o      -> _ignore_instr_type_wb;
+    instr_perf_count_id_o -> instr_perf_count_id;
+    ready_wb_i           <- ready_wb;
+    outstanding_load_wb_i <- outstanding_load_wb;
+    outstanding_store_wb_i <- outstanding_store_wb;
+    ctrl_busy_o          -> ctrl_busy;
+    illegal_insn_o       -> illegal_insn_id;
+    instr_id_done_o      -> instr_id_done;
+    perf_jump_o          -> perf_jump;
+    perf_branch_o        -> perf_branch;
+    perf_tbranch_o       -> perf_tbranch;
+    perf_dside_wait_o    -> perf_dside_wait;
+    perf_mul_wait_o      -> perf_mul_wait;
+    perf_div_wait_o      -> perf_div_wait;
+  end inst id_stage_i
+
+  // ── Sub-module: EX block (spec R4, R5, R6, R7) ──────────────────────
+  /// Per spec §"Sub-module instances §ex_block_i".
+  inst ex_block_i: ibex_ex_block
+    param RV32M           = 2;
+    param RV32B           = 0;
+    param BranchTargetALU = 1'd0;
+    clk_i                <- clk_i;
+    rst_ni               <- rst_ni;
+    alu_operator_i       <- alu_operator_ex;
+    alu_operand_a_i      <- alu_operand_a_ex;
+    alu_operand_b_i      <- alu_operand_b_ex;
+    alu_instr_first_cycle_i <- instr_first_cycle_id;
+    bt_a_operand_i       <- bt_a_operand;
+    bt_b_operand_i       <- bt_b_operand;
+    multdiv_operator_i   <- multdiv_operator_ex;
+    mult_en_i            <- mult_en_ex;
+    div_en_i             <- div_en_ex;
+    mult_sel_i           <- mult_sel_ex;
+    div_sel_i            <- div_sel_ex;
+    multdiv_signed_mode_i <- multdiv_signed_mode_ex;
+    multdiv_operand_a_i  <- multdiv_operand_a_ex;
+    multdiv_operand_b_i  <- multdiv_operand_b_ex;
+    multdiv_ready_id_i   <- multdiv_ready_id;
+    data_ind_timing_i    <- data_ind_timing;
+    imd_val_q_i          <- imd_val_q_ex;
+    imd_val_d_o          -> imd_val_d_ex;
+    imd_val_we_o         -> imd_val_we_ex;
+    alu_adder_result_ex_o -> alu_adder_result_ex;
+    result_ex_o          -> result_ex;
+    branch_target_o      -> branch_target_ex;
+    branch_decision_o    -> branch_decision;
+    ex_valid_o           -> ex_valid;
+  end inst ex_block_i
+
+  // ── Sub-module: Load/Store unit (spec R8) ───────────────────────────
+  /// Per spec §"Sub-module instances §load_store_unit_i".
+  inst load_store_unit_i: ibex_load_store_unit
+    param MemECC       = 0;
+    param MemDataWidth = 32;
+    clk_i                <- clk_i;
+    rst_ni               <- rst_ni;
+    data_req_o           -> data_req_out;
+    data_gnt_i           <- data_gnt_i;
+    data_rvalid_i        <- data_rvalid_i;
+    data_bus_err_i       <- data_err_i;
+    data_pmp_err_i       <- pmp_req_err[2];
+    data_addr_o          -> data_addr_o;
+    data_we_o            -> data_we_o;
+    data_be_o            -> data_be_o;
+    data_wdata_o         -> data_wdata_o;
+    data_rdata_i         <- data_rdata_i;
+    lsu_we_i             <- lsu_we;
+    lsu_type_i           <- lsu_type;
+    lsu_wdata_i          <- lsu_wdata;
+    lsu_sign_ext_i       <- lsu_sign_ext;
+    lsu_rdata_o          -> rf_wdata_lsu;
+    lsu_rdata_valid_o    -> lsu_rdata_valid;
+    lsu_req_i            <- lsu_req;
+    adder_result_ex_i    <- alu_adder_result_ex;
+    addr_incr_req_o      -> lsu_addr_incr_req;
+    addr_last_o          -> lsu_addr_last;
+    lsu_req_done_o       -> lsu_req_done;
+    lsu_resp_valid_o     -> lsu_resp_valid;
+    load_err_o           -> lsu_load_err_raw;
+    load_resp_intg_err_o -> lsu_load_resp_intg_err;
+    store_err_o          -> lsu_store_err_raw;
+    store_resp_intg_err_o -> lsu_store_resp_intg_err;
+    busy_o               -> lsu_busy;
+    perf_load_o          -> perf_load;
+    perf_store_o         -> perf_store;
+  end inst load_store_unit_i
+
+  // ── Sub-module: WB stage (spec R15) ─────────────────────────────────
+  /// Per spec §"Sub-module instances §wb_stage_i".  Under
+  /// WritebackStage=0 this is passthrough: ready_wb=1, rf_write_wb=0.
+  inst wb_stage_i: ibex_wb_stage
+    param ResetAll          = 0;
+    param WritebackStage    = 0;
+    param DummyInstructions = 0;
+    clk_i                <- clk_i;
+    rst_ni               <- rst_ni;
+    en_wb_i              <- en_wb;
+    instr_type_wb_i      <- WB_INSTR_OTHER;
+    pc_id_i              <- pc_id;
+    instr_is_compressed_id_i <- instr_is_compressed_id;
+    instr_perf_count_id_i <- instr_perf_count_id;
+    ready_wb_o           -> ready_wb;
+    rf_write_wb_o        -> rf_write_wb;
+    outstanding_load_wb_o -> outstanding_load_wb;
+    outstanding_store_wb_o -> outstanding_store_wb;
+    pc_wb_o              -> pc_wb;
+    perf_instr_ret_wb_o            -> perf_instr_ret_wb;
+    perf_instr_ret_compressed_wb_o -> perf_instr_ret_compressed_wb;
+    perf_instr_ret_wb_spec_o       -> perf_instr_ret_wb_spec;
+    perf_instr_ret_compressed_wb_spec_o -> perf_instr_ret_compressed_wb_spec;
+    rf_waddr_id_i        <- rf_waddr_id;
+    rf_wdata_id_i        <- rf_wdata_id;
+    rf_we_id_i           <- rf_we_id;
+    dummy_instr_id_i     <- dummy_instr_id;
+    rf_wdata_lsu_i       <- rf_wdata_lsu;
+    rf_we_lsu_i          <- rf_we_lsu;
+    rf_wdata_fwd_wb_o    -> rf_wdata_fwd_wb;
+    rf_waddr_wb_o        -> rf_waddr_wb;
+    rf_wdata_wb_o        -> rf_wdata_wb;
+    rf_we_wb_o           -> rf_we_wb;
+    dummy_instr_wb_o     -> dummy_instr_wb;
+    lsu_resp_valid_i     <- lsu_resp_valid;
+    lsu_resp_err_i       <- lsu_resp_err;
+    instr_done_wb_o      -> instr_done_wb;
+  end inst wb_stage_i
+
+  // ── Sub-module: CS-Registers (kept upstream-SV per spec note N-2) ───
+  /// Per spec §"Sub-module instances §cs_registers_i".
+  /// `csr_wdata_i` is aliased to `alu_operand_a_ex` per spec §1053
+  /// (CSR write-port aliasing) and spec note N-13.
+  inst cs_registers_i: ibex_cs_registers
+    param DbgTriggerEn       = 1'd0;
+    param DbgHwBreakNum      = DbgHwBreakNum;
+    param DataIndTiming      = 1'd0;
+    param DummyInstructions  = 1'd0;
+    param ShadowCSR          = 1'd0;
+    param ICache             = 1'd0;
+    param MHPMCounterNum     = MHPMCounterNum;
+    param MHPMCounterWidth   = MHPMCounterWidth;
+    param PMPEnable          = 1'd0;
+    param PMPGranularity     = PMPGranularity;
+    param PMPNumRegions      = PMPNumRegions;
+    param RV32E              = 1'd0;
+    param RV32M              = RV32M;
+    param RV32B              = RV32B;
+    param CsrMvendorId       = CsrMvendorId;
+    param CsrMimpId          = CsrMimpId;
+    clk_i                <- clk_i;
+    rst_ni               <- rst_ni;
+    hart_id_i            <- hart_id_i;
+    priv_mode_id_o       -> priv_mode_id;
+    priv_mode_lsu_o      -> priv_mode_lsu;
+    csr_mstatus_tw_o     -> csr_mstatus_tw;
+    csr_mtvec_o          -> csr_mtvec;
+    csr_mtvec_init_i     <- csr_mtvec_init;
+    boot_addr_i          <- boot_addr_i;
+    csr_access_i         <- csr_access;
+    csr_addr_i           <- csr_addr;
+    csr_wdata_i          <- csr_wdata;
+    csr_op_i             <- csr_op;
+    csr_op_en_i          <- csr_op_en;
+    csr_rdata_o          -> csr_rdata;
+    irq_software_i       <- irq_software_i;
+    irq_timer_i          <- irq_timer_i;
+    irq_external_i       <- irq_external_i;
+    irq_fast_i           <- irq_fast_i;
+    nmi_mode_i           <- nmi_mode;
+    irq_pending_o        -> irq_pending_int;
+    irqs_o               -> irqs_int;
+    csr_mstatus_mie_o    -> csr_mstatus_mie;
+    csr_mepc_o           -> csr_mepc;
+    csr_mtval_o          -> crash_dump_mtval;
+    csr_pmp_cfg_o        -> csr_pmp_cfg;
+    csr_pmp_addr_o       -> csr_pmp_addr;
+    csr_pmp_mseccfg_o    -> csr_pmp_mseccfg;
+    debug_mode_i         <- debug_mode;
+    debug_mode_entering_i <- debug_mode_entering;
+    debug_cause_i        <- debug_cause;
+    debug_csr_save_i     <- debug_csr_save;
+    csr_depc_o           -> csr_depc;
+    debug_single_step_o  -> debug_single_step;
+    debug_ebreakm_o      -> debug_ebreakm;
+    debug_ebreaku_o      -> debug_ebreaku;
+    trigger_match_o      -> trigger_match;
+    pc_if_i              <- pc_if;
+    pc_id_i              <- pc_id;
+    pc_wb_i              <- pc_wb;
+    data_ind_timing_o    -> data_ind_timing;
+    dummy_instr_en_o     -> dummy_instr_en;
+    dummy_instr_mask_o   -> dummy_instr_mask;
+    dummy_instr_seed_en_o -> dummy_instr_seed_en;
+    dummy_instr_seed_o   -> dummy_instr_seed;
+    icache_enable_o      -> icache_enable;
+    csr_shadow_err_o     -> csr_shadow_err;
+    ic_scr_key_valid_i   <- ic_scr_key_valid_i;
+    csr_save_if_i        <- csr_save_if;
+    csr_save_id_i        <- csr_save_id;
+    csr_save_wb_i        <- csr_save_wb;
+    csr_restore_mret_i   <- csr_restore_mret_id;
+    csr_restore_dret_i   <- csr_restore_dret_id;
+    csr_save_cause_i     <- csr_save_cause;
+    csr_mcause_i         <- exc_cause;
+    csr_mtval_i          <- csr_mtval;
+    illegal_csr_insn_o   -> illegal_csr_insn_id;
+    double_fault_seen_o  -> double_fault_seen_o;
+    instr_ret_i                 <- perf_instr_ret_wb;
+    instr_ret_compressed_i      <- perf_instr_ret_compressed_wb;
+    instr_ret_spec_i            <- perf_instr_ret_wb_spec;
+    instr_ret_compressed_spec_i <- perf_instr_ret_compressed_wb_spec;
+    iside_wait_i         <- perf_iside_wait;
+    jump_i               <- perf_jump;
+    branch_i             <- perf_branch;
+    branch_taken_i       <- perf_tbranch;
+    mem_load_i           <- perf_load;
+    mem_store_i          <- perf_store;
+    dside_wait_i         <- perf_dside_wait;
+    mul_wait_i           <- perf_mul_wait;
+    div_wait_i           <- perf_div_wait;
+  end inst cs_registers_i
+
+  // ── Module-scope combinational glue ──────────────────────────────────
+  comb
+    // ── Core-busy reduction (spec R9, N-7, N-34) ──────────────────────
+    /// Per spec R9: under SecureIbex=0, `core_busy_o` is the full
+    /// 4-bit mubi pattern.  IbexMuBiOn when any of ctrl_busy / if_busy
+    /// / lsu_busy is high, IbexMuBiOff otherwise.
+    core_busy_o = (ctrl_busy or if_busy or lsu_busy) ? IBEX_MU_BI_ON : IBEX_MU_BI_OFF;
+
+    // ── Fetch-enable gating (spec R10) ────────────────────────────────
+    /// Per spec R10: `unused_fetch_enable = ^fetch_enable_i[3:1]`
+    /// absorbs unused bits.
+    unused_fetch_enable = (fetch_enable_i[3] ^ fetch_enable_i[2]) ^ fetch_enable_i[1];
+
+    // ── iside-wait perf pulse (spec R19, line 528) ────────────────────
+    /// `perf_iside_wait = id_in_ready & ~instr_valid_id`.
+    perf_iside_wait = id_in_ready and not instr_valid_id;
+
+    // ── LSU PMP-mask collapse (spec R8, R20) ──────────────────────────
+    /// Per spec §LSU PMP-mask collapse: under PMPEnable=0,
+    /// `data_req_o = data_req_out` (the gate `~pmp_req_err[2]`
+    /// folds to 1).
+    data_req_o = data_req_out and not pmp_req_err[2];
+
+    // ── LSU error reduction (spec R8) ─────────────────────────────────
+    lsu_resp_err = lsu_load_err or lsu_store_err;
+
+    // ── Non-secure LSU error / RF-write aliases (spec R21) ────────────
+    /// Per spec R21: non-secure aliases.
+    lsu_load_err  = lsu_load_err_raw;
+    lsu_store_err = lsu_store_err_raw;
+    rf_we_lsu     = lsu_rdata_valid;
+
+    // ── PMP request errors (spec R20: tied 0 under PMPEnable=0) ───────
+    /// Per spec R20: pmp_req_err[PMP_I/I2/D] = 0 under PMPEnable=0.
+    pmp_req_err = 3'd0;
+
+    // ── RF passthrough (spec R16) ─────────────────────────────────────
+    /// Under RegFileECC=0: rf_rdata_*, rf_wdata_wb_ecc_o straight
+    /// passthroughs; rf_ecc_err_comb = 0.
+    rf_rdata_a       = rf_rdata_a_ecc_i;
+    rf_rdata_b       = rf_rdata_b_ecc_i;
+    rf_ecc_err_comb  = false;
+
+    // ── CSR write-port aliasing (spec N-13, line 1053) ────────────────
+    /// `csr_wdata = alu_operand_a_ex` continuous assignment.
+    csr_wdata = alu_operand_a_ex;
+
+    // ── Alert outputs (spec R18) ──────────────────────────────────────
+    /// Per spec R18: alert_minor = icache_ecc_error.
+    alert_minor_o          = icache_ecc_error;
+    /// alert_major_internal = rf_ecc_err_comb | pc_mismatch_alert |
+    /// csr_shadow_err.  Under RegFileECC=0/ShadowCSR=0 only
+    /// pc_mismatch_alert can be non-zero (and PCIncrCheck=0 keeps
+    /// that to 0 too).
+    alert_major_internal_o = rf_ecc_err_comb or pc_mismatch_alert or csr_shadow_err;
+    /// alert_major_bus = lsu_load_resp_intg_err | lsu_store_resp_intg_err
+    /// | instr_intg_err.  All three are 0 under MemECC=0 (per
+    /// spec note N-6).
+    alert_major_bus_o      = lsu_load_resp_intg_err or lsu_store_resp_intg_err or instr_intg_err;
+
+    // ── Crash-dump aggregation (spec R17, N-14) ───────────────────────
+    /// Per spec R17 / line 961-965: 5-field crash_dump struct.
+    /// Field order matches upstream `crash_dump_t`:
+    /// {current_pc, next_pc, last_data_addr, exception_pc, exception_addr}.
+    /// Emitted as a flat 5×32 packed UInt<160>.  Verilator accepts
+    /// structurally compatible packed shapes across module boundaries.
+    crash_dump_o = {pc_id, pc_if, lsu_addr_last, csr_mepc, crash_dump_mtval};
+
+    // ── Top-level RF-port pass-through (spec line 898-903) ────────────
+    /// Per spec §Top-level RF-port pass-through assigns.
+    dummy_instr_id_o   = dummy_instr_id;
+    dummy_instr_wb_o   = dummy_instr_wb;
+    rf_raddr_a_o       = rf_raddr_a;
+    rf_raddr_b_o       = rf_raddr_b;
+    rf_waddr_wb_o      = rf_waddr_wb;
+    rf_we_wb_o         = rf_we_wb;
+    rf_wdata_wb_ecc_o  = rf_wdata_wb;
+
+    // ── Top-level IRQ pending pass-through ────────────────────────────
+    irq_pending_o = irq_pending_int;
+
+    // ── RVFI sink (spec note N-1) ─────────────────────────────────────
+    /// `unused_illegal_insn_id = illegal_insn_id` — the only RVFI
+    /// remnant required as a lint sink under our pinning.
+    unused_illegal_insn_id = illegal_insn_id;
+
+    // ── RVFI port stubs tied to zero (spec note N-1) ──────────────────
+    /// Per spec N-1, the RVFI tracking pipeline is out of scope.
+    /// Drive every RVFI output to its all-zero reset value so upstream
+    /// `ibex_top.sv` (which always binds these pins under the
+    /// `ibex_top_tracing` core's RVFI=true flag) sees stable signals.
+    rvfi_valid       = false;
+    rvfi_order       = 64'd0;
+    rvfi_insn        = 32'd0;
+    rvfi_trap        = false;
+    rvfi_halt        = false;
+    rvfi_intr        = false;
+    rvfi_mode        = 2'd0;
+    rvfi_ixl         = 2'd0;
+    rvfi_rs1_addr    = 5'd0;
+    rvfi_rs2_addr    = 5'd0;
+    rvfi_rs3_addr    = 5'd0;
+    rvfi_rs1_rdata   = 32'd0;
+    rvfi_rs2_rdata   = 32'd0;
+    rvfi_rs3_rdata   = 32'd0;
+    rvfi_rd_addr     = 5'd0;
+    rvfi_rd_wdata    = 32'd0;
+    rvfi_pc_rdata    = 32'd0;
+    rvfi_pc_wdata    = 32'd0;
+    rvfi_mem_addr    = 32'd0;
+    rvfi_mem_rmask   = 4'd0;
+    rvfi_mem_wmask   = 4'd0;
+    rvfi_mem_rdata   = 32'd0;
+    rvfi_mem_wdata   = 32'd0;
+    rvfi_ext_pre_mip       = 32'd0;
+    rvfi_ext_post_mip      = 32'd0;
+    rvfi_ext_nmi           = false;
+    rvfi_ext_nmi_int       = false;
+    rvfi_ext_debug_req     = false;
+    rvfi_ext_debug_mode    = false;
+    rvfi_ext_rf_wr_suppress = false;
+    rvfi_ext_mcycle        = 64'd0;
+    rvfi_ext_ic_scr_key_valid = false;
+    rvfi_ext_irq_valid        = false;
+    rvfi_ext_expanded_insn_valid = false;
+    rvfi_ext_expanded_insn       = 16'd0;
+    rvfi_ext_expanded_insn_last  = false;
+    rvfi_ext_mhpmcounters[0] = 32'd0;
+    rvfi_ext_mhpmcounters[1] = 32'd0;
+    rvfi_ext_mhpmcounters[2] = 32'd0;
+    rvfi_ext_mhpmcounters[3] = 32'd0;
+    rvfi_ext_mhpmcounters[4] = 32'd0;
+    rvfi_ext_mhpmcounters[5] = 32'd0;
+    rvfi_ext_mhpmcounters[6] = 32'd0;
+    rvfi_ext_mhpmcounters[7] = 32'd0;
+    rvfi_ext_mhpmcounters[8] = 32'd0;
+    rvfi_ext_mhpmcounters[9] = 32'd0;
+    rvfi_ext_mhpmcountersh[0] = 32'd0;
+    rvfi_ext_mhpmcountersh[1] = 32'd0;
+    rvfi_ext_mhpmcountersh[2] = 32'd0;
+    rvfi_ext_mhpmcountersh[3] = 32'd0;
+    rvfi_ext_mhpmcountersh[4] = 32'd0;
+    rvfi_ext_mhpmcountersh[5] = 32'd0;
+    rvfi_ext_mhpmcountersh[6] = 32'd0;
+    rvfi_ext_mhpmcountersh[7] = 32'd0;
+    rvfi_ext_mhpmcountersh[8] = 32'd0;
+    rvfi_ext_mhpmcountersh[9] = 32'd0;
+  end comb
+
+  // ── Dummy let-bindings to absorb otherwise-unused signals ────────────
+  // These signals exist purely as lint sinks per spec note N-23.
+  // PMP CSR outputs (spec note N-11): consumed under PMPEnable=0=off.
+  let _unused_priv_mode_lsu:    UInt<2>          = priv_mode_lsu;
+  // Element-wise sinks for the unpacked-array PMP outputs (per
+  // syntax pitfall: `unpacked` modifier isn't valid on `let` typed
+  // bindings, only on `wire` declarations). One let per lane is
+  // enough to satisfy the lint sink under PMPEnable=0.
+  let _unused_csr_pmp_cfg_0:  UInt<6>  = csr_pmp_cfg[0];
+  let _unused_csr_pmp_cfg_1:  UInt<6>  = csr_pmp_cfg[1];
+  let _unused_csr_pmp_cfg_2:  UInt<6>  = csr_pmp_cfg[2];
+  let _unused_csr_pmp_cfg_3:  UInt<6>  = csr_pmp_cfg[3];
+  let _unused_csr_pmp_addr_0: UInt<34> = csr_pmp_addr[0];
+  let _unused_csr_pmp_addr_1: UInt<34> = csr_pmp_addr[1];
+  let _unused_csr_pmp_addr_2: UInt<34> = csr_pmp_addr[2];
+  let _unused_csr_pmp_addr_3: UInt<34> = csr_pmp_addr[3];
+  let _unused_csr_pmp_mseccfg:  UInt<3>          = csr_pmp_mseccfg;
+  // RF-ECC sinks (spec R16 / line 942-949).
+  let _unused_rf_ren_a:           Bool = rf_ren_a;
+  let _unused_rf_ren_b:           Bool = rf_ren_b;
+  let _unused_rf_rd_a_wb_match:   Bool = rf_rd_a_wb_match;
+  let _unused_rf_rd_b_wb_match:   Bool = rf_rd_b_wb_match;
+  // SecureIbex=0 mem-response probes (spec R21).
+  let _unused_expecting_load_resp_id:  Bool = expecting_load_resp_id;
+  let _unused_expecting_store_resp_id: Bool = expecting_store_resp_id;
+  // RVFI-only producers (spec note N-24).
+  let _unused_instr_new_id:           Bool      = instr_new_id;
+  let _unused_instr_gets_expanded_id: UInt<2>   = instr_gets_expanded_id;
+  let _unused_instr_expanded_id:      UInt<16>  = instr_expanded_id;
+  let _unused_instr_done_wb:          Bool      = instr_done_wb;
+  let _unused_instr_id_done:          Bool      = instr_id_done;
+  // Dummy-instr LFSR (DummyInstructions=0) — driven by CSRs but
+  // not consumed under our pinning.
+  let _unused_dummy_instr_en:      Bool     = dummy_instr_en;
+  let _unused_dummy_instr_mask:    UInt<3>  = dummy_instr_mask;
+  let _unused_dummy_instr_seed_en: Bool     = dummy_instr_seed_en;
+  let _unused_dummy_instr_seed:    UInt<32> = dummy_instr_seed;
+  // ICache ECC error (ICache=0).
+  let _unused_icache_ecc_error: Bool = icache_ecc_error;
+
+end module ibex_core

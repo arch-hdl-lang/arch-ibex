@@ -58,22 +58,6 @@ else
   done
 fi
 
-# Composite modules (Phase B+) instantiate leaf sub-modules and require
-# those sub-modules' `.archi` stubs to exist first.  Separate them so
-# leaf modules are always compiled before composites.
-# A module is "composite" if it contains an `inst ` block; leaf modules
-# do not. Run two passes: leaves first, composites second.
-leaf_files=()
-composite_files=()
-for f in "${files[@]}"; do
-  if grep -q $'^\s*inst ' "${f}" 2>/dev/null; then
-    composite_files+=("${f}")
-  else
-    leaf_files+=("${f}")
-  fi
-done
-ordered_files=("${leaf_files[@]}" "${composite_files[@]}")
-
 _build_one() {
   local f="$1"
   # The SV module name is the upstream snake_case basename (e.g.
@@ -111,6 +95,47 @@ _build_one() {
   fi
 }
 
-for f in "${ordered_files[@]}"; do
-  _build_one "${f}"
+# Topological build: composites can instantiate other composites
+# (e.g. IbexIfStage → IbexPrefetchBuffer), so leaves-then-composites
+# isn't enough. Each pass picks every file whose `inst <name>:` deps
+# all already have a `.archi` in src/, builds them, and retries the
+# rest until empty. The arch-com dep walker matches inst names
+# (snake_case) against filenames (CamelCase) so it can't resolve our
+# naming convention itself.
+remaining=("${files[@]}")
+max_passes=$((${#files[@]} + 1))
+pass=0
+while [[ ${#remaining[@]} -gt 0 && $pass -lt $max_passes ]]; do
+  pass=$((pass + 1))
+  next_remaining=()
+  built_this_pass=0
+  for f in "${remaining[@]}"; do
+    inst_modules=$( { grep -E "^[[:space:]]*inst[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]*:[[:space:]]*[A-Za-z_][A-Za-z0-9_]*" "${f}" 2>/dev/null || true; } \
+      | sed -E 's/^[[:space:]]*inst[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]*:[[:space:]]*([A-Za-z_][A-Za-z0-9_]*).*/\1/')
+    deps_ready=1
+    for dep in ${inst_modules}; do
+      # `.archi` lands next to the `.arch` source in src/.
+      if [[ ! -f "${SRC_DIR}/${dep}.archi" ]]; then
+        deps_ready=0
+        break
+      fi
+    done
+    if [[ $deps_ready -eq 1 ]]; then
+      _build_one "${f}"
+      built_this_pass=$((built_this_pass + 1))
+    else
+      next_remaining+=("${f}")
+    fi
+  done
+  if [[ $built_this_pass -eq 0 ]]; then
+    echo "error: scripts/build.sh cannot resolve inst deps for:" >&2
+    for f in "${next_remaining[@]}"; do
+      missing=$(grep -Eo "^[[:space:]]*inst[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]*:[[:space:]]*[A-Za-z_][A-Za-z0-9_]*" "${f}" \
+        | sed -E 's/.*:[[:space:]]*//' \
+        | while read d; do [[ -f "${SRC_DIR}/${d}.archi" ]] || echo "$d"; done | tr '\n' ' ')
+      echo "  $(basename "${f}") — missing: ${missing}" >&2
+    done
+    exit 1
+  fi
+  remaining=("${next_remaining[@]}")
 done
