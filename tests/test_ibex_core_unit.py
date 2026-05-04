@@ -133,14 +133,21 @@ def core_runner(verilator_bin, tmp_path_factory):
     sim_build = tmp_path_factory.mktemp("core_sim_build")
     runner = get_runner("verilator")
     runner.build(
-        sources=[str(p) for p in (ARCH_SV_FILES + UPSTREAM_SV_FILES)],
+        # ibex_pkg.sv defines the SV-side enums (`rv32m_e`, `rv32b_e`)
+        # that IbexCore now exposes natively as `parameter
+        # ibex_pkg::rv32m_e RV32M = ...`, so the package must be parsed
+        # before any consumer references it.
+        sources=[str(p) for p in (UPSTREAM_SV_FILES + ARCH_SV_FILES)],
         hdl_toplevel="ibex_core",
         build_dir=str(sim_build),
         always=True,
         parameters={
             "RV32E":              0,
-            "RV32M":              2,   # RV32MFast
-            "RV32B":              0,   # RV32BNone
+            # RV32M / RV32B are SV-typed enum params (`ibex_pkg::rv32m_e`,
+            # `rv32b_e`) and default to RV32MFast / RV32BNone in
+            # IbexCore.arch — passing integer overrides via -G would
+            # implicit-convert into the enum type and trip Verilator's
+            # ENUMVALUE error. The defaults already match the SoC pinning.
             "BranchTargetALU":    0,
             "WritebackStage":     0,
             "ICache":             0,

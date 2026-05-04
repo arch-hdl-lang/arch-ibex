@@ -46,10 +46,10 @@ module ibex_core
   // ── Const params (snapped to SoC pin values) ─────────────────────────
   /// `RV32E`: 1-bit.  Pinned to 0 (full 32-entry RF).  See spec §pin.
   param RV32E[0:0]: const = 1'd0;
-  /// `RV32M`: 2-bit `rv32m_e` enum.  Pinned to RV32MFast = 2.
-  param RV32M: const = 2;
-  /// `RV32B`: 2-bit `rv32b_e` enum.  Pinned to RV32BNone = 0.
-  param RV32B: const = 0;
+  /// `RV32M`: 2-bit `rv32m_e` enum.  Pinned to RV32MFast.
+  param RV32M: ibex_pkg::rv32m_e = ibex_pkg::RV32MFast;
+  /// `RV32B`: 2-bit `rv32b_e` enum.  Pinned to RV32BNone.
+  param RV32B: ibex_pkg::rv32b_e = ibex_pkg::RV32BNone;
   /// `BranchTargetALU`: pinned 0 (no dedicated branch-target adder).
   param BranchTargetALU[0:0]: const = 1'd0;
   /// `WritebackStage`: pinned 0 (passthrough WB stage).
@@ -133,9 +133,13 @@ module ibex_core
   /// (Verilator V3Width.cpp:2594 InitArray internal error).
   /// See `changes/port-ibex_core/spec-notes.md` for the open-question
   /// trade-off; the SoC-lint gate is documented there.
-  param PMPRstCfg:    const = 0;
-  param PMPRstAddr:   const = 0;
-  param PMPRstMsecCfg: const = 0;
+  /// PMP-reset structured params — declared natively as upstream
+  /// `pmp_cfg_t [N]`, `[W:0] [N]`, and scalar `pmp_mseccfg_t` so
+  /// `ibex_top` can pass typed values through and we can forward
+  /// them on to `cs_registers_i`. Under PMPEnable=0 these are sunk.
+  param PMPRstCfg:     ibex_pkg::pmp_cfg_t [16]   = ibex_pkg::PmpCfgRst;
+  param PMPRstAddr:    UInt<34> [16]              = ibex_pkg::PmpAddrRst;
+  param PMPRstMsecCfg: ibex_pkg::pmp_mseccfg_t    = ibex_pkg::PmpMseccfgRst;
 
   /// Misc CSR ID params (forwarded to CSRs).
   param CsrMvendorId[31:0]: const = 32'd0;
@@ -184,12 +188,12 @@ module ibex_core
   port ic_tag_write_o:      out Bool;
   port ic_tag_addr_o:       out UInt<IC_INDEX_W>;
   port ic_tag_wdata_o:      out UInt<TagSizeECC>;
-  port ic_tag_rdata_i:      in  Vec<UInt<TagSizeECC>, IC_NUM_WAYS>;
+  port ic_tag_rdata_i:      in  unpacked Vec<UInt<TagSizeECC>, IC_NUM_WAYS>;
   port ic_data_req_o:       out UInt<IC_NUM_WAYS>;
   port ic_data_write_o:     out Bool;
   port ic_data_addr_o:      out UInt<IC_INDEX_W>;
   port ic_data_wdata_o:     out UInt<LineSizeECC>;
-  port ic_data_rdata_i:     in  Vec<UInt<LineSizeECC>, IC_NUM_WAYS>;
+  port ic_data_rdata_i:     in  unpacked Vec<UInt<LineSizeECC>, IC_NUM_WAYS>;
   port ic_scr_key_valid_i:  in  Bool;
   port ic_scr_key_req_o:    out Bool;
 
@@ -265,8 +269,8 @@ module ibex_core
   port rvfi_ext_debug_mode:   out Bool;
   port rvfi_ext_rf_wr_suppress: out Bool;
   port rvfi_ext_mcycle:       out UInt<64>;
-  port rvfi_ext_mhpmcounters:    out Vec<UInt<32>, 10>;
-  port rvfi_ext_mhpmcountersh:   out Vec<UInt<32>, 10>;
+  port rvfi_ext_mhpmcounters:    out unpacked Vec<UInt<32>, 10>;
+  port rvfi_ext_mhpmcountersh:   out unpacked Vec<UInt<32>, 10>;
   port rvfi_ext_ic_scr_key_valid: out Bool;
   port rvfi_ext_irq_valid:    out Bool;
   port rvfi_ext_expanded_insn_valid: out Bool;
@@ -438,8 +442,8 @@ module ibex_core
   wire trigger_match:         Bool;
 
   // ── PMP CSR outputs (sunk under PMPEnable=0) ─────────────────────────
-  wire csr_pmp_cfg:           Vec<UInt<6>, 4>;
-  wire csr_pmp_addr:          Vec<UInt<32>, 4>;
+  wire csr_pmp_cfg:           unpacked Vec<UInt<6>, 4>;
+  wire csr_pmp_addr:          unpacked Vec<UInt<34>, 4>;
   wire csr_pmp_mseccfg:       UInt<3>;
 
   // ── PMP request errors (spec R20: tied 0 under PMPEnable=0) ──────────
@@ -832,8 +836,8 @@ module ibex_core
     param PMPGranularity     = PMPGranularity;
     param PMPNumRegions      = PMPNumRegions;
     param RV32E              = 1'd0;
-    param RV32M              = 2;
-    param RV32B              = 0;
+    param RV32M              = RV32M;
+    param RV32B              = RV32B;
     param CsrMvendorId       = CsrMvendorId;
     param CsrMimpId          = CsrMimpId;
     clk_i                <- clk_i;
@@ -1062,8 +1066,18 @@ module ibex_core
   // These signals exist purely as lint sinks per spec note N-23.
   // PMP CSR outputs (spec note N-11): consumed under PMPEnable=0=off.
   let _unused_priv_mode_lsu:    UInt<2>          = priv_mode_lsu;
-  let _unused_csr_pmp_cfg:      Vec<UInt<6>, 4>  = csr_pmp_cfg;
-  let _unused_csr_pmp_addr:     Vec<UInt<32>, 4> = csr_pmp_addr;
+  // Element-wise sinks for the unpacked-array PMP outputs (per
+  // syntax pitfall: `unpacked` modifier isn't valid on `let` typed
+  // bindings, only on `wire` declarations). One let per lane is
+  // enough to satisfy the lint sink under PMPEnable=0.
+  let _unused_csr_pmp_cfg_0:  UInt<6>  = csr_pmp_cfg[0];
+  let _unused_csr_pmp_cfg_1:  UInt<6>  = csr_pmp_cfg[1];
+  let _unused_csr_pmp_cfg_2:  UInt<6>  = csr_pmp_cfg[2];
+  let _unused_csr_pmp_cfg_3:  UInt<6>  = csr_pmp_cfg[3];
+  let _unused_csr_pmp_addr_0: UInt<34> = csr_pmp_addr[0];
+  let _unused_csr_pmp_addr_1: UInt<34> = csr_pmp_addr[1];
+  let _unused_csr_pmp_addr_2: UInt<34> = csr_pmp_addr[2];
+  let _unused_csr_pmp_addr_3: UInt<34> = csr_pmp_addr[3];
   let _unused_csr_pmp_mseccfg:  UInt<3>          = csr_pmp_mseccfg;
   // RF-ECC sinks (spec R16 / line 942-949).
   let _unused_rf_ren_a:           Bool = rf_ren_a;

@@ -11,8 +11,8 @@ module ibex_cs_registers
   param PMPGranularity: const = 0;
   param PMPNumRegions: const = 4;
   param RV32E[0:0]: const = 1'd0;
-  param RV32M: const = 2;
-  param RV32B: const = 0;
+  param RV32M: ibex_pkg::rv32m_e = ibex_pkg::RV32MFast;
+  param RV32B: ibex_pkg::rv32b_e = ibex_pkg::RV32BNone;
   param CsrMvendorId[31:0]: const = 32'd0;
   param CsrMimpId[31:0]: const = 32'd0;
   port clk_i: in Clock<SysDomain>;
@@ -40,8 +40,8 @@ module ibex_cs_registers
   port csr_mstatus_mie_o: out Bool;
   port csr_mepc_o: out UInt<32>;
   port csr_mtval_o: out UInt<32>;
-  port csr_pmp_cfg_o: out Vec<UInt<6>, 4>;
-  port csr_pmp_addr_o: out Vec<UInt<32>, 4>;
+  port csr_pmp_cfg_o: out unpacked Vec<UInt<6>, 4>;
+  port csr_pmp_addr_o: out unpacked Vec<UInt<34>, 4>;
   port csr_pmp_mseccfg_o: out UInt<3>;
   port debug_mode_i: in Bool;
   port debug_mode_entering_i: in Bool;
