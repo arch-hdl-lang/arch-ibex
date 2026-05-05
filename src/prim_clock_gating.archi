@@ -1,0 +1,17 @@
+/// Hand-written port stub for the upstream-SV `prim_clock_gating`
+/// cell at `vendor/lowrisc_ip/ip/prim_generic/rtl/prim_clock_gating.sv`.
+/// IbexTop instantiates this cell as `core_clock_gate_i` to produce
+/// the gated `clk` from `clk_i + clock_en + test_en_i` per spec
+/// §"Sub-module instances §core_clock_gate_i" and spec note N-4.
+///
+/// The cell's two SV params (`NoFpgaGate`, `FpgaBufGlobal`) have no
+/// effect in the generic implementation and are not exposed; the
+/// stub follows the same minimal contract as B4's
+/// `ibex_cs_registers.archi` (concrete numeric widths only, no
+/// param refs the arch compiler can't resolve).
+module prim_clock_gating
+  port clk_i: in Clock<SysDomain>;
+  port en_i: in Bool;
+  port test_en_i: in Bool;
+  port clk_o: out Clock<SysDomain>;
+end module prim_clock_gating
