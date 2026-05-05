@@ -723,26 +723,44 @@ async def cs10_fetch_enable_ibexmubion_to_run(dut):
 # Producer-side rules
 # ─────────────────────────────────────────────────────────────────────────
 
-@cocotb.test(skip=True)
+@cocotb.test()
 async def ps1_core_sleep_falls_combinationally(dut):
     """Spec §PS-1 — core_sleep_o falls combinationally on wake-up.
 
-    Same shape as Req 4; we time-stamp the fall via _settle.
+    Holds rst_ni asserted so `core_busy_q = IbexMuBiOff` (idle) and
+    every wake-term defaults to 0 → `core_sleep_o = 1`. Raising
+    `debug_req_i` (a wake-term) must drop `core_sleep_o` to 0 with
+    NO clock edge between assignment and observation, demonstrating
+    the combinational shape of `clock_en`.
+
+    Note: post-reset-deassert, `ctrl_busy` rises immediately and
+    `core_busy_d = MuBiOn` so `core_sleep_o` already reads 0 on the
+    first cycle out of reset — the only way to observe the *fall*
+    edge cleanly at this scope is to stay in reset. Same idiom as
+    basic-suite `req4_clock_en_wake_on_debug` exercised via PS-1's
+    "wake-up" framing.
     """
     await _start_clock(dut)
     _idle_inputs(dut)
-    dut.fetch_enable_i.value = IBEX_MUBI_OFF
     dut.rst_ni.value = 0
     await Timer(2 * CLK_PERIOD_NS, "ns")
-    dut.rst_ni.value = 1
-    await RisingEdge(dut.clk_i)
     await _settle(dut)
-    assert int(dut.core_sleep_o.value) == 1
-    # Combinational wake.
+    # core_busy_q in reset = IbexMuBiOff; all wake-terms idle.
+    assert int(dut.core_sleep_o.value) == 1, (
+        "precondition: core_sleep_o must be 1 with idle wake-terms"
+    )
+    # Wake via debug_req_i — observe combinational fall (no clock edge).
     dut.debug_req_i.value = 1
-    await _settle(dut)  # no clk edge between assignment and observation
-    assert int(dut.core_sleep_o.value) == 0
+    await _settle(dut)
+    assert int(dut.core_sleep_o.value) == 0, (
+        "PS-1: core_sleep_o must fall combinationally on debug_req_i rise"
+    )
+    # Drop debug_req_i — sleep must rise back combinationally.
     dut.debug_req_i.value = 0
+    await _settle(dut)
+    assert int(dut.core_sleep_o.value) == 1, (
+        "PS-1: core_sleep_o must rise combinationally on debug_req_i fall"
+    )
 
 
 @cocotb.test(skip=True)
