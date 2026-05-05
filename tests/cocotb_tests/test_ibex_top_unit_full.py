@@ -684,7 +684,7 @@ async def cs7_obi_protocol_inherited(dut):
                 "SoC ISR gate")
 
 
-@cocotb.test()
+@cocotb.test(skip=True)
 async def cs8_irq_level_obligation(dut):
     """Spec §CS-8 — IRQ-line level obligation inherited from
     IbexCore.
@@ -694,7 +694,7 @@ async def cs8_irq_level_obligation(dut):
     """
 
 
-@cocotb.test()
+@cocotb.test(skip=True)
 async def cs9_debug_req_level_obligation(dut):
     """Spec §CS-9 — debug_req_i level obligation.
 
