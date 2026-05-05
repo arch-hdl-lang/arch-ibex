@@ -1,0 +1,15 @@
+/// Hand-written port stub for the upstream-SV `prim_buf` cell at
+/// `vendor/lowrisc_ip/ip/prim_generic/rtl/prim_buf.sv`.
+/// IbexTop instantiates this cell as `u_fetch_enable_buf` (Width=4)
+/// to gate the 4-bit `ibex_mubi_t` fetch_enable input through a
+/// synthesis optimization barrier per spec §"Sub-module instances
+/// §u_fetch_enable_buf" and spec notes N-4 / N-29.
+///
+/// The cell is parameterized by a single `Width` (default 1); the
+/// IbexTop instance overrides Width=4 for the mubi fetch_enable_i
+/// signal.
+module prim_buf
+  param Width: const = 1;
+  port in_i: in UInt<Width>;
+  port out_o: out UInt<Width>;
+end module prim_buf

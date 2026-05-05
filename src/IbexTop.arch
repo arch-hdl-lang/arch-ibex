@@ -1,0 +1,672 @@
+//! IbexTop — SoC-facing wrapper around the Ibex CPU pipeline.
+//!
+//! Replaces upstream `ibex_top.sv` (1394 LoC; ~250 effective under
+//! SoC pinning). C2 swap of Phase C, building on C1 IbexCore.
+//!
+//! Under SoC pinning (`SecureIbex=0`, `Lockstep=0`, `ICache=0`,
+//! `MemECC=0`, `ICacheScramble=0`, `RegFile=RegFileFF`,
+//! `DummyInstructions=0`) `ibex_top` is structural glue: one
+//! `ibex_core` (C1 ARCH leaf), one `ibex_register_file_ff` (A2 ARCH
+//! leaf), one `prim_clock_gating` (upstream-SV cell), one `prim_buf`
+//! (upstream-SV cell). The only state at this scope is the 4-bit
+//! mubi flop `core_busy_q` clocked on the **ungated** `clk_i`.
+//!
+//! Construct: plain `module ibex_top` (per proposal §"Construct
+//! enumeration" + tasks.md §"Construct decisions"). The pipeline is
+//! inside IbexCore; this scope has no architectural stage.
+//!
+//! Spec: changes/port-ibex_top/specs/ibex_top/spec.md
+//!   - 15 Requirements
+//!   - 10 caller-side rules (CS-1..CS-10)
+//!   - 11 producer-side rules (PS-1..PS-11)
+//!   - 36 spec notes (N-1..N-36)
+//!
+//! Per spec note N-4: prim_clock_gating + prim_buf stay upstream-SV
+//! (instantiated via `prim_clock_gating.archi` / `prim_buf.archi`).
+//! Per spec note N-7: `ic_*_rdata` are unpacked SV arrays — confirmed
+//! by `build/ibex_core.sv:129,134` (`logic [W-1:0] x [N-1:0]`); the
+//! IbexTop-internal feedback wires therefore use `unpacked Vec`.
+
+domain SysDomain
+  freq_mhz: 100
+end domain SysDomain
+
+module ibex_top
+  // ── Pinned parameters (mirrors upstream `ibex_top.sv:16-:60`) ──────
+  /// Per spec §"Pinned parameter values".
+  /// Bit-typed params use the `[0:0]: const = 1'd0` form (per
+  /// `feedback_arch_syntax_pitfalls` rule #12) so ternaries and
+  /// conditional folds compile cleanly.
+  param PMPEnable[0:0]:           const = 1'd0;
+  param PMPGranularity:           const = 0;
+  param PMPNumRegions:            const = 4;
+  param MHPMCounterNum:           const = 0;
+  param MHPMCounterWidth:         const = 40;
+  param RV32E[0:0]:               const = 1'd0;
+  /// `RV32M`: 2-bit `rv32m_e` enum.  Pinned to `RV32MFast`.
+  param RV32M: ibex_pkg::rv32m_e = ibex_pkg::RV32MFast;
+  /// `RV32B`: 2-bit `rv32b_e` enum.  Pinned to `RV32BNone`.
+  param RV32B: ibex_pkg::rv32b_e = ibex_pkg::RV32BNone;
+  /// `RV32ZC`: 2-bit `rv32zc_e` enum.  Pinned to `RV32ZcaZcbZcmp`.
+  param RV32ZC: ibex_pkg::rv32zc_e = ibex_pkg::RV32ZcaZcbZcmp;
+  /// `RegFile`: pinned `RegFileFF`. Selects `gen_regfile_ff` arm.
+  param RegFile: ibex_pkg::regfile_e = ibex_pkg::RegFileFF;
+  param BranchTargetALU[0:0]:     const = 1'd0;
+  param WritebackStage[0:0]:      const = 1'd0;
+  param ICache[0:0]:              const = 1'd0;
+  param ICacheECC[0:0]:           const = 1'd0;
+  param BranchPredictor[0:0]:     const = 1'd0;
+  param DbgTriggerEn[0:0]:        const = 1'd0;
+  param DbgHwBreakNum:            const = 1;
+  param SecureIbex[0:0]:          const = 1'd0;
+  param ICacheScramble[0:0]:      const = 1'd0;
+  /// `LockstepOffset` — unused under `Lockstep=0` (kept for
+  /// SoC-binding shape stability).
+  param LockstepOffset:           const = 1;
+
+  /// PMP-reset structured params — typed-array / typed-record default
+  /// expressions per spec note N-33.  Same shape as IbexCore's
+  /// declaration (`src/ibex_core.archi:39-:41`).
+  param PMPRstCfg:     ibex_pkg::pmp_cfg_t [16]   = ibex_pkg::PmpCfgRst;
+  param PMPRstAddr:    UInt<34> [16]              = ibex_pkg::PmpAddrRst;
+  param PMPRstMsecCfg: ibex_pkg::pmp_mseccfg_t    = ibex_pkg::PmpMseccfgRst;
+
+  /// Random-constant params — `RndCnstLfsrSeed` / `RndCnstLfsrPerm`
+  /// reach `u_ibex_core` (LFSR seeding); `RndCnstIbexKey` /
+  /// `RndCnstIbexNonce` reach the dead `gen_scramble` flop bank only
+  /// (per spec note N-34, all four are passed as IbexTop params).
+  param RndCnstLfsrSeed[31:0]:    const = 32'd2891135988;
+  param RndCnstLfsrPerm[159:0]:   const = 160'd0;
+  param RndCnstIbexKey[127:0]:    const = 128'd0;
+  param RndCnstIbexNonce[63:0]:   const =  64'd0;
+
+  /// Debug-Module address window (SoC overrides at bind site).
+  param DmHaltAddr[31:0]:         const = 32'h0000_0000;
+  param DmExceptionAddr[31:0]:    const = 32'h0000_0000;
+  param DmBaseAddr[31:0]:         const = 32'h0000_0000;
+  param DmAddrMask[31:0]:         const = 32'h0000_0003;
+
+  /// CSR ID params — pure pass-through into `u_ibex_core`.
+  param CsrMvendorId[31:0]:       const = 32'd0;
+  param CsrMimpId[31:0]:          const = 32'd0;
+  // Local params (derived constants) — all const-folded under our SoC
+  // pinning per spec §"Pinned parameter values" + spec notes N-16..N-19.
+  param Lockstep[0:0]:           const = 1'd0;   // = SecureIbex
+  param ResetAll[0:0]:           const = 1'd0;   // = Lockstep
+  param DummyInstructions[0:0]:  const = 1'd0;   // = SecureIbex
+  param MemECC[0:0]:             const = 1'd0;   // = SecureIbex
+  param ICacheTweakInfection[0:0]: const = 1'd0; // = SecureIbex
+  param RegFileECC[0:0]:         const = 1'd0;
+  param RegFileDataWidth:        const = 32;
+  // `MemDataWidth`: const-folded to 32 under MemECC=0 (spec N-16).
+  param MemDataWidth:            const = 32;
+  // `BusSizeECC`/`LineSizeECC`/`TagSizeECC` derive from ICacheECC=0
+  // (spec N-19).  `IC_NUM_WAYS=2`, `IC_TAG_SIZE=29`, `BUS_SIZE=32`,
+  // `IC_LINE_BEATS=2` (so `LineSizeECC = 32*2 + 8 = 72` matching
+  // the C1 stub's value at `src/ibex_core.archi:24`).
+  local param BusSizeECC:              const = 32;
+  local param TagSizeECC:              const = 29;
+  local param LineSizeECC:             const = 72;
+  local param IC_NUM_WAYS:             const = 2;
+  local param IC_INDEX_W:              const = 8;
+  // `NumAddrScrRounds`: 0 under ICacheScramble=0 (spec N-20).
+  local param NumAddrScrRounds:        const = 0;
+  // `RAM_1P_CFG_W`: width of upstream `prim_ram_1p_pkg::ram_1p_cfg_t`
+  // (packed `{test:1, cfg_en:1, cfg:4} × 2 = 12` bits).  Carried as
+  // `UInt<12>` because the arch compiler does not import the
+  // vendor's `prim_ram_1p_pkg`; SoC binds these to
+  // `RAM_1P_CFG_DEFAULT = '0` so width-only matching suffices.
+  local param RAM_1P_CFG_W:            const = 12;
+  // `RAM_1P_CFG_RSP_W`: width of `ram_1p_cfg_rsp_t` (just `done:1`).
+  local param RAM_1P_CFG_RSP_W:        const = 1;
+  // `IbexMuBiW`: width of `ibex_mubi_t` (= 4).
+  local param IbexMuBiW:               const = 4;
+  // `SCRAMBLE_KEY_W` / `SCRAMBLE_NONCE_W` from upstream `ibex_pkg`.
+  // Pinned numerics so the IbexTop boundary matches the SoC stub.
+  local param SCRAMBLE_KEY_W:          const = 128;
+  local param SCRAMBLE_NONCE_W:        const = 64;
+
+  // ── Operator-encoding constants (per `feedback_arch_syntax_pitfalls`
+  //    rule #6: `let NAME: UInt<W> = W'd...;` not `local param`) ──────
+  /// `IbexMuBiOn = 4'b0101` (fetch-enable allow / busy assert).
+  let IbexMuBiOn:  UInt<4> = 4'b0101;
+  /// `IbexMuBiOff = 4'b1010` (fetch-enable gate / busy clear).
+  let IbexMuBiOff: UInt<4> = 4'b1010;
+
+  // ── Ports (mirrors `ibex_top.sv:62-:185`, MINUS `ifdef RVFI`) ─────
+  /// Per spec §"Ports".
+  // Clock + reset (spec :63-:64).
+  port clk_i:  in  Clock<SysDomain>;
+  port rst_ni: in  Reset<Async, Low>;
+
+  // DFT / test-mode (spec :67, :169).
+  port test_en_i:    in Bool;
+  /// `scan_rst_ni`: present at the IbexTop boundary for SoC-binding
+  /// compatibility; consumed only by the `unused_scan` lint sink
+  /// under `Lockstep=0` (spec R15, CS-4).
+  port scan_rst_ni:  in Bool;
+
+  // ICache RAM configuration (spec :68-:71). Boundary-only under
+  // `ICache=0`; sunk by `unused_ram_cfg`. `ram_cfg_*_i` is one
+  // packed struct (12 bits); `ram_cfg_rsp_*_o` is a packed Vec of
+  // `IC_NUM_WAYS` 1-bit structs (per spec N-8).
+  port ram_cfg_icache_tag_i:      in  UInt<RAM_1P_CFG_W>;
+  port ram_cfg_rsp_icache_tag_o:  out UInt<IC_NUM_WAYS>;  // RAM_1P_CFG_RSP_W=1 × IC_NUM_WAYS
+  port ram_cfg_icache_data_i:     in  UInt<RAM_1P_CFG_W>;
+  port ram_cfg_rsp_icache_data_o: out UInt<IC_NUM_WAYS>;
+
+  // Hart identity / boot (spec :73-:74).
+  port hart_id_i:    in UInt<32>;
+  port boot_addr_i:  in UInt<32>;
+
+  // Instruction memory interface (OBI; spec :77-:83).
+  port instr_req_o:        out Bool;
+  port instr_gnt_i:        in  Bool;
+  port instr_rvalid_i:     in  Bool;
+  port instr_addr_o:       out UInt<32>;
+  port instr_rdata_i:      in  UInt<32>;
+  port instr_rdata_intg_i: in  UInt<7>;
+  port instr_err_i:        in  Bool;
+
+  // Data memory interface (OBI; spec :86-:96).
+  port data_req_o:         out Bool;
+  port data_gnt_i:         in  Bool;
+  port data_rvalid_i:      in  Bool;
+  port data_we_o:          out Bool;
+  port data_be_o:          out UInt<4>;
+  port data_addr_o:        out UInt<32>;
+  port data_wdata_o:       out UInt<32>;
+  port data_wdata_intg_o:  out UInt<7>;
+  port data_rdata_i:       in  UInt<32>;
+  port data_rdata_intg_i:  in  UInt<7>;
+  port data_err_i:         in  Bool;
+
+  // Interrupt inputs (spec :99-:104).
+  port irq_software_i:  in Bool;
+  port irq_timer_i:     in Bool;
+  port irq_external_i:  in Bool;
+  port irq_fast_i:      in UInt<15>;
+  port irq_nm_i:        in Bool;
+
+  // Scrambling interface (boundary-only under ICacheScramble=0;
+  // spec :107-:110).
+  port scramble_key_valid_i: in  Bool;
+  port scramble_key_i:       in  UInt<SCRAMBLE_KEY_W>;
+  port scramble_nonce_i:     in  UInt<SCRAMBLE_NONCE_W>;
+  port scramble_req_o:       out Bool;
+
+  // Debug (spec :113-:115). `crash_dump_o` is a packed 5×32 = 160-bit
+  // struct (per spec N-26 + IbexCore's `src/ibex_core.archi:91`).
+  port debug_req_i:         in  Bool;
+  port crash_dump_o:        out UInt<160>;
+  port double_fault_seen_o: out Bool;
+
+  // RVFI passthrough ports — exposed for ibex_top_tracing wrapper.
+  // IbexCore computes RVFI; IbexTop forwards. RVFI behavioural scope
+  // is out per spec note N-1, we just expose the boundary.
+  port rvfi_valid: out Bool;
+  port rvfi_order: out UInt<64>;
+  port rvfi_insn: out UInt<32>;
+  port rvfi_trap: out Bool;
+  port rvfi_halt: out Bool;
+  port rvfi_intr: out Bool;
+  port rvfi_mode: out UInt<2>;
+  port rvfi_ixl: out UInt<2>;
+  port rvfi_rs1_addr: out UInt<5>;
+  port rvfi_rs2_addr: out UInt<5>;
+  port rvfi_rs3_addr: out UInt<5>;
+  port rvfi_rs1_rdata: out UInt<32>;
+  port rvfi_rs2_rdata: out UInt<32>;
+  port rvfi_rs3_rdata: out UInt<32>;
+  port rvfi_rd_addr: out UInt<5>;
+  port rvfi_rd_wdata: out UInt<32>;
+  port rvfi_pc_rdata: out UInt<32>;
+  port rvfi_pc_wdata: out UInt<32>;
+  port rvfi_mem_addr: out UInt<32>;
+  port rvfi_mem_rmask: out UInt<4>;
+  port rvfi_mem_wmask: out UInt<4>;
+  port rvfi_mem_rdata: out UInt<32>;
+  port rvfi_mem_wdata: out UInt<32>;
+  port rvfi_ext_pre_mip: out UInt<32>;
+  port rvfi_ext_post_mip: out UInt<32>;
+  port rvfi_ext_nmi: out Bool;
+  port rvfi_ext_nmi_int: out Bool;
+  port rvfi_ext_debug_req: out Bool;
+  port rvfi_ext_debug_mode: out Bool;
+  port rvfi_ext_rf_wr_suppress: out Bool;
+  port rvfi_ext_mcycle: out UInt<64>;
+  port rvfi_ext_mhpmcounters: out unpacked Vec<UInt<32>, 10>;
+  port rvfi_ext_mhpmcountersh: out unpacked Vec<UInt<32>, 10>;
+  port rvfi_ext_ic_scr_key_valid: out Bool;
+  port rvfi_ext_irq_valid: out Bool;
+  port rvfi_ext_expanded_insn_valid: out Bool;
+  port rvfi_ext_expanded_insn: out UInt<16>;
+  port rvfi_ext_expanded_insn_last: out Bool;
+
+  // CPU control (spec :162-:166).
+  port fetch_enable_i:        in  UInt<IbexMuBiW>;
+  port alert_minor_o:         out Bool;
+  port alert_major_internal_o: out Bool;
+  port alert_major_bus_o:     out Bool;
+  port core_sleep_o:          out Bool;
+
+  // Lockstep / shadow-core outputs (constant-tied under
+  // `SecureIbex=0`; spec :172-:184).
+  port lockstep_cmp_en_o:        out UInt<IbexMuBiW>;
+  port data_req_shadow_o:        out Bool;
+  port data_we_shadow_o:         out Bool;
+  port data_be_shadow_o:         out UInt<4>;
+  port data_addr_shadow_o:       out UInt<32>;
+  port data_wdata_shadow_o:      out UInt<32>;
+  port data_wdata_intg_shadow_o: out UInt<7>;
+  port instr_req_shadow_o:       out Bool;
+  port instr_addr_shadow_o:      out UInt<32>;
+
+  // ── Internal wires ────────────────────────────────────────────────
+  /// `clk` — gated form of `clk_i` produced by `core_clock_gate_i`.
+  /// Drives every internal flop except `core_busy_q` itself
+  /// (per spec R5 / N-5).
+  wire clk: Clock<SysDomain>;
+
+  /// `clock_en` — non-secure form (spec R4 / `:274`).
+  wire clock_en: Bool;
+
+  /// `core_busy_d` — D-input to `core_busy_q`, sourced from
+  /// `u_ibex_core.core_busy_o` (spec R5 / N-10).
+  wire core_busy_d: UInt<IbexMuBiW>;
+
+  /// `irq_pending` — internal-only wire from
+  /// `u_ibex_core.irq_pending_o` (spec N-13).  Feeds only `clock_en`.
+  wire irq_pending: Bool;
+
+  /// `fetch_enable_buf` — buffered fetch-enable from
+  /// `u_fetch_enable_buf` (`prim_buf` Width=4; spec R3 / N-29).
+  wire fetch_enable_buf: UInt<IbexMuBiW>;
+
+  // Register-file routing wires (spec R14 / `:209-:217`).
+  wire dummy_instr_id: Bool;
+  wire dummy_instr_wb: Bool;
+  wire rf_raddr_a:     UInt<5>;
+  wire rf_raddr_b:     UInt<5>;
+  wire rf_waddr_wb:    UInt<5>;
+  wire rf_we_wb:       Bool;
+  wire rf_wdata_wb:    UInt<RegFileDataWidth>;
+  wire rf_rdata_a:     UInt<RegFileDataWidth>;
+  wire rf_rdata_b:     UInt<RegFileDataWidth>;
+
+  // Memory-data merge wires (spec R6 / CG-4).
+  wire data_rdata_core:  UInt<MemDataWidth>;
+  wire instr_rdata_core: UInt<MemDataWidth>;
+  wire data_wdata_core:  UInt<MemDataWidth>;
+
+  // ICache driver wires (out of `u_ibex_core`; sunk under `ICache=0`).
+  wire ic_tag_req:    UInt<IC_NUM_WAYS>;
+  wire ic_tag_write:  Bool;
+  wire ic_tag_addr:   UInt<IC_INDEX_W>;
+  wire ic_tag_wdata:  UInt<TagSizeECC>;
+  wire ic_data_req:   UInt<IC_NUM_WAYS>;
+  wire ic_data_write: Bool;
+  wire ic_data_addr:  UInt<IC_INDEX_W>;
+  wire ic_data_wdata: UInt<LineSizeECC>;
+  /// `ic_*_rdata` feed back into `u_ibex_core` and are tied to 0 by
+  /// the `gen_norams` block (spec R7).  Per spec N-7, they MUST be
+  /// declared as `unpacked Vec` to match `build/ibex_core.sv:129,134`
+  /// which emits `logic [W-1:0] x [N-1:0]`.
+  wire ic_tag_rdata:  unpacked Vec<UInt<TagSizeECC>,  IC_NUM_WAYS>;
+  wire ic_data_rdata: unpacked Vec<UInt<LineSizeECC>, IC_NUM_WAYS>;
+  wire icache_tag_alert:  UInt<IC_NUM_WAYS>;
+  wire icache_data_alert: UInt<IC_NUM_WAYS>;
+  wire ic_scr_key_req: Bool;
+
+  // Scramble-state ties (spec R8 / `gen_noscramble`, `:568-:583`).
+  wire scramble_key_valid_q: Bool;
+
+  // Alert source wires from `u_ibex_core` (spec N-24).
+  wire core_alert_minor:          Bool;
+  wire core_alert_major_internal: Bool;
+  wire core_alert_major_bus:      Bool;
+  // Alert source wires from `gen_no_lockstep` (spec N-25).
+  wire lockstep_alert_minor:          Bool;
+  wire lockstep_alert_major_internal: Bool;
+  wire lockstep_alert_major_bus:      Bool;
+  // Final ICache alert reduction (spec R10 / `:1141`).
+  wire icache_alert_major_internal: Bool;
+
+  // ── `core_busy_q` flop on the UNGATED `clk_i` ─────────────────────
+  /// Per spec R5 + N-14: 4-bit `ibex_mubi_t` flop, async-low reset
+  /// to `IbexMuBiOff`, clocked on `clk_i` (NOT the gated `clk`).
+  /// This is the keystone integration constraint — keeping
+  /// `core_busy_q` on the ungated clock is what makes the
+  /// combinational wake-up via IRQ pins / `debug_req_i` work
+  /// (spec §"Hazard handling" in the proposal).
+  reg core_busy_q: UInt<IbexMuBiW> reset rst_ni => IbexMuBiOff;
+
+  seq on clk_i rising
+    core_busy_q <= core_busy_d;
+  end seq
+
+  // ── Module-scope combinational glue ───────────────────────────────
+  comb
+    // ── CG-1: `clock_en` (non-secure form, spec R4 / `:274`) ────────
+    /// Only `core_busy_q[0]` participates; the upper 3 mubi bits
+    /// feed `unused_core_busy` only (spec R4 final clause + N-14).
+    clock_en = core_busy_q[0] or debug_req_i or irq_pending or irq_nm_i;
+
+    // ── CG-2: `core_sleep_o` (spec R4 / `:280`) ─────────────────────
+    core_sleep_o = not clock_en;
+
+    // ── CG-4: Memory-data integrity merge under MemECC=0 ────────────
+    /// Per spec R6 / `:301-:302, :307-:311, :772, :779-:780`.
+    /// `MemDataWidth=32` so the 32-bit slice IS the whole vector;
+    /// keeping the alias form preserves waveform-name equivalence.
+    data_rdata_core   = data_rdata_i;
+    instr_rdata_core  = instr_rdata_i;
+    data_wdata_o      = data_wdata_core;
+    data_wdata_intg_o = 7'd0;
+
+    // ── CG-7: ICache RAM tieoffs (`gen_norams`, spec R7) ────────────
+    /// Per spec R7 / `:759-:760, :765-:766, :768-:769`.
+    ram_cfg_rsp_icache_tag_o  = 0;
+    ram_cfg_rsp_icache_data_o = 0;
+    /// `ic_*_rdata` are unpacked Vec; broadcast 0 to every way.
+    for w in 0..IC_NUM_WAYS - 1
+      ic_tag_rdata[w]  = 0;
+      ic_data_rdata[w] = 0;
+    end for
+    icache_tag_alert  = 0;
+    icache_data_alert = 0;
+
+    // ── CG-8: Scramble tieoffs (`gen_noscramble`, spec R8) ──────────
+    /// Per spec R8 / `:576-:582`.
+    /// `scramble_key_valid_q = 1'b1` is a deliberate contract with
+    /// `u_ibex_core.ic_scr_key_valid_i` (spec N-23).
+    scramble_req_o        = false;
+    scramble_key_valid_q  = true;
+
+    // ── CG-9: Lockstep / shadow-core tieoffs (spec R9) ──────────────
+    /// Per spec R9 / `:1120-:1132`. Constant ties; no underlying
+    /// lockstep instance under `SecureIbex=0`.
+    lockstep_alert_major_internal = false;
+    lockstep_alert_major_bus      = false;
+    lockstep_alert_minor          = false;
+    lockstep_cmp_en_o             = IbexMuBiOff;
+    data_req_shadow_o             = false;
+    data_we_shadow_o              = false;
+    data_be_shadow_o              = 4'd0;
+    data_addr_shadow_o            = 32'd0;
+    data_wdata_shadow_o           = 32'd0;
+    data_wdata_intg_shadow_o      = 7'd0;
+    instr_req_shadow_o            = false;
+    instr_addr_shadow_o           = 32'd0;
+
+    // ── CG-10: Final alert OR-trees (spec R10 / `:1141-:1147`) ──────
+    /// Emit OR structurally; do NOT constant-fold the dead terms,
+    /// so the port semantics remain stable under any future
+    /// relaxation of `Lockstep` / `ICache` pinning.
+    icache_alert_major_internal =
+        (icache_tag_alert  != 0) or (icache_data_alert != 0);
+    alert_major_internal_o = core_alert_major_internal
+                          or lockstep_alert_major_internal
+                          or icache_alert_major_internal;
+    alert_major_bus_o      = core_alert_major_bus
+                          or lockstep_alert_major_bus;
+    alert_minor_o          = core_alert_minor
+                          or lockstep_alert_minor;
+  end comb
+
+  // ── CG-3: gated clock production (spec R2 / `:282-:287`) ──────────
+  /// `prim_clock_gating` is an upstream-SV cell against the
+  /// hand-written `prim_clock_gating.archi` stub (spec N-4).
+  inst core_clock_gate_i: prim_clock_gating
+    clk_i      <- clk_i;
+    en_i       <- clock_en;
+    test_en_i  <- test_en_i;
+    clk_o      -> clk;
+  end inst core_clock_gate_i
+
+  // ── CG-5: fetch-enable buffer (spec R3 / `:294-:297`) ─────────────
+  /// `prim_buf` is an upstream-SV cell against the hand-written
+  /// `prim_buf.archi` stub (spec N-4 + N-29).  Width=4 matches
+  /// `$bits(ibex_mubi_t)`.  MUST stay as a `prim_buf` instance —
+  /// replacing with a bare wire alias loses the synthesis
+  /// optimization-barrier semantics (spec N-29).
+  inst u_fetch_enable_buf: prim_buf
+    param Width = IbexMuBiW;
+    in_i   <- fetch_enable_i;
+    out_o  -> fetch_enable_buf;
+  end inst u_fetch_enable_buf
+
+  // ── IbexCore (C1 ARCH leaf, spec :313-:456) ───────────────────────
+  /// 1:1 parameter pass-through per spec §"Sub-module instances
+  /// §u_ibex_core".  `RV32M`/`RV32B` are passed as raw integers
+  /// (matching the IbexCore `inst` sites at `IbexCore.arch:584,714`
+  /// where `param RV32M = 2;` etc.); `RV32ZC` is also an int param
+  /// in the auto-emitted stub (`src/ibex_core.archi:17`).
+  /// `clk_i` is the **gated** `clk` per spec R2 / `:353`.
+  /// RVFI ports remain unconnected at this `inst` site (spec N-1).
+  inst u_ibex_core: ibex_core
+    param PMPEnable          = PMPEnable;
+    param PMPGranularity     = PMPGranularity;
+    param PMPNumRegions      = PMPNumRegions;
+    param PMPRstCfg          = PMPRstCfg;
+    param PMPRstAddr         = PMPRstAddr;
+    param PMPRstMsecCfg      = PMPRstMsecCfg;
+    param MHPMCounterNum     = MHPMCounterNum;
+    param MHPMCounterWidth   = MHPMCounterWidth;
+    param RV32E              = RV32E;
+    param RV32M              = RV32M;
+    param RV32B              = RV32B;
+    param RV32ZC             = 3;
+    param BranchTargetALU    = BranchTargetALU;
+    param ICache             = ICache;
+    param ICacheECC          = ICacheECC;
+    param ICacheTweakInfection = ICacheTweakInfection;
+    param BusSizeECC         = BusSizeECC;
+    param TagSizeECC         = TagSizeECC;
+    param LineSizeECC        = LineSizeECC;
+    param BranchPredictor    = BranchPredictor;
+    param DbgTriggerEn       = DbgTriggerEn;
+    param DbgHwBreakNum      = DbgHwBreakNum;
+    param WritebackStage     = WritebackStage;
+    param ResetAll           = ResetAll;
+    param RndCnstLfsrSeed    = RndCnstLfsrSeed;
+    param RndCnstLfsrPerm    = RndCnstLfsrPerm;
+    param SecureIbex         = SecureIbex;
+    param DummyInstructions  = DummyInstructions;
+    param RegFileECC         = RegFileECC;
+    param RegFileDataWidth   = RegFileDataWidth;
+    param MemECC             = MemECC;
+    param MemDataWidth       = MemDataWidth;
+    param DmBaseAddr         = DmBaseAddr;
+    param DmAddrMask         = DmAddrMask;
+    param DmHaltAddr         = DmHaltAddr;
+    param DmExceptionAddr    = DmExceptionAddr;
+    param CsrMvendorId       = CsrMvendorId;
+    param CsrMimpId          = CsrMimpId;
+
+    clk_i              <- clk;
+    rst_ni             <- rst_ni;
+    hart_id_i          <- hart_id_i;
+    boot_addr_i        <- boot_addr_i;
+
+    instr_req_o        -> instr_req_o;
+    instr_gnt_i        <- instr_gnt_i;
+    instr_rvalid_i     <- instr_rvalid_i;
+    instr_addr_o       -> instr_addr_o;
+    instr_rdata_i      <- instr_rdata_core;
+    instr_err_i        <- instr_err_i;
+
+    data_req_o         -> data_req_o;
+    data_gnt_i         <- data_gnt_i;
+    data_rvalid_i      <- data_rvalid_i;
+    data_we_o          -> data_we_o;
+    data_be_o          -> data_be_o;
+    data_addr_o        -> data_addr_o;
+    data_wdata_o       -> data_wdata_core;
+    data_rdata_i       <- data_rdata_core;
+    data_err_i         <- data_err_i;
+
+    dummy_instr_id_o   -> dummy_instr_id;
+    dummy_instr_wb_o   -> dummy_instr_wb;
+    rf_raddr_a_o       -> rf_raddr_a;
+    rf_raddr_b_o       -> rf_raddr_b;
+    rf_waddr_wb_o      -> rf_waddr_wb;
+    rf_we_wb_o         -> rf_we_wb;
+    rf_wdata_wb_ecc_o  -> rf_wdata_wb;
+    rf_rdata_a_ecc_i   <- rf_rdata_a;
+    rf_rdata_b_ecc_i   <- rf_rdata_b;
+
+    ic_tag_req_o       -> ic_tag_req;
+    ic_tag_write_o     -> ic_tag_write;
+    ic_tag_addr_o      -> ic_tag_addr;
+    ic_tag_wdata_o     -> ic_tag_wdata;
+    ic_tag_rdata_i     <- ic_tag_rdata;
+    ic_data_req_o      -> ic_data_req;
+    ic_data_write_o    -> ic_data_write;
+    ic_data_addr_o     -> ic_data_addr;
+    ic_data_wdata_o    -> ic_data_wdata;
+    ic_data_rdata_i    <- ic_data_rdata;
+    ic_scr_key_valid_i <- scramble_key_valid_q;
+    ic_scr_key_req_o   -> ic_scr_key_req;
+
+    irq_software_i     <- irq_software_i;
+    irq_timer_i        <- irq_timer_i;
+    irq_external_i     <- irq_external_i;
+    irq_fast_i         <- irq_fast_i;
+    irq_nm_i           <- irq_nm_i;
+    irq_pending_o      -> irq_pending;
+
+    debug_req_i        <- debug_req_i;
+    crash_dump_o       -> crash_dump_o;
+    double_fault_seen_o -> double_fault_seen_o;
+
+    fetch_enable_i     <- fetch_enable_buf;
+
+    alert_minor_o          -> core_alert_minor;
+    alert_major_internal_o -> core_alert_major_internal;
+    alert_major_bus_o      -> core_alert_major_bus;
+
+    core_busy_o        -> core_busy_d;
+
+    // RVFI passthrough — IbexCore outputs to IbexTop outputs.
+    rvfi_valid                          -> rvfi_valid;
+    rvfi_order                          -> rvfi_order;
+    rvfi_insn                           -> rvfi_insn;
+    rvfi_trap                           -> rvfi_trap;
+    rvfi_halt                           -> rvfi_halt;
+    rvfi_intr                           -> rvfi_intr;
+    rvfi_mode                           -> rvfi_mode;
+    rvfi_ixl                            -> rvfi_ixl;
+    rvfi_rs1_addr                       -> rvfi_rs1_addr;
+    rvfi_rs2_addr                       -> rvfi_rs2_addr;
+    rvfi_rs3_addr                       -> rvfi_rs3_addr;
+    rvfi_rs1_rdata                      -> rvfi_rs1_rdata;
+    rvfi_rs2_rdata                      -> rvfi_rs2_rdata;
+    rvfi_rs3_rdata                      -> rvfi_rs3_rdata;
+    rvfi_rd_addr                        -> rvfi_rd_addr;
+    rvfi_rd_wdata                       -> rvfi_rd_wdata;
+    rvfi_pc_rdata                       -> rvfi_pc_rdata;
+    rvfi_pc_wdata                       -> rvfi_pc_wdata;
+    rvfi_mem_addr                       -> rvfi_mem_addr;
+    rvfi_mem_rmask                      -> rvfi_mem_rmask;
+    rvfi_mem_wmask                      -> rvfi_mem_wmask;
+    rvfi_mem_rdata                      -> rvfi_mem_rdata;
+    rvfi_mem_wdata                      -> rvfi_mem_wdata;
+    rvfi_ext_pre_mip                    -> rvfi_ext_pre_mip;
+    rvfi_ext_post_mip                   -> rvfi_ext_post_mip;
+    rvfi_ext_nmi                        -> rvfi_ext_nmi;
+    rvfi_ext_nmi_int                    -> rvfi_ext_nmi_int;
+    rvfi_ext_debug_req                  -> rvfi_ext_debug_req;
+    rvfi_ext_debug_mode                 -> rvfi_ext_debug_mode;
+    rvfi_ext_rf_wr_suppress             -> rvfi_ext_rf_wr_suppress;
+    rvfi_ext_mcycle                     -> rvfi_ext_mcycle;
+    rvfi_ext_mhpmcounters               -> rvfi_ext_mhpmcounters;
+    rvfi_ext_mhpmcountersh              -> rvfi_ext_mhpmcountersh;
+    rvfi_ext_ic_scr_key_valid           -> rvfi_ext_ic_scr_key_valid;
+    rvfi_ext_irq_valid                  -> rvfi_ext_irq_valid;
+    rvfi_ext_expanded_insn_valid        -> rvfi_ext_expanded_insn_valid;
+    rvfi_ext_expanded_insn              -> rvfi_ext_expanded_insn;
+    rvfi_ext_expanded_insn_last         -> rvfi_ext_expanded_insn_last;
+  end inst u_ibex_core
+
+  // ── IbexRegisterFileFf (A2 ARCH leaf, `gen_regfile_ff` arm only,
+  //    spec :462-:483) ──────────────────────────────────────────────
+  /// Per spec §"Sub-module instances §register_file_i".
+  /// `clk_i` is the gated `clk` (spec R2 / `:469`).
+  /// `WordZeroVal = 0` per spec N-3 (observably equivalent to upstream's
+  /// `RegFileDataWidth'(prim_secded_pkg::SecdedInv3932ZeroWord)`
+  /// expression under `RegFileECC=0`).
+  inst register_file_i: ibex_register_file_ff
+    param RV32E             = RV32E;
+    param DataWidth         = RegFileDataWidth;
+    param DummyInstructions = DummyInstructions;
+    param WordZeroVal       = 0;
+
+    clk_i             <- clk;
+    rst_ni            <- rst_ni;
+    test_en_i         <- test_en_i;
+    dummy_instr_id_i  <- dummy_instr_id;
+    dummy_instr_wb_i  <- dummy_instr_wb;
+    raddr_a_i         <- rf_raddr_a;
+    rdata_a_o         -> rf_rdata_a;
+    raddr_b_i         <- rf_raddr_b;
+    rdata_b_o         -> rf_rdata_b;
+    waddr_a_i         <- rf_waddr_wb;
+    wdata_a_i         <- rf_wdata_wb;
+    we_a_i            <- rf_we_wb;
+  end inst register_file_i
+
+  // ── Lint sinks (spec N-11) ────────────────────────────────────────
+  /// `unused_core_busy = ^core_busy_q[3:1]` (spec :277).  The 3
+  /// upper mubi bits do not participate in `clock_en` under
+  /// `SecureIbex=0`; the XOR keeps them lint-live.
+  let unused_core_busy: Bool =
+      (core_busy_q[3] ^ core_busy_q[2]) ^ core_busy_q[1];
+
+  /// `unused_intg = ^{instr_rdata_intg_i, data_rdata_intg_i}`
+  /// (spec :310, `gen_non_mem_rdata_ecc` arm).
+  let unused_intg: Bool =
+      (^instr_rdata_intg_i) ^ (^data_rdata_intg_i);
+
+  /// `unused_ram_cfg = |{ram_cfg_icache_tag_i, ram_cfg_icache_data_i}`
+  /// (spec :758).
+  let unused_ram_cfg: Bool =
+      (ram_cfg_icache_tag_i != 0) or (ram_cfg_icache_data_i != 0);
+
+  /// `unused_ram_inputs` — large `&`-reduction of the dead RAM-driver
+  /// wires (spec :761-:763 / N-32).  Under `ICache=0` every term
+  /// reduces to 0 so the result is 0; the implementer SHALL emit a
+  /// semantically equivalent reduction (spec N-32 permits any
+  /// reduction that absorbs every term).  XOR of all terms keeps
+  /// every wire in the live cone for lint while folding to 0
+  /// statically.
+  let unused_ram_inputs: Bool =
+      (ic_tag_req  != 0)
+      ^ ic_tag_write
+      ^ (ic_tag_addr  != 0)
+      ^ (ic_tag_wdata != 0)
+      ^ (ic_data_req  != 0)
+      ^ ic_data_write
+      ^ (ic_data_addr  != 0)
+      ^ (ic_data_wdata != 0)
+      ^ (icache_tag_alert  != 0)
+      ^ (icache_data_alert != 0)
+      ^ ic_scr_key_req
+      ^ (NumAddrScrRounds != 0);
+
+  /// `unused_scramble_inputs` — large reduction of the dead scramble
+  /// inputs / params / internal wires (spec :570-:574 / N-12 / N-21).
+  /// Under `ICacheScramble=0` all terms are constant; XOR-fold keeps
+  /// every input port and the `RndCnstIbex*` params lint-live without
+  /// introducing extra logic.
+  let unused_scramble_inputs: Bool =
+      scramble_key_valid_i
+      ^ (^scramble_key_i)
+      ^ (^scramble_nonce_i)
+      ^ (^RndCnstIbexKey)
+      ^ (^RndCnstIbexNonce)
+      ^ scramble_key_valid_q;
+
+  /// `unused_scan = scan_rst_ni` (spec :1135 / R15).
+  let unused_scan: Bool = scan_rst_ni;
+end module ibex_top
