@@ -763,15 +763,59 @@ async def ps1_core_sleep_falls_combinationally(dut):
     )
 
 
-@cocotb.test(skip=True)
+@cocotb.test()
 async def ps2_core_sleep_rises_when_drained(dut):
-    """Spec §PS-2 — core_sleep_o rises when core fully drained.
+    """Spec §PS-2 — core_sleep_o rises when core is drained.
 
-    Requires running an instruction sequence to a quiescent state
-    AND deasserting all wake-terms — multi-instruction.
+    Issues a single WFI instruction via the OBI fetch handshake.
+    With all IRQ inputs idle (`mip = 0`) and `mie = 0` from reset,
+    the controller's SLEEP state is entered as soon as WFI commits;
+    `core_busy_o = IbexMuBiOff` propagates to IbexTop's
+    `core_busy_q` on the next ungated `clk_i` edge → `clock_en = 0`
+    → `core_sleep_o = 1`.
+
+    SoC-level coverage (with full ISR programming + timer wake) lives
+    in `tests/cpu/test_cpu_programs.py::test_cpu_program[wfi_isr]`.
     """
-    pytest.skip("PS-2 needs multi-instruction drain sequence; covered "
-                "by SoC ISR gate (WFI scenarios)")
+    # WFI encoding: 0001_0000_0101 00000 000 00000 1110011 = 0x10500073.
+    INSTR_WFI = 0x10500073
+
+    await _start_clock(dut)
+    await _reset(dut)
+
+    # Feed WFI. The prefetch buffer may have outstanding fetches in
+    # flight when WFI commits; keep granting (with NOP responses) and
+    # watch for `core_sleep_o == 1`. The controller transitions to
+    # SLEEP once the prefetch is drained and core_busy_o falls to
+    # IbexMuBiOff; on the next ungated clk_i edge core_busy_q[0] = 0
+    # → clock_en = 0 → core_sleep_o = 1.
+    await _serve_instr(dut, instr=INSTR_WFI)
+
+    INSTR_NOP = 0x0000_0013   # `addi x0, x0, 0`
+    saw_sleep = False
+    for _ in range(64):
+        # Drain any outstanding prefetch (NOP rdata; controller will
+        # discard them once it's in SLEEP). Without this the prefetch
+        # buffer would hold its `instr_req_o` high indefinitely and
+        # block the controller from settling.
+        if int(dut.instr_req_o.value) == 1:
+            dut.instr_gnt_i.value = 1
+            await RisingEdge(dut.clk_i)
+            dut.instr_gnt_i.value = 0
+            dut.instr_rvalid_i.value = 1
+            dut.instr_rdata_i.value  = INSTR_NOP
+            await RisingEdge(dut.clk_i)
+            dut.instr_rvalid_i.value = 0
+            dut.instr_rdata_i.value  = 0
+        else:
+            await RisingEdge(dut.clk_i)
+        await _settle(dut)
+        if int(dut.core_sleep_o.value) == 1:
+            saw_sleep = True
+            break
+    assert saw_sleep, (
+        "core_sleep_o never rose after WFI commit; pipeline did not drain"
+    )
 
 
 @cocotb.test()
