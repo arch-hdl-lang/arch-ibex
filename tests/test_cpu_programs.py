@@ -54,6 +54,7 @@ PROGRAMS: list[CpuProgram] = [
     CpuProgram(name="sw_isr",       cocotb_module="test_sw_isr"),
     CpuProgram(name="ext_isr",      cocotb_module="test_ext_isr"),
     CpuProgram(name="multictx_isr", cocotb_module="test_multictx_isr"),
+    CpuProgram(name="wfi_isr",      cocotb_module="test_wfi_isr"),
 ]
 
 
