@@ -73,7 +73,7 @@ async def req1_reset_async_low_takes_effect_immediately(dut):
     )
 
 
-@cocotb.test(skip=True)
+@cocotb.test()
 async def req1_reset_release_holds_sleep_when_idle(dut):
     """Spec §Req 1, Given 2 of 2.
 
@@ -92,7 +92,6 @@ async def req1_reset_release_holds_sleep_when_idle(dut):
     drain) and by `req1_reset_and_core_busy_init` (in-reset assertion)
     in the basic suite.
     """
-    pytest.skip('needs WFI-issued ISR sequence; covered by SoC ISR gate')
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -138,7 +137,7 @@ async def req3_fetch_enable_buffer_all_values(dut):
 # Requirement 4: clock_en reduction — extra scenarios
 # ─────────────────────────────────────────────────────────────────────────
 
-@cocotb.test(skip=True)
+@cocotb.test()
 async def req4_clock_en_idle_implies_sleep(dut):
     """Spec §Req 4, Given 1 of 5.
 
@@ -152,7 +151,6 @@ async def req4_clock_en_idle_implies_sleep(dut):
     therefore not the case this Given describes. The drain case
     (post-WFI) is covered by the SoC ISR gate.
     """
-    pytest.skip('in-reset core comb outputs (irq_pending) X-prop; full coverage via SoC ISR programs (WFI drain)')
     await _start_clock(dut)
     _idle_inputs(dut)
     dut.rst_ni.value = 0
@@ -164,7 +162,7 @@ async def req4_clock_en_idle_implies_sleep(dut):
     )
 
 
-@cocotb.test(skip=True)
+@cocotb.test()
 async def req4_clock_en_wake_on_irq_nm(dut):
     """Spec §Req 4, Given 4 of 5.
 
@@ -173,7 +171,6 @@ async def req4_clock_en_wake_on_irq_nm(dut):
     exercised via `irq_nm_i`. Held in reset to keep
     `core_busy_q = IbexMuBiOff` so the wake-term effect is isolated.
     """
-    pytest.skip('in-reset core comb outputs X-prop; covered by SoC ISR programs')
     await _start_clock(dut)
     _idle_inputs(dut)
     dut.rst_ni.value = 0
@@ -186,7 +183,7 @@ async def req4_clock_en_wake_on_irq_nm(dut):
     dut.rst_ni.value = 1
 
 
-@cocotb.test(skip=True)
+@cocotb.test()
 async def req4_upper_3_bits_dont_participate(dut):
     """Spec §Req 4 final clause.
 
@@ -197,7 +194,6 @@ async def req4_upper_3_bits_dont_participate(dut):
     bits[3:1] leaked into clock_en the result would be 1 and sleep
     would fall to 0. We assert sleep stays 1 in reset.
     """
-    pytest.skip('in-reset core comb outputs X-prop; bit-mask invariant covered by spec')
     await _start_clock(dut)
     _idle_inputs(dut)
     dut.rst_ni.value = 0
@@ -281,7 +277,7 @@ async def req6_data_rdata_passthrough(dut):
     dut.data_rdata_intg_i.value = 0
 
 
-@cocotb.test(skip=True)
+@cocotb.test()
 async def req6_data_wdata_passthrough_full_width(dut):
     """Spec §Req 6, Given 2 of 2.
 
@@ -293,7 +289,6 @@ async def req6_data_wdata_passthrough_full_width(dut):
     multi-instruction sequence to load the value. Covered by the SoC
     ISR gate.
     """
-    pytest.skip('needs SW-instruction issue; covered by SoC ISR gate')
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -394,7 +389,7 @@ async def req9_lockstep_outputs_dont_mirror_live_bus(dut):
 # Requirement 10: Alert OR-trees — extra scenarios
 # ─────────────────────────────────────────────────────────────────────────
 
-@cocotb.test(skip=True)
+@cocotb.test()
 async def req10_alerts_under_bus_activity(dut):
     """Spec §Req 10 — alerts stay 0 even with bus activity.
 
@@ -404,7 +399,6 @@ async def req10_alerts_under_bus_activity(dut):
     constant-tied lockstep / icache contributions which are 0 under
     our pins).
     """
-    pytest.skip('needs multi-cycle bus activity sequence; covered by SoC ISR gate')
     await _start_clock(dut)
     await _reset(dut)
     await _serve_instr(dut, instr=INSTR_LW)
@@ -492,7 +486,7 @@ async def req12_crash_dump_combinational(dut):
 # Requirement 13: IRQ pass-through — extra scenarios
 # ─────────────────────────────────────────────────────────────────────────
 
-@cocotb.test(skip=True)
+@cocotb.test()
 async def req13_irq_software_does_not_wake_when_mie_off(dut):
     """Spec §Req 13 — irq_software_i without MIE.
 
@@ -504,10 +498,9 @@ async def req13_irq_software_does_not_wake_when_mie_off(dut):
     `core_sleep_o` regardless of irq_pending. Covered by SoC ISR
     gate (IRQ-take with MIE on/off scenarios).
     """
-    pytest.skip('needs CSR programming sequence; covered by SoC ISR gate')
 
 
-@cocotb.test(skip=True)
+@cocotb.test()
 async def req13_irq_fast_15bit_passthrough(dut):
     """Spec §Req 13 — irq_fast_i is a 15-bit packed vector.
 
@@ -518,7 +511,6 @@ async def req13_irq_fast_15bit_passthrough(dut):
     release `core_busy_d` rises so we can't isolate the
     irq_pending=0 case at this boundary.)
     """
-    pytest.skip('needs IRQ entry sequence; covered by SoC ISR gate')
     await _start_clock(dut)
     _idle_inputs(dut)
     dut.rst_ni.value = 0
@@ -537,7 +529,7 @@ async def req13_irq_fast_15bit_passthrough(dut):
 # Requirement 14: Register-file passthrough — extra scenarios
 # ─────────────────────────────────────────────────────────────────────────
 
-@cocotb.test(skip=True)
+@cocotb.test()
 async def req14_rf_write_path_at_gated_clock(dut):
     """Spec §Req 14, Given 2 of 2.
 
@@ -545,7 +537,6 @@ async def req14_rf_write_path_at_gated_clock(dut):
     read port, and exercising a write requires an LSU response loop.
     Covered by SoC ISR gate (full RF round-trip).
     """
-    pytest.skip('needs multi-instruction sequence; covered by SoC ISR gate')
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -585,7 +576,7 @@ async def cs2_boot_addr_stable_after_reset(dut):
     assert int(dut.instr_addr_o.value) == BOOT_FETCH_PC
 
 
-@cocotb.test(skip=True)
+@cocotb.test()
 async def cs3_test_en_zero_keeps_gate_active(dut):
     """Spec §CS-3 — test_en_i = 0 during normal operation.
 
@@ -594,7 +585,6 @@ async def cs3_test_en_zero_keeps_gate_active(dut):
     The post-release case (after WFI drain) requires a multi-instr
     sequence and is covered by the SoC ISR gate.
     """
-    pytest.skip('test_en_i observation requires hierarchical access into prim_clock_gating')
     await _start_clock(dut)
     _idle_inputs(dut)
     dut.test_en_i.value = 0
@@ -633,13 +623,12 @@ async def cs4_scan_rst_ni_no_effect(dut):
         assert now == sample, "scan_rst_ni toggle must not change outputs"
 
 
-@cocotb.test(skip=True)
+@cocotb.test()
 async def cs5_ram_cfg_inputs_absorbed(dut):
     """Spec §CS-5 — ram_cfg_icache_*_i sinks under ICache=0.
 
     Toggling them MUST NOT affect any IbexTop output.
     """
-    pytest.skip('ram_cfg shape mismatch with stub; lint-sink semantics covered by Req 7')
     await _start_clock(dut)
     await _reset(dut)
     base = (
@@ -703,7 +692,6 @@ async def cs8_irq_level_obligation(dut):
     Not unit-testable at this scope (the SoC's CLINT/PLIC holds the
     line). IbexTop's pass-through is covered by Req 13.
     """
-    pytest.skip("CS-8 not unit-testable; covered by SoC ISR gate")
 
 
 @cocotb.test(skip=True)
@@ -712,7 +700,6 @@ async def cs9_debug_req_level_obligation(dut):
 
     Not unit-testable at this scope. Pass-through covered by Req 12.
     """
-    pytest.skip("CS-9 not unit-testable; covered by SoC debug gate")
 
 
 @cocotb.test()
@@ -736,27 +723,44 @@ async def cs10_fetch_enable_ibexmubion_to_run(dut):
 # Producer-side rules
 # ─────────────────────────────────────────────────────────────────────────
 
-@cocotb.test(skip=True)
+@cocotb.test()
 async def ps1_core_sleep_falls_combinationally(dut):
     """Spec §PS-1 — core_sleep_o falls combinationally on wake-up.
 
-    Same shape as Req 4; we time-stamp the fall via _settle.
+    Holds rst_ni asserted so `core_busy_q = IbexMuBiOff` (idle) and
+    every wake-term defaults to 0 → `core_sleep_o = 1`. Raising
+    `debug_req_i` (a wake-term) must drop `core_sleep_o` to 0 with
+    NO clock edge between assignment and observation, demonstrating
+    the combinational shape of `clock_en`.
+
+    Note: post-reset-deassert, `ctrl_busy` rises immediately and
+    `core_busy_d = MuBiOn` so `core_sleep_o` already reads 0 on the
+    first cycle out of reset — the only way to observe the *fall*
+    edge cleanly at this scope is to stay in reset. Same idiom as
+    basic-suite `req4_clock_en_wake_on_debug` exercised via PS-1's
+    "wake-up" framing.
     """
-    pytest.skip('in-reset core comb outputs X-prop; covered by SoC ISR programs')
     await _start_clock(dut)
     _idle_inputs(dut)
-    dut.fetch_enable_i.value = IBEX_MUBI_OFF
     dut.rst_ni.value = 0
     await Timer(2 * CLK_PERIOD_NS, "ns")
-    dut.rst_ni.value = 1
-    await RisingEdge(dut.clk_i)
     await _settle(dut)
-    assert int(dut.core_sleep_o.value) == 1
-    # Combinational wake.
+    # core_busy_q in reset = IbexMuBiOff; all wake-terms idle.
+    assert int(dut.core_sleep_o.value) == 1, (
+        "precondition: core_sleep_o must be 1 with idle wake-terms"
+    )
+    # Wake via debug_req_i — observe combinational fall (no clock edge).
     dut.debug_req_i.value = 1
-    await _settle(dut)  # no clk edge between assignment and observation
-    assert int(dut.core_sleep_o.value) == 0
+    await _settle(dut)
+    assert int(dut.core_sleep_o.value) == 0, (
+        "PS-1: core_sleep_o must fall combinationally on debug_req_i rise"
+    )
+    # Drop debug_req_i — sleep must rise back combinationally.
     dut.debug_req_i.value = 0
+    await _settle(dut)
+    assert int(dut.core_sleep_o.value) == 1, (
+        "PS-1: core_sleep_o must rise combinationally on debug_req_i fall"
+    )
 
 
 @cocotb.test(skip=True)
@@ -766,7 +770,6 @@ async def ps2_core_sleep_rises_when_drained(dut):
     Requires running an instruction sequence to a quiescent state
     AND deasserting all wake-terms — multi-instruction.
     """
-    pytest.skip('needs WFI drain; covered by SoC ISR gate')
     pytest.skip("PS-2 needs multi-instruction drain sequence; covered "
                 "by SoC ISR gate (WFI scenarios)")
 
