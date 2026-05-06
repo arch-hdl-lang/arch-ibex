@@ -62,6 +62,25 @@ DM_EXCEPTION_ADDR = 0x1A11_0808
 
 MASK32 = 0xFFFF_FFFF
 
+# Icache geometry (D1's `ICache=1` flip swapped IfStage to wrap
+# `ibex_icache`):
+#   - IC_LINE_BEATS = 2: every miss fills a 64-bit line = 2 × 32-bit
+#     bus beats. The helper that drives a single fetch must serve BOTH
+#     beats or the FB stays half-filled and never delivers `valid_o`.
+#   - IC_NUM_LINES = 128: cold-boot inval walk takes ~128 cycles before
+#     any lookup fires. Tests that observe `instr_addr_o` or expect a
+#     fetch must first wait for the walk to drain.
+#   - The icache's bus master line-aligns the request address to the
+#     cache-line boundary: `instr_addr_o = (fb.addr & ~0x7)` for the
+#     first beat.
+IC_LINE_BEATS_PER_FILL = 2
+IC_INVAL_DRAIN_CYCLES  = 140  # cover IC_NUM_LINES = 128 + small slack
+LINE_ALIGN_MASK        = 0xFFFF_FFF8  # 8-byte cache-line alignment
+
+
+def _line_aligned(addr: int) -> int:
+    return addr & LINE_ALIGN_MASK & MASK32
+
 
 def _pack_exc_cause(*, irq_int: int = 0, irq_ext: int = 0,
                     lower_cause: int = 0) -> int:
@@ -99,9 +118,12 @@ def _idle_inputs(dut):
     dut.instr_rvalid_i.value = 0
     dut.instr_rdata_i.value = 0
     dut.instr_bus_err_i.value = 0
+    # NOTE: `ic_scr_key_valid_i` tied to 1 to match SoC binding
+    # (`ibex_top.sv:581`, `ICacheScramble=0`); otherwise the icache
+    # parks in `AWAIT_SCRAMBLE_KEY` (R-INV-3).
     dut.icache_enable_i.value = 0
     dut.icache_inval_i.value = 0
-    dut.ic_scr_key_valid_i.value = 0
+    dut.ic_scr_key_valid_i.value = 1
     dut.dummy_instr_en_i.value = 0
     dut.dummy_instr_mask_i.value = 0
     dut.dummy_instr_seed_en_i.value = 0
@@ -118,13 +140,26 @@ def _idle_inputs(dut):
         pass
 
 
-async def _reset(dut):
+async def _reset(dut, *, wait_idle: bool = True):
+    """Apply async-low reset for two clock periods, then release.
+
+    When `wait_idle` is true (default) additionally advance past the
+    icache cold-boot inval walk (`IC_NUM_LINES = 128` cycles + slack)
+    so subsequent test logic starts from an idle/ready icache. Tests
+    that probe purely combinational outputs immediately after reset
+    (e.g. tieoff readbacks, csr_mtvec_init pulse, async-reset state
+    flush) can pass `wait_idle=False`.
+    """
     _idle_inputs(dut)
     dut.rst_ni.value = 0
     await Timer(2 * CLK_PERIOD_NS, "ns")
     dut.rst_ni.value = 1
     await RisingEdge(dut.clk_i)
     await _settle(dut)
+    if wait_idle:
+        for _ in range(IC_INVAL_DRAIN_CYCLES):
+            await RisingEdge(dut.clk_i)
+            await _settle(dut)
 
 
 async def _branch_to(dut, *, pc_mux: int, **mux_inputs) -> int:
@@ -132,7 +167,12 @@ async def _branch_to(dut, *, pc_mux: int, **mux_inputs) -> int:
     and the various mux-input signals named via kwargs (e.g.
     branch_target_ex_i=, csr_mepc_i=, csr_depc_i=, exc_pc_mux_i=,
     csr_mtvec_i=, exc_cause=, boot_addr_i=). Returns the resulting
-    instr_addr_o sampled after one rising edge.
+    instr_addr_o once the icache's bus master starts driving a request.
+
+    Under D1's `ICache=1` flip the visible address is the icache's
+    bus master output, which line-aligns the request to the 8-byte
+    cache-line boundary (`addr & ~0x7`). Caller is responsible for
+    comparing against the correct line-aligned expected value.
     """
     for k, v in mux_inputs.items():
         getattr(dut, k).value = v & MASK32 if isinstance(v, int) else v
@@ -144,6 +184,13 @@ async def _branch_to(dut, *, pc_mux: int, **mux_inputs) -> int:
     await RisingEdge(dut.clk_i)
     dut.pc_set_i.value = 0
     await _settle(dut)
+    # Wait for the icache to start driving the bus request for the
+    # new branch; instr_addr_o then carries the line-base addr.
+    for _ in range(16):
+        if int(dut.instr_req_o.value) == 1:
+            break
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
     return int(dut.instr_addr_o.value) & MASK32
 
 
@@ -151,9 +198,16 @@ async def _land_one_instruction(dut, *, branch_addr: int, rdata: int,
                                 bus_err: int = 0,
                                 pmp_err_if: int = 0,
                                 pmp_err_if_plus2: int = 0,
-                                max_cycles: int = 16) -> bool:
+                                max_cycles: int = 32) -> bool:
     """Drive a branch + bus handshake to land one instruction in the
-    IF→ID pipe register."""
+    IF→ID pipe register.
+
+    Under D1's `ICache=1` flip, the icache fills a 64-bit line per
+    miss (`IC_LINE_BEATS = 2` bus beats), so this helper serves BOTH
+    beats with the same `rdata` (and the same `bus_err`). Whichever
+    halfword the icache presents, the resulting decoded instruction
+    is `rdata`.
+    """
     dut.pmp_err_if_i.value = pmp_err_if
     dut.pmp_err_if_plus2_i.value = pmp_err_if_plus2
     dut.pc_mux_i.value = PC_JUMP
@@ -164,30 +218,43 @@ async def _land_one_instruction(dut, *, branch_addr: int, rdata: int,
     await RisingEdge(dut.clk_i)
     dut.pc_set_i.value = 0
     await _settle(dut)
-    for _ in range(max_cycles):
-        if int(dut.instr_req_o.value) == 1:
-            dut.instr_gnt_i.value = 1
+
+    for beat in range(IC_LINE_BEATS_PER_FILL):
+        # Wait for instr_req_o for THIS beat. After a bus-error first
+        # beat the icache may abort the fill and stop driving req_o,
+        # so don't insist on a second beat.
+        seen_req = False
+        for _ in range(max_cycles):
+            if int(dut.instr_req_o.value) == 1:
+                seen_req = True
+                break
             await RisingEdge(dut.clk_i)
-            dut.instr_gnt_i.value = 0
             await _settle(dut)
-            dut.instr_rvalid_i.value = 1
-            dut.instr_rdata_i.value = rdata & MASK32
-            dut.instr_bus_err_i.value = bus_err & 1
-            await RisingEdge(dut.clk_i)
-            dut.instr_rvalid_i.value = 0
-            dut.instr_rdata_i.value = 0
-            dut.instr_bus_err_i.value = 0
+        if not seen_req:
+            if beat > 0 and bus_err:
+                break  # error path: second beat suppressed by the icache
+            return False
+        dut.instr_gnt_i.value = 1
+        await RisingEdge(dut.clk_i)
+        dut.instr_gnt_i.value = 0
+        await _settle(dut)
+        dut.instr_rvalid_i.value = 1
+        dut.instr_rdata_i.value = rdata & MASK32
+        dut.instr_bus_err_i.value = bus_err & 1
+        await RisingEdge(dut.clk_i)
+        dut.instr_rvalid_i.value = 0
+        dut.instr_rdata_i.value = 0
+        dut.instr_bus_err_i.value = 0
+        await _settle(dut)
+
+    for _ in range(16):
+        if int(dut.instr_valid_id_o.value) == 1:
+            dut.id_in_ready_i.value = 0
             await _settle(dut)
-            for _ in range(4):
-                dut.id_in_ready_i.value = 0
-                if int(dut.instr_valid_id_o.value) == 1:
-                    return True
-                await RisingEdge(dut.clk_i)
-                await _settle(dut)
-            return int(dut.instr_valid_id_o.value) == 1
+            return True
         await RisingEdge(dut.clk_i)
         await _settle(dut)
-    return False
+    return int(dut.instr_valid_id_o.value) == 1
 
 
 # ── Requirement 1 — Exception PC mux scenarios ─────────────────────────
@@ -206,7 +273,8 @@ async def req1_exc_pc_irq_lower_cause_11(dut):
         csr_mtvec_i=0x1000_2000,
         exc_cause=_pack_exc_cause(irq_int=0, irq_ext=1, lower_cause=11),
     )
-    assert addr == 0x1000_202C, f"got {addr:#010x}"
+    # icache bus master line-aligns to 8-byte boundary.
+    assert addr == _line_aligned(0x1000_202C), f"got {addr:#010x}"
 
 
 @cocotb.test()
@@ -223,7 +291,7 @@ async def req1_exc_pc_irq_nmi_override(dut):
         csr_mtvec_i=0x1000_2000,
         exc_cause=_pack_exc_cause(irq_int=1, irq_ext=0, lower_cause=3),
     )
-    assert addr == 0x1000_207C, f"got {addr:#010x}"
+    assert addr == _line_aligned(0x1000_207C), f"got {addr:#010x}"
 
 
 @cocotb.test()
@@ -238,7 +306,7 @@ async def req1_exc_pc_sync_exception_entry(dut):
         exc_pc_mux_i=EXC_PC_EXC,
         csr_mtvec_i=0x1000_20FF,  # lower 8 bits non-zero, must be forced 0
     )
-    assert addr == 0x1000_2000, f"got {addr:#010x}"
+    assert addr == _line_aligned(0x1000_2000), f"got {addr:#010x}"
 
 
 @cocotb.test()
@@ -251,7 +319,7 @@ async def req1_exc_pc_debug_entry(dut):
         exc_pc_mux_i=EXC_PC_DBD,
         csr_mtvec_i=0xDEAD_BEEF,  # ignored on this path
     )
-    assert addr == DM_HALT_ADDR, f"got {addr:#010x}"
+    assert addr == _line_aligned(DM_HALT_ADDR), f"got {addr:#010x}"
 
 
 @cocotb.test()
@@ -266,7 +334,7 @@ async def req1_exc_pc_debug_exception(dut):
         exc_pc_mux_i=EXC_PC_DBG_EXC,
         csr_mtvec_i=0xDEAD_BEEF,
     )
-    assert addr == DM_EXCEPTION_ADDR, f"got {addr:#010x}"
+    assert addr == _line_aligned(DM_EXCEPTION_ADDR), f"got {addr:#010x}"
 
 
 @cocotb.test()
@@ -280,8 +348,8 @@ async def req1_exc_pc_irq_lower_cause_zero(dut):
         csr_mtvec_i=0x1000_2000,
         exc_cause=_pack_exc_cause(irq_int=0, irq_ext=0, lower_cause=0),
     )
-    # {0x1000_20, 0, 5'd0, 2'b00} = 0x1000_2000
-    assert addr == 0x1000_2000, f"got {addr:#010x}"
+    # {0x1000_20, 0, 5'd0, 2'b00} = 0x1000_2000 (already line-aligned)
+    assert addr == _line_aligned(0x1000_2000), f"got {addr:#010x}"
 
 
 @cocotb.test()
@@ -297,8 +365,8 @@ async def req1_exc_pc_irq_lower_cause_max(dut):
         csr_mtvec_i=0x1000_2000,
         exc_cause=_pack_exc_cause(irq_int=0, irq_ext=1, lower_cause=31),
     )
-    # {0x1000_20, 0, 5'd31, 2'b00} = 0x1000_207C
-    assert addr == 0x1000_207C, f"got {addr:#010x}"
+    # {0x1000_20, 0, 5'd31, 2'b00} = 0x1000_207C → line-aligned 0x1000_2078
+    assert addr == _line_aligned(0x1000_207C), f"got {addr:#010x}"
 
 
 # ── Requirement 2 — Fetch address mux scenarios ─────────────────────────
@@ -313,20 +381,21 @@ async def req2_fetch_boot_pc(dut):
     addr = await _branch_to(
         dut, pc_mux=PC_BOOT, boot_addr_i=0x0010_0000,
     )
-    assert addr == 0x0010_0080, f"got {addr:#010x}"
+    assert addr == _line_aligned(0x0010_0080), f"got {addr:#010x}"
 
 
 @cocotb.test()
 async def req2_fetch_jump_target(dut):
     """Spec Req 2 — Scenario "jump-target": PC_JUMP + branch_target=
-    0x0010_1234 → fetch_addr_n = 0x0010_1234.
+    0x0010_1234 → fetch_addr_n = 0x0010_1234, line-aligned to
+    0x0010_1230 by the icache bus master.
     """
     await _start_clock(dut)
     await _reset(dut)
     addr = await _branch_to(
         dut, pc_mux=PC_JUMP, branch_target_ex_i=0x0010_1234,
     )
-    assert addr == 0x0010_1234, f"got {addr:#010x}"
+    assert addr == _line_aligned(0x0010_1234), f"got {addr:#010x}"
 
 
 @cocotb.test()
@@ -339,7 +408,7 @@ async def req2_fetch_eret(dut):
     addr = await _branch_to(
         dut, pc_mux=PC_ERET, csr_mepc_i=0x0010_2000,
     )
-    assert addr == 0x0010_2000, f"got {addr:#010x}"
+    assert addr == _line_aligned(0x0010_2000), f"got {addr:#010x}"
 
 
 @cocotb.test()
@@ -350,7 +419,7 @@ async def req2_fetch_dret(dut):
     addr = await _branch_to(
         dut, pc_mux=PC_DRET, csr_depc_i=0x0010_3000,
     )
-    assert addr == 0x0010_3000, f"got {addr:#010x}"
+    assert addr == _line_aligned(0x0010_3000), f"got {addr:#010x}"
 
 
 @cocotb.test()
@@ -363,7 +432,7 @@ async def req2_fetch_bp_collapses_under_predictor_off(dut):
     addr = await _branch_to(
         dut, pc_mux=PC_BP, boot_addr_i=0x0010_0000,
     )
-    assert addr == 0x0010_0080, f"got {addr:#010x}"
+    assert addr == _line_aligned(0x0010_0080), f"got {addr:#010x}"
 
 
 @cocotb.test()
@@ -376,7 +445,7 @@ async def req2_fetch_boot_lower_8_bits_ignored(dut):
     addr = await _branch_to(
         dut, pc_mux=PC_BOOT, boot_addr_i=0x0010_00FF,
     )
-    assert addr == 0x0010_0080, f"got {addr:#010x}"
+    assert addr == _line_aligned(0x0010_0080), f"got {addr:#010x}"
 
 
 # ── Requirement 3 — Branch request synthesis scenarios ─────────────────
@@ -396,19 +465,21 @@ async def req3_pc_set_aligns_to_halfword(dut):
     addr = await _branch_to(
         dut, pc_mux=PC_JUMP, branch_target_ex_i=0x0010_0083,
     )
-    assert addr == 0x0010_0080, f"got {addr:#010x}"
+    assert addr == _line_aligned(0x0010_0080), f"got {addr:#010x}"
 
 
 @cocotb.test()
 async def req3_nt_branch_misprediction_replay(dut):
     """Spec Req 3 — Scenario "nt-branch misprediction replay":
-    pc_set_i=0, nt_branch_mispredict_i=1, nt_branch_addr_i=0x0010_4000 →
-    prefetch_addr = 0x0010_4000 (no bit-0 force on the replay path).
+    pc_set_i=0, nt_branch_mispredict_i=1, nt_branch_addr_i=0x0010_4000
+    → icache.branch_addr = 0x0010_4000 (no bit-0 force on the replay
+    path). Visible `instr_addr_o` is the icache bus master, which
+    line-aligns to the 8-byte boundary (0x0010_4000 is already aligned).
     """
     await _start_clock(dut)
-    await _reset(dut)
+    await _reset(dut)  # waits for the cold-boot inval walk
     # Drive a misprediction replay: branch_req=0 but prefetch_branch=1
-    # because nt_branch_mispredict_i=1; prefetch_addr = nt_branch_addr_i.
+    # because nt_branch_mispredict_i=1; icache branch addr = nt_branch_addr_i.
     dut.pc_set_i.value = 0
     dut.nt_branch_mispredict_i.value = 1
     dut.nt_branch_addr_i.value = 0x0010_4000
@@ -418,8 +489,14 @@ async def req3_nt_branch_misprediction_replay(dut):
     await RisingEdge(dut.clk_i)
     dut.nt_branch_mispredict_i.value = 0
     await _settle(dut)
+    # Wait for the icache bus master to drive the request.
+    for _ in range(16):
+        if int(dut.instr_req_o.value) == 1:
+            break
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
     addr = int(dut.instr_addr_o.value) & MASK32
-    assert addr == 0x0010_4000, f"got {addr:#010x}"
+    assert addr == _line_aligned(0x0010_4000), f"got {addr:#010x}"
 
 
 # ── Requirement 4 — Prefetch buffer wiring + valid squash ──────────────
@@ -783,7 +860,7 @@ async def req8_async_reset(dut):
 async def req9_boot_pulse(dut):
     """Spec Req 9 — Scenario "boot pulse": PC_BOOT + pc_set_i=1 → 1."""
     await _start_clock(dut)
-    await _reset(dut)
+    await _reset(dut, wait_idle=False)
     dut.pc_mux_i.value = PC_BOOT
     dut.pc_set_i.value = 1
     await _settle(dut)
@@ -794,7 +871,7 @@ async def req9_boot_pulse(dut):
 async def req9_any_other_pc_mux(dut):
     """Spec Req 9 — Scenario "any other PC mux": PC_JUMP+pc_set_i=1 → 0."""
     await _start_clock(dut)
-    await _reset(dut)
+    await _reset(dut, wait_idle=False)
     for mux in (PC_JUMP, PC_EXC, PC_ERET, PC_DRET, PC_BP):
         dut.pc_mux_i.value = mux
         dut.pc_set_i.value = 1
@@ -808,7 +885,7 @@ async def req9_any_other_pc_mux(dut):
 async def req9_pc_boot_without_pc_set(dut):
     """Edge: PC_BOOT but pc_set_i=0 → init must be 0."""
     await _start_clock(dut)
-    await _reset(dut)
+    await _reset(dut, wait_idle=False)
     dut.pc_mux_i.value = PC_BOOT
     dut.pc_set_i.value = 0
     await _settle(dut)
@@ -819,22 +896,23 @@ async def req9_pc_boot_without_pc_set(dut):
 
 @cocotb.test()
 async def req10_tieoff_outputs_constant_zero(dut):
-    """Spec Req 10: every ICache + branch-predictor + dummy-instruction
-    + pc-mismatch + integrity tieoff output is 0.
+    """Spec Req 10: branch-predictor + dummy-instruction + pc-mismatch
+    + integrity tieoff outputs are 0 after reset.
+
+    Under D1's `ICache=1` flip, the `ic_*` ICache RAM-port signals are
+    NOT tieoffs — they are real driven outputs of the live `ibex_icache`
+    instance (R-INV-1..7 cold-boot walk drives `ic_tag_req_o` /
+    `ic_tag_write_o` / `ic_tag_addr_o` / `ic_data_req_o` etc.). They're
+    asserted dynamically by other tests. `ic_scr_key_req_o` stays 0
+    because `ic_scr_key_valid_i = 1` (SoC binding under
+    ICacheScramble=0), so the icache bypasses `AWAIT_SCRAMBLE_KEY`
+    (R-INV-3). `icache_ecc_error_o` is 0 under MemECC=0.
     """
     await _start_clock(dut)
-    await _reset(dut)
+    await _reset(dut, wait_idle=False)
     await _settle(dut)
     constants = {
-        "ic_tag_req_o":        0,
-        "ic_tag_write_o":      0,
-        "ic_tag_addr_o":       0,
-        "ic_tag_wdata_o":      0,
-        "ic_data_req_o":       0,
-        "ic_data_write_o":     0,
-        "ic_data_addr_o":      0,
-        "ic_data_wdata_o":     0,
-        "ic_scr_key_req_o":    0,
+        "ic_scr_key_req_o":    0,  # ic_scr_key_valid_i held high
         "icache_ecc_error_o":  0,
         "dummy_instr_id_o":    0,
         "instr_bp_taken_o":    0,
@@ -848,8 +926,11 @@ async def req10_tieoff_outputs_constant_zero(dut):
 
 @cocotb.test()
 async def req10_tieoffs_stay_zero_during_active_fetch(dut):
-    """Edge: tieoffs remain 0 even during an active fetch / pipe-reg
-    write — they are constant combinational, not register-controlled.
+    """Edge: branch-predictor / dummy-instruction / integrity tieoffs
+    remain 0 even during an active fetch — these are constant
+    combinational, not register-controlled. (The `ic_*` signals are
+    real ICache RAM-port outputs and are exercised dynamically; not
+    a tieoff under D1's `ICache=1` flip.)
     """
     await _start_clock(dut)
     await _reset(dut)
@@ -857,9 +938,6 @@ async def req10_tieoffs_stay_zero_during_active_fetch(dut):
         dut, branch_addr=0x0010_0080, rdata=0x00100093,
     )
     assert landed
-    # All tieoffs must still be 0.
-    assert int(dut.ic_tag_req_o.value) == 0
-    assert int(dut.ic_data_req_o.value) == 0
     assert int(dut.dummy_instr_id_o.value) == 0
     assert int(dut.instr_bp_taken_o.value) == 0
     assert int(dut.pc_mismatch_alert_o.value) == 0
@@ -868,9 +946,9 @@ async def req10_tieoffs_stay_zero_during_active_fetch(dut):
 
 @cocotb.test()
 async def req10_pc_if_o_tracks_fetch_addr(dut):
-    """Spec Req 10: pc_if_o = fetch_addr (= prefetch_buffer.addr_o).
+    """Spec Req 10: pc_if_o = fetch_addr (the icache `addr_o`).
     After a successful fetch and pop, pc_if_o tracks the head of the
-    prefetch FIFO (= next instruction). The latched-at-pop PC lives in
+    icache output (= next instruction). The latched-at-pop PC lives in
     pc_id_o; pc_if_o has advanced by one instruction word.
     """
     await _start_clock(dut)
@@ -883,7 +961,7 @@ async def req10_pc_if_o_tracks_fetch_addr(dut):
     pc_if = int(dut.pc_if_o.value) & MASK32
     pc_id = int(dut.pc_id_o.value) & MASK32
     # pc_id_o latches the popped instruction's PC; pc_if_o tracks the
-    # current FIFO head (= next instruction, advanced by 4 bytes for
+    # current icache head (= next instruction, advanced by 4 bytes for
     # an uncompressed pop).
     assert pc_id == branch_addr, (
         f"pc_id_o = {pc_id:#010x}, expected {branch_addr:#010x}"
