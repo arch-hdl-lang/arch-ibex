@@ -634,19 +634,11 @@ async def req6_bus_error_only(dut):
     )
 
 
-@cocotb.test(expect_fail=True)
+@cocotb.test()
 async def req6_pmp_plus2_on_misaligned_uncompressed(dut):
     """Spec Req 6 — Scenario "PMP plus2 on misaligned uncompressed":
     pmp_err_if_plus2=1, fetch_addr[1]=1, instr_is_compressed=0.
     instr_fetch_err_o=1, instr_fetch_err_plus2_o=1.
-
-    KNOWN ISSUE (test-side): the `_land_one_instruction` helper drives
-    a single OBI fetch, but a misaligned-half branch on an uncompressed
-    instruction requires two fetches for the prefetch buffer to assemble
-    the instruction. The helper doesn't handle that case yet, so the
-    instruction never reaches the IF→ID register and the test times
-    out. The arch-side combination logic (Requirement 6) is exercised
-    correctly by the aligned variants in this suite.
     """
     await _start_clock(dut)
     await _reset(dut)

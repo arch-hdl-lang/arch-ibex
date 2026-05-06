@@ -1280,15 +1280,80 @@ async def test_r_out_4_addr_advances_by_2_or_4(dut):
     raise AssertionError("valid_o never rose")
 
 
-@cocotb.test(skip=True)
+@cocotb.test()
 async def test_r_out_5_err_plus2_only_on_unaligned_upper_half_fault(dut):
-    """R-OUT-5: err_plus2_o=1 only on upper-half fault of an unaligned
-    32-bit instruction. Driving this scenario at the unit level requires
-    a precise skid-buffer setup with a clean lower halfword and a faulted
-    upper halfword arriving from a separate bus beat. Achievable but
-    intricate; covered by full-regression S9 edge case. Spec §R-OUT-5.
+    """R-OUT-5: err_plus2_o = 1 only when the fault is on the UPPER
+    halfword of an unaligned 32-bit instruction. Bus error on line
+    beat 1 (bytes [4..7] of the 8-byte line) AND alloc_addr[1] = 1
+    AND output is line beat 1.
+
+    Stimulus:
+      - Branch to a misaligned address (addr[1]=1) so the FB allocates
+        with its halfword position bit set.
+      - Hold ready_i = 0 to capture each output cycle.
+      - Bus delivers line beat 0 (bytes [0..3]) cleanly.
+      - Bus delivers line beat 1 (bytes [4..7]) with err_i = 1.
+      - On the FIRST output cycle (beat 0): err_o = 0, err_plus2_o = 0.
+      - On the SECOND output cycle (beat 1): err_o = 1, err_plus2_o = 1.
+
+    Spec §R-OUT-5.
     """
-    pass
+    await _start_clock(dut)
+    await _reset(dut)
+    await _wait_until_idle(dut)
+    addr = 0x0010_0082  # misaligned (bit 1 set)
+    dut.req_i.value = 1
+    dut.ready_i.value = 0  # sticky valid for observability
+    dut.branch_i.value = 1
+    dut.addr_i.value   = addr
+    await _settle(dut)
+    await RisingEdge(dut.clk_i)
+    dut.branch_i.value = 0
+    # Tag rdata = 0 (miss) so the FB enters fill path.
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 0, 0)
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 1, 0)
+    await _settle(dut)
+    # Beat 0: clean. Beat 1: bus error.
+    served0 = await _bus_grant_and_beat(
+        dut, rdata=0x12345678, err=0, max_wait=8,
+    )
+    assert served0, "icache never issued first instr_req_o"
+    served1 = await _bus_grant_and_beat(
+        dut, rdata=0x9abcdef0, err=1, max_wait=20,
+    )
+    assert served1, "icache never issued second instr_req_o"
+    # First output beat: line beat 0 (clean) → err = 0, err_plus2 = 0.
+    for _ in range(20):
+        await ReadOnly()
+        if int(dut.valid_o.value) == 1:
+            assert int(dut.err_o.value) == 0, "first output beat must be clean"
+            assert int(dut.err_plus2_o.value) == 0, (
+                "err_plus2 must be 0 on the first (lower-half) beat"
+            )
+            break
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+    else:
+        raise AssertionError("icache never delivered first valid_o")
+    # Pop the first beat with ready_i pulse, then sample second beat.
+    await RisingEdge(dut.clk_i)
+    dut.ready_i.value = 1
+    await RisingEdge(dut.clk_i)
+    dut.ready_i.value = 0
+    for _ in range(20):
+        await ReadOnly()
+        if int(dut.valid_o.value) == 1:
+            assert int(dut.err_o.value) == 1, (
+                "second output beat must reflect line beat 1 bus error"
+            )
+            assert int(dut.err_plus2_o.value) == 1, (
+                "err_plus2 must be 1 on the upper-half-faulted beat of "
+                "an unaligned RV32 fetch"
+            )
+            return
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+    raise AssertionError("icache never delivered second valid_o")
 
 
 @cocotb.test()
