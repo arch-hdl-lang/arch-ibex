@@ -67,6 +67,8 @@ RAM_PORT_ARB_SV       = BUILD_DIR / "ram_port_arb.sv"
 FILL_BUFFER_CAM_SV    = BUILD_DIR / "fill_buffer_cam.sv"
 FILL_BUFFER_CTRL_SV   = BUILD_DIR / "fill_buffer_ctrl.sv"
 INVAL_CTRL_SV         = BUILD_DIR / "inval_ctrl.sv"
+# D2-flip: IbexCore now `inst`s `ibex_pmp` under PMPEnable=1.
+PMP_SV                = BUILD_DIR / "ibex_pmp.sv"
 
 # ── Upstream-SV dependencies for `ibex_cs_registers` (kept upstream-SV
 # per spec note N-2). The CSR file imports `ibex_pkg::*` and
@@ -105,6 +107,8 @@ ARCH_SV_FILES = [
     FILL_BUFFER_CTRL_SV,
     INVAL_CTRL_SV,
     ICACHE_SV,
+    # D2-flip: ibex_pmp instantiated by IbexCore under PMPEnable=1.
+    PMP_SV,
     # Stages.
     ID_STAGE_SV,
     EX_BLOCK_SV,
@@ -172,7 +176,7 @@ def core_runner(verilator_bin, tmp_path_factory):
             "MemECC":             0,
             "DataIndTiming":      0,
             "DummyInstructions":  0,
-            "PMPEnable":          0,
+            "PMPEnable":          1,
             "SecureIbex":         0,
         },
         build_args=[
