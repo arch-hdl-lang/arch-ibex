@@ -66,8 +66,11 @@ module ibex_core
   param DataIndTiming[0:0]: const = 1'd0;
   /// `DummyInstructions`: pinned 0 (no dummy instr LFSR).
   param DummyInstructions[0:0]: const = 1'd0;
-  /// `PMPEnable`: pinned 0 (no PMP).
-  param PMPEnable[0:0]: const = 1'd0;
+  /// `PMPEnable`: pinned 1 (PMP active end-to-end through `IbexPmp.arch`).
+  /// Default-zero PmpCfgRst (all regions OFF, mml=mmwp=0) gives M-mode
+  /// default-allow, so existing CPU programs see no behavioural change
+  /// until they write to PMP CSRs.
+  param PMPEnable[0:0]: const = 1'd1;
   /// `SecureIbex`: pinned 0 (non-secure).
   param SecureIbex[0:0]: const = 1'd0;
   /// `ResetAll`: pinned 0 (default reset behavior).
@@ -839,7 +842,7 @@ module ibex_core
     param ICache             = 1'd0;
     param MHPMCounterNum     = MHPMCounterNum;
     param MHPMCounterWidth   = MHPMCounterWidth;
-    param PMPEnable          = 1'd0;
+    param PMPEnable          = PMPEnable;
     param PMPGranularity     = PMPGranularity;
     param PMPNumRegions      = PMPNumRegions;
     param RV32E              = 1'd0;
@@ -920,6 +923,54 @@ module ibex_core
     div_wait_i           <- perf_div_wait;
   end inst cs_registers_i
 
+  // ── PMP instance (PMPEnable=1) ───────────────────────────────────────
+  // Mirrors upstream `g_pmp` block at `ibex_core.sv:1176-1196`. Three
+  // channels: PMP_I = i-side fetch addr, PMP_I2 = fetch addr + 2 (for
+  // unaligned 32-bit instr's upper halfword), PMP_D = d-side data
+  // addr. The PMP module checks each channel independently against
+  // the CSR-supplied region table.
+  wire pc_if_inc: UInt<32>;
+  // Per-channel input arrays driven into the IbexPmp inst.
+  // arch-com doesn't accept `port[idx] <- expr` inside an inst block,
+  // so we build the unpacked Vec values in a comb block over local
+  // wires, then connect the whole wire to the inst port.
+  wire pmp_req_addr_in:  unpacked Vec<UInt<34>, 3>;
+  wire pmp_req_type_in:  unpacked Vec<UInt<2>, 3>;
+  wire pmp_priv_mode_in: unpacked Vec<UInt<2>, 3>;
+  wire pmp_req_err_out:  unpacked Vec<Bool, 3>;
+
+  comb
+    pc_if_inc = (pc_if +% 32'd2);
+    pmp_req_addr_in[0] = {2'd0, pc_if};
+    pmp_req_addr_in[1] = {2'd0, pc_if_inc};
+    pmp_req_addr_in[2] = {2'd0, data_addr_o};
+    pmp_req_type_in[0] = 2'd0;          // PMP_ACC_EXEC
+    pmp_req_type_in[1] = 2'd0;          // PMP_ACC_EXEC
+    pmp_req_type_in[2] = data_we_o ? 2'd1 : 2'd2;  // WRITE / READ
+    pmp_priv_mode_in[0] = priv_mode_id;
+    pmp_priv_mode_in[1] = priv_mode_id;
+    pmp_priv_mode_in[2] = priv_mode_lsu;
+  end comb
+
+  inst pmp_i: ibex_pmp
+    // SoC pinning per ibex_pmp spec §Pinned parameters.
+    param DmBaseAddr     = DmBaseAddr;
+    param DmAddrMask     = DmAddrMask;
+    param PMPGranularity = PMPGranularity;
+    param PMPNumChan     = 3;
+    param PMPNumRegions  = PMPNumRegions;
+    // Region table from cs_registers (the upstream-SV hybrid CSR
+    // file drives these per writes to PMP CSRs).
+    csr_pmp_cfg_i        <- csr_pmp_cfg;
+    csr_pmp_addr_i       <- csr_pmp_addr;
+    csr_pmp_mseccfg_i    <- csr_pmp_mseccfg;
+    debug_mode_i         <- debug_mode;
+    priv_mode_i          <- pmp_priv_mode_in;
+    pmp_req_addr_i       <- pmp_req_addr_in;
+    pmp_req_type_i       <- pmp_req_type_in;
+    pmp_req_err_o        -> pmp_req_err_out;
+  end inst pmp_i
+
   // ── Module-scope combinational glue ──────────────────────────────────
   comb
     // ── Core-busy reduction (spec R9, N-7, N-34) ──────────────────────
@@ -952,9 +1003,12 @@ module ibex_core
     lsu_store_err = lsu_store_err_raw;
     rf_we_lsu     = lsu_rdata_valid;
 
-    // ── PMP request errors (spec R20: tied 0 under PMPEnable=0) ───────
-    /// Per spec R20: pmp_req_err[PMP_I/I2/D] = 0 under PMPEnable=0.
-    pmp_req_err = 3'd0;
+    // ── PMP request errors (spec R20) ─────────────────────────────────
+    /// Under `PMPEnable=1`, the per-channel error flags are driven by
+    /// the `IbexPmp` instance above. Pack `pmp_req_err_out[2:0]` into
+    /// the 3-bit `pmp_req_err` for the original consumer muxes
+    /// (`pmp_err_if_i`, `pmp_err_if_plus2_i`, `data_pmp_err_i`).
+    pmp_req_err = {pmp_req_err_out[2], pmp_req_err_out[1], pmp_req_err_out[0]};
 
     // ── RF passthrough (spec R16) ─────────────────────────────────────
     /// Under RegFileECC=0: rf_rdata_*, rf_wdata_wb_ecc_o straight

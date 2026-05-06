@@ -249,27 +249,53 @@ async def req2_submodule_instantiation(dut):
 async def req3_fetch_enable_buffer(dut):
     """Spec §"Requirement 3: Fetch-enable buffering".
 
-    Given fetch_enable_i = X, when observed in the same cycle, then
-    u_ibex_core.fetch_enable_i SHALL equal X. We exercise both
-    IbexMuBiOn (allow fetch) and IbexMuBiOff (gate fetch off, observed
-    as instr_req_o falling).
+    Given fetch_enable_i = X, then u_ibex_core.fetch_enable_i SHALL
+    equal X (transmitted through `u_fetch_enable_buf`). We exercise
+    both IbexMuBiOn (allow fetch — IF eventually issues instr_req_o)
+    and IbexMuBiOff (gate fetch off — instr_req_o eventually drops
+    once any in-flight icache fill drains).
+
+    Under D1's `ICache=1` flip, instr_req_o is FB-driven (the
+    icache's bus master) rather than directly gated by
+    fetch_enable[0]. The drop is NOT same-cycle — it lags by the
+    in-flight fill's remaining beats. We allow a drain window after
+    fetch_enable=0 and serve any pending bus requests with NOPs to
+    let in-flight FBs release.
     """
     await _start_clock(dut)
     await _reset(dut)
-    # With IbexMuBiOn, IF should eventually issue instr_req_o.
-    assert await _wait_for_instr_req(dut, max_wait=8), (
+    # With IbexMuBiOn, IF should eventually issue instr_req_o (after
+    # icache cold-boot inval walk).
+    assert await _wait_for_instr_req(dut, max_wait=200), (
         "fetch_enable_i = IbexMuBiOn should let IF reach instr_req_o"
     )
     # Drop fetch_enable_i to IbexMuBiOff (bit 0 = 0).
     dut.fetch_enable_i.value = IBEX_MUBI_OFF
     await _settle(dut)
-    # IbexCore's R10 says instr_req_o = req_int & fetch_enable_buf[0];
-    # via the prim_buf the change propagates combinationally. Allow
-    # one extra settle in case of synthesis-barrier latency through the
-    # prim_buf stub.
-    await _settle(dut)
-    assert int(dut.instr_req_o.value) == 0, (
-        "instr_req_o must drop combinationally when fetch_enable_i[0]=0"
+    # Allow drain window: serve any in-flight bus requests with NOPs
+    # so the FB releases, then check instr_req_o has dropped.
+    NOP = 0x0000_0013
+    drained = False
+    for _ in range(20):
+        if int(dut.instr_req_o.value) == 1:
+            dut.instr_gnt_i.value = 1
+            await RisingEdge(dut.clk_i)
+            dut.instr_gnt_i.value = 0
+            dut.instr_rvalid_i.value = 1
+            dut.instr_rdata_i.value  = NOP
+            await RisingEdge(dut.clk_i)
+            dut.instr_rvalid_i.value = 0
+            dut.instr_rdata_i.value  = 0
+            await _settle(dut)
+        else:
+            await RisingEdge(dut.clk_i)
+            await _settle(dut)
+            if int(dut.instr_req_o.value) == 0:
+                drained = True
+                break
+    assert drained, (
+        "instr_req_o never dropped after fetch_enable_i[0] was cleared "
+        "and in-flight icache FBs were drained"
     )
 
 

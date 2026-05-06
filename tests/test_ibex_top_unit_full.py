@@ -48,6 +48,7 @@ RAM_PORT_ARB_SV       = BUILD_DIR / "ram_port_arb.sv"
 FILL_BUFFER_CAM_SV    = BUILD_DIR / "fill_buffer_cam.sv"
 FILL_BUFFER_CTRL_SV   = BUILD_DIR / "fill_buffer_ctrl.sv"
 INVAL_CTRL_SV         = BUILD_DIR / "inval_ctrl.sv"
+PMP_SV                = BUILD_DIR / "ibex_pmp.sv"
 
 IBEX_PKG_SV       = IBEX_ROOT / "rtl" / "ibex_pkg.sv"
 CS_REGISTERS_SV   = IBEX_ROOT / "rtl" / "ibex_cs_registers.sv"
@@ -76,6 +77,7 @@ ARCH_SV_FILES = [
     FILL_BUFFER_CTRL_SV,
     INVAL_CTRL_SV,
     ICACHE_SV,
+    PMP_SV,
     ID_STAGE_SV,
     EX_BLOCK_SV,
     LSU_SV,
@@ -131,7 +133,7 @@ def top_full_runner(verilator_bin, tmp_path_factory):
             "DbgTriggerEn":       0,
             "MemECC":             0,
             "DummyInstructions":  0,
-            "PMPEnable":          0,
+            "PMPEnable":          1,
             "SecureIbex":         0,
         },
         build_args=[

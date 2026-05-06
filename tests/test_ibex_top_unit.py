@@ -69,6 +69,7 @@ RAM_PORT_ARB_SV       = BUILD_DIR / "ram_port_arb.sv"
 FILL_BUFFER_CAM_SV    = BUILD_DIR / "fill_buffer_cam.sv"
 FILL_BUFFER_CTRL_SV   = BUILD_DIR / "fill_buffer_ctrl.sv"
 INVAL_CTRL_SV         = BUILD_DIR / "inval_ctrl.sv"
+PMP_SV                = BUILD_DIR / "ibex_pmp.sv"
 
 # ── Upstream-SV dependencies. Order matters:
 #   - ibex_pkg.sv first (defines enums consumed by IbexCore native
@@ -112,6 +113,7 @@ ARCH_SV_FILES = [
     FILL_BUFFER_CTRL_SV,
     INVAL_CTRL_SV,
     ICACHE_SV,
+    PMP_SV,
     # Stages.
     ID_STAGE_SV,
     EX_BLOCK_SV,
@@ -185,7 +187,7 @@ def top_runner(verilator_bin, tmp_path_factory):
             "DbgTriggerEn":       0,
             "MemECC":             0,
             "DummyInstructions":  0,
-            "PMPEnable":          0,
+            "PMPEnable":          1,
             "SecureIbex":         0,
         },
         build_args=[
