@@ -102,6 +102,25 @@ stage 3.
      section so downstream stages don't violate them. This is the
      methodology lesson from A4 — see
      `feedback_unit_tests_dont_catch_integration.md` in memory.
+
+     **Algorithm-vs-example self-consistency** *(REQUIRED when a
+     Requirement states an algorithm)*. For each Requirement that
+     states an algorithm or formula (e.g. "match iff `csr[33:2]
+     & mask == addr[33:2] & mask` where `mask` is …"), the spec
+     MUST include at least one Scenario whose worked example
+     **hand-evaluates the algorithm on concrete values** and
+     reports the algorithm's output. The spec extractor (or
+     orchestrator at Step 4) MUST hand-trace the algorithm on the
+     example before publishing — if the trace disagrees with the
+     Scenario's stated result, the Scenario is wrong (or the
+     algorithm is). Mismatches get reconciled at spec-stage,
+     never propagated to test-author or impl. Methodology
+     lesson from D2 IbexPmp: spec §S3 said `csr=0x1F` encodes a
+     16-byte region at base 0x10, but the spec's own algorithm
+     REQ-MODE-3 gives 64 bytes at base 0 for that value. Test
+     author followed §S3 → 8 stimulus bugs at impl-stage. A
+     single hand-trace at spec-stage would have surfaced the
+     inconsistency.
    The agent produces `changes/port-<module>/specs/<module>/spec.md`.
    First creation is just `## Requirements` (no ADDED/MODIFIED/REMOVED
    prefix). Subsequent revisions use delta format.
@@ -133,6 +152,26 @@ stage 3.
      reset → first-cycle branch → req sequence (no
      `_wait_until_idle()`) is REQUIRED for any module the CPU
      fetches through.
+
+     **Port-encoding helpers** *(REQUIRED when any port has a
+     non-trivial bit layout)*. For ports whose value isn't a
+     direct integer — e.g. 34-bit `pmp_req_addr_i =
+     {2'b00, byte_addr[31:0]}`, packed-struct fields like
+     `pmp_cfg_t = {lock, mode, exec, write, read}`, or
+     enum-encoded request types — the test author MUST add a
+     named Python helper that converts from the user-friendly
+     domain value to the port encoding (e.g.
+     `_byte_pa_to_port(byte_addr) -> int`,
+     `_pmp_cfg(L=, mode=, X=, W=, R=) -> int`). Tests then ONLY
+     drive ports through these helpers; raw integer literals in
+     `dut.foo.value = ...` are forbidden when a helper exists.
+     Methodology lesson from D2 IbexPmp: 4 unrelated tests had
+     stimulus bugs from confusing word-index with byte-PA
+     encoding — addresses like `0x1` were intended as "byte
+     0x4" but actually drove byte 0x1. A `_byte_pa_to_port`
+     helper that takes the byte address and returns the
+     port-encoded value would have prevented all 4
+     systematically.
    - `tests/test_<module>_unit.py` and `tests/test_<module>_unit_full.py`
      — pytest collectors that build Verilator on `build/<module>.sv`
      and invoke the matching cocotb module.
