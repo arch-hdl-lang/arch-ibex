@@ -144,8 +144,13 @@ async def _reset(dut):
     await _settle(dut)
 
 
-async def _wait_for_instr_req(dut, max_wait: int = 32) -> bool:
-    """Wait up to max_wait cycles for `instr_req_o` to assert."""
+async def _wait_for_instr_req(dut, max_wait: int = 200) -> bool:
+    """Wait up to max_wait cycles for `instr_req_o` to assert.
+
+    Default `max_wait=200` covers the icache cold-boot inval walk
+    (`IC_NUM_LINES=128` cycles + slack) introduced by D1's
+    `ICache=1` flip.
+    """
     for _ in range(max_wait):
         if int(dut.instr_req_o.value) == 1:
             return True
@@ -154,22 +159,38 @@ async def _wait_for_instr_req(dut, max_wait: int = 32) -> bool:
     return int(dut.instr_req_o.value) == 1
 
 
-async def _serve_instr(dut, *, instr: int, max_wait: int = 32) -> int:
-    """Wait for `instr_req_o`, grant, then respond with `instr` rdata.
-    Returns the requested address.
+# Icache fills a 64-bit line per miss = 2 × 32-bit bus beats.
+IC_LINE_BEATS_PER_FILL = 2
+
+
+async def _serve_instr(dut, *, instr: int, max_wait: int = 200) -> int:
+    """Wait for `instr_req_o`, then serve `IC_LINE_BEATS_PER_FILL = 2`
+    bus beats with the same `instr` word so the icache can complete
+    a full line fill. Returns the address of the first beat.
+
+    Under D1's `ICache=1` flip, every miss fills a full 64-bit line
+    (2 bus beats). Both beats carry the same word so the assembled
+    instruction reaches ID regardless of the halfword position.
     """
     await _wait_for_instr_req(dut, max_wait=max_wait)
-    addr = int(dut.instr_addr_o.value)
-    dut.instr_gnt_i.value = 1
-    await RisingEdge(dut.clk_i)
-    dut.instr_gnt_i.value = 0
-    dut.instr_rvalid_i.value = 1
-    dut.instr_rdata_i.value  = instr
-    await RisingEdge(dut.clk_i)
-    dut.instr_rvalid_i.value = 0
-    dut.instr_rdata_i.value  = 0
-    await _settle(dut)
-    return addr
+    first_addr = int(dut.instr_addr_o.value)
+    for _ in range(IC_LINE_BEATS_PER_FILL):
+        # Wait for instr_req_o for THIS beat.
+        for _ in range(8):
+            if int(dut.instr_req_o.value) == 1:
+                break
+            await RisingEdge(dut.clk_i)
+            await _settle(dut)
+        dut.instr_gnt_i.value = 1
+        await RisingEdge(dut.clk_i)
+        dut.instr_gnt_i.value = 0
+        dut.instr_rvalid_i.value = 1
+        dut.instr_rdata_i.value  = instr
+        await RisingEdge(dut.clk_i)
+        dut.instr_rvalid_i.value = 0
+        dut.instr_rdata_i.value  = 0
+        await _settle(dut)
+    return first_addr
 
 
 # ─────────────────────────────────────────────────────────────────────────

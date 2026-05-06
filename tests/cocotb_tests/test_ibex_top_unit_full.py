@@ -108,9 +108,13 @@ async def req3_fetch_enable_buffer_all_values(dut):
     """
     await _start_clock(dut)
     await _reset(dut)
-    # Wait for IF to be live.
-    await _wait_for_instr_req(dut, max_wait=8)
+    # Wait for IF to be live (icache cold-boot inval walk completes).
+    await _wait_for_instr_req(dut)
     # Try each value: only those with bit 0 = 1 keep instr_req_o high.
+    # Under D1's `ICache=1` flip, instr_req_o is FB-driven (in-flight
+    # fills hold it high); to test "bit 0 = 0 gates fetch", we drain
+    # outstanding fills with NOPs first so the FBs release.
+    NOP = 0x0000_0013
     for val, expect_req in [
         (IBEX_MUBI_ON,  True),
         (IBEX_MUBI_OFF, False),
@@ -122,14 +126,36 @@ async def req3_fetch_enable_buffer_all_values(dut):
         dut.fetch_enable_i.value = val
         await _settle(dut)
         if expect_req:
-            # Need to wait for IF to re-issue (after the gate-off bounce).
-            await _wait_for_instr_req(dut, max_wait=8)
+            # Re-issue after gate-on (icache wasn't reset; it just
+            # needs req_i propagated).
+            await _wait_for_instr_req(dut, max_wait=20)
             assert int(dut.instr_req_o.value) == 1, (
                 f"fetch_enable_i={val:#06b} should not gate IF"
             )
         else:
-            assert int(dut.instr_req_o.value) == 0, (
-                f"fetch_enable_i={val:#06b} should gate IF (bit 0 = 0)"
+            # Drain outstanding fills with NOPs and look for instr_req_o
+            # to settle to 0 (FB-released).
+            drained = False
+            for _ in range(20):
+                if int(dut.instr_req_o.value) == 1:
+                    dut.instr_gnt_i.value = 1
+                    await RisingEdge(dut.clk_i)
+                    dut.instr_gnt_i.value = 0
+                    dut.instr_rvalid_i.value = 1
+                    dut.instr_rdata_i.value  = NOP
+                    await RisingEdge(dut.clk_i)
+                    dut.instr_rvalid_i.value = 0
+                    dut.instr_rdata_i.value  = 0
+                    await _settle(dut)
+                else:
+                    await RisingEdge(dut.clk_i)
+                    await _settle(dut)
+                    if int(dut.instr_req_o.value) == 0:
+                        drained = True
+                        break
+            assert drained, (
+                f"fetch_enable_i={val:#06b} should gate IF (bit 0 = 0) "
+                f"after drain; instr_req_o stayed high"
             )
 
 
@@ -788,17 +814,36 @@ async def cs9_debug_req_level_obligation(dut):
 async def cs10_fetch_enable_ibexmubion_to_run(dut):
     """Spec §CS-10 — fetch_enable_i SHALL be IbexMuBiOn to run.
 
-    Verified directly: with IbexMuBiOn the IF stage reaches
-    instr_req_o, with IbexMuBiOff it does not.
+    With IbexMuBiOn the IF stage reaches instr_req_o; with
+    IbexMuBiOff it eventually drops once any in-flight icache fills
+    drain (under D1's `ICache=1` flip, instr_req_o is FB-driven).
     """
     await _start_clock(dut)
     await _reset(dut)
-    # On = run.
-    assert await _wait_for_instr_req(dut, max_wait=12)
-    # Off = halt.
+    # On = run (after icache cold-boot inval walk).
+    assert await _wait_for_instr_req(dut)
+    # Off = halt; allow drain window for in-flight FBs.
     dut.fetch_enable_i.value = IBEX_MUBI_OFF
-    await _settle(dut)
-    assert int(dut.instr_req_o.value) == 0
+    NOP = 0x0000_0013
+    drained = False
+    for _ in range(20):
+        if int(dut.instr_req_o.value) == 1:
+            dut.instr_gnt_i.value = 1
+            await RisingEdge(dut.clk_i)
+            dut.instr_gnt_i.value = 0
+            dut.instr_rvalid_i.value = 1
+            dut.instr_rdata_i.value  = NOP
+            await RisingEdge(dut.clk_i)
+            dut.instr_rvalid_i.value = 0
+            dut.instr_rdata_i.value  = 0
+            await _settle(dut)
+        else:
+            await RisingEdge(dut.clk_i)
+            await _settle(dut)
+            if int(dut.instr_req_o.value) == 0:
+                drained = True
+                break
+    assert drained
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -875,11 +920,16 @@ async def ps2_core_sleep_rises_when_drained(dut):
 
     INSTR_NOP = 0x0000_0013   # `addi x0, x0, 0`
     saw_sleep = False
-    for _ in range(64):
+    # Bumped from 64 → 200 cycles. Under D1's `ICache=1` flip the
+    # icache may have several in-flight prefetch FBs (each NUM_FB=4
+    # entry needs 2 bus beats), so the drain window before
+    # `core_sleep_o = 1` can be much longer than under prefetch_buffer
+    # semantics.
+    for _ in range(200):
         # Drain any outstanding prefetch (NOP rdata; controller will
-        # discard them once it's in SLEEP). Without this the prefetch
-        # buffer would hold its `instr_req_o` high indefinitely and
-        # block the controller from settling.
+        # discard them once it's in SLEEP). Without this the icache
+        # would hold its `instr_req_o` high indefinitely (FB-driven)
+        # and block `if_busy` from falling.
         if int(dut.instr_req_o.value) == 1:
             dut.instr_gnt_i.value = 1
             await RisingEdge(dut.clk_i)

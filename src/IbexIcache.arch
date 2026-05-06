@@ -973,8 +973,18 @@ module ibex_icache
       // tracker (`if_instr_addr` → ID stage), and a beat-0/beat-1
       // mismatch shifts every subsequent instruction one slot out of
       // alignment with the controller's PC view. Line base is bits
-      // [31:3], beat selects bit [2].
-      addr_out_q  <= (out_fb_addr & 32'hFFFF_FFF8) | ({29'd0, out_beat_idx} << 2'd2);
+      // [31:3], beat selects bit [2], halfword position carries from
+      // `out_fb_addr[1]` (the original branch-target's halfword
+      // alignment). Without that last term, a misaligned-half RV32
+      // branch (alloc_addr[1]=1) would emit addr_out_q with bit 1
+      // cleared, breaking IF's `if_instr_pmp_err` rule (R-OUT-5 +
+      // IF-stage Req 6: pmp_err_plus2 only fires when addr[1] AND
+      // !compressed). D2-flip surfaced this via
+      // `req6_pmp_plus2_on_misaligned_uncompressed` in
+      // `tests/cocotb_tests/test_ibex_if_stage_unit_full.py`.
+      addr_out_q  <= (out_fb_addr & 32'hFFFF_FFF8)
+                     | ({29'd0, out_beat_idx} << 2'd2)
+                     | (out_fb_addr & 32'd2);
       err_out_q   <= fb_err_out_sel;
       err_plus2_q <= false;              // R-OUT-5 simplified
     end if
