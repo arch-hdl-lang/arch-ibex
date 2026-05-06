@@ -53,7 +53,7 @@ module ibex_top
   param RegFile: ibex_pkg::regfile_e = ibex_pkg::RegFileFF;
   param BranchTargetALU[0:0]:     const = 1'd0;
   param WritebackStage[0:0]:      const = 1'd0;
-  param ICache[0:0]:              const = 1'd0;
+  param ICache[0:0]:              const = 1'd1;
   param ICacheECC[0:0]:           const = 1'd0;
   param BranchPredictor[0:0]:     const = 1'd0;
   param DbgTriggerEn[0:0]:        const = 1'd0;
@@ -101,14 +101,22 @@ module ibex_top
   // `MemDataWidth`: const-folded to 32 under MemECC=0 (spec N-16).
   param MemDataWidth:            const = 32;
   // `BusSizeECC`/`LineSizeECC`/`TagSizeECC` derive from ICacheECC=0
-  // (spec N-19).  `IC_NUM_WAYS=2`, `IC_TAG_SIZE=29`, `BUS_SIZE=32`,
-  // `IC_LINE_BEATS=2` (so `LineSizeECC = 32*2 + 8 = 72` matching
-  // the C1 stub's value at `src/ibex_core.archi:24`).
+  // (spec N-19) under our SoC pinning, AND from the ARCH-side
+  // IbexIcache pinning of IC_NUM_LINES=128 / IC_LINE_SIZE=64:
+  //   IC_NUM_WAYS = 2, IC_LINE_BEATS = IC_LINE_BYTES/BUS_BYTES = 8/4 = 2
+  //   IC_INDEX_W  = $clog2(IC_NUM_LINES) = $clog2(128) = 7
+  //   IC_TAG_SIZE = ADDR_W - IC_INDEX_W - IC_LINE_W + 1 = 32-7-3+1 = 22
+  //   BusSizeECC  = 32, LineSizeECC = 32*2 = 64
+  // (D1: under ICache=1 these widths must match the ARCH IbexIcache
+  // module's hardcoded port widths.)
   local param BusSizeECC:              const = 32;
-  local param TagSizeECC:              const = 29;
-  local param LineSizeECC:             const = 72;
+  local param TagSizeECC:              const = 22;
+  local param LineSizeECC:             const = 64;
   local param IC_NUM_WAYS:             const = 2;
-  local param IC_INDEX_W:              const = 8;
+  local param IC_INDEX_W:              const = 7;
+  // `IC_NUM_LINES`: cache geometry. Pinned 128 to match the ARCH
+  // IbexIcache module (which hardcodes `UInt<7>` for `ic_*_addr_o`).
+  local param IC_NUM_LINES:            const = 128;
   // `NumAddrScrRounds`: 0 under ICacheScramble=0 (spec N-20).
   local param NumAddrScrRounds:        const = 0;
   // `RAM_1P_CFG_W`: width of upstream `prim_ram_1p_pkg::ram_1p_cfg_t`
@@ -308,12 +316,26 @@ module ibex_top
   wire ic_data_write: Bool;
   wire ic_data_addr:  UInt<IC_INDEX_W>;
   wire ic_data_wdata: UInt<LineSizeECC>;
-  /// `ic_*_rdata` feed back into `u_ibex_core` and are tied to 0 by
-  /// the `gen_norams` block (spec R7).  Per spec N-7, they MUST be
-  /// declared as `unpacked Vec` to match `build/ibex_core.sv:129,134`
-  /// which emits `logic [W-1:0] x [N-1:0]`.
+  /// `ic_*_rdata` feed back into `u_ibex_core` and are now driven by
+  /// the per-way `prim_ram_1p` `gen_noscramble_rams` instances under
+  /// `ICache=1` (D1).  Per spec N-7, they MUST be declared as
+  /// `unpacked Vec` to match `build/ibex_core.sv:129,134` which
+  /// emits `logic [W-1:0] x [N-1:0]`.
   wire ic_tag_rdata:  unpacked Vec<UInt<TagSizeECC>,  IC_NUM_WAYS>;
   wire ic_data_rdata: unpacked Vec<UInt<LineSizeECC>, IC_NUM_WAYS>;
+
+  // Per-way RAM rdata / cfg-rsp wires — bound by the `prim_ram_1p`
+  // instances and stitched into the `unpacked Vec` / `UInt` wires
+  // above by the comb block (D1). arch-com `inst` bindings can't
+  // target an indexed lane, so we route through plain wires.
+  wire ic_tag_rdata_w0: UInt<TagSizeECC>;
+  wire ic_tag_rdata_w1: UInt<TagSizeECC>;
+  wire ic_data_rdata_w0: UInt<LineSizeECC>;
+  wire ic_data_rdata_w1: UInt<LineSizeECC>;
+  wire ram_cfg_rsp_icache_tag_w0: UInt<RAM_1P_CFG_RSP_W>;
+  wire ram_cfg_rsp_icache_tag_w1: UInt<RAM_1P_CFG_RSP_W>;
+  wire ram_cfg_rsp_icache_data_w0: UInt<RAM_1P_CFG_RSP_W>;
+  wire ram_cfg_rsp_icache_data_w1: UInt<RAM_1P_CFG_RSP_W>;
   wire icache_tag_alert:  UInt<IC_NUM_WAYS>;
   wire icache_data_alert: UInt<IC_NUM_WAYS>;
   wire ic_scr_key_req: Bool;
@@ -364,17 +386,23 @@ module ibex_top
     data_wdata_o      = data_wdata_core;
     data_wdata_intg_o = 7'd0;
 
-    // ── CG-7: ICache RAM tieoffs (`gen_norams`, spec R7) ────────────
-    /// Per spec R7 / `:759-:760, :765-:766, :768-:769`.
-    ram_cfg_rsp_icache_tag_o  = 0;
-    ram_cfg_rsp_icache_data_o = 0;
-    /// `ic_*_rdata` are unpacked Vec; broadcast 0 to every way.
-    for w in 0..IC_NUM_WAYS - 1
-      ic_tag_rdata[w]  = 0;
-      ic_data_rdata[w] = 0;
-    end for
+    // ── CG-7: ICache RAM alerts ─────────────────────────────────────
+    /// Under `gen_noscramble_rams` (ICacheScramble=0), the prim_ram_1p
+    /// banks have no integrity-alert output, so the alert vectors
+    /// stay tied to 0 (upstream `:748-:749`).
     icache_tag_alert  = 0;
     icache_data_alert = 0;
+
+    // ── CG-7b: ICache RAM rdata + cfg-rsp lane stitch (D1) ──────────
+    /// The 4 `prim_ram_1p` instances drive per-way scalar wires;
+    /// fold them into the unpacked-Vec rdata / packed-UInt cfg-rsp
+    /// shapes that `u_ibex_core` and the SoC boundary expect.
+    ic_tag_rdata[0]  = ic_tag_rdata_w0;
+    ic_tag_rdata[1]  = ic_tag_rdata_w1;
+    ic_data_rdata[0] = ic_data_rdata_w0;
+    ic_data_rdata[1] = ic_data_rdata_w1;
+    ram_cfg_rsp_icache_tag_o  = {ram_cfg_rsp_icache_tag_w1[0],  ram_cfg_rsp_icache_tag_w0[0]};
+    ram_cfg_rsp_icache_data_o = {ram_cfg_rsp_icache_data_w1[0], ram_cfg_rsp_icache_data_w0[0]};
 
     // ── CG-8: Scramble tieoffs (`gen_noscramble`, spec R8) ──────────
     /// Per spec R8 / `:576-:582`.
@@ -616,6 +644,87 @@ module ibex_top
     we_a_i            <- rf_we_wb;
   end inst register_file_i
 
+  // ── ICache RAM banks (gen_noscramble_rams, spec :707-:746) ────────
+  /// Per upstream `ibex_top.sv:707-:746` (`gen_noscramble_rams` arm,
+  /// taken under `ICacheScramble=0` ∧ `ICache=1`). Each way has a
+  /// dedicated tag bank and data bank; all four share the same
+  /// address / write-data drivers from `u_ibex_core`. `wmask_i` is
+  /// all-ones (full-word writes only — the icache has no sub-word
+  /// write path under our pinning, matching upstream's
+  /// `{TagSizeECC{1'b1}}` / `{LineSizeECC{1'b1}}`).
+  ///
+  /// `Depth = 128` is the SoC pinning (`IC_NUM_LINES = 4096B / 2 ways
+  /// / 8 bytes-per-line`); `addr_i` is therefore 7 bits wide
+  /// (matching the prim_ram_1p stub's `Aw=7` localparam).
+  ///
+  /// `cfg_i` is the 12-bit `prim_ram_1p_pkg::ram_1p_cfg_t` (carried
+  /// as `UInt<12>` per IbexTop's flat shape); `cfg_rsp_o` is the
+  /// 1-bit `ram_1p_cfg_rsp_t` (per way), folded into the 2-bit
+  /// `ram_cfg_rsp_icache_*_o` ports by the comb block above.
+  inst tag_bank_w0: prim_ram_1p
+    param Width = TagSizeECC;
+    param Depth = IC_NUM_LINES;
+    param DataBitsPerMask = TagSizeECC;
+    clk_i     <- clk_i;
+    rst_ni    <- rst_ni;
+    req_i     <- ic_tag_req[0];
+    write_i   <- ic_tag_write;
+    addr_i    <- ic_tag_addr;
+    wdata_i   <- ic_tag_wdata;
+    wmask_i   <- 22'h3F_FFFF;
+    rdata_o   -> ic_tag_rdata_w0;
+    cfg_i     <- ram_cfg_icache_tag_i;
+    cfg_rsp_o -> ram_cfg_rsp_icache_tag_w0;
+  end inst tag_bank_w0
+
+  inst tag_bank_w1: prim_ram_1p
+    param Width = TagSizeECC;
+    param Depth = IC_NUM_LINES;
+    param DataBitsPerMask = TagSizeECC;
+    clk_i     <- clk_i;
+    rst_ni    <- rst_ni;
+    req_i     <- ic_tag_req[1];
+    write_i   <- ic_tag_write;
+    addr_i    <- ic_tag_addr;
+    wdata_i   <- ic_tag_wdata;
+    wmask_i   <- 22'h3F_FFFF;
+    rdata_o   -> ic_tag_rdata_w1;
+    cfg_i     <- ram_cfg_icache_tag_i;
+    cfg_rsp_o -> ram_cfg_rsp_icache_tag_w1;
+  end inst tag_bank_w1
+
+  inst data_bank_w0: prim_ram_1p
+    param Width = LineSizeECC;
+    param Depth = IC_NUM_LINES;
+    param DataBitsPerMask = LineSizeECC;
+    clk_i     <- clk_i;
+    rst_ni    <- rst_ni;
+    req_i     <- ic_data_req[0];
+    write_i   <- ic_data_write;
+    addr_i    <- ic_data_addr;
+    wdata_i   <- ic_data_wdata;
+    wmask_i   <- 64'hFFFF_FFFF_FFFF_FFFF;
+    rdata_o   -> ic_data_rdata_w0;
+    cfg_i     <- ram_cfg_icache_data_i;
+    cfg_rsp_o -> ram_cfg_rsp_icache_data_w0;
+  end inst data_bank_w0
+
+  inst data_bank_w1: prim_ram_1p
+    param Width = LineSizeECC;
+    param Depth = IC_NUM_LINES;
+    param DataBitsPerMask = LineSizeECC;
+    clk_i     <- clk_i;
+    rst_ni    <- rst_ni;
+    req_i     <- ic_data_req[1];
+    write_i   <- ic_data_write;
+    addr_i    <- ic_data_addr;
+    wdata_i   <- ic_data_wdata;
+    wmask_i   <- 64'hFFFF_FFFF_FFFF_FFFF;
+    rdata_o   -> ic_data_rdata_w1;
+    cfg_i     <- ram_cfg_icache_data_i;
+    cfg_rsp_o -> ram_cfg_rsp_icache_data_w1;
+  end inst data_bank_w1
+
   // ── Lint sinks (spec N-11) ────────────────────────────────────────
   /// `unused_core_busy = ^core_busy_q[3:1]` (spec :277).  The 3
   /// upper mubi bits do not participate in `clock_en` under
@@ -628,31 +737,17 @@ module ibex_top
   let unused_intg: Bool =
       (^instr_rdata_intg_i) ^ (^data_rdata_intg_i);
 
-  /// `unused_ram_cfg = |{ram_cfg_icache_tag_i, ram_cfg_icache_data_i}`
-  /// (spec :758).
-  let unused_ram_cfg: Bool =
-      (ram_cfg_icache_tag_i != 0) or (ram_cfg_icache_data_i != 0);
-
-  /// `unused_ram_inputs` — large `&`-reduction of the dead RAM-driver
-  /// wires (spec :761-:763 / N-32).  Under `ICache=0` every term
-  /// reduces to 0 so the result is 0; the implementer SHALL emit a
-  /// semantically equivalent reduction (spec N-32 permits any
-  /// reduction that absorbs every term).  XOR of all terms keeps
-  /// every wire in the live cone for lint while folding to 0
-  /// statically.
-  let unused_ram_inputs: Bool =
-      (ic_tag_req  != 0)
-      ^ ic_tag_write
-      ^ (ic_tag_addr  != 0)
-      ^ (ic_tag_wdata != 0)
-      ^ (ic_data_req  != 0)
-      ^ ic_data_write
-      ^ (ic_data_addr  != 0)
-      ^ (ic_data_wdata != 0)
-      ^ (icache_tag_alert  != 0)
-      ^ (icache_data_alert != 0)
-      ^ ic_scr_key_req
-      ^ (NumAddrScrRounds != 0);
+  /// Under `ICache=1` the `ic_*` RAM-driver wires are consumed by the
+  /// `gen_noscramble_rams` instances below, and `ram_cfg_icache_*_i`
+  /// flows into each bank's `cfg_i` port — so the `unused_ram_cfg` /
+  /// `unused_ram_inputs` lint sinks from upstream's `gen_norams` arm
+  /// are no longer needed at this scope (D1).
+  ///
+  /// `ic_scr_key_req` and `NumAddrScrRounds` remain consumed only by
+  /// the (dead under ICacheScramble=0) scramble path — keep a single
+  /// XOR drain to retain lint coverage.
+  let unused_scramble_keep_alive: Bool =
+      ic_scr_key_req ^ (NumAddrScrRounds != 0);
 
   /// `unused_scramble_inputs` — large reduction of the dead scramble
   /// inputs / params / internal wires (spec :570-:574 / N-12 / N-21).

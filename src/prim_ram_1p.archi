@@ -1,0 +1,40 @@
+/// Hand-written port stub for the upstream-SV `prim_ram_1p` cell at
+/// `vendor/lowrisc_ip/ip/prim_generic/rtl/prim_ram_1p.sv`.
+///
+/// Synchronous single-port SRAM. IbexTop instantiates four copies
+/// (2 ways × {tag, data}) under `gen_noscramble_rams` when ICache=1
+/// (D1 SoC integration). The upstream cell is parameterised by
+/// `Width`, `Depth`, `DataBitsPerMask`, `MemInitFile`. We pin
+/// `Depth=128` (the SoC's `IC_NUM_LINES`) so the address width is
+/// fixed at `Aw=7` and we can keep the stub simple.
+///
+/// The `ram_1p_cfg_t` / `ram_1p_cfg_rsp_t` packed structs from
+/// `prim_ram_1p_pkg` are carried as flat `UInt<W>` because arch-com
+/// does not import the vendor package. Widths come from IbexTop's
+/// `RAM_1P_CFG_W = 12` / `RAM_1P_CFG_RSP_W = 1` localparams (matching
+/// upstream's `{test:1, cfg_en:1, cfg:4} × 2` layout / `{done:1}`).
+///
+/// `MemInitFile` (string) is omitted from the stub: arch-com lacks
+/// a string param construct, and the SoC never overrides it (the
+/// upstream default `""` selects the synthesis-shape RAM).
+module prim_ram_1p
+  param Width: const = 32;
+  param Depth: const = 128;
+  param DataBitsPerMask: const = 1;
+  // Note: upstream's `Aw = $clog2(Depth)` is a SystemVerilog
+  // `localparam` and Verilator rejects parameter-override attempts on
+  // it. The stub therefore baked the address-port width to a fixed
+  // numeric (7 bits = $clog2(128), matching the SoC's pinned
+  // Depth=128). Stays in lockstep with `IbexTop.arch:IC_INDEX_W=7`.
+
+  port clk_i: in Clock<SysDomain>;
+  port rst_ni: in Reset<Async, Low>;
+  port req_i: in Bool;
+  port write_i: in Bool;
+  port addr_i: in UInt<7>;
+  port wdata_i: in UInt<Width>;
+  port wmask_i: in UInt<Width>;
+  port rdata_o: out UInt<Width>;
+  port cfg_i: in UInt<12>;
+  port cfg_rsp_o: out UInt<1>;
+end module prim_ram_1p

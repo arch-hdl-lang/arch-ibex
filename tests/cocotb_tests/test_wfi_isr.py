@@ -89,7 +89,7 @@ async def wfi_drains_and_wakes_on_timer(dut) -> None:
     dut.IO_RST_N.value = 1
 
     # 1. Wait for the program to reach the WFI handshake point.
-    for _ in range(2000):
+    for cyc in range(2000):
         await RisingEdge(dut.IO_CLK)
         if _mem_word(dut, WFI_ARMED) == 1:
             break

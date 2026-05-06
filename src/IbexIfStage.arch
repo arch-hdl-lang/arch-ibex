@@ -25,7 +25,7 @@ use IbexCoreSharedPkg;
 module ibex_if_stage
   /// Toolchain-shaped params: pinned to the SoC's values, but declared
   /// so the cocotb test runner's parameter overrides bind.
-  param ICache[0:0]: const = 1'd0;
+  param ICache[0:0]: const = 1'd1;
   param BranchPredictor[0:0]: const = 1'd0;
   param DummyInstructions[0:0]: const = 1'd0;
   param MemECC[0:0]: const = 1'd0;
@@ -39,9 +39,12 @@ module ibex_if_stage
   /// outputs are tied to 0 (Requirement 10), but the port widths must
   /// still be parameterised so they match the upstream port contract.
   param IC_NUM_WAYS: const = 2;
-  param IC_INDEX_W: const = 8;
-  param TagSizeECC: const = 29;
-  param LineSizeECC: const = 72;
+  /// Defaults aligned to the ARCH IbexIcache hardcoded widths
+  /// (`IC_NUM_LINES=128 → IC_INDEX_W=7`, `IC_TAG_SIZE=22`,
+  /// `LineSizeECC=64`). D1 SoC integration.
+  param IC_INDEX_W: const = 7;
+  param TagSizeECC: const = 22;
+  param LineSizeECC: const = 64;
 
   /// Upstream-shape params declared but unused under the SoC pinning
   /// (`ICache=0`, `MemECC=0`, `DummyInstructions=0`). Required so the
@@ -194,31 +197,62 @@ module ibex_if_stage
   reg instr_valid_id_q: Bool reset rst_ni => 1'b0;
   reg instr_new_id_q: Bool reset rst_ni => 1'b0;
 
-  // ── Sub-module: prefetch buffer (Requirement 4) ───────────────────
-  /// Spec §"Requirement 4". The prefetch buffer drives the OBI
-  /// instruction bus and emits 32-bit fetched words. `ResetAll=0`
-  /// matches the pinned SoC config.
-  inst pb: ibex_prefetch_buffer
-    param ResetAll = 0;
-    clk_i           <- clk_i;
-    rst_ni          <- rst_ni;
-    req_i           <- req_i;
-    branch_i        <- prefetch_branch;
-    addr_i          <- prefetch_addr;
-    ready_i         <- fetch_ready;
-    valid_o         -> fetch_valid_raw;
-    rdata_o         -> fetch_rdata;
-    addr_o          -> fetch_addr;
-    err_o           -> fetch_err;
-    err_plus2_o     -> fetch_err_plus2;
-    instr_req_o     -> instr_req_o;
-    instr_gnt_i     <- instr_gnt_i;
-    instr_addr_o    -> instr_addr_o;
-    instr_rdata_i   <- instr_rdata_i;
-    instr_err_i     <- instr_err_to_prefetch;
-    instr_rvalid_i  <- instr_rvalid_i;
-    busy_o          -> prefetch_busy;
-  end inst pb
+  // ── Sub-module: instruction cache (D1 SoC integration) ────────────
+  /// Spec §"Requirement 4" (now ICache=1 path). The icache replaces
+  /// the prefetch buffer; same core-side handshake (`req_i`,
+  /// `branch_i`, `addr_i`, `ready_i`, `valid_o`, `rdata_o`, `addr_o`,
+  /// `err_o`, `err_plus2_o`) and same OBI bus-master pins
+  /// (`instr_*`), plus tag/data RAM ports, scramble-key handshake,
+  /// and control (`icache_enable_i`, `icache_inval_i`, `busy_o`,
+  /// `ecc_error_o`).
+  ///
+  /// IbexIcache hardcodes `IC_INDEX_W=7`, `TagSizeECC=22`,
+  /// `LineSizeECC=64` — IfStage's own params now match (D1).
+  /// `ic_*_req_o` is `Vec<UInt<1>, 2>` from icache; IfStage exports
+  /// it as `UInt<IC_NUM_WAYS>` (packed UInt<2>) — bit-equivalent at
+  /// the SV layer.
+  inst icache: ibex_icache
+    param ICacheECC      = ICacheECC;
+    param ResetAll       = ResetAll;
+    param BusSizeECC     = BusSizeECC;
+    param TagSizeECC     = TagSizeECC;
+    param LineSizeECC    = LineSizeECC;
+    param BranchCache    = 1'd0;
+    param TweakInfection = ICacheTweakInfection;
+    clk_i              <- clk_i;
+    rst_ni             <- rst_ni;
+    req_i              <- req_i;
+    branch_i           <- prefetch_branch;
+    addr_i             <- prefetch_addr;
+    ready_i            <- fetch_ready;
+    valid_o            -> fetch_valid_raw;
+    rdata_o            -> fetch_rdata;
+    addr_o             -> fetch_addr;
+    err_o              -> fetch_err;
+    err_plus2_o        -> fetch_err_plus2;
+    instr_req_o        -> instr_req_o;
+    instr_gnt_i        <- instr_gnt_i;
+    instr_addr_o       -> instr_addr_o;
+    instr_rdata_i      <- instr_rdata_i;
+    instr_err_i        <- instr_err_to_prefetch;
+    instr_rvalid_i     <- instr_rvalid_i;
+    ic_tag_req_o       -> ic_tag_req_o;
+    ic_tag_write_o     -> ic_tag_write_o;
+    ic_tag_addr_o      -> ic_tag_addr_o;
+    ic_tag_wdata_o     -> ic_tag_wdata_o;
+    ic_tag_rdata_i     <- ic_tag_rdata_i;
+    ic_data_req_o      -> ic_data_req_o;
+    ic_data_write_o    -> ic_data_write_o;
+    ic_data_addr_o     -> ic_data_addr_o;
+    ic_data_wdata_o    -> ic_data_wdata_o;
+    ic_data_rdata_i    <- ic_data_rdata_i;
+    ic_scr_key_valid_i <- ic_scr_key_valid_i;
+    ic_scr_key_req_o   -> ic_scr_key_req_o;
+    icache_enable_i    <- icache_enable_i;
+    icache_inval_i     <- icache_inval_i;
+    busy_o             -> prefetch_busy;
+    ecc_error_o        -> icache_ecc_error_o;
+  end inst icache
 
   // ── Sub-module: compressed decoder (Requirement 5) ────────────────
   /// Spec §"Requirement 5". RV32ZC=3 picks the full Zca+Zcb+Zcmp set;
@@ -328,18 +362,10 @@ module ibex_if_stage
     // Requirement 9 — `csr_mtvec_init_o` pulse on PC_BOOT branch.
     csr_mtvec_init_o = (pc_mux_i == 3'd0) and pc_set_i;
 
-    // Requirement 10 — tieoffs (ICache off, BP off, DummyInstructions
-    // off, PCIncrCheck off, MemECC off).
-    ic_tag_req_o        = 0;
-    ic_tag_write_o      = 1'b0;
-    ic_tag_addr_o       = 0;
-    ic_tag_wdata_o      = 0;
-    ic_data_req_o       = 0;
-    ic_data_write_o     = 1'b0;
-    ic_data_addr_o      = 0;
-    ic_data_wdata_o     = 0;
-    ic_scr_key_req_o    = 1'b0;
-    icache_ecc_error_o  = 1'b0;
+    // Requirement 10 — tieoffs for sub-features still off (BP,
+    // DummyInstructions, PCIncrCheck, MemECC). Under ICache=1 the
+    // `ic_*` outputs and `icache_ecc_error_o` are driven by the
+    // `icache` instance above (D1).
     dummy_instr_id_o    = 1'b0;
     instr_bp_taken_o    = 1'b0;
     pc_mismatch_alert_o = 1'b0;
@@ -386,17 +412,9 @@ module ibex_if_stage
   /// Drain inputs that are unused under the SoC pinning so SoC-level
   /// lint does not flag them as undriven loads. Vec inputs are reduced
   /// scalar to obtain a single-bit absorber.
-  /// Per-lane absorbers. The single-pipe form `vec.reduce_or() != 0`
-  /// got SV-emitted without parens around the per-lane OR, which
-  /// triggered a WIDTHTRUNC against the `Bool` LHS. Splitting into
-  /// per-lane drains sidesteps the precedence issue.
-  let unused_ic_tag_rdata_0: UInt<29>  = ic_tag_rdata_i[0];
-  let unused_ic_tag_rdata_1: UInt<29>  = ic_tag_rdata_i[1];
-  let unused_ic_data_rdata_0: UInt<72> = ic_data_rdata_i[0];
-  let unused_ic_data_rdata_1: UInt<72> = ic_data_rdata_i[1];
-  let unused_ic_scr_key_valid: Bool   = ic_scr_key_valid_i;
-  let unused_icache_enable: Bool      = icache_enable_i;
-  let unused_icache_inval: Bool       = icache_inval_i;
+  /// Under ICache=1 the `ic_*_rdata_i`, `ic_scr_key_valid_i`,
+  /// `icache_enable_i`, `icache_inval_i` inputs are consumed by the
+  /// `icache` instance above (D1) — no per-lane drains needed.
   let unused_dummy_instr_en: Bool     = dummy_instr_en_i;
   let unused_dummy_instr_mask: Bool   = dummy_instr_mask_i != 0;
   let unused_dummy_instr_seed_en: Bool = dummy_instr_seed_en_i;

@@ -1,0 +1,61 @@
+/// FbAgeArb — inter-FB age-ordered arbiter (R-FB-4).
+///
+/// Three call sites in IbexIcache: bus master / RAM write-back /
+/// IF output. Same policy, different request masks.
+///
+/// The custom policy `AgeOrderedGrant` lives in this same file
+/// because the arbiter's `policy AgeOrderedGrant;` clause references
+/// the function name and the two must elaborate together.
+
+domain SysDomain
+  freq_mhz: 100
+end domain SysDomain
+
+// ─── Custom-policy hook for inter-FB age-ordered arbitration ──────────
+// R-FB-4: "oldest eligible wins" across NUM_FB=4 live FBs. Each FB's
+// age is 0..3 (0=oldest), packed into one UInt<8> port (4×2 bits).
+// Among requesters (req_mask bits set), pick lowest age, emit one-hot.
+// Hook formal `ages` (plural) avoids the arch-com#301 collision with
+// the arbiter's own `age` port.
+function AgeOrderedGrant(req_mask: UInt<4>, ages: UInt<8>) -> UInt<4>
+  let a0: UInt<2> = ages[1:0];
+  let a1: UInt<2> = ages[3:2];
+  let a2: UInt<2> = ages[5:4];
+  let a3: UInt<2> = ages[7:6];
+
+  let r0: Bool = req_mask[0];
+  let r1: Bool = req_mask[1];
+  let r2: Bool = req_mask[2];
+  let r3: Bool = req_mask[3];
+
+  let c0: UInt<2> = r0 ? a0 : 2'd3;
+  let c1: UInt<2> = r1 ? a1 : 2'd3;
+  let c2: UInt<2> = r2 ? a2 : 2'd3;
+  let c3: UInt<2> = r3 ? a3 : 2'd3;
+
+  let min01:  UInt<2> = c0 <= c1 ? c0 : c1;
+  let min01i: UInt<2> = c0 <= c1 ? 2'd0 : 2'd1;
+  let min23:  UInt<2> = c2 <= c3 ? c2 : c3;
+  let min23i: UInt<2> = c2 <= c3 ? 2'd2 : 2'd3;
+  let mini:   UInt<2> = min01 <= min23 ? min01i : min23i;
+
+  let any: Bool = req_mask != 4'd0;
+  return any ? (4'd1 << mini) : 4'd0;
+end function AgeOrderedGrant
+
+// ─── Inter-FB age-ordered arbiter (R-FB-4) ────────────────────────────
+arbiter FbAgeArb
+  policy AgeOrderedGrant;
+  param NUM_REQ: const = 4;
+  port clk: in Clock<SysDomain>;
+  port rst: in Reset<Async, Low>;
+  ports[NUM_REQ] request
+    valid: in Bool;
+    ready: out Bool;
+  end ports request
+  port age: in UInt<8>;
+  port grant_valid: out Bool;
+  port grant_requester: out UInt<2>;
+  hook grant_select(req_mask: UInt<4>, ages: UInt<8>) -> UInt<4>
+    = AgeOrderedGrant(req_mask, age);
+end arbiter FbAgeArb

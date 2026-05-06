@@ -1,0 +1,286 @@
+/// FillBufferCtrl — per-fill-buffer lifecycle controller (R-FB-2..6).
+///
+/// One instance per fill-buffer slot (NUM_FB=4 in IbexIcache). The
+/// `thread fill` walks the FB through a small set of lifecycle phases:
+///   PhIdle → PhAlloc → PhCheck → PhRunning → PhIdle
+/// The thread is the sole writer of the `phase_q` reg. All other
+/// per-FB state (addr / data / counters / flags) is updated by
+/// concurrent seq blocks gated on `phase_q` and external pulses.
+/// This is the "thread-as-phase-tracker" idiom — necessary because
+/// the FB lifecycle has parallel concerns (bus beat reception, branch
+/// staling, output draining) that cannot all be linearised through
+/// thread `wait` points without races.
+///
+/// Construct: `module` containing `thread`. The lifecycle has 3 wait
+/// points (allocate, IC1 check, release-eligible) so a single-state
+/// thread would degenerate to a `seq` block (per memory note
+/// `feedback_thread_single_state_idiom`); the multi-wait shape earns
+/// the thread.
+
+domain SysDomain
+  freq_mhz: 100
+end domain SysDomain
+
+module FillBufferCtrl
+  // ── Clock + reset ────────────────────────────────────────────────
+  port clk: in Clock<SysDomain>;
+  port rst: in Reset<Async, Low>;
+
+  // ── Allocate/IC1 inputs (R-FB-2) ─────────────────────────────────
+  /// One-cycle pulse from outer module: this FB takes the new lookup.
+  port allocate: in Bool;
+  /// Lookup line address captured on `allocate`.
+  port alloc_addr: in UInt<32>;
+  /// Initial cache-allocate flag (icache_enable_i & ¬inval_block_cache).
+  port alloc_cache: in Bool;
+
+  // ── Concurrent lifecycle pulses ──────────────────────────────────
+  /// Branch pulse — marks FB stale (R-FB-6, S5).
+  port branch: in Bool;
+  /// Inval pulse — drops cache-allocate flag (R-INV-C).
+  port inval_pulse: in Bool;
+  /// icache_enable_i drop also drops cache-allocate flag (R-EN-3).
+  port enable_drop: in Bool;
+
+  // ── IC1 hit notification (R-LK-2) ────────────────────────────────
+  /// Pulses one cycle after `allocate` if the lookup hit in cache.
+  port ic1_hit: in Bool;
+  /// Hit data + way captured with `ic1_hit`.
+  port ic1_hit_data: in UInt<64>;
+  port ic1_hit_way: in UInt<1>;
+  /// Victim way (used for fill-write on miss path).
+  port ic1_victim_way: in UInt<1>;
+
+  // ── Bus master interface (R-EXT-1..5) ────────────────────────────
+  port bus_grant: in Bool;
+  port instr_gnt: in Bool;
+  port instr_rvalid: in Bool;
+  port instr_rdata: in UInt<32>;
+  port instr_err: in Bool;
+
+  // ── RAM write-back interface (R-FB-5b) ───────────────────────────
+  port wb_grant: in Bool;
+
+  // ── Output handshake (driven by outer module from out_arb winner) ─
+  /// Pulsed by outer module when this FB delivered both output beats.
+  port out_done_pulse: in Bool;
+
+  // ── Outputs ──────────────────────────────────────────────────────
+  port busy: out Bool;
+  port addr: out UInt<32>;
+  port wants_bus: out Bool;
+  port wants_wb: out Bool;
+  port wants_out: out Bool;
+  port out_data: out UInt<64>;
+  port hit_way: out UInt<1>;
+  port err: out Bool;
+  port alloc_flag: out Bool;
+  port beats_rcvd: out UInt<2>;
+  port beats_sent: out UInt<2>;
+  port stale: out Bool;
+
+  // ── Phase encoding (sole reg owned by the thread) ────────────────
+  /// 0=Idle, 1=Alloc (capture cycle), 2=Check (IC1 hit-check),
+  /// 3=Running (post-check: hit-output / fill-output / wb / drain).
+  reg phase_q: UInt<2> reset rst => 2'd0;
+
+  // ── Per-FB state regs (written by the seq blocks below) ──────────
+  reg busy_q:       Bool reset rst => false;
+  reg addr_q:       UInt<32> reset none;
+  reg alloc_q:      Bool reset rst => false;
+  reg stale_q:      Bool reset rst => false;
+  reg hit_q:        Bool reset rst => false;
+  reg hit_way_q:    UInt<1> reset rst => 1'd0;
+  reg err_q:        Bool reset rst => false;
+  reg data_q:       UInt<64> reset none;
+  reg beats_rcvd_q: UInt<2> reset rst => 2'd0;
+  reg beats_sent_q: UInt<2> reset rst => 2'd0;
+  reg out_done_q:   Bool reset rst => false;
+  reg wb_done_q:    Bool reset rst => false;
+
+  default seq on clk rising;
+
+  // ── Output combs ─────────────────────────────────────────────────
+  // Full beats per line (IC_LINE_BEATS=2).
+  let beats_total: UInt<2> = 2'd2;
+
+  comb
+    busy       = busy_q;
+    addr       = addr_q;
+    alloc_flag = alloc_q;
+    err        = err_q;
+    out_data   = data_q;
+    hit_way    = hit_way_q;
+    beats_rcvd = beats_rcvd_q;
+    beats_sent = beats_sent_q;
+    stale      = stale_q;
+
+    // R-FB-3: needs another bus beat? Only valid in PhRunning — earlier
+    // phases haven't done IC1 hit-check yet (`hit_q` is unknown), and
+    // the bus-side seq updates (`beats_sent_q` etc.) are gated on
+    // PhRunning so issuing a request before then would cause the gnt
+    // pulse to be ignored (R-FB-5 / R-EXT-4 release-never bug).
+    //
+    // R-LK-4 (branch-into-in-flight-line): when a stale FB is mid-fill,
+    // the OUTER's lookup re-uses the CAM coalesce; we MUST stop driving
+    // bus requests for this FB the cycle the branch arrives, otherwise
+    // the redundant `instr_req_o` bursts (R-LK-4 ≤1 redundant request)
+    // are visible. Dropping wants_bus on `stale_q` matches upstream's
+    // `fill_ext_done` short-circuit (`ibex_icache.sv:766-774`) for
+    // post-branch in-flight lines.
+    wants_bus = (phase_q == 2'd3) and (not hit_q)
+                and (beats_sent_q != beats_total)
+                and (not stale_q)
+                and (not err_q);
+
+    // R-FB-5b: wants RAM write-back when full line received, alloc
+    // is set, no error, not yet written back. Gated on PhRunning to
+    // align with the seq block that consumes wb_grant.
+    wants_wb = (phase_q == 2'd3) and alloc_q and (not err_q) and (not wb_done_q)
+               and (beats_rcvd_q == beats_total);
+
+    // R-OUT-1: at least one beat available + not stale + not done.
+    // Gated on PhRunning so the OUTER's out_arb doesn't see a hit-FB
+    // before its hit_q has been latched at the PhAlloc→PhCheck edge.
+    wants_out = (phase_q == 2'd3) and (not stale_q) and (not out_done_q)
+                and ( hit_q or (beats_rcvd_q != 2'd0) );
+  end comb
+
+  // ── Phase-aware lifecycle (single seq block) ─────────────────────
+  // Replacement for the prior `thread fill` + per-phase seq blocks.
+  //
+  // Why one block: the prior shape relied on the thread compiler firing
+  // the phase-transition seq assign on the SAME edge as the wait-state
+  // exit; the current emit defers it by one cycle, adding 2 dead
+  // cycles to the IC0→valid_o latency on a hit. R-OUT-7 needs
+  // valid_o no later than IC1+1 = 2 cycles after IC0 grant. Folding
+  // phase advancement into the same seq block as the per-phase side
+  // effects guarantees: phase_q transitions and the matching reg
+  // captures both fire on the SAME clock edge.
+  //
+  // Phase encoding:
+  //   0 = Idle       (waiting for `allocate`)
+  //   1 = Alloc      (one-cycle capture of alloc_addr / alloc_cache)
+  //   2 = Check      (one-cycle IC1 hit-check capture)
+  //   3 = Running    (bus drain / writeback / output drain)
+  //
+  // Multi-driver hygiene: every reg here is owned by this single seq
+  // block. The previous implementation split per-phase blocks (each
+  // an always_ff), which the simulator treats as multi-driver and
+  // resolves arbitrarily — the source of the IC1-hit data corruption
+  // observed in R-LK-2 / R-OUT-{1,2,4,7}.
+
+  let in_alloc:   Bool = phase_q == 2'd1;
+  let in_running: Bool = phase_q == 2'd3;
+
+  let releasing: Bool =
+    in_running and (beats_rcvd_q == beats_total) and wb_done_q and out_done_q;
+
+  seq on clk rising
+    // ── Phase 0 → 1: Idle → Alloc ────────────────────────────────
+    if (phase_q == 2'd0) and allocate
+      phase_q      <= 2'd1;
+      busy_q       <= true;
+      addr_q       <= alloc_addr;
+      alloc_q      <= alloc_cache;
+      stale_q      <= false;
+      hit_q        <= false;
+      err_q        <= false;
+      data_q       <= 64'd0;
+      beats_rcvd_q <= 2'd0;
+      beats_sent_q <= 2'd0;
+      out_done_q   <= false;
+      wb_done_q    <= false;
+    end if
+
+    // ── Phase 1 → 3: Alloc → Running (with same-edge IC1 capture) ──
+    // IC1 hit/data from the outer module are valid in this cycle
+    // (one cycle after IC0 grant ⇒ lookup_valid_ic1_q=1 cycle here).
+    // We collapse PhCheck into the same edge as the PhAlloc→PhRunning
+    // transition: capturing hit_q AT this edge means PhRunning starts
+    // with hit_q already valid, so wants_out can fire the very next
+    // cycle. R-OUT-7 needs valid_o ≤ IC1+1 = 2 cycles after IC0 grant
+    // — the minimum reachable without a combinational hit→valid_o
+    // shortcut. Phase code 2 (Check) is now unreachable; preserved as
+    // a comment in case a future ECC pipeline stage needs it.
+    if in_alloc
+      phase_q <= 2'd3;
+      if ic1_hit
+        hit_q        <= true;
+        data_q       <= ic1_hit_data;
+        hit_way_q    <= ic1_hit_way;
+        // hit ⇒ line already in cache, beats_rcvd snaps to total,
+        // wb_done snaps so no RAM write-back is requested.
+        beats_rcvd_q <= beats_total;
+        wb_done_q    <= true;
+      else
+        // Miss: capture victim_way for the eventual fill-write.
+        hit_way_q <= ic1_victim_way;
+      end if
+    end if
+
+    // ── Phase 3 (Running): bus / writeback / output drain ────────
+    if in_running
+      // R-FB-6 (S5): branch marks FB stale.
+      if branch
+        stale_q <= true;
+      end if
+
+      // R-INV-C / R-EN-3: pulse drops cache-allocate flag.
+      if inval_pulse or enable_drop
+        alloc_q <= false;
+      end if
+
+      // R-EXT-4: rvalid beat capture (outer-routed, gated to this FB).
+      if instr_rvalid
+        if beats_rcvd_q == 2'd0
+          data_q <= ({32'd0, instr_rdata}).resize<64>();
+        else
+          data_q <= ({instr_rdata, data_q[31:0]}).resize<64>();
+        end if
+        beats_rcvd_q <= (beats_rcvd_q + 2'd1).trunc<2>();
+        if instr_err
+          err_q <= true;
+        end if
+      end if
+
+      // R-EXT-2: bus request granted — bump beats_sent.
+      if bus_grant and instr_gnt
+        beats_sent_q <= (beats_sent_q + 2'd1).trunc<2>();
+      end if
+
+      // R-FB-5b: RAM write-back accepted — mark wb_done.
+      // Also: collapse on non-allocating (no write-back needed), error,
+      // or stale-non-allocating so the FB can release without ever
+      // writing back. Non-allocating FB happens when icache_enable_i=0
+      // (default) or the lookup raced with the cold-boot inval walk;
+      // both cases bypass the cache write but still drain bus beats to
+      // the IF stage. Without this case the FB hangs forever waiting
+      // for a wb_grant that the outer arbiter will never schedule.
+      if wb_grant or err_q or (not alloc_q)
+        wb_done_q <= true;
+      end if
+
+      // Output progress: outer pulses out_done_pulse when both beats
+      // delivered. Stale path also sets out_done so the FB can
+      // release even if beats never made it to IF.
+      if out_done_pulse or stale_q
+        out_done_q <= true;
+      end if
+
+      // ── Phase 3 → 0: Running → Idle (release) ───────────────────
+      // Same edge: clear lifecycle flags. `releasing` reads pre-edge
+      // values, so this fires on the cycle the release condition
+      // first becomes true.
+      if releasing
+        phase_q <= 2'd0;
+        busy_q  <= false;
+        alloc_q <= false;
+        stale_q <= false;
+        hit_q   <= false;
+        err_q   <= false;
+      end if
+    end if
+  end seq
+
+end module FillBufferCtrl

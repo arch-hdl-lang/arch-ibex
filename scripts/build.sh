@@ -93,6 +93,64 @@ _build_one() {
       ' "${sv_path}" > "${sv_path}.tmp" && mv "${sv_path}.tmp" "${sv_path}"
     fi
   fi
+
+  # Same pattern, but for top-level constructs (modules / fsms / arbiters
+  # / cams / threads-helper) that arch-com inlines into a consumer's .sv
+  # when the consumer `inst`s them. Each sibling `.archi` in src/
+  # corresponds to its own `.arch` source whose own `.sv` will be linked
+  # at SoC elaboration. The inlined copies in the consumer .sv produce
+  # MODDUP. Strip every inlined `module <X> ... endmodule` block whose
+  # name matches a sibling `<X>.archi` BUT NOT the consumer's own
+  # primary construct (the one named after the .arch stem). See D1 lesson
+  # (port-ibex_icache, where IbexIcache inst's 6 sibling constructs).
+  local sv_path="${BUILD_DIR}/${sv_stem}.sv"
+  if [[ -f "${sv_path}" ]]; then
+    # Build the strip set from sibling .archi names, excluding the
+    # consumer's own auto-emitted .archi.
+    local -a strip_names=()
+    shopt -s nullglob
+    # Build the strip set from sibling .archi names. Every .archi
+    # represents a module that's emitted as a separate .sv (either
+    # because it has its own .arch source, or because it's an
+    # auto-generated `_<owner>_threads` helper whose .sv is co-emitted
+    # by the owner's build). We exclude:
+    #   1. `IbexCoreSharedPkg` (handled by the package strip above).
+    #   2. The consumer's own primary archi, in CamelCase form
+    #      (`IbexTop`) or snake_case form (`ibex_top`).
+    #   3. The consumer's own `_<self>_threads.archi`, which lives
+    #      inlined inside the owner's .sv (no separate .sv emitted).
+    # Threads helper name follows the .arch source's `module <name>`
+    # decl, which may use either CamelCase (`FillBufferCtrl`) or
+    # snake_case (`ibex_multdiv_fast`). Exclude both forms.
+    local self_threads_camel="_${arch_stem}_threads"
+    local self_threads_snake="_${sv_stem}_threads"
+    for archi_path in "${SRC_DIR}"/*.archi; do
+      local archi_stem
+      archi_stem="$(basename "${archi_path}" .archi)"
+      if [[ "${archi_stem}" == "IbexCoreSharedPkg" ]]; then continue; fi
+      if [[ "${archi_stem}" == "${arch_stem}" ]]; then continue; fi
+      if [[ "${archi_stem}" == "${sv_stem}" ]]; then continue; fi
+      if [[ "${archi_stem}" == "${self_threads_camel}" ]]; then continue; fi
+      if [[ "${archi_stem}" == "${self_threads_snake}" ]]; then continue; fi
+      strip_names+=("${archi_stem}")
+    done
+    shopt -u nullglob
+
+    if [[ ${#strip_names[@]} -gt 0 ]]; then
+      # Pass the strip set to awk as a regex alternation matching the
+      # exact module-name token after `module ` (with optional `#(`
+      # parameter list or `(` port list).
+      local strip_alt
+      strip_alt="$(printf '%s|' "${strip_names[@]}" | sed 's/|$//')"
+      awk -v alt="${strip_alt}" '
+        BEGIN { in_mod = 0 }
+        # Match `module <NAME>` where NAME ∈ strip_alt, at column 0.
+        $0 ~ ("^module (" alt ")( |#|\\(|$)") { in_mod = 1; next }
+        in_mod && /^endmodule$/ { in_mod = 0; next }
+        !in_mod { print }
+      ' "${sv_path}" > "${sv_path}.tmp" && mv "${sv_path}.tmp" "${sv_path}"
+    fi
+  fi
 }
 
 # Topological build: composites can instantiate other composites

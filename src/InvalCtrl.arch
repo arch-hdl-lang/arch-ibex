@@ -1,0 +1,159 @@
+/// InvalCtrl — invalidation FSM for the icache (R-INV-1..7).
+///
+/// Sequences cache through cold-boot scramble-key handshake and
+/// post-pulse invalidation walks. Four states:
+///   StOutOfReset         = 0 — drive scr_key_req if key not valid
+///   StAwaitScrambleKey   = 1 — wait for ic_scr_key_valid_i
+///   StInvalCache         = 2 — walk all IC_NUM_LINES indices, write
+///                              tags with valid=0
+///   StIdle               = 3 — quiescent; a pulse on icache_inval_i
+///                              restarts the walk via AWAIT
+///
+/// Construct: `fsm` (per proposal). Walk counter `inval_index_q` is
+/// fsm-internal state. Outputs are state-dependent comb wires.
+///
+/// Spec: changes/2026-05-05-port-ibex_icache/specs/icache/spec.md
+///   §Requirement 1..7 (R-INV).
+
+domain SysDomain
+  freq_mhz: 100
+end domain SysDomain
+
+fsm InvalCtrl
+  // ── Clock + reset ─────────────────────────────────────────────────
+  port clk: in Clock<SysDomain>;
+  port rst: in Reset<Async, Low>;
+
+  // ── Scramble-key handshake (R-INV-3, R-INV-4, R-INV-6) ────────────
+  port ic_scr_key_valid_i: in Bool;
+
+  // ── External invalidation pulse (R-INV-6) ─────────────────────────
+  port icache_inval_i: in Bool;
+
+  // ── State export (consumed by IbexIcache for `inval_block_cache`,
+  //                  `busy_o`) ─────────────────────────────────────
+  /// Encoded 0=OUT_OF_RESET, 1=AWAIT_SCRAMBLE_KEY, 2=INVAL_CACHE, 3=IDLE.
+  port state_o: out UInt<2>;
+
+  // ── RAM-port arbiter request[0] driver (R-INV-5) ─────────────────
+  port inval_write_req: out Bool;
+  /// Index walked during INVAL_CACHE (0..IC_NUM_LINES-1=127).
+  port inval_walk_idx: out UInt<7>;
+
+  // ── Scramble-key request (R-INV-3, R-INV-6). Latched one cycle
+  //                          to keep glitches off the SoC port. ────
+  port scr_key_req: out Bool;
+
+  // ── Walk counter ─────────────────────────────────────────────────
+  /// Walk progresses 0..127 within StInvalCache. Resets to 0 on every
+  /// state entry that begins a new walk.
+  reg inval_index_q: UInt<7> reset rst => 7'd0;
+
+  /// Latched scramble-key request (R-INV-3, R-INV-6).
+  /// The comb scr_key_req_d is set in OUT_OF_RESET (when key not yet
+  /// valid) and on IDLE→AWAIT transition (icache_inval_i pulse).
+  reg scr_key_req_q: Bool reset rst => false;
+
+  // ── State declaration ─────────────────────────────────────────────
+  state [
+    StOutOfReset, StAwaitScrambleKey, StInvalCache, StIdle
+  ]
+  default state StOutOfReset;
+  default seq on clk rising;
+
+  // ── Default block ─────────────────────────────────────────────────
+  /// Defaults: hold counter, no inval-write, expose scr_key_req_q.
+  /// State bodies override `state` to its encoding and may set
+  /// inval_write_req / inval_walk_idx / scr_key_req_d.
+  default
+    comb
+      state_o         = 2'd0;        // overridden per state body
+      inval_write_req = false;
+      inval_walk_idx  = inval_index_q;
+      // scr_key_req surfaces the latched form so the SoC sees a glitch-
+      // free pulse synchronous to the FSM transition.
+      scr_key_req     = scr_key_req_q;
+    end comb
+    seq
+      // Default: latch 0 into scr_key_req_q so a missed assignment in a
+      // state body produces no spurious pulse next cycle. State bodies
+      // override.
+      scr_key_req_q <= false;
+      inval_index_q <= inval_index_q;
+    end seq
+  end default
+
+  // ── State: OUT_OF_RESET (R-INV-3) ────────────────────────────────
+  /// Drives scr_key_req if the key is not already valid.
+  /// Unconditionally transitions to AWAIT_SCRAMBLE_KEY.
+  state StOutOfReset
+    comb
+      state_o = 2'd0;
+    end comb
+    seq
+      // Latch a request when the key has not yet appeared.
+      if not ic_scr_key_valid_i
+        scr_key_req_q <= true;
+      end if
+      inval_index_q <= 7'd0;
+    end seq
+    -> StAwaitScrambleKey;
+  end state StOutOfReset
+
+  // ── State: AWAIT_SCRAMBLE_KEY (R-INV-4) ──────────────────────────
+  /// Holds until ic_scr_key_valid_i pulses.
+  state StAwaitScrambleKey
+    comb
+      state_o = 2'd1;
+    end comb
+    seq
+      // Walk counter held at 0 until INVAL_CACHE.
+      inval_index_q <= 7'd0;
+    end seq
+    -> StInvalCache when ic_scr_key_valid_i;
+  end state StAwaitScrambleKey
+
+  // ── State: INVAL_CACHE (R-INV-5, R-INV-6) ────────────────────────
+  /// Walks all IC_NUM_LINES indices issuing tag-write that clears the
+  /// valid bit. R-INV-6: a pulse on icache_inval_i mid-walk restarts
+  /// via AWAIT_SCRAMBLE_KEY.
+  state StInvalCache
+    comb
+      state_o         = 2'd2;
+      inval_write_req = true;
+      inval_walk_idx  = inval_index_q;
+    end comb
+    seq
+      // Advance walk counter when not restarting.
+      if not icache_inval_i
+        if inval_index_q != 7'd127
+          inval_index_q <= (inval_index_q + 7'd1).trunc<7>();
+        else
+          inval_index_q <= 7'd0;
+        end if
+      else
+        // Restart pending — counter resets on entry to AWAIT.
+        inval_index_q <= 7'd0;
+      end if
+    end seq
+    -> StAwaitScrambleKey when icache_inval_i;
+    -> StIdle when (not icache_inval_i) and (inval_index_q == 7'd127);
+  end state StInvalCache
+
+  // ── State: IDLE (R-INV-6) ────────────────────────────────────────
+  /// Quiescent. icache_inval_i pulse re-enters the handshake, raising
+  /// scr_key_req for the SoC.
+  state StIdle
+    comb
+      state_o = 2'd3;
+    end comb
+    seq
+      if icache_inval_i
+        scr_key_req_q <= true;
+        inval_index_q <= 7'd0;
+      end if
+    end seq
+    -> StAwaitScrambleKey when icache_inval_i;
+  end state StIdle
+
+end fsm InvalCtrl
