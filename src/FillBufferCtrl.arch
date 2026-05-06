@@ -73,7 +73,17 @@ module FillBufferCtrl
   port wants_out: out Bool;
   port out_data: out UInt<64>;
   port hit_way: out UInt<1>;
+  /// `err`: OR of all per-beat errors (any beat had a bus error).
+  /// Used by writeback-suppression and FB-release logic.
   port err: out Bool;
+  /// Per-beat error flags (R-OUT-5). `err_beat0` corresponds to the
+  /// FIRST bus rvalid (line beat 0 = bytes [0..3] of the 64-bit line).
+  /// `err_beat1` corresponds to the SECOND rvalid (line beat 1 =
+  /// bytes [4..7]). The icache output mux uses `err_beat1` AND
+  /// `addr_q[1]` to drive `err_plus2_o` per spec R-OUT-5 ("fault on
+  /// upper halfword of an unaligned 32-bit instruction").
+  port err_beat0: out Bool;
+  port err_beat1: out Bool;
   port alloc_flag: out Bool;
   port beats_rcvd: out UInt<2>;
   port beats_sent: out UInt<2>;
@@ -91,7 +101,12 @@ module FillBufferCtrl
   reg stale_q:      Bool reset rst => false;
   reg hit_q:        Bool reset rst => false;
   reg hit_way_q:    UInt<1> reset rst => 1'd0;
+  /// `err_beat_q`: per-beat error flags. `err_beat_q[0]` for line
+  /// beat 0 (bytes [0..3]); `err_beat_q[1]` for beat 1 (bytes
+  /// [4..7]). `err_q` is the OR (legacy / any-error consumers).
   reg err_q:        Bool reset rst => false;
+  reg err_beat0_q:  Bool reset rst => false;
+  reg err_beat1_q:  Bool reset rst => false;
   reg data_q:       UInt<64> reset none;
   reg beats_rcvd_q: UInt<2> reset rst => 2'd0;
   reg beats_sent_q: UInt<2> reset rst => 2'd0;
@@ -109,6 +124,8 @@ module FillBufferCtrl
     addr       = addr_q;
     alloc_flag = alloc_q;
     err        = err_q;
+    err_beat0  = err_beat0_q;
+    err_beat1  = err_beat1_q;
     out_data   = data_q;
     hit_way    = hit_way_q;
     beats_rcvd = beats_rcvd_q;
@@ -186,6 +203,8 @@ module FillBufferCtrl
       stale_q      <= false;
       hit_q        <= false;
       err_q        <= false;
+      err_beat0_q  <= false;
+      err_beat1_q  <= false;
       data_q       <= 64'd0;
       beats_rcvd_q <= 2'd0;
       beats_sent_q <= 2'd0;
@@ -239,8 +258,17 @@ module FillBufferCtrl
           data_q <= ({instr_rdata, data_q[31:0]}).resize<64>();
         end if
         beats_rcvd_q <= (beats_rcvd_q + 2'd1).trunc<2>();
+        // R-OUT-5: per-beat error capture.
+        // Bus master issues line beat 0 first (line_base), then beat 1
+        // (line_base + 4), so beats_rcvd_q at rvalid time is the line
+        // beat index of the arriving response.
         if instr_err
           err_q <= true;
+          if beats_rcvd_q == 2'd0
+            err_beat0_q <= true;
+          else
+            err_beat1_q <= true;
+          end if
         end if
       end if
 
@@ -279,6 +307,8 @@ module FillBufferCtrl
         stale_q <= false;
         hit_q   <= false;
         err_q   <= false;
+        err_beat0_q <= false;
+        err_beat1_q <= false;
       end if
     end if
   end seq

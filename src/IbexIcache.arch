@@ -520,6 +520,15 @@ module ibex_icache
   wire fb1_err:        Bool;
   wire fb2_err:        Bool;
   wire fb3_err:        Bool;
+  // R-OUT-5: per-beat error flags from each FB.
+  wire fb0_err_beat0:  Bool;
+  wire fb0_err_beat1:  Bool;
+  wire fb1_err_beat0:  Bool;
+  wire fb1_err_beat1:  Bool;
+  wire fb2_err_beat0:  Bool;
+  wire fb2_err_beat1:  Bool;
+  wire fb3_err_beat0:  Bool;
+  wire fb3_err_beat1:  Bool;
   wire fb0_alloc_flag: Bool;
   wire fb1_alloc_flag: Bool;
   wire fb2_alloc_flag: Bool;
@@ -721,6 +730,8 @@ module ibex_icache
     out_data        -> fb0_out_data;
     hit_way         -> fb0_hit_way;
     err             -> fb0_err;
+    err_beat0       -> fb0_err_beat0;
+    err_beat1       -> fb0_err_beat1;
     alloc_flag      -> fb0_alloc_flag;
     beats_rcvd      -> fb0_beats_rcvd;
     beats_sent      -> fb0_beats_sent;
@@ -755,6 +766,8 @@ module ibex_icache
     out_data        -> fb1_out_data;
     hit_way         -> fb1_hit_way;
     err             -> fb1_err;
+    err_beat0       -> fb1_err_beat0;
+    err_beat1       -> fb1_err_beat1;
     alloc_flag      -> fb1_alloc_flag;
     beats_rcvd      -> fb1_beats_rcvd;
     beats_sent      -> fb1_beats_sent;
@@ -789,6 +802,8 @@ module ibex_icache
     out_data        -> fb2_out_data;
     hit_way         -> fb2_hit_way;
     err             -> fb2_err;
+    err_beat0       -> fb2_err_beat0;
+    err_beat1       -> fb2_err_beat1;
     alloc_flag      -> fb2_alloc_flag;
     beats_rcvd      -> fb2_beats_rcvd;
     beats_sent      -> fb2_beats_sent;
@@ -823,6 +838,8 @@ module ibex_icache
     out_data        -> fb3_out_data;
     hit_way         -> fb3_hit_way;
     err             -> fb3_err;
+    err_beat0       -> fb3_err_beat0;
+    err_beat1       -> fb3_err_beat1;
     alloc_flag      -> fb3_alloc_flag;
     beats_rcvd      -> fb3_beats_rcvd;
     beats_sent      -> fb3_beats_sent;
@@ -864,6 +881,15 @@ module ibex_icache
     (out_grant_requester == 2'd0) ? fb0_err :
     ((out_grant_requester == 2'd1) ? fb1_err :
     ((out_grant_requester == 2'd2) ? fb2_err : fb3_err));
+  // R-OUT-5: per-beat error flags from the granted FB.
+  let fb_err_beat0_out_sel: Bool =
+    (out_grant_requester == 2'd0) ? fb0_err_beat0 :
+    ((out_grant_requester == 2'd1) ? fb1_err_beat0 :
+    ((out_grant_requester == 2'd2) ? fb2_err_beat0 : fb3_err_beat0));
+  let fb_err_beat1_out_sel: Bool =
+    (out_grant_requester == 2'd0) ? fb0_err_beat1 :
+    ((out_grant_requester == 2'd1) ? fb1_err_beat1 :
+    ((out_grant_requester == 2'd2) ? fb2_err_beat1 : fb3_err_beat1));
 
   // ── R-EXT-1..5: bus master ───────────────────────────────────────
   // Drive instr_req_o/instr_addr_o from the bus-arb winner. R-EXT-2
@@ -985,8 +1011,20 @@ module ibex_icache
       addr_out_q  <= (out_fb_addr & 32'hFFFF_FFF8)
                      | ({29'd0, out_beat_idx} << 2'd2)
                      | (out_fb_addr & 32'd2);
-      err_out_q   <= fb_err_out_sel;
-      err_plus2_q <= false;              // R-OUT-5 simplified
+      // R-OUT-5: err_o reflects the per-beat error of the line beat
+      // currently being delivered. err_plus2_o = 1 iff we're delivering
+      // the SECOND output beat (= line beat 1, bytes [4..7]) AND that
+      // beat had a bus error AND the FB started misaligned
+      // (alloc_addr[1]=1). The IF stage further qualifies with
+      // !is_compressed; the icache-level signal is the upstream-pin
+      // promise that the fault-bearing word IS the upper halfword of
+      // an unaligned access.
+      err_out_q   <= (out_beat_idx == 2'd0)
+                       ? fb_err_beat0_out_sel
+                       : fb_err_beat1_out_sel;
+      err_plus2_q <= (out_beat_idx == 2'd1)
+                       and fb_err_beat1_out_sel
+                       and out_fb_addr[1];
     end if
   end seq
 
