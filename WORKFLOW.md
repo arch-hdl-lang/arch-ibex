@@ -62,6 +62,20 @@ stage 3.
    considered." See
    [Proposal format](#proposal-format) for the canonical layout.
 
+   **Spec ambiguity resolutions** *(REQUIRED subsection when the spec
+   flags any ambiguity)* — for each item in the spec's
+   `## Spec ambiguities flagged` (or `spec-notes.md` from a prior
+   stage), the proposal MUST commit to one reading with rationale.
+   Test author and arch implementer cite the proposal's resolution,
+   not the spec's punt. Without this, tests get written under one
+   reading and the implementation under another — both spec-conformant
+   but incompatible. Methodology lesson from D1 IbexIcache:
+   spec ambiguity #3 (R-LK-4 strengthened-vs-permissive) was left
+   open in the spec; tests assumed strengthened, impl chose
+   permissive, the integration silently broke at SoC boot. The
+   ambiguity-resolution table makes both stages aim at the same
+   target.
+
 2. **Spec (isolated agent — SV-only)** — dispatch an `Agent` whose
    readable inputs are *only*:
    - `~/github/ibex/rtl/ibex_<module>.sv` plus any required package
@@ -105,6 +119,20 @@ stage 3.
      regression** suite, walking *every* `#### Scenario:` from the
      spec plus edge cases the test agent identifies (boundary widths,
      all-zero / all-one operands, parameter sweeps when feasible).
+     **MUST include "cross-scenario interaction" tests** — explicit
+     cocotb tests for combinations of two or more `#### Scenario:`
+     sections that overlap in time (e.g. branch-during-cold-boot,
+     lookup-during-fill-write, inval-during-output-drain). One
+     test per Scenario is insufficient; integration bugs hide in
+     the overlaps. Methodology lesson from D1 IbexIcache: the SoC
+     boot path exercises §S1 (cold-boot walk) ∩ §S2 (first-branch
+     miss-fill); no single-Scenario test caught the asymmetric
+     `lookup_grant` bug because the unit suite always
+     `_wait_until_idle()`'d before the first branch. A
+     `test_<module>_boot_during_cold_init` that mirrors the SoC's
+     reset → first-cycle branch → req sequence (no
+     `_wait_until_idle()`) is REQUIRED for any module the CPU
+     fetches through.
    - `tests/test_<module>_unit.py` and `tests/test_<module>_unit_full.py`
      — pytest collectors that build Verilator on `build/<module>.sv`
      and invoke the matching cocotb module.
@@ -159,13 +187,28 @@ stage 3.
 
     The reviewer reads the `.arch` and verifies, line by line, that
     every spec Requirement is covered AND no behavior outside the
-    spec was introduced. Returns:
+    spec was introduced. **AND** runs a **construct-compliance
+    audit**: for each construct pinned in the proposal's `##
+    Construct enumeration` table as **picked**, verify the `.arch`
+    actually instantiates / uses it. If a pinned construct was
+    silently substituted (e.g. reg-encoded SM in place of `fsm`,
+    inline Vec arrays in place of `thread`), the reviewer MUST flag
+    it as a *misinterpreted* issue with the proposal's choice as
+    the spec section reference. Methodology lesson from D1
+    IbexIcache: the implementer used a `UInt<2>` reg + comb
+    next-state SM instead of `fsm InvalCtrl`, and inline Vec arrays
+    instead of `thread fill` — both functionally equivalent SV but
+    silent proposal-deviations that defeated Phase D's
+    construct-exercise goal. The audit catches this before the
+    basic gate.
+
+    Returns:
     - **✅ spec compliant**, OR
     - **❌ issues found**: bullet list per issue, citing
       `spec.md §<Requirement>` AND `<Module>.arch:<line>`. Categories:
       *missing* (Requirement not implemented), *extra* (behavior the
       spec doesn't authorize), *misinterpreted* (Requirement covered
-      with wrong semantics).
+      with wrong semantics, OR pinned construct silently substituted).
 
     The reviewer MUST NOT modify the `.arch`. On `❌`, the
     orchestrator dispatches the implementer subagent again with the
@@ -377,6 +420,17 @@ construct from §8-§12 of the ARCH HDL spec. Status is one of
 (Adapt `picked` / `rejected` per swap. The point is to write down the
 dismissal, not to use these specific reasons.)
 
+## Spec ambiguity resolutions
+*(REQUIRED when the spec flags any item under `## Spec ambiguities
+flagged` or a prior stage produced `spec-notes.md`.)* For each
+ambiguity, commit to one reading with rationale. Test author and arch
+implementer cite this table, not the spec's punt.
+
+| Ambiguity (spec §) | Picked reading | Rationale |
+|---|---|---|
+| `R-LK-4` strengthened-vs-permissive | strengthened: same-line lookups MUST coalesce via FillBufferCam | Tests bind to the strict contract; `cam` is the construct exercise. |
+| ... | ... | ... |
+
 ## Approach
 What ARCH constructs / regs / wires the implementer is expected to
 use. Tentative — the implementer agent has the final call.
@@ -401,6 +455,15 @@ gets one or more Given/When/Then scenarios. Cite upstream
 `ibex_<module>.sv:LINE` as the bit-true reference inside scenario notes
 where it disambiguates. The spec agent is the only stage that may cite
 SV lines — `.arch` doc comments cite spec sections instead (see below).
+
+When the spec lists items under `## Spec ambiguities flagged`, each
+SHOULD include a `> Resolution: <picked reading or "punt to
+proposal">` line so downstream stages cannot accidentally pick
+opposite readings. If the spec agent cannot resolve, the proposal MUST
+(see step 1's "Spec ambiguity resolutions" subsection). Methodology
+lesson from D1 IbexIcache: punting an ambiguity all the way to the
+implementer leaves the test author working under a different reading;
+both stages produce locally-consistent output that fails to compose.
 
 ```markdown
 # <Module> Specification
