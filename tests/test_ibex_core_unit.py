@@ -59,6 +59,14 @@ PREFETCH_BUFFER_SV    = BUILD_DIR / "ibex_prefetch_buffer.sv"
 FETCH_FIFO_SV         = BUILD_DIR / "ibex_fetch_fifo.sv"
 COMPRESSED_DECODER_SV = BUILD_DIR / "ibex_compressed_decoder.sv"
 COUNTER_SV            = BUILD_DIR / "ibex_counter.sv"
+# D1: IbexIfStage now `inst`s `ibex_icache` (replacing the prefetch
+# buffer); link the icache SV plus its 5 sub-construct SVs.
+ICACHE_SV             = BUILD_DIR / "ibex_icache.sv"
+FB_AGE_ARB_SV         = BUILD_DIR / "fb_age_arb.sv"
+RAM_PORT_ARB_SV       = BUILD_DIR / "ram_port_arb.sv"
+FILL_BUFFER_CAM_SV    = BUILD_DIR / "fill_buffer_cam.sv"
+FILL_BUFFER_CTRL_SV   = BUILD_DIR / "fill_buffer_ctrl.sv"
+INVAL_CTRL_SV         = BUILD_DIR / "inval_ctrl.sv"
 
 # ── Upstream-SV dependencies for `ibex_cs_registers` (kept upstream-SV
 # per spec note N-2). The CSR file imports `ibex_pkg::*` and
@@ -89,6 +97,14 @@ ARCH_SV_FILES = [
     FETCH_FIFO_SV,
     PREFETCH_BUFFER_SV,
     COMPRESSED_DECODER_SV,
+    # IF stage also instantiates `ibex_icache` (D1, ICache=1 path);
+    # the icache itself depends on 5 sub-construct .sv files.
+    FB_AGE_ARB_SV,
+    RAM_PORT_ARB_SV,
+    FILL_BUFFER_CAM_SV,
+    FILL_BUFFER_CTRL_SV,
+    INVAL_CTRL_SV,
+    ICACHE_SV,
     # Stages.
     ID_STAGE_SV,
     EX_BLOCK_SV,

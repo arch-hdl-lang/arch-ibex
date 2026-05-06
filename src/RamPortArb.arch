@@ -1,0 +1,23 @@
+/// RamPortArb — RAM-port priority arbiter (R-ARB-1..4).
+///
+/// Three requesters under ICacheECC=0:
+///   request[0] = invalidate-write (highest)
+///   request[1] = fill-write
+///   request[2] = lookup-read
+
+domain SysDomain
+  freq_mhz: 100
+end domain SysDomain
+
+arbiter RamPortArb
+  policy priority;
+  param NUM_REQ: const = 3;
+  port clk: in Clock<SysDomain>;
+  port rst: in Reset<Async, Low>;
+  ports[NUM_REQ] request
+    valid: in Bool;
+    ready: out Bool;
+  end ports request
+  port grant_valid: out Bool;
+  port grant_requester: out UInt<2>;
+end arbiter RamPortArb

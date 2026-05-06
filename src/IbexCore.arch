@@ -92,11 +92,18 @@ module ibex_core
   /// Bus / I-cache widths: forwarded to IF stage.  Under MemECC=0
   /// MemDataWidth = 32; BUS_SIZE = 32.
   param BusSizeECC: const = 32;
-  param TagSizeECC: const = 29;
-  param LineSizeECC: const = 72;
+  /// `TagSizeECC` / `LineSizeECC` / `IC_INDEX_W` derive from
+  /// `ICacheECC=0` ∧ the ARCH IbexIcache pinning of
+  /// `IC_NUM_LINES=128 / IC_LINE_SIZE=64`:
+  ///   IC_INDEX_W  = $clog2(IC_NUM_LINES) = 7
+  ///   IC_TAG_SIZE = ADDR_W - IC_INDEX_W - IC_LINE_W + 1 = 22
+  ///   LineSizeECC = BUS_SIZE * IC_LINE_BEATS = 32 * 2 = 64
+  /// (D1: defaults aligned to icache hardcoded port widths.)
+  param TagSizeECC: const = 22;
+  param LineSizeECC: const = 64;
   param MemDataWidth: const = 32;
   param IC_NUM_WAYS: const = 2;
-  param IC_INDEX_W: const = 8;
+  param IC_INDEX_W: const = 7;
   param ICacheECC[0:0]: const = 1'd0;
   param ICacheTweakInfection[0:0]: const = 1'd0;
   param PCIncrCheck[0:0]: const = 1'd0;
@@ -494,7 +501,7 @@ module ibex_core
   // ── Sub-module: IF stage (spec R3) ───────────────────────────────────
   /// Per spec §"Sub-module instances §if_stage_i".
   inst if_stage_i: ibex_if_stage
-    param ICache             = 1'd0;
+    param ICache             = ICache;
     param BranchPredictor    = 1'd0;
     param DummyInstructions  = 1'd0;
     param MemECC             = 1'd0;

@@ -62,6 +62,13 @@ FETCH_FIFO_SV         = BUILD_DIR / "ibex_fetch_fifo.sv"
 COMPRESSED_DECODER_SV = BUILD_DIR / "ibex_compressed_decoder.sv"
 COUNTER_SV            = BUILD_DIR / "ibex_counter.sv"
 REGISTER_FILE_FF_SV   = BUILD_DIR / "ibex_register_file_ff.sv"
+# D1: ICache=1 path — icache + sub-constructs + 4× prim_ram_1p banks.
+ICACHE_SV             = BUILD_DIR / "ibex_icache.sv"
+FB_AGE_ARB_SV         = BUILD_DIR / "fb_age_arb.sv"
+RAM_PORT_ARB_SV       = BUILD_DIR / "ram_port_arb.sv"
+FILL_BUFFER_CAM_SV    = BUILD_DIR / "fill_buffer_cam.sv"
+FILL_BUFFER_CTRL_SV   = BUILD_DIR / "fill_buffer_ctrl.sv"
+INVAL_CTRL_SV         = BUILD_DIR / "inval_ctrl.sv"
 
 # ── Upstream-SV dependencies. Order matters:
 #   - ibex_pkg.sv first (defines enums consumed by IbexCore native
@@ -77,6 +84,9 @@ IBEX_CSR_SV       = IBEX_ROOT / "rtl" / "ibex_csr.sv"
 PRIM_PKG_SV       = IBEX_ROOT / "vendor" / "lowrisc_ip" / "ip" / "prim_generic" / "rtl" / "prim_pkg.sv"
 PRIM_BUF_SV       = IBEX_ROOT / "vendor" / "lowrisc_ip" / "ip" / "prim_generic" / "rtl" / "prim_buf.sv"
 PRIM_CLOCK_GATING = IBEX_ROOT / "vendor" / "lowrisc_ip" / "ip" / "prim_generic" / "rtl" / "prim_clock_gating.sv"
+# D1: IbexTop instantiates 4× upstream `prim_ram_1p` (gen_noscramble_rams).
+PRIM_RAM_1P_PKG_SV = IBEX_ROOT / "vendor" / "lowrisc_ip" / "ip" / "prim_generic" / "rtl" / "prim_ram_1p_pkg.sv"
+PRIM_RAM_1P_SV     = IBEX_ROOT / "vendor" / "lowrisc_ip" / "ip" / "prim_generic" / "rtl" / "prim_ram_1p.sv"
 
 
 # ── ARCH swap files in link order: package(s) first, then leaves
@@ -95,6 +105,13 @@ ARCH_SV_FILES = [
     FETCH_FIFO_SV,
     PREFETCH_BUFFER_SV,
     COMPRESSED_DECODER_SV,
+    # D1: icache + sub-constructs (linked into IfStage when ICache=1).
+    FB_AGE_ARB_SV,
+    RAM_PORT_ARB_SV,
+    FILL_BUFFER_CAM_SV,
+    FILL_BUFFER_CTRL_SV,
+    INVAL_CTRL_SV,
+    ICACHE_SV,
     # Stages.
     ID_STAGE_SV,
     EX_BLOCK_SV,
@@ -115,8 +132,13 @@ ARCH_SV_FILES = [
 UPSTREAM_SV_FILES = [
     IBEX_PKG_SV,
     PRIM_PKG_SV,
+    # D1: prim_ram_1p_pkg defines `ram_1p_cfg_t` / `ram_1p_cfg_rsp_t`
+    # consumed by `prim_ram_1p`'s port types (and by the SoC binding
+    # `prim_ram_1p_pkg::RAM_1P_CFG_DEFAULT`).
+    PRIM_RAM_1P_PKG_SV,
     PRIM_BUF_SV,
     PRIM_CLOCK_GATING,
+    PRIM_RAM_1P_SV,
     IBEX_CSR_SV,
     CS_REGISTERS_SV,
 ]

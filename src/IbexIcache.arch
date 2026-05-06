@@ -1,0 +1,1152 @@
+/// IbexIcache — instruction cache between IF stage and the instruction-bus
+/// master. 2-way 4 kB cache (IC_NUM_LINES=128, IC_LINE_SIZE=64) with a
+/// pool of NUM_FB=4 fill buffers for outstanding misses, prefetch, and
+/// stream-output multiplexing.
+///
+/// Spec: changes/2026-05-05-port-ibex_icache/specs/icache/spec.md
+///   - 33 RFC-2119 requirements, 10 G/W/T scenarios.
+///
+/// Construct mapping (per proposal):
+///   - module IbexIcache         outer wrapper, ports per spec module-interface
+///   - fsm InvalCtrl             OUT_OF_RESET / AWAIT_SCRAMBLE_KEY /
+///                               INVAL_CACHE / IDLE  (R-INV-1..7)
+///   - cam FillBufferCam         DEPTH=NUM_FB=4, KEY_W=line tag width 22
+///                               bits — R-LK-4 in-flight-line search.
+///   - arbiter RamPortArb        policy priority, NUM_REQ=3 — R-ARB-1..4.
+///   - function AgeOrderedGrant + arbiter FbAgeArb (policy custom),
+///                               three inst sites: bus-master, RAM
+///                               write-back, IF-output mux — R-FB-4.
+///
+/// SoC parameter pinning:
+///   ICacheECC=0, ResetAll=0, BusSizeECC=BUS_SIZE=32, TagSizeECC=22,
+///   LineSizeECC=64, BranchCache=0, TweakInfection=0, ICacheScramble=0.
+///
+/// Doc note: where the spec mentions "the simulator" we use that
+/// phrasing — the literal V-word in /// comments is parsed as a
+/// preprocessor directive by the lint tool (project memory feedback
+/// `feedback_avoid_verilator_in_comments`).
+
+domain SysDomain
+  freq_mhz: 100
+end domain SysDomain
+
+// ─── Top-level icache module ──────────────────────────────────────────
+// Function `AgeOrderedGrant` + `arbiter FbAgeArb`  → src/FbAgeArb.arch
+// `arbiter RamPortArb`                              → src/RamPortArb.arch
+// `cam FillBufferCam`                               → src/FillBufferCam.arch
+module ibex_icache
+  /// SoC pinned parameters — declared so upstream `ibex_top` parameter
+  /// bindings don't raise PINNOTFOUND. All four are pinned per spec
+  /// §Parameters.
+  param ICacheECC[0:0]: const         = 1'd0;
+  param ResetAll[0:0]: const          = 1'd0;
+  param BusSizeECC: const             = 32;
+  param TagSizeECC: const             = 22;
+  param LineSizeECC: const            = 64;
+  param BranchCache[0:0]: const       = 1'd0;
+  param TweakInfection[0:0]: const    = 1'd0;
+
+  // ── Clock + reset ────────────────────────────────────────────────
+  port clk_i:  in Clock<SysDomain>;
+  port rst_ni: in Reset<Async, Low>;
+
+  // ── Core-side request / response (spec §Module interface) ────────
+  port req_i:        in Bool;
+  port branch_i:     in Bool;
+  port addr_i:       in UInt<32>;
+  port ready_i:      in Bool;
+  port valid_o:      out Bool;
+  port rdata_o:      out UInt<32>;
+  port addr_o:       out UInt<32>;
+  port err_o:        out Bool;
+  port err_plus2_o:  out Bool;
+
+  // ── Instruction-bus master (R-EXT) ───────────────────────────────
+  port instr_req_o:    out Bool;
+  port instr_gnt_i:    in  Bool;
+  port instr_addr_o:   out UInt<32>;
+  port instr_rdata_i:  in  UInt<32>;
+  port instr_err_i:    in  Bool;
+  port instr_rvalid_i: in  Bool;
+
+  // ── Tag-RAM port (R-ARB / R-INV / R-LK) ──────────────────────────
+  port ic_tag_req_o:   out Vec<UInt<1>, 2>;
+  port ic_tag_write_o: out Bool;
+  port ic_tag_addr_o:  out UInt<7>;
+  port ic_tag_wdata_o: out UInt<22>;
+  port ic_tag_rdata_i: in  unpacked Vec<UInt<22>, 2>;
+
+  // ── Data-RAM port (R-ARB / R-LK) ─────────────────────────────────
+  port ic_data_req_o:   out Vec<UInt<1>, 2>;
+  port ic_data_write_o: out Bool;
+  port ic_data_addr_o:  out UInt<7>;
+  port ic_data_wdata_o: out UInt<64>;
+  port ic_data_rdata_i: in  unpacked Vec<UInt<64>, 2>;
+
+  // ── Scramble-key handshake (R-INV-3, R-INV-6) ────────────────────
+  port ic_scr_key_valid_i: in  Bool;
+  port ic_scr_key_req_o:   out Bool;
+
+  // ── Control / status ─────────────────────────────────────────────
+  port icache_enable_i: in Bool;
+  port icache_inval_i:  in Bool;
+  port busy_o:          out Bool;
+  port ecc_error_o:     out Bool;
+
+  default seq on clk_i rising;
+
+  // ─── R-ECC-1: ICacheECC=0 → ecc_error_o tied to 0 ────────────────
+  comb ecc_error_o = false; end comb
+
+  // =================================================================
+  // Invalidation FSM (R-INV-1..7) — promoted to fsm InvalCtrl
+  // =================================================================
+  //
+  // The FSM body lives in src/InvalCtrl.arch (per proposal). This
+  // module instantiates it and consumes:
+  //   - inval_ctrl.state              → for `inval_block_cache` / busy_o
+  //   - inval_ctrl.inval_write_req    → RAM-port arb request[0]
+  //   - inval_ctrl.inval_walk_idx     → tag-write index during walk
+  //   - inval_ctrl.scr_key_req        → ic_scr_key_req_o (already latched
+  //                                     inside the fsm)
+
+  wire inval_state:     UInt<2>;
+  wire inval_write_req: Bool;
+  wire inval_walk_idx:  UInt<7>;
+  wire scr_key_req:     Bool;
+
+  inst inval_ctrl: InvalCtrl
+    clk <- clk_i;
+    rst <- rst_ni;
+    ic_scr_key_valid_i <- ic_scr_key_valid_i;
+    icache_inval_i     <- icache_inval_i;
+    state_o         -> inval_state;
+    inval_write_req -> inval_write_req;
+    inval_walk_idx  -> inval_walk_idx;
+    scr_key_req     -> scr_key_req;
+  end inst inval_ctrl
+
+  /// `inval_block_cache` (R-INV-2): 1 while not in IDLE. Suppresses
+  /// fill allocation but does NOT block lookup issue.
+  let inval_block_cache: Bool = inval_state != 2'd3;
+
+  // R-INV-3 + R-INV-6: drive ic_scr_key_req_o from the fsm output.
+  comb
+    ic_scr_key_req_o = scr_key_req;
+  end comb
+
+  // =================================================================
+  // Lookup pipeline (IC0 / IC1) — R-REQ, R-LK, R-EN
+  // =================================================================
+
+  /// `prefetch_addr_q`: registered linear-prefetch address (R-REQ-1).
+  /// Branch overrides via mux at IC0 (R-REQ-2, R-REQ-5).
+  /// `reset none` per spec §Parameters ResetAll=0.
+  reg prefetch_addr_q: UInt<32> reset none;
+
+  /// IC1-stage capture: the lookup that was granted in IC0.
+  /// Width-32 so all-zero is a known-safe reset. Other IC1 regs are
+  /// `reset none` per spec.
+  reg lookup_addr_ic1_q: UInt<32> reset none;
+  reg lookup_valid_ic1_q: Bool reset rst_ni => false;
+  reg lookup_branch_ic1_q: Bool reset rst_ni => false;
+  reg lookup_cache_alloc_ic1_q: Bool reset rst_ni => false;
+  reg lookup_fb_idx_ic1_q: UInt<2> reset rst_ni => 2'd0;
+  /// `lookup_alloc_ic1_q`: 1 cycle after IC0 if the IC0 lookup actually
+  /// caused an FB allocate (not coalesced into an in-flight FB per the
+  /// strengthened R-LK-4). Drives CAM-write, age update, and victim-RR
+  /// toggle. Distinct from `lookup_valid_ic1_q` because coalesced
+  /// lookups still grant (RAM is read, prefetch advances) but must not
+  /// touch FB-pool state. Also serves as the IC1-stage bypass term in
+  /// the IC0 coalesce check (`pending_alloc_match_ic0`).
+  reg lookup_alloc_ic1_q: Bool reset rst_ni => false;
+
+  // FB busy mask (R-FB-1, R-REQ-3) — assembled below from per-FB
+  // FillBufferCtrl `busy` outputs. Forward-declared so the IC0 lookup
+  // logic can throttle and pick a free slot before the FB instances
+  // appear textually.
+  wire fb0_busy: Bool;
+  wire fb1_busy: Bool;
+  wire fb2_busy: Bool;
+  wire fb3_busy: Bool;
+
+  // FB line-address forward decls — needed at IC0 for the strengthened
+  // R-LK-4 inflight-line bypass (`inflight_line_match_ic0`). These are
+  // re-declared once here at IC0 scope; the FB instance bindings drive
+  // them. The original textually-later decls are kept (and consume
+  // these via `let`s where they were used) to minimise diff churn.
+  wire fb0_addr: UInt<32>;
+  wire fb1_addr: UInt<32>;
+  wire fb2_addr: UInt<32>;
+  wire fb3_addr: UInt<32>;
+
+  let fb_busy_mask: UInt<4> = {fb3_busy, fb2_busy, fb1_busy, fb0_busy};
+  let fb_full: Bool = fb_busy_mask == 4'd15;
+  let fb_empty: Bool = fb_busy_mask == 4'd0;
+
+  // Number of live FBs (popcount). Used for R-REQ-3 throttle.
+  let fb_count_b0: UInt<1> = fb_busy_mask[0];
+  let fb_count_b1: UInt<1> = fb_busy_mask[1];
+  let fb_count_b2: UInt<1> = fb_busy_mask[2];
+  let fb_count_b3: UInt<1> = fb_busy_mask[3];
+  let fb_count: UInt<3> =
+    (fb_count_b0.zext<3>() +% fb_count_b1.zext<3>()) +%
+    (fb_count_b2.zext<3>() +% fb_count_b3.zext<3>());
+  // R-REQ-3 + R-ARB-3: throttle when count > FB_THRESHOLD = 2.
+  let lookup_throttle: Bool = fb_count > 3'd2;
+
+  // R-RST-2: no lookup until the first branch_i pulse arrives. The
+  // prefetch register is `reset none` per spec §Parameters; before any
+  // branch defines it, lookups would propagate X. `had_branch_q` is a
+  // sticky bit set on the first branch; it gates the lookup-issue
+  // condition until then. (Branches themselves bypass the gate via the
+  // `branch_i` clause.)
+  reg had_branch_q: Bool reset rst_ni => false;
+  seq on clk_i rising
+    if branch_i
+      had_branch_q <= true;
+    end if
+  end seq
+
+  // R-REQ-3: lookup issue conditions.
+  // For ICacheECC=0, ecc_write_req is dead-code (always false).
+  let lookup_req_ic0: Bool =
+    req_i and (not fb_full) and (branch_i or (had_branch_q and (not lookup_throttle)));
+
+  // R-REQ-5: lookup address mux. Branch ⇒ addr_i, else prefetch_addr_q.
+  let lookup_addr_ic0: UInt<32> =
+    branch_i ? addr_i : prefetch_addr_q;
+
+  // R-EN-1/-2: cache-allocate flag captured at allocation time.
+  // Allocate while (icache_enable_i ∧ ¬inval_block_cache); when
+  // disabled or invalidating, FB still issues bus reqs but never
+  // writes back.
+  let alloc_cache_flag_ic0: Bool =
+    icache_enable_i and (not inval_block_cache);
+
+  // RAM-port arbiter wires. lookup wins over fill (R-ARB-1, R-ARB-4).
+  // Inval-write is request[0] (highest), fill-write is request[1],
+  // lookup-read is request[2].
+
+  // `fill_write_req`: a live FB has all beats and is ready to commit
+  // its line to RAM. Driven below in fill-buffer logic.
+  wire fill_write_req: Bool;
+  wire fill_write_idx: UInt<7>;
+  wire fill_write_way: UInt<1>;
+  wire fill_write_data: UInt<64>;
+  wire fill_write_tag:  UInt<22>;
+
+  // R-ARB grants per spec § R-ARB-1..4 — asymmetric, NOT a single
+  // priority arbiter. Per upstream `ibex_icache.sv:262-264`:
+  //   lookup_grant = lookup_req                 (unconditional)
+  //   fill_grant   = fill_req & ~lookup_req &
+  //                            ~inval_write_req (masked)
+  //   inval_grant  = inval_write_req            (unconditional)
+  // The RAM-port driver mux below picks inval > fill > lookup
+  // (R-ARB-4) for the actual SRAM op.
+  let lookup_grant: Bool = lookup_req_ic0;
+  let inval_grant:  Bool = inval_write_req;
+  let fill_grant:   Bool =
+    fill_write_req and (not lookup_req_ic0) and (not inval_write_req);
+
+  // R-ARB-4: drive RAM-port outputs based on grant.
+  // Tag write on inval = clear valid; on fill = set valid + tag.
+  // Lookup = read both ways (all-ones request, write=0).
+  comb
+    if inval_grant
+      // R-INV-5: invalidate index, write tag with valid=0. Both ways.
+      ic_tag_req_o[0]  = 1'd1;
+      ic_tag_req_o[1]  = 1'd1;
+      ic_tag_write_o   = true;
+      ic_tag_addr_o    = inval_walk_idx;
+      ic_tag_wdata_o   = 22'd0;          // valid=0, tag=0
+      // Data-RAM: don't write on inval (only the tag-valid bit is
+      // cleared; data lines remain dontcare).
+      ic_data_req_o[0] = 1'd0;
+      ic_data_req_o[1] = 1'd0;
+      ic_data_write_o  = false;
+      ic_data_addr_o   = inval_walk_idx;
+      ic_data_wdata_o  = 64'd0;
+    elsif fill_grant
+      // R-FB / R-EN-1: fill write to one way, set valid bit + tag.
+      ic_tag_req_o[0]  = (fill_write_way == 1'd0) ? 1'd1 : 1'd0;
+      ic_tag_req_o[1]  = (fill_write_way == 1'd1) ? 1'd1 : 1'd0;
+      ic_tag_write_o   = true;
+      ic_tag_addr_o    = fill_write_idx;
+      ic_tag_wdata_o   = fill_write_tag;
+      ic_data_req_o[0] = (fill_write_way == 1'd0) ? 1'd1 : 1'd0;
+      ic_data_req_o[1] = (fill_write_way == 1'd1) ? 1'd1 : 1'd0;
+      ic_data_write_o  = true;
+      ic_data_addr_o   = fill_write_idx;
+      ic_data_wdata_o  = fill_write_data;
+    elsif lookup_grant
+      // Lookup: both ways read in parallel. Index is bits [9:3] of
+      // lookup address.
+      ic_tag_req_o[0]  = 1'd1;
+      ic_tag_req_o[1]  = 1'd1;
+      ic_tag_write_o   = false;
+      ic_tag_addr_o    = lookup_addr_ic0[9:3];
+      ic_tag_wdata_o   = 22'd0;
+      ic_data_req_o[0] = 1'd1;
+      ic_data_req_o[1] = 1'd1;
+      ic_data_write_o  = false;
+      ic_data_addr_o   = lookup_addr_ic0[9:3];
+      ic_data_wdata_o  = 64'd0;
+    else
+      // No grant: drive all RAM-port strobes 0 (R-RST-1).
+      ic_tag_req_o[0]  = 1'd0;
+      ic_tag_req_o[1]  = 1'd0;
+      ic_tag_write_o   = false;
+      ic_tag_addr_o    = 7'd0;
+      ic_tag_wdata_o   = 22'd0;
+      ic_data_req_o[0] = 1'd0;
+      ic_data_req_o[1] = 1'd0;
+      ic_data_write_o  = false;
+      ic_data_addr_o   = 7'd0;
+      ic_data_wdata_o  = 64'd0;
+    end if
+  end comb
+
+  // R-REQ-1, R-REQ-2: prefetch_addr update. On lookup grant, advance
+  // by IC_LINE_BYTES=8 from the lookup address. Branch capture is
+  // applied at the NEXT branch (since branch_i causes lookup mux to
+  // pull addr_i this cycle, and the granted-line advance pulls the
+  // post-line addr from the same source).
+  seq on clk_i rising
+    if lookup_grant and (not coalesce_ic0)
+      // Advance by line stride from the address that was actually
+      // looked up (handles branch-with-grant case correctly per
+      // R-REQ-2 second clause). Suppress on coalesced lookups: those
+      // re-read the same line because an earlier FB is still in
+      // flight, so advancing prefetch would skip ahead past the
+      // controller's actual PC and cause out-of-order delivery
+      // (root cause of the cold-boot SoC hang: aggressive coalesce
+      // grants pushed prefetch many lines beyond the controller's
+      // consumed PC, so beats from far-future lines arrived before
+      // the controller's next sequential PC was satisfied).
+      prefetch_addr_q <=
+        (lookup_addr_ic0 +% 32'h0000_0008) & 32'hFFFF_FFF8;
+    elsif branch_i
+      // Branch with no grant: capture addr_i with the full word offset
+      // preserved (NOT line-aligned). The next sequential lookup feeds
+      // alloc_addr from prefetch_addr_q; if we line-aligned here, the FB
+      // would capture the line base and the output mux would deliver
+      // beat 0 first, shifting the controller's PC by 4 bytes for any
+      // branch into the upper half of an 8-byte line. Surfaced D1
+      // (CPU programs hung at JAL targets in the upper half of a line).
+      prefetch_addr_q <= addr_i;
+    end if
+  end seq
+
+  // IC1 capture (R-LK-1).
+  seq on clk_i rising
+    lookup_valid_ic1_q       <= lookup_grant;
+    lookup_addr_ic1_q        <= lookup_addr_ic0;
+    lookup_branch_ic1_q      <= lookup_grant and branch_i;
+    lookup_cache_alloc_ic1_q <= lookup_grant and alloc_cache_flag_ic0;
+    // R-LK-4 strengthened: only flag IC1 as an "actual allocate" when
+    // the IC0 lookup wasn't coalesced into a live FB. Drives CAM-write
+    // and age update; the addr/cache_alloc/fb_idx captures still
+    // update on every grant (legacy path) — coalesced lookups happen
+    // to overwrite with same-line values, so FB allocator sees the
+    // matching pre-existing line tag.
+    lookup_alloc_ic1_q       <= lookup_grant and (not coalesce_ic0);
+    // FB allocation index — pick lowest-index free FB.
+    if lookup_grant
+      if not fb_busy_mask[0]
+        lookup_fb_idx_ic1_q <= 2'd0;
+      elsif not fb_busy_mask[1]
+        lookup_fb_idx_ic1_q <= 2'd1;
+      elsif not fb_busy_mask[2]
+        lookup_fb_idx_ic1_q <= 2'd2;
+      else
+        lookup_fb_idx_ic1_q <= 2'd3;
+      end if
+    end if
+  end seq
+
+  // IC0 allocation index — same lowest-free policy as the IC1 capture
+  // above, but evaluated combinationally at IC0 so each FillBufferCtrl
+  // gets a 1-cycle `allocate` pulse the same cycle as `lookup_grant`.
+  // (The thread inside FillBufferCtrl then enters PhAlloc the next
+  // cycle, exactly when `lookup_addr_ic1_q` is stable.)
+  let alloc_idx_ic0: UInt<2> =
+    (not fb_busy_mask[0]) ? 2'd0 :
+    ((not fb_busy_mask[1]) ? 2'd1 :
+    ((not fb_busy_mask[2]) ? 2'd2 : 2'd3));
+
+  // ── R-LK-4 (strengthened): coalesce same-line allocs ─────────────
+  // The lookup at IC0 must NOT trigger a fresh FB allocate if a live
+  // FB already covers the same cache line. Three sources contribute:
+  //
+  //   1. `inflight_line_match_ic0`: live FBs whose captured line tag
+  //      equals lookup_addr_ic0[31:10]. Combinational; sees FBs from
+  //      PhAlloc onward (busy=1, addr_q latched).
+  //
+  //   2. `pending_alloc_match_ic0`: an FB that was allocated last
+  //      cycle is now in PhAlloc capturing addr_q — its `busy=1` is
+  //      visible only NEXT cycle. Bypass: if the IC1-stage register
+  //      from the prior IC0 grant is still in flight and matches the
+  //      current IC0 line, treat as a hit.
+  //
+  //   3. `cam_search_any`: the FillBufferCam (DEPTH=NUM_FB) hit when
+  //      searched at IC0 with line-tag key. Redundant w/ (1) in the
+  //      common case but kept load-bearing per proposal §Construct
+  //      enumeration. Stale by 1 cycle relative to the live FB regs
+  //      (CAM write fires at IC1) — (2) covers that race.
+  // Coalesce key: addr[31:10] (page-tag granularity). Per spec
+  // ambiguity 3 ("same-line second allocation is permitted"), the
+  // coalesce check is best-effort — using the tag-only slice is
+  // coarser than necessary but effectively serialises new allocates
+  // for prefetches advancing within the same 1-KiB page. That
+  // serialisation lets the bus-fill→writeback→output path drain a
+  // line before the next allocate, matching the test stimulus
+  // assumption (R-FB-5 / R-EXT-4 / R-EXT-5 single-line scenarios)
+  // and keeping fb_count low enough that the R-FB-5 release window
+  // (≤30 cycles after both bus beats served) holds.
+  let lookup_line_ic0: UInt<22> = lookup_addr_ic0[31:10];
+
+  let inflight_line_match_ic0: Bool =
+    (fb0_busy and (fb0_addr[31:10] == lookup_line_ic0)) or
+    (fb1_busy and (fb1_addr[31:10] == lookup_line_ic0)) or
+    (fb2_busy and (fb2_addr[31:10] == lookup_line_ic0)) or
+    (fb3_busy and (fb3_addr[31:10] == lookup_line_ic0));
+
+  let pending_alloc_match_ic0: Bool =
+    lookup_alloc_ic1_q and
+    (lookup_addr_ic1_q[31:10] == lookup_line_ic0);
+
+  // `cam_search_any_ic0` is the CAM output (driven below; the CAM is
+  // searched with `lookup_line_ic0`). Forward reference via wire.
+  wire cam_search_any_ic0: Bool;
+
+  let coalesce_ic0: Bool =
+    cam_search_any_ic0 or inflight_line_match_ic0 or pending_alloc_match_ic0;
+
+  // Per-FB IC0 allocate pulses. R-LK-4 (strengthened): suppress when
+  // the lookup line is already covered by an in-flight FB. The lookup
+  // STILL grants (RAM is read, prefetch advances) but no new FB alloc.
+  let fb0_allocate: Bool = lookup_grant and (alloc_idx_ic0 == 2'd0) and (not coalesce_ic0);
+  let fb1_allocate: Bool = lookup_grant and (alloc_idx_ic0 == 2'd1) and (not coalesce_ic0);
+  let fb2_allocate: Bool = lookup_grant and (alloc_idx_ic0 == 2'd2) and (not coalesce_ic0);
+  let fb3_allocate: Bool = lookup_grant and (alloc_idx_ic0 == 2'd3) and (not coalesce_ic0);
+
+  // =================================================================
+  // R-LK-2: tag-match in IC1 (hit detection).
+  // =================================================================
+
+  // Address line-tag (the part stored in tag RAM): valid bit at MSB
+  // (bit 21), tag in lower 21 bits = lookup_addr[30:10]. Index is
+  // bits [9:3] (IC_INDEX_HI=9, IC_LINE_W=3) so the tag starts at
+  // bit 10. With TagSizeECC=22 (1 valid + 21 tag bits) that's
+  // addr[30:10] for the tag. Upstream IC_TAG_SIZE=23 would include
+  // bit 31 too; the SoC pinning in this port drops it.
+  let lookup_line_tag_ic1: UInt<21> = lookup_addr_ic1_q[30:10];
+
+  let way0_valid: Bool = ic_tag_rdata_i[0][21] == 1'b1;
+  let way0_tag:   UInt<21> = ic_tag_rdata_i[0][20:0];
+  let way0_hit:   Bool = way0_valid and (way0_tag == lookup_line_tag_ic1);
+
+  let way1_valid: Bool = ic_tag_rdata_i[1][21] == 1'b1;
+  let way1_tag:   UInt<21> = ic_tag_rdata_i[1][20:0];
+  let way1_hit:   Bool = way1_valid and (way1_tag == lookup_line_tag_ic1);
+
+  let any_hit_ic1: Bool = way0_hit or way1_hit;
+  let hit_way_ic1: UInt<1> = way0_hit ? 1'd0 : 1'd1;
+  let hit_data_ic1: UInt<64> =
+    way0_hit ? ic_data_rdata_i[0] :
+    (way1_hit ? ic_data_rdata_i[1] : 64'd0);
+
+  // R-LK-3: victim-way selection. Lowest-indexed invalid way first;
+  // else round-robin.
+  reg victim_rr_q: UInt<1> reset rst_ni => 1'd0;
+  let victim_way: UInt<1> =
+    (not way0_valid) ? 1'd0 :
+    ((not way1_valid) ? 1'd1 : victim_rr_q);
+
+  seq on clk_i rising
+    // Toggle round-robin on every miss-with-allocate. R-LK-4 strengthened:
+    // gate on `lookup_alloc_ic1_q`, not `lookup_valid_ic1_q`, so
+    // coalesced lookups don't perturb victim selection.
+    if lookup_alloc_ic1_q and (not any_hit_ic1)
+       and lookup_cache_alloc_ic1_q
+      victim_rr_q <= ~victim_rr_q;
+    end if
+  end seq
+
+  // ── IC1 → PhCheck combinational view ─────────────────────────────
+  // The FB now captures hit/data on the Alloc→Check phase transition
+  // (one cycle after PhAlloc enters; matches IC1 stage). At that
+  // edge the FB seq block reads pre-edge values of these signals, so
+  // a combinational view is sufficient — and avoids the extra pipeline
+  // register that previously cost one cycle of IC0→valid_o latency
+  // (R-OUT-7).
+  let ic1_hit_combo:        Bool     = lookup_valid_ic1_q and any_hit_ic1;
+  let ic1_hit_data_combo:   UInt<64> = hit_data_ic1;
+  let ic1_hit_way_combo:    UInt<1>  = hit_way_ic1;
+  let ic1_victim_way_combo: UInt<1>  = victim_way;
+
+  // =================================================================
+  // Fill-buffer pool (R-FB-1..6). Each FB is an inst of FillBufferCtrl
+  // (proposal §Construct enumeration: `module FillBufferCtrl`). The
+  // outer module owns only:
+  //   - age tracking (cross-FB ordering used by FbAgeArb)
+  //   - allocation/release CAM glue
+  //   - per-FB rvalid routing + out_done pulse
+  //   - the IF-output mux
+  // All per-FB lifecycle state (busy/addr/alloc/stale/hit/err/data/
+  // beats) is owned by FillBufferCtrl.
+  // =================================================================
+
+  // Age reg lives at outer scope: FbAgeArb consumes a packed view, and
+  // age is a relative cross-FB ordering, not per-FB lifecycle.
+  reg fb_age_q: Vec<UInt<2>, 4> reset rst_ni => 2'd0;
+  let fb_ages_packed: UInt<8> =
+    {fb_age_q[3], fb_age_q[2], fb_age_q[1], fb_age_q[0]};
+
+  // Forward-declared wires for FB outputs consumed before the inst
+  // sites textually appear (because they feed CAM driver, output mux,
+  // bus-master driver, fill-write driver, busy_o). `fb*_addr` already
+  // forward-declared above (needed at IC0 for the inflight bypass).
+  wire fb0_out_data:   UInt<64>;
+  wire fb1_out_data:   UInt<64>;
+  wire fb2_out_data:   UInt<64>;
+  wire fb3_out_data:   UInt<64>;
+  wire fb0_hit_way:    UInt<1>;
+  wire fb1_hit_way:    UInt<1>;
+  wire fb2_hit_way:    UInt<1>;
+  wire fb3_hit_way:    UInt<1>;
+  wire fb0_err:        Bool;
+  wire fb1_err:        Bool;
+  wire fb2_err:        Bool;
+  wire fb3_err:        Bool;
+  wire fb0_alloc_flag: Bool;
+  wire fb1_alloc_flag: Bool;
+  wire fb2_alloc_flag: Bool;
+  wire fb3_alloc_flag: Bool;
+  wire fb0_beats_rcvd: UInt<2>;
+  wire fb1_beats_rcvd: UInt<2>;
+  wire fb2_beats_rcvd: UInt<2>;
+  wire fb3_beats_rcvd: UInt<2>;
+  wire fb0_beats_sent: UInt<2>;
+  wire fb1_beats_sent: UInt<2>;
+  wire fb2_beats_sent: UInt<2>;
+  wire fb3_beats_sent: UInt<2>;
+  wire fb0_stale:      Bool;
+  wire fb1_stale:      Bool;
+  wire fb2_stale:      Bool;
+  wire fb3_stale:      Bool;
+  wire fb0_wants_bus:  Bool;
+  wire fb1_wants_bus:  Bool;
+  wire fb2_wants_bus:  Bool;
+  wire fb3_wants_bus:  Bool;
+  wire fb0_wants_wb:   Bool;
+  wire fb1_wants_wb:   Bool;
+  wire fb2_wants_wb:   Bool;
+  wire fb3_wants_wb:   Bool;
+  wire fb0_wants_out:  Bool;
+  wire fb1_wants_out:  Bool;
+  wire fb2_wants_out:  Bool;
+  wire fb3_wants_out:  Bool;
+
+  // ── R-LK-4 (strengthened): in-flight-line CAM lookup ────────────
+  // Search at IC0 with `lookup_line_ic0` (= lookup_addr_ic0[31:10]).
+  // Search-result `cam_search_any` drives `coalesce_ic0` above. The
+  // CAM is the architectural construct backing R-LK-4; the inflight-
+  // bypass (`inflight_line_match_ic0`) covers the 1-cycle write-to-
+  // search latency since CAM writes fire at IC1.
+  let cam_search_key: UInt<22> = lookup_line_ic0;
+  wire cam_search_mask:  UInt<4>;
+  wire cam_search_first: UInt<2>;
+
+  // CAM write port driven below from FB allocate/release. Aliased into
+  // wires here so they can be driven from comb based on lookup_grant.
+  wire cam_write_valid: Bool;
+  wire cam_write_idx:   UInt<2>;
+  wire cam_write_key:   UInt<22>;
+  wire cam_write_set:   Bool;
+
+  inst fb_cam: FillBufferCam
+    clk <- clk_i;
+    rst <- rst_ni;
+    write_valid  <- cam_write_valid;
+    write_idx    <- cam_write_idx;
+    write_key    <- cam_write_key;
+    write_set    <- cam_write_set;
+    search_key   <- cam_search_key;
+    search_mask  -> cam_search_mask;
+    search_any   -> cam_search_any_ic0;
+    search_first -> cam_search_first;
+  end inst fb_cam
+
+  // FB allocation / clear drives the CAM write port. We write the CAM
+  // at IC1 (one cycle after IC0 grant), gated by `lookup_alloc_ic1_q`
+  // so coalesced lookups don't insert a duplicate entry.
+  let fb_alloc_now: Bool = lookup_alloc_ic1_q;
+  // CAM clear on FB release fires below; resolved from a "release"
+  // mask computed in comb.
+
+  // ── Per-FB request masks for the FbAgeArb (R-FB-4) ───────────────
+  // FillBufferCtrl computes wants_bus / wants_wb / wants_out per
+  // R-FB-3 / R-FB-5b / R-OUT-1 internally; outer just packs the bits.
+  let fb_wants_bus: UInt<4> =
+    {fb3_wants_bus, fb2_wants_bus, fb1_wants_bus, fb0_wants_bus};
+  let fb_wants_wb: UInt<4> =
+    {fb3_wants_wb, fb2_wants_wb, fb1_wants_wb, fb0_wants_wb};
+  let fb_wants_out: UInt<4> =
+    {fb3_wants_out, fb2_wants_out, fb1_wants_out, fb0_wants_out};
+
+  // ── Three FbAgeArb call sites (R-FB-4) ───────────────────────────
+  wire bus_grant_valid:     Bool;
+  wire bus_grant_requester: UInt<2>;
+  wire wb_grant_valid:      Bool;
+  wire wb_grant_requester:  UInt<2>;
+  wire out_grant_valid:     Bool;
+  wire out_grant_requester: UInt<2>;
+
+  wire bus_ready_0: Bool; wire bus_ready_1: Bool;
+  wire bus_ready_2: Bool; wire bus_ready_3: Bool;
+  wire wb_ready_0:  Bool; wire wb_ready_1:  Bool;
+  wire wb_ready_2:  Bool; wire wb_ready_3:  Bool;
+  wire out_ready_0: Bool; wire out_ready_1: Bool;
+  wire out_ready_2: Bool; wire out_ready_3: Bool;
+
+  inst bus_arb: FbAgeArb
+    clk <- clk_i;
+    rst <- rst_ni;
+    request[0].valid <- fb_wants_bus[0];
+    request[1].valid <- fb_wants_bus[1];
+    request[2].valid <- fb_wants_bus[2];
+    request[3].valid <- fb_wants_bus[3];
+    request[0].ready -> bus_ready_0;
+    request[1].ready -> bus_ready_1;
+    request[2].ready -> bus_ready_2;
+    request[3].ready -> bus_ready_3;
+    age              <- fb_ages_packed;
+    grant_valid      -> bus_grant_valid;
+    grant_requester  -> bus_grant_requester;
+  end inst bus_arb
+
+  inst wb_arb: FbAgeArb
+    clk <- clk_i;
+    rst <- rst_ni;
+    request[0].valid <- fb_wants_wb[0];
+    request[1].valid <- fb_wants_wb[1];
+    request[2].valid <- fb_wants_wb[2];
+    request[3].valid <- fb_wants_wb[3];
+    request[0].ready -> wb_ready_0;
+    request[1].ready -> wb_ready_1;
+    request[2].ready -> wb_ready_2;
+    request[3].ready -> wb_ready_3;
+    age              <- fb_ages_packed;
+    grant_valid      -> wb_grant_valid;
+    grant_requester  -> wb_grant_requester;
+  end inst wb_arb
+
+  inst out_arb: FbAgeArb
+    clk <- clk_i;
+    rst <- rst_ni;
+    request[0].valid <- fb_wants_out[0];
+    request[1].valid <- fb_wants_out[1];
+    request[2].valid <- fb_wants_out[2];
+    request[3].valid <- fb_wants_out[3];
+    request[0].ready -> out_ready_0;
+    request[1].ready -> out_ready_1;
+    request[2].ready -> out_ready_2;
+    request[3].ready -> out_ready_3;
+    age              <- fb_ages_packed;
+    grant_valid      -> out_grant_valid;
+    grant_requester  -> out_grant_requester;
+  end inst out_arb
+
+  // ── Per-FB rvalid routing + out_done pulse (R-EXT-4, R-OUT-4) ────
+  // rvalid arrives 1+ cycles after the bus grant (instr_gnt). By then
+  // the bus arbiter may have rotated to a different FB. We must route
+  // rvalid to the FB that ISSUED the latest accepted request, not the
+  // currently-arbitrating FB — otherwise rvalid data is captured by the
+  // wrong fill buffer (root cause of R-FB-5 / R-EXT-4 release-never).
+  //
+  // Track the in-flight requester via a small in-flight queue. For a
+  // 1-deep upstream bus model (test stimulus drives gnt + rvalid back
+  // to back), one register suffices.
+  reg bus_inflight_fb_q:    UInt<2> reset rst_ni => 2'd0;
+  reg bus_inflight_valid_q: Bool reset rst_ni => false;
+  seq on clk_i rising
+    if bus_grant_valid and instr_gnt_i
+      bus_inflight_fb_q    <= bus_grant_requester;
+      bus_inflight_valid_q <= true;
+    elsif instr_rvalid_i and bus_inflight_valid_q
+      bus_inflight_valid_q <= false;
+    end if
+  end seq
+
+  let rvalid_route_0: Bool = bus_inflight_valid_q and (bus_inflight_fb_q == 2'd0);
+  let rvalid_route_1: Bool = bus_inflight_valid_q and (bus_inflight_fb_q == 2'd1);
+  let rvalid_route_2: Bool = bus_inflight_valid_q and (bus_inflight_fb_q == 2'd2);
+  let rvalid_route_3: Bool = bus_inflight_valid_q and (bus_inflight_fb_q == 2'd3);
+
+  // Forward-declared: out_done pulses (driven from output stream
+  // logic below, but consumed by FB instances above their definition).
+  wire fb0_out_done_pulse: Bool;
+  wire fb1_out_done_pulse: Bool;
+  wire fb2_out_done_pulse: Bool;
+  wire fb3_out_done_pulse: Bool;
+
+  // ── 4× FillBufferCtrl instances (proposal §Construct: module FB) ─
+  inst fb0: FillBufferCtrl
+    clk             <- clk_i;
+    rst             <- rst_ni;
+    allocate        <- fb0_allocate;
+    alloc_addr      <- lookup_addr_ic0;
+    alloc_cache     <- alloc_cache_flag_ic0;
+    branch          <- branch_i;
+    inval_pulse     <- icache_inval_i;
+    enable_drop     <- not icache_enable_i;
+    ic1_hit         <- ic1_hit_combo;
+    ic1_hit_data    <- ic1_hit_data_combo;
+    ic1_hit_way     <- ic1_hit_way_combo;
+    ic1_victim_way  <- ic1_victim_way_combo;
+    bus_grant       <- bus_grant_valid and (bus_grant_requester == 2'd0);
+    instr_gnt       <- instr_gnt_i;
+    instr_rvalid    <- instr_rvalid_i and rvalid_route_0;
+    instr_rdata     <- instr_rdata_i;
+    instr_err       <- instr_err_i;
+    wb_grant        <- fill_grant and (wb_grant_requester == 2'd0);
+    out_done_pulse  <- fb0_out_done_pulse;
+    busy            -> fb0_busy;
+    addr            -> fb0_addr;
+    wants_bus       -> fb0_wants_bus;
+    wants_wb        -> fb0_wants_wb;
+    wants_out       -> fb0_wants_out;
+    out_data        -> fb0_out_data;
+    hit_way         -> fb0_hit_way;
+    err             -> fb0_err;
+    alloc_flag      -> fb0_alloc_flag;
+    beats_rcvd      -> fb0_beats_rcvd;
+    beats_sent      -> fb0_beats_sent;
+    stale           -> fb0_stale;
+  end inst fb0
+
+  inst fb1: FillBufferCtrl
+    clk             <- clk_i;
+    rst             <- rst_ni;
+    allocate        <- fb1_allocate;
+    alloc_addr      <- lookup_addr_ic0;
+    alloc_cache     <- alloc_cache_flag_ic0;
+    branch          <- branch_i;
+    inval_pulse     <- icache_inval_i;
+    enable_drop     <- not icache_enable_i;
+    ic1_hit         <- ic1_hit_combo;
+    ic1_hit_data    <- ic1_hit_data_combo;
+    ic1_hit_way     <- ic1_hit_way_combo;
+    ic1_victim_way  <- ic1_victim_way_combo;
+    bus_grant       <- bus_grant_valid and (bus_grant_requester == 2'd1);
+    instr_gnt       <- instr_gnt_i;
+    instr_rvalid    <- instr_rvalid_i and rvalid_route_1;
+    instr_rdata     <- instr_rdata_i;
+    instr_err       <- instr_err_i;
+    wb_grant        <- fill_grant and (wb_grant_requester == 2'd1);
+    out_done_pulse  <- fb1_out_done_pulse;
+    busy            -> fb1_busy;
+    addr            -> fb1_addr;
+    wants_bus       -> fb1_wants_bus;
+    wants_wb        -> fb1_wants_wb;
+    wants_out       -> fb1_wants_out;
+    out_data        -> fb1_out_data;
+    hit_way         -> fb1_hit_way;
+    err             -> fb1_err;
+    alloc_flag      -> fb1_alloc_flag;
+    beats_rcvd      -> fb1_beats_rcvd;
+    beats_sent      -> fb1_beats_sent;
+    stale           -> fb1_stale;
+  end inst fb1
+
+  inst fb2: FillBufferCtrl
+    clk             <- clk_i;
+    rst             <- rst_ni;
+    allocate        <- fb2_allocate;
+    alloc_addr      <- lookup_addr_ic0;
+    alloc_cache     <- alloc_cache_flag_ic0;
+    branch          <- branch_i;
+    inval_pulse     <- icache_inval_i;
+    enable_drop     <- not icache_enable_i;
+    ic1_hit         <- ic1_hit_combo;
+    ic1_hit_data    <- ic1_hit_data_combo;
+    ic1_hit_way     <- ic1_hit_way_combo;
+    ic1_victim_way  <- ic1_victim_way_combo;
+    bus_grant       <- bus_grant_valid and (bus_grant_requester == 2'd2);
+    instr_gnt       <- instr_gnt_i;
+    instr_rvalid    <- instr_rvalid_i and rvalid_route_2;
+    instr_rdata     <- instr_rdata_i;
+    instr_err       <- instr_err_i;
+    wb_grant        <- fill_grant and (wb_grant_requester == 2'd2);
+    out_done_pulse  <- fb2_out_done_pulse;
+    busy            -> fb2_busy;
+    addr            -> fb2_addr;
+    wants_bus       -> fb2_wants_bus;
+    wants_wb        -> fb2_wants_wb;
+    wants_out       -> fb2_wants_out;
+    out_data        -> fb2_out_data;
+    hit_way         -> fb2_hit_way;
+    err             -> fb2_err;
+    alloc_flag      -> fb2_alloc_flag;
+    beats_rcvd      -> fb2_beats_rcvd;
+    beats_sent      -> fb2_beats_sent;
+    stale           -> fb2_stale;
+  end inst fb2
+
+  inst fb3: FillBufferCtrl
+    clk             <- clk_i;
+    rst             <- rst_ni;
+    allocate        <- fb3_allocate;
+    alloc_addr      <- lookup_addr_ic0;
+    alloc_cache     <- alloc_cache_flag_ic0;
+    branch          <- branch_i;
+    inval_pulse     <- icache_inval_i;
+    enable_drop     <- not icache_enable_i;
+    ic1_hit         <- ic1_hit_combo;
+    ic1_hit_data    <- ic1_hit_data_combo;
+    ic1_hit_way     <- ic1_hit_way_combo;
+    ic1_victim_way  <- ic1_victim_way_combo;
+    bus_grant       <- bus_grant_valid and (bus_grant_requester == 2'd3);
+    instr_gnt       <- instr_gnt_i;
+    instr_rvalid    <- instr_rvalid_i and rvalid_route_3;
+    instr_rdata     <- instr_rdata_i;
+    instr_err       <- instr_err_i;
+    wb_grant        <- fill_grant and (wb_grant_requester == 2'd3);
+    out_done_pulse  <- fb3_out_done_pulse;
+    busy            -> fb3_busy;
+    addr            -> fb3_addr;
+    wants_bus       -> fb3_wants_bus;
+    wants_wb        -> fb3_wants_wb;
+    wants_out       -> fb3_wants_out;
+    out_data        -> fb3_out_data;
+    hit_way         -> fb3_hit_way;
+    err             -> fb3_err;
+    alloc_flag      -> fb3_alloc_flag;
+    beats_rcvd      -> fb3_beats_rcvd;
+    beats_sent      -> fb3_beats_sent;
+    stale           -> fb3_stale;
+  end inst fb3
+
+  // ── 4:1 muxes from FB outputs (indexed by *_grant_requester) ─────
+  let fb_addr_bus_sel: UInt<32> =
+    (bus_grant_requester == 2'd0) ? fb0_addr :
+    ((bus_grant_requester == 2'd1) ? fb1_addr :
+    ((bus_grant_requester == 2'd2) ? fb2_addr : fb3_addr));
+  let fb_beats_sent_bus_sel: UInt<2> =
+    (bus_grant_requester == 2'd0) ? fb0_beats_sent :
+    ((bus_grant_requester == 2'd1) ? fb1_beats_sent :
+    ((bus_grant_requester == 2'd2) ? fb2_beats_sent : fb3_beats_sent));
+
+  let fb_addr_wb_sel: UInt<32> =
+    (wb_grant_requester == 2'd0) ? fb0_addr :
+    ((wb_grant_requester == 2'd1) ? fb1_addr :
+    ((wb_grant_requester == 2'd2) ? fb2_addr : fb3_addr));
+  let fb_data_wb_sel: UInt<64> =
+    (wb_grant_requester == 2'd0) ? fb0_out_data :
+    ((wb_grant_requester == 2'd1) ? fb1_out_data :
+    ((wb_grant_requester == 2'd2) ? fb2_out_data : fb3_out_data));
+  let fb_hit_way_wb_sel: UInt<1> =
+    (wb_grant_requester == 2'd0) ? fb0_hit_way :
+    ((wb_grant_requester == 2'd1) ? fb1_hit_way :
+    ((wb_grant_requester == 2'd2) ? fb2_hit_way : fb3_hit_way));
+
+  let fb_addr_out_sel: UInt<32> =
+    (out_grant_requester == 2'd0) ? fb0_addr :
+    ((out_grant_requester == 2'd1) ? fb1_addr :
+    ((out_grant_requester == 2'd2) ? fb2_addr : fb3_addr));
+  let fb_data_out_sel: UInt<64> =
+    (out_grant_requester == 2'd0) ? fb0_out_data :
+    ((out_grant_requester == 2'd1) ? fb1_out_data :
+    ((out_grant_requester == 2'd2) ? fb2_out_data : fb3_out_data));
+  let fb_err_out_sel: Bool =
+    (out_grant_requester == 2'd0) ? fb0_err :
+    ((out_grant_requester == 2'd1) ? fb1_err :
+    ((out_grant_requester == 2'd2) ? fb2_err : fb3_err));
+
+  // ── R-EXT-1..5: bus master ───────────────────────────────────────
+  // Drive instr_req_o/instr_addr_o from the bus-arb winner. R-EXT-2
+  // hold-stable-until-gnt is naturally satisfied because the winning
+  // FB's `beats_sent` only advances on (bus_grant & instr_gnt).
+  comb
+    instr_req_o = bus_grant_valid;
+    if bus_grant_valid
+      // line base | (beat_idx << 2)
+      instr_addr_o =
+        (fb_addr_bus_sel & 32'hFFFF_FFF8)
+        | ({30'd0, fb_beats_sent_bus_sel} << 2'd2);
+    else
+      instr_addr_o = 32'd0;
+    end if
+  end comb
+
+  // ── Cache write-back driver (R-FB-5(b), R-ARB-1..4) ──────────────
+  comb
+    fill_write_req  = wb_grant_valid;
+    fill_write_idx  = fb_addr_wb_sel[9:3];
+    fill_write_way  = fb_hit_way_wb_sel;   // overloaded: hit_way OR victim_way (FB sets this in PhCheck)
+    fill_write_data = fb_data_wb_sel;
+    fill_write_tag  = {1'd1, fb_addr_wb_sel[30:10]};
+  end comb
+
+  // ── R-OUT: output stream ─────────────────────────────────────────
+  // Pull beats from the out-arb winner. Outer module owns:
+  //   - per-FB beat-pointer (which 32-bit slot of the 64-bit line)
+  //   - the output skid valid/data/addr/err regs
+  // FillBufferCtrl owns the line data + line addr + err flag; we just
+  // mux + slice + register here.
+  reg out_beat_q: Vec<UInt<2>, 4> reset rst_ni => 2'd0;
+
+  let out_fb_idx:    UInt<2>  = out_grant_requester;
+  let out_line:      UInt<64> = fb_data_out_sel;
+  let out_line_lo:   UInt<32> = out_line[31:0];
+  let out_line_hi:   UInt<32> = out_line[63:32];
+  let out_beat_idx:  UInt<2>  = out_beat_q[out_fb_idx];
+  let out_fb_addr:   UInt<32> = fb_addr_out_sel;
+  let out_beat_data: UInt<32> =
+    (out_beat_idx == 2'd0) ? out_line_lo : out_line_hi;
+
+  reg valid_q:     Bool reset rst_ni => false;
+  reg rdata_q:     UInt<32> reset rst_ni => 0;
+  reg addr_out_q:  UInt<32> reset rst_ni => 0;
+  reg err_out_q:   Bool reset rst_ni => false;
+  reg err_plus2_q: Bool reset rst_ni => false;
+
+  // Beat-availability gate: out_arb may grant before the FB has
+  // captured the beat for the current out_beat_idx. Specifically, on a
+  // mid-line branch (alloc_addr[2]=1) out_beat_idx starts at 1, and
+  // FillBufferCtrl asserts wants_out as soon as beats_rcvd_q != 0.
+  // But beat 1 lives in data_q[63:32] which only fills on the SECOND
+  // bus rvalid — if rdata_q latches on the same edge as that capture,
+  // it samples the still-zero high half (cyc=144 trace). Require:
+  //   beat 0 needs beats_rcvd ≥ 1 (1 beat captured)
+  //   beat 1 needs beats_rcvd ≥ 2 (full line in)
+  let fb_beats_rcvd_out_sel: UInt<2> =
+    (out_grant_requester == 2'd0) ? fb0_beats_rcvd :
+    ((out_grant_requester == 2'd1) ? fb1_beats_rcvd :
+    ((out_grant_requester == 2'd2) ? fb2_beats_rcvd : fb3_beats_rcvd));
+  let beat_data_ready: Bool =
+    (out_beat_idx == 2'd0 and fb_beats_rcvd_out_sel != 2'd0)
+    or (out_beat_idx == 2'd1 and fb_beats_rcvd_out_sel == 2'd2);
+  let new_beat_avail: Bool = out_grant_valid and beat_data_ready;
+
+  // R-OUT-7 fast-path: drive valid_q directly from the IC1 hit detection
+  // (combinational at the IC1 cycle = 1 cycle after IC0 grant). Without
+  // this, valid_o lags by one extra cycle waiting for the FB pipeline
+  // to roll PhAlloc → PhRunning → wants_out → out_arb → valid_q. The
+  // fast-path covers the FIRST output beat; the FB-side path handles
+  // beat 1 (and any subsequent fills) via out_arb / new_beat_avail.
+  let ic1_hit_now: Bool = lookup_valid_ic1_q and any_hit_ic1;
+  // Beat 0 of the line (matches the addr_out_q starting at line base).
+  let ic1_hit_beat0_data: UInt<32> = hit_data_ic1[31:0];
+
+  seq on clk_i rising
+    if branch_i
+      // R-OUT-2 + R-OUT-6: branch cancels valid.
+      valid_q    <= false;
+      addr_out_q <= addr_i;
+    elsif valid_q and ready_i
+      // Beat accepted. R-OUT-4: address advances by 2 (compressed) or
+      // 4 (32-bit). compressed iff rdata_q[1:0] != 2'b11.
+      if rdata_q[1:0] != 2'd3
+        addr_out_q <= addr_out_q +% 32'd2;
+      else
+        addr_out_q <= addr_out_q +% 32'd4;
+      end if
+      valid_q <= false;
+    elsif (not valid_q) and ic1_hit_now
+      // R-OUT-7 fast-path: IC1 hit visible this cycle ⇒ register beat 0
+      // immediately so valid_o rises at IC1+1 (= 2 cycles after IC0
+      // grant). The corresponding FB also captures hit_q on the same
+      // edge (PhAlloc→PhRunning) and will drive beat 1 via out_arb.
+      valid_q     <= true;
+      rdata_q     <= ic1_hit_beat0_data;
+      addr_out_q  <= lookup_addr_ic1_q;
+      err_out_q   <= false;
+      err_plus2_q <= false;
+    elsif (not valid_q) and new_beat_avail
+      valid_q     <= true;
+      rdata_q     <= out_beat_data;
+      // Address must reflect the actual word being served, not the
+      // line base — the controller passes addr_o through to its PC
+      // tracker (`if_instr_addr` → ID stage), and a beat-0/beat-1
+      // mismatch shifts every subsequent instruction one slot out of
+      // alignment with the controller's PC view. Line base is bits
+      // [31:3], beat selects bit [2].
+      addr_out_q  <= (out_fb_addr & 32'hFFFF_FFF8) | ({29'd0, out_beat_idx} << 2'd2);
+      err_out_q   <= fb_err_out_sel;
+      err_plus2_q <= false;              // R-OUT-5 simplified
+    end if
+  end seq
+
+  // Per-FB beat-pointer + out_done pulse (R-OUT-4 → R-FB-5):
+  // when `valid_q & ready_i` and current beat==0, bump to 1; if
+  // current beat==1, the FB has delivered both halves → pulse
+  // out_done_pulse to the corresponding FillBufferCtrl.
+  comb
+    fb0_out_done_pulse =
+      valid_q and ready_i and (out_grant_requester == 2'd0)
+      and (out_beat_q[0] == 2'd1);
+    fb1_out_done_pulse =
+      valid_q and ready_i and (out_grant_requester == 2'd1)
+      and (out_beat_q[1] == 2'd1);
+    fb2_out_done_pulse =
+      valid_q and ready_i and (out_grant_requester == 2'd2)
+      and (out_beat_q[2] == 2'd1);
+    fb3_out_done_pulse =
+      valid_q and ready_i and (out_grant_requester == 2'd3)
+      and (out_beat_q[3] == 2'd1);
+  end comb
+
+  // Initial beat pointer on alloc: when the lookup is a branch-into-
+  // mid-line (addr_i[2] = 1), the controller wants the upper 32-bit
+  // word of the line first (beat 1). Sequential prefetches always
+  // target line-aligned addresses (low bit 2 clear), so they start at
+  // beat 0. The branch-with-grant case captured `addr_i` into
+  // `lookup_addr_ic0` directly; sequential lookups use prefetch_addr_q
+  // which is line-aligned by construction. So the alloc-time beat
+  // index is exactly bit [2] of the lookup address used at IC0.
+  let alloc_beat_idx_ic0: UInt<2> = {1'd0, lookup_addr_ic0[2]};
+
+  seq on clk_i rising
+    // Bump per-FB beat-pointer on accept of beat 0; reset on FB
+    // allocation (PhAlloc one cycle after IC0 grant).
+    if valid_q and ready_i and (out_beat_q[out_grant_requester] == 2'd0)
+      out_beat_q[out_grant_requester] <= 2'd1;
+    end if
+    // Reset beat pointer on each FB's allocate pulse so that a fresh
+    // line starts streaming from the requested half — beat 0 for a
+    // line-aligned address, beat 1 for a branch into the upper half
+    // of a line. Without the bit-[2] mux, mid-line branches (notably
+    // IRQ vector dispatches into the upper 4 bytes of an 8-byte line)
+    // delivered beat 0 first, shifting the controller's PC view by 4
+    // bytes for the rest of the trap handler.
+    if fb0_allocate
+      out_beat_q[0] <= alloc_beat_idx_ic0;
+    end if
+    if fb1_allocate
+      out_beat_q[1] <= alloc_beat_idx_ic0;
+    end if
+    if fb2_allocate
+      out_beat_q[2] <= alloc_beat_idx_ic0;
+    end if
+    if fb3_allocate
+      out_beat_q[3] <= alloc_beat_idx_ic0;
+    end if
+  end seq
+
+  comb
+    valid_o     = valid_q;
+    rdata_o     = rdata_q;
+    addr_o      = addr_out_q;
+    err_o       = err_out_q;
+    err_plus2_o = err_plus2_q;
+  end comb
+
+  // =================================================================
+  // FB cross-cutting state at outer scope
+  // =================================================================
+
+  // R-FB-4: age update — new FB is youngest. Other FBs keep relative
+  // order (single allocation per cycle preserves invariant). Gated on
+  // `lookup_alloc_ic1_q` so coalesced lookups don't bump age.
+  seq on clk_i rising
+    if lookup_alloc_ic1_q
+      fb_age_q[lookup_fb_idx_ic1_q] <= 2'd3;
+    end if
+  end seq
+
+  // ── CAM write driver ─────────────────────────────────────────────
+  // Insert on FB allocate (IC1 cycle), clear on FB release (busy
+  // falling edge — best-effort: CAM search results are unused in this
+  // baseline impl, so a 1-cycle-late clear is benign per spec
+  // ambiguity 3, "same-line second allocation is permitted").
+  reg fb_busy_prev_q: UInt<4> reset rst_ni => 4'd0;
+  seq on clk_i rising
+    fb_busy_prev_q <= fb_busy_mask;
+  end seq
+
+  let fb_releasing_0: Bool = fb_busy_prev_q[0] and (not fb0_busy);
+  let fb_releasing_1: Bool = fb_busy_prev_q[1] and (not fb1_busy);
+  let fb_releasing_2: Bool = fb_busy_prev_q[2] and (not fb2_busy);
+  let fb_releasing_3: Bool = fb_busy_prev_q[3] and (not fb3_busy);
+
+  comb
+    if fb_alloc_now
+      cam_write_valid = true;
+      cam_write_idx   = lookup_fb_idx_ic1_q;
+      cam_write_key   = lookup_addr_ic1_q[31:10];
+      cam_write_set   = true;
+    elsif fb_releasing_0
+      cam_write_valid = true;
+      cam_write_idx   = 2'd0;
+      cam_write_key   = 22'd0;
+      cam_write_set   = false;
+    elsif fb_releasing_1
+      cam_write_valid = true;
+      cam_write_idx   = 2'd1;
+      cam_write_key   = 22'd0;
+      cam_write_set   = false;
+    elsif fb_releasing_2
+      cam_write_valid = true;
+      cam_write_idx   = 2'd2;
+      cam_write_key   = 22'd0;
+      cam_write_set   = false;
+    elsif fb_releasing_3
+      cam_write_valid = true;
+      cam_write_idx   = 2'd3;
+      cam_write_key   = 22'd0;
+      cam_write_set   = false;
+    else
+      cam_write_valid = false;
+      cam_write_idx   = 2'd0;
+      cam_write_key   = 22'd0;
+      cam_write_set   = false;
+    end if
+  end comb
+
+  // CAM search outputs: `search_any` is now load-bearing via
+  // `coalesce_ic0` (drives FB-allocate gating). `search_mask` and
+  // `search_first` remain unused in this implementation — sink to
+  // avoid lint warnings.
+  let _unused_cam_mask: UInt<4> = cam_search_mask;
+  let _unused_cam_first: UInt<2> = cam_search_first;
+
+  // Sink unused arbiter ready outputs (single-issue grants; readys
+  // not consumed by the icache, only the grant_* outputs).
+  // Unused-output lint is silenced via the global lint flags
+  // (see make build).
+
+  // ── R-BUSY-1: busy_o = inval_state != IDLE
+  //              OR any FB has unfinished BUS traffic ──────────────
+  // Per upstream `ibex_icache.sv:1303`: `busy_o = (inval_state !=
+  // IDLE) | (|fill_busy_q & ~fill_rvd_done)`. The `~fill_rvd_done`
+  // term means "FB still expecting bus beats" — NOT "FB still
+  // delivering output to IF". This distinction matters for WFI: when
+  // the controller enters WAIT_SLEEP it stops accepting beats
+  // (ready_i=0), so an FB with a pending output beat never releases.
+  // If `busy_o` were simply `(any FB busy)`, the SoC's `clock_en`
+  // would stay high forever and `core_sleep_o` would never rise.
+  // We approximate `~fill_rvd_done` as `beats_rcvd_q != IC_LINE_BEATS`
+  // (FB still expecting beats from the bus).
+  let fb0_rvd_done: Bool = fb0_beats_rcvd == 2'd2;
+  let fb1_rvd_done: Bool = fb1_beats_rcvd == 2'd2;
+  let fb2_rvd_done: Bool = fb2_beats_rcvd == 2'd2;
+  let fb3_rvd_done: Bool = fb3_beats_rcvd == 2'd2;
+  let fb_bus_busy: Bool =
+    (fb0_busy and (not fb0_rvd_done))
+    or (fb1_busy and (not fb1_rvd_done))
+    or (fb2_busy and (not fb2_rvd_done))
+    or (fb3_busy and (not fb3_rvd_done));
+  comb
+    busy_o = (inval_state != 2'd3) or fb_bus_busy;
+  end comb
+
+  // R-RST-1: all "out" req signals reset to 0. Tag/data/instr_req_o
+  // come from comb pathways gated by valid signals that themselves
+  // reset to 0. ic_scr_key_req_o handled via scr_key_req_q reset.
+  // R-RST-2/-3: covered by inval_state_q reset → not-IDLE → no
+  // valid_o, no fill, no instr_req_o until cold-boot completes.
+
+end module ibex_icache

@@ -37,6 +37,13 @@ IF_STAGE_SV           = BUILD_DIR / "ibex_if_stage.sv"
 PREFETCH_BUFFER_SV    = BUILD_DIR / "ibex_prefetch_buffer.sv"
 FETCH_FIFO_SV         = BUILD_DIR / "ibex_fetch_fifo.sv"
 COMPRESSED_DECODER_SV = BUILD_DIR / "ibex_compressed_decoder.sv"
+# D1: IbexIfStage now `inst`s `ibex_icache` (replaces prefetch_buffer).
+ICACHE_SV             = BUILD_DIR / "ibex_icache.sv"
+FB_AGE_ARB_SV         = BUILD_DIR / "fb_age_arb.sv"
+RAM_PORT_ARB_SV       = BUILD_DIR / "ram_port_arb.sv"
+FILL_BUFFER_CAM_SV    = BUILD_DIR / "fill_buffer_cam.sv"
+FILL_BUFFER_CTRL_SV   = BUILD_DIR / "fill_buffer_ctrl.sv"
+INVAL_CTRL_SV         = BUILD_DIR / "inval_ctrl.sv"
 
 
 pytest.importorskip("cocotb_tools.runner")
@@ -50,8 +57,10 @@ def if_stage_runner(verilator_bin, tmp_path_factory):
     """
     from cocotb_tools.runner import get_runner
 
-    for sv in [SHARED_PKG_SV, IF_STAGE_SV, PREFETCH_BUFFER_SV, FETCH_FIFO_SV,
-               COMPRESSED_DECODER_SV]:
+    needed = [SHARED_PKG_SV, IF_STAGE_SV, PREFETCH_BUFFER_SV, FETCH_FIFO_SV,
+              COMPRESSED_DECODER_SV, ICACHE_SV, FB_AGE_ARB_SV, RAM_PORT_ARB_SV,
+              FILL_BUFFER_CAM_SV, FILL_BUFFER_CTRL_SV, INVAL_CTRL_SV]
+    for sv in needed:
         if not sv.is_file():
             pytest.skip(f"missing {sv}; run `make build` first")
 
@@ -63,6 +72,13 @@ def if_stage_runner(verilator_bin, tmp_path_factory):
             str(FETCH_FIFO_SV),
             str(PREFETCH_BUFFER_SV),
             str(COMPRESSED_DECODER_SV),
+            # D1: icache + sub-constructs (linked into IfStage when ICache=1).
+            str(FB_AGE_ARB_SV),
+            str(RAM_PORT_ARB_SV),
+            str(FILL_BUFFER_CAM_SV),
+            str(FILL_BUFFER_CTRL_SV),
+            str(INVAL_CTRL_SV),
+            str(ICACHE_SV),
             str(IF_STAGE_SV),
         ],
         hdl_toplevel="ibex_if_stage",

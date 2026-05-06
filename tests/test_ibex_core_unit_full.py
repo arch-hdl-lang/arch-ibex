@@ -39,6 +39,13 @@ PREFETCH_BUFFER_SV    = BUILD_DIR / "ibex_prefetch_buffer.sv"
 FETCH_FIFO_SV         = BUILD_DIR / "ibex_fetch_fifo.sv"
 COMPRESSED_DECODER_SV = BUILD_DIR / "ibex_compressed_decoder.sv"
 COUNTER_SV            = BUILD_DIR / "ibex_counter.sv"
+# D1: IbexIfStage now `inst`s `ibex_icache` — link the icache + 5 subs.
+ICACHE_SV             = BUILD_DIR / "ibex_icache.sv"
+FB_AGE_ARB_SV         = BUILD_DIR / "fb_age_arb.sv"
+RAM_PORT_ARB_SV       = BUILD_DIR / "ram_port_arb.sv"
+FILL_BUFFER_CAM_SV    = BUILD_DIR / "fill_buffer_cam.sv"
+FILL_BUFFER_CTRL_SV   = BUILD_DIR / "fill_buffer_ctrl.sv"
+INVAL_CTRL_SV         = BUILD_DIR / "inval_ctrl.sv"
 
 IBEX_PKG_SV       = IBEX_ROOT / "rtl" / "ibex_pkg.sv"
 CS_REGISTERS_SV   = IBEX_ROOT / "rtl" / "ibex_cs_registers.sv"
@@ -58,6 +65,13 @@ ARCH_SV_FILES = [
     FETCH_FIFO_SV,
     PREFETCH_BUFFER_SV,
     COMPRESSED_DECODER_SV,
+    # D1: icache + sub-constructs (linked into IbexIfStage when ICache=1).
+    FB_AGE_ARB_SV,
+    RAM_PORT_ARB_SV,
+    FILL_BUFFER_CAM_SV,
+    FILL_BUFFER_CTRL_SV,
+    INVAL_CTRL_SV,
+    ICACHE_SV,
     ID_STAGE_SV,
     EX_BLOCK_SV,
     LSU_SV,
