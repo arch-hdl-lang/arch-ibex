@@ -1,138 +1,131 @@
-# READY — D1 IbexIcache
+# READY — D2 IbexPmp
 
 ## Status: READY TO ARCHIVE
 
-All steps 1–8 of WORKFLOW.md are complete for Phase D swap D1 (IbexIcache).
-This is the first swap of Phase D and the first arch-ibex swap to actually
-flip the SoC pin (`ICache=0` → `ICache=1`) so the CPU exercises the
-ARCH-emitted icache end-to-end.
+All steps 1–8 of WORKFLOW.md are complete for Phase D swap D2 (IbexPmp).
+First arch-ibex swap to follow the **D1-lessons workflow updates**
+(spec ambiguity resolutions in proposal, cross-scenario tests in
+`_unit_full.py`, construct-compliance audit at Stage 1 review).
 
 ## What was done
 
-1. **Spec** (`specs/icache/spec.md`, 599 lines) — 33 RFC-2119 requirements
-   across R-INV / R-REQ / R-LK / R-FB / R-EXT / R-ARB / R-OUT / R-EN /
-   R-INV / R-BUSY / R-ECC / R-RESET, 10 G/W/T scenarios, integration
-   constraints (consumer = `ibex_if_stage`, producer = SoC `prim_ram_1p`).
+1. **Spec** (`specs/pmp/spec.md`, 500 lines) — 22 RFC-2119
+   requirements across R-MODE / R-PERM / R-MML / R-MMWP / R-DBG /
+   R-PRIO / R-CHAN, 10 G/W/T scenarios, 5 spec ambiguities flagged
+   (each with a `> Resolution:` line).
 
-2. **Proposal** (`changes/archive/2026-05-05-port-ibex_icache/proposal.md`)
-   — construct enumeration table, scope, risks, multi-file ICache=1 plan.
+2. **Proposal**
+   (`changes/archive/2026-05-06-port-ibex_pmp/proposal.md`) — first
+   arch-ibex proposal with the new `## Spec ambiguity resolutions`
+   table (5 rows, A1–A5: MML retroactive, DmAddrMask non-contiguous,
+   NAPOT degenerate, mseccfg.rlb unused, reserved pmp_req_e).
+   Construct enumeration: only `module` picked; everything else
+   rejected (combinational permission checker, no state).
 
-3. **Tests** — `tests/cocotb_tests/test_ibex_icache_unit.py` (basic, 53
-   tests incl. one new `test_boot_branch_during_inval_walk`) +
-   `_unit_full.py` (full regression, 58 tests) + collectors +
-   `changes/archive/2026-05-05-port-ibex_icache/tests-inventory.md`.
+3. **Tests** (22 basic + 28 full = 50 cocotb tests, 0 skips):
+   - `tests/cocotb_tests/test_ibex_pmp_unit.py` — one test per RFC-2119
+     MUST.
+   - `tests/cocotb_tests/test_ibex_pmp_unit_full.py` — every Scenario
+     S1..S10 + **5 cross-scenario integration tests** (multi-match ∩
+     MMWP, locked ∩ MML, debug ∩ MML, per-channel ∩ multi-region,
+     TOR-chain ∩ priority) per the new WORKFLOW.md rule + 13 edge
+     cases. **NO `boot_during_cold_init` test** (PMP isn't a
+     fetch-path module).
 
-4. **Implementation** — six new `.arch` sources:
-   - `src/IbexIcache.arch` (973 LoC, snake-case `module ibex_icache`)
-   - `src/InvalCtrl.arch` (159 LoC, `fsm` — 4-state cold-boot walker)
-   - `src/FbAgeArb.arch` (`function AgeOrderedGrant` + `arbiter` with
-     `policy custom` — instantiated 3× for bus / writeback / output)
-   - `src/RamPortArb.arch` (`arbiter` with `policy priority` — declared
-     for the construct exercise; lookup-grant bypasses it per
-     `lookup_grant = lookup_req` per spec R-ARB-1)
-   - `src/FillBufferCam.arch` (`cam`, DEPTH=4, KEY_W=22 — fill-buffer
-     associative line lookup, R-LK-4 strengthened)
-   - `src/FillBufferCtrl.arch` (per-FB lifecycle module; `seq + comb`
-     phase tracker, NOT `thread` — see Constructs note below)
-   - `src/prim_ram_1p.archi` (hand-written stub for the upstream SV cell
-     that stays vendor-side)
+4. **Implementation** (`src/IbexPmp.arch`, 602 LoC) — single
+   `module ibex_pmp` with one `comb` block. Pure combinational; no
+   `seq`, no `reg`, no clock, no reset. Per-region NAPOT mask uses
+   the closed form `size_mask = v ^ (v + 1)` for `v =
+   csr_pmp_addr[r][33:2]`. Per-region per-channel match unrolled
+   for `PMPNumRegions=4` × `PMPNumChan=3` (12 cells of work).
 
-5. **SoC integration** — `src/IbexIfStage.arch` swaps
-   `inst pb: ibex_prefetch_buffer` for `inst icache: ibex_icache` under
-   `ICache=1`; `src/IbexTop.arch` replaces `gen_norams` tieoffs with 4
-   `prim_ram_1p` instances (2 ways × {tag, data}); `soc/ibex_mini_soc.sv`
-   passes `.ICache(1'b1)` to `ibex_top_tracing`.
+5. **SoC integration** — none. Module is built standalone and
+   unit-tested. Under SoC pinning `PMPEnable=0` it is not
+   instantiated; flipping `PMPEnable=1` is a follow-up swap (not
+   D2).
 
-6. **Two-stage review** — proposal-stage (construct enumeration, risk
-   audit, multi-file scope) and implementation-stage (lint clean, unit
-   tests green, SoC lint green) both passed.
+6. **Two-stage review** — spec-compliance + construct-compliance
+   audit (Stage 1, new in D1-lessons). Construct audit: only
+   `module` was pinned `picked` and the impl uses only `module`.
+   Trivially compliant.
 
-7. **Basic gate** — `pytest tests/test_ibex_icache_unit.py
+7. **Basic gate** — `pytest tests/test_ibex_pmp_unit.py
    tests/test_soc_lint.py tests/test_cpu_programs.py` →
-   **45 / 53 PASS, 0 FAIL, 8 SKIP** for icache unit (8 skips are
-   structurally untestable per `feedback_triage_skip_discipline.md`),
-   SoC lint **GREEN**, **all 5 ISR programs PASS** (timer / sw / ext /
-   multictx / wfi).
+   **22 / 22 PASS, 0 FAIL, 0 SKIP** for PMP unit, SoC lint
+   **GREEN**, all 5 ISR programs PASS (unchanged from D1).
 
-8. **Full regression** — `pytest tests/test_ibex_icache_unit_full.py`
-   → **58 / 58 PASS**.
+8. **Full regression** — `pytest tests/test_ibex_pmp_unit_full.py`
+   → **28 / 28 PASS**.
 
 ## Key design decisions
 
-- **Constructs exercised**: `cam` (FillBufferCam), `arbiter` (FbAgeArb
-  ×3 with `policy custom <AgeOrderedGrant>`, RamPortArb with
-  `policy priority` — first arch-ibex use of either policy), `fsm`
-  (InvalCtrl). `thread` was originally pinned by the proposal for
-  FillBufferCtrl but converted to `seq + comb` because of arch-com#306
-  (`wait until X; Y <= Z` defers the assign by 1 cycle, breaking the
-  per-FB phase pipeline). `ram` stays N/A — the actual SRAMs are
-  upstream `prim_ram_1p` cells outside the ARCH boundary.
+- **Constructs exercised**: only `module` (intentional per the
+  proposal — PMP is pure combinational with no state).
+  The proposal correctly rejected `cam`, `arbiter`, `fsm`, etc.;
+  the audit at Stage 1 confirmed the impl matches.
 
-- **R-ARB-1 lookup-vs-fill** — per upstream `ibex_icache.sv:262-264`,
-  `lookup_grant = lookup_req` (unconditional); `fill_grant = fill_req &
-  ~lookup_req & ~inval` (masked); `inval_grant = inval_write_req`
-  (unconditional). Initial impl used a single `arbiter policy priority`
-  for all three, which starves lookups during fill writes — surfaced by
-  the cold-boot SoC test. Fixed by replacing the single arbiter with
-  the asymmetric direct-boolean grants matching upstream.
+- **Type encoding** — `pmp_cfg_t`, `pmp_mseccfg_t`, `pmp_req_e`,
+  `priv_lvl_e`, `pmp_cfg_mode_e` modeled as raw `UInt<W>` with
+  `let` constants for the encoding values. No `package` since
+  these types aren't used by other arch swaps (PMPEnable=0 SoC).
+  Field access via slice (e.g. `csr_pmp_cfg_i[0][5]` for `lock`).
 
-- **R-LK-4 strengthened** — `FillBufferCam` is wired into the IC0
-  allocation gate so a same-line lookup coalesces into the in-flight FB
-  instead of allocating a redundant FB. Plus a same-cycle inflight-line
-  bypass (`pending_alloc_match_ic0`) covers the CAM-write 1-cycle lag.
+- **NAPOT closed form** — `size_mask = v ^ (v + 1)` is the
+  smallest expression that captures the spec's "trailing-1
+  prefix from bit 2 of csr_pmp_addr is don't-care" rule. Edge
+  case: `v=0` gives `mask=1` (only bit 0 of slice = bit 2 of addr
+  is don't-care), making the smallest NAPOT region 8 bytes —
+  consistent with NAPOT minimum (NA4 covers the 4-byte case).
 
-- **`busy_o`** — uses `~fill_rvd_done` (FB still expecting bus beats),
-  NOT `fill_busy` (FB still alive including output drain), per upstream
-  `ibex_icache.sv:1303`. Important for WFI: when the controller stops
-  accepting beats (ready_i=0), an FB delivering output never releases;
-  if `busy_o` were `fill_busy` based, `core_sleep_o` would never rise.
+- **Spec scenario S3 was wrong** — the spec's `csr=0x1F → 16-byte
+  at base 0x10` doesn't match the spec's own algorithm REQ-MODE-3
+  (which gives 64 bytes at base 0). The correct pmpaddr for
+  16-byte at base 0x10 is `csr=0x14`. Eight tests had the wrong
+  encoding because they followed S3; all corrected to use
+  algorithm-consistent values. **Workflow lesson:** spec-stage
+  review should hand-evaluate at least one Scenario per algorithm
+  rule.
 
-- **Beat-availability gate** in the output mux — for a mid-line branch
-  (alloc_addr[2]=1) the FB starts at beat 1, but data_q[63:32] only
-  fills on the SECOND bus rvalid. Without the gate, `rdata_q` would
-  latch the still-zero high half on the same edge as the second beat
-  capture.
+- **R-DBG-3 spec rule** — bypass test ignores bits [33:32]. Initial
+  impl required them to be zero; corrected to drop the check per
+  the spec's literal "ignore" wording.
 
-- **Build composability** — `scripts/build.sh` extended with a
-  module-strip pass (mirrors the existing `IbexCoreSharedPkg` package
-  strip) so `arch-com`'s auto-inlined dep modules don't trigger
-  `MODDUP` at multi-file SoC link time. Tracked as arch-com#303.
+## arch-com PRs / issues filed during D2
 
-## arch-com PRs / issues filed
+None. The PMP port surfaced no new arch-com bugs (D1's six issues
+already cover the territory).
 
-- **PR #305** (wait-1-cycle elision) — **MERGED**. Fixes the codegen
-  pattern where `wait 1 cycle` between two seq-write boundaries
-  consumed 2 cycles instead of 1.
-- **#301** — `arbiter policy custom <fn>` hook arg shadows arbiter
-  port (workaround: rename `age` → `ages`, call-site refs port name).
-- **#302** — `fsm` output port named `state` collides with auto-emitted
-  `state_r` enum reg (workaround: rename to `state_o`).
-- **#303** — `arch build` inlines all dep modules into consumer `.sv`
-  → MODDUP at multi-file link (workspace strip pass mirrors existing
-  package case).
-- **#306** — `wait until cond; X <= Y;` defers assign by 1 cycle
-  (workaround: drop thread, use `seq + comb` gated on cond).
+## Workflow lessons surfaced (potential WORKFLOW.md follow-up)
+
+- Spec scenarios can be self-inconsistent with their own
+  algorithm. The construct-compliance audit (Stage 1) doesn't
+  catch this — it only verifies impl-vs-spec, not spec-vs-spec.
+  A "Scenario hand-evaluation" check at spec-stage review or
+  test-author stage could catch it. (Not blocking D2; flagged for
+  future workflow iteration.)
+
+- Test author misunderstandings about address encoding (byte vs
+  word, slice semantics) propagated into 8 test setup bugs that
+  all needed correction during impl-stage debugging. A "drive a
+  reference helper that converts byte-PA to the port format" in
+  the test scaffold could prevent this systematically.
 
 ## Files produced
 
-- New `.arch` / `.archi`: `src/IbexIcache.arch`, `src/InvalCtrl.arch`,
-  `src/FbAgeArb.arch`, `src/RamPortArb.arch`, `src/FillBufferCam.arch`,
-  `src/FillBufferCtrl.arch`, `src/prim_ram_1p.archi`
-- Modified: `src/IbexIfStage.arch`, `src/IbexTop.arch`,
-  `src/IbexCore.arch`, `soc/ibex_mini_soc.sv`, `scripts/build.sh`,
-  `tests/sw/wfi_isr.S` (timer delta 32 → 128 to give the icache
-  prefetch FBs time to drain through the WFI window for sleep
-  observability).
-- New: `changes/archive/2026-05-05-port-ibex_icache/` (proposal,
-  spec, spec-notes, tests-inventory). `specs/icache/spec.md`
-  materialised from the change-folder spec.
-- Tests: `tests/cocotb_tests/test_ibex_icache_unit{,_full}.py`,
-  `tests/test_ibex_icache_unit{,_full}.py`. Other test runners
-  (`tests/test_ibex_{core,if_stage,top}_unit{,_full}.py`) updated to
-  bundle the new sub-construct `.sv` files.
+- `src/IbexPmp.arch` (NEW, 602 LoC).
+- `specs/pmp/spec.md` (NEW, materialised from change folder).
+- `tests/cocotb_tests/test_ibex_pmp_unit{,_full}.py` (NEW).
+- `tests/test_ibex_pmp_unit{,_full}.py` (pytest collectors, NEW).
+- `changes/archive/2026-05-06-port-ibex_pmp/` (proposal,
+  spec-source, tests-inventory, archived).
 
 ## Not done (stop before step 9)
 
 Archive step (step 9) is intentionally NOT done — the parent
-orchestrator will serialise the archive commit. The change folder is
-already moved to `changes/archive/`; only the git commit remains.
+orchestrator will serialise the archive commit. The change folder
+is already moved to `changes/archive/`; only the git commit
+remains.
+
+D2-flip (toggle SoC `PMPEnable=1` and instantiate `IbexPmp` in
+IbexCore) is a separate follow-up swap; D2 ships as a
+standalone-module port.

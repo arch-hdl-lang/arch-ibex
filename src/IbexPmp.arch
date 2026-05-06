@@ -1,0 +1,602 @@
+/// ibex_pmp — RISC-V Privileged Spec PMP + ePMP permission checker.
+///
+/// Pure combinational module. For each access channel `c`, consumes a
+/// 34-bit physical address, an access type (EXEC / WRITE / READ), and the
+/// requesting privilege mode. Against a CSR-supplied region table
+/// (`csr_pmp_cfg_i`, `csr_pmp_addr_i`) and ePMP control
+/// (`csr_pmp_mseccfg_i`), emits `pmp_req_err_o[c]` (`1` = deny). No
+/// clock, no reset, no internal state.
+///
+/// Spec: changes/2026-05-06-port-ibex_pmp/specs/pmp/spec.md (22 RFC-2119
+/// requirements across R-MODE / R-PERM / R-MML / R-MMWP / R-DBG / R-PRIO
+/// / R-CHAN, 10 G/W/T scenarios).
+///
+/// Construct mapping (per proposal): single `module` with one `comb`
+/// block. No fsm / thread / cam / arbiter — pure combinational.
+///
+/// Pinned parameters: DmBaseAddr=0, DmAddrMask=3, PMPGranularity=0,
+/// PMPNumChan=3, PMPNumRegions=4. Channels: PMP_I=0 (fetch), PMP_I2=1
+/// (fetch+2 for unaligned 32-bit), PMP_D=2 (data). The PMP module
+/// itself does NOT distinguish channels — each is checked identically.
+///
+/// Spec ambiguity resolutions (per proposal §Spec ambiguity resolutions):
+///   A1 MML retroactive: NO latch. mseccfg.mml read live every cycle.
+///   A2 DmAddrMask: assume contiguous; literal masked-equality formula.
+///   A3 NAPOT degenerate: closed-form size_mask = (v & ~(v+1)) | 1.
+///   A4 mseccfg.rlb: declared in port width but unused; sunk via let.
+///   A5 pmp_req_e == 2'b11 reserved: yields denied (basic_perm = 0).
+
+domain SysDomain
+  freq_mhz: 100
+end domain SysDomain
+
+module ibex_pmp
+  // ── Parameters ───────────────────────────────────────────────────
+  param DmBaseAddr: UInt<32> = 32'h0000_0000;
+  param DmAddrMask: UInt<32> = 32'h0000_0003;
+  param PMPGranularity: const = 0;
+  param PMPNumChan:    const = 3;
+  param PMPNumRegions: const = 4;
+
+  // ── Ports (spec §Module interface) ───────────────────────────────
+  /// pmp_cfg_t — 6 bits packed: lock[5], mode[4:3], exec[2], write[1],
+  /// read[0]. Modeled as raw UInt<6>; field access via slice.
+  port csr_pmp_cfg_i:     in unpacked Vec<UInt<6>, PMPNumRegions>;
+  /// 34-bit region address (PMP_ADDR_MSB=33).
+  port csr_pmp_addr_i:    in unpacked Vec<UInt<34>, PMPNumRegions>;
+  /// pmp_mseccfg_t — 3 bits: rlb[2] (unused per A4), mmwp[1], mml[0].
+  port csr_pmp_mseccfg_i: in UInt<3>;
+
+  port debug_mode_i:   in Bool;
+  port priv_mode_i:    in unpacked Vec<UInt<2>, PMPNumChan>;
+  port pmp_req_addr_i: in unpacked Vec<UInt<34>, PMPNumChan>;
+  port pmp_req_type_i: in unpacked Vec<UInt<2>, PMPNumChan>;
+
+  port pmp_req_err_o:  out unpacked Vec<Bool, PMPNumChan>;
+
+  // ── Type encodings (spec §Type definitions) ──────────────────────
+  let PRIV_LVL_M:     UInt<2> = 2'd3;
+  let PMP_ACC_EXEC:   UInt<2> = 2'd0;
+  let PMP_ACC_WRITE:  UInt<2> = 2'd1;
+  let PMP_ACC_READ:   UInt<2> = 2'd2;
+  let PMP_MODE_OFF:   UInt<2> = 2'd0;
+  let PMP_MODE_TOR:   UInt<2> = 2'd1;
+  let PMP_MODE_NA4:   UInt<2> = 2'd2;
+  let PMP_MODE_NAPOT: UInt<2> = 2'd3;
+
+  // ── mseccfg field unpack ─────────────────────────────────────────
+  let mml:  Bool = csr_pmp_mseccfg_i[0];
+  let mmwp: Bool = csr_pmp_mseccfg_i[1];
+  // A4: rlb is consumed by ibex_cs_registers, not here. Sink so the
+  // simulator's UNUSED check stays silent.
+  let _unused_rlb: Bool = csr_pmp_mseccfg_i[2];
+
+  // ── Per-region cfg field extractors ──────────────────────────────
+  let cfg0_lock:  Bool    = csr_pmp_cfg_i[0][5];
+  let cfg0_mode:  UInt<2> = csr_pmp_cfg_i[0][4:3];
+  let cfg0_exec:  Bool    = csr_pmp_cfg_i[0][2];
+  let cfg0_write: Bool    = csr_pmp_cfg_i[0][1];
+  let cfg0_read:  Bool    = csr_pmp_cfg_i[0][0];
+  let cfg1_lock:  Bool    = csr_pmp_cfg_i[1][5];
+  let cfg1_mode:  UInt<2> = csr_pmp_cfg_i[1][4:3];
+  let cfg1_exec:  Bool    = csr_pmp_cfg_i[1][2];
+  let cfg1_write: Bool    = csr_pmp_cfg_i[1][1];
+  let cfg1_read:  Bool    = csr_pmp_cfg_i[1][0];
+  let cfg2_lock:  Bool    = csr_pmp_cfg_i[2][5];
+  let cfg2_mode:  UInt<2> = csr_pmp_cfg_i[2][4:3];
+  let cfg2_exec:  Bool    = csr_pmp_cfg_i[2][2];
+  let cfg2_write: Bool    = csr_pmp_cfg_i[2][1];
+  let cfg2_read:  Bool    = csr_pmp_cfg_i[2][0];
+  let cfg3_lock:  Bool    = csr_pmp_cfg_i[3][5];
+  let cfg3_mode:  UInt<2> = csr_pmp_cfg_i[3][4:3];
+  let cfg3_exec:  Bool    = csr_pmp_cfg_i[3][2];
+  let cfg3_write: Bool    = csr_pmp_cfg_i[3][1];
+  let cfg3_read:  Bool    = csr_pmp_cfg_i[3][0];
+
+  // ── Per-region NAPOT size_mask (A3 closed form) ──────────────────
+  // For 32-bit value v = csr_pmp_addr[r][33:2]:
+  //   size_mask = v ^ (v + 1)
+  // Bit i of size_mask = 1 iff bit (i+2) of csr_pmp_addr is a NAPOT
+  // size bit (don't-care in match). The XOR-with-increment trick
+  // captures the trailing-1 run up to AND including the first zero
+  // above it: for v = ...0111, v+1 = ...1000, v ^ (v+1) = ...1111
+  // covers all the bits that flipped, which is exactly the size run
+  // [first-zero : 0]. Bit 0 of v corresponds to bit 2 of csr_pmp_addr
+  // (always-size per the granularity=0 rule), and the formula
+  // automatically yields size_mask[0]=1 even for v=...000.
+  //
+  // Per spec REQ-MODE-3: "mask[b]=0 iff csr_addr[b-1:2] is all-ones"
+  // (where mask=0 means size, opposite convention from `napot_mask`
+  // here where 1 means size = don't-care in the AND-with-~mask
+  // match formula).
+  let v0:  UInt<32> = csr_pmp_addr_i[0][33:2];
+  let v1:  UInt<32> = csr_pmp_addr_i[1][33:2];
+  let v2:  UInt<32> = csr_pmp_addr_i[2][33:2];
+  let v3:  UInt<32> = csr_pmp_addr_i[3][33:2];
+  let napot_mask_0: UInt<32> = v0 ^ (v0 +% 32'd1);
+  let napot_mask_1: UInt<32> = v1 ^ (v1 +% 32'd1);
+  let napot_mask_2: UInt<32> = v2 ^ (v2 +% 32'd1);
+  let napot_mask_3: UInt<32> = v3 ^ (v3 +% 32'd1);
+
+  // ── Per-(region, channel) addr_match per mode ────────────────────
+  // Aliases for compactness.
+  let req_a0: UInt<32> = pmp_req_addr_i[0][33:2];
+  let req_a1: UInt<32> = pmp_req_addr_i[1][33:2];
+  let req_a2: UInt<32> = pmp_req_addr_i[2][33:2];
+
+  // NA4 match: full equality on [33:2].
+  let na4_0_c0: Bool = req_a0 == v0;
+  let na4_0_c1: Bool = req_a1 == v0;
+  let na4_0_c2: Bool = req_a2 == v0;
+  let na4_1_c0: Bool = req_a0 == v1;
+  let na4_1_c1: Bool = req_a1 == v1;
+  let na4_1_c2: Bool = req_a2 == v1;
+  let na4_2_c0: Bool = req_a0 == v2;
+  let na4_2_c1: Bool = req_a1 == v2;
+  let na4_2_c2: Bool = req_a2 == v2;
+  let na4_3_c0: Bool = req_a0 == v3;
+  let na4_3_c1: Bool = req_a1 == v3;
+  let na4_3_c2: Bool = req_a2 == v3;
+
+  // NAPOT match: ((addr ^ csr_addr) & ~mask) == 0.
+  let napot_0_c0: Bool = ((req_a0 ^ v0) & (~napot_mask_0)) == 32'd0;
+  let napot_0_c1: Bool = ((req_a1 ^ v0) & (~napot_mask_0)) == 32'd0;
+  let napot_0_c2: Bool = ((req_a2 ^ v0) & (~napot_mask_0)) == 32'd0;
+  let napot_1_c0: Bool = ((req_a0 ^ v1) & (~napot_mask_1)) == 32'd0;
+  let napot_1_c1: Bool = ((req_a1 ^ v1) & (~napot_mask_1)) == 32'd0;
+  let napot_1_c2: Bool = ((req_a2 ^ v1) & (~napot_mask_1)) == 32'd0;
+  let napot_2_c0: Bool = ((req_a0 ^ v2) & (~napot_mask_2)) == 32'd0;
+  let napot_2_c1: Bool = ((req_a1 ^ v2) & (~napot_mask_2)) == 32'd0;
+  let napot_2_c2: Bool = ((req_a2 ^ v2) & (~napot_mask_2)) == 32'd0;
+  let napot_3_c0: Bool = ((req_a0 ^ v3) & (~napot_mask_3)) == 32'd0;
+  let napot_3_c1: Bool = ((req_a1 ^ v3) & (~napot_mask_3)) == 32'd0;
+  let napot_3_c2: Bool = ((req_a2 ^ v3) & (~napot_mask_3)) == 32'd0;
+
+  // TOR match: prev_csr_addr ≤ req_addr < curr_csr_addr.
+  // Region 0 has prev = 0 (R-MODE-5).
+  let tor_0_c0: Bool = (req_a0 < v0);
+  let tor_0_c1: Bool = (req_a1 < v0);
+  let tor_0_c2: Bool = (req_a2 < v0);
+  let tor_1_c0: Bool = (v0 <= req_a0) and (req_a0 < v1);
+  let tor_1_c1: Bool = (v0 <= req_a1) and (req_a1 < v1);
+  let tor_1_c2: Bool = (v0 <= req_a2) and (req_a2 < v1);
+  let tor_2_c0: Bool = (v1 <= req_a0) and (req_a0 < v2);
+  let tor_2_c1: Bool = (v1 <= req_a1) and (req_a1 < v2);
+  let tor_2_c2: Bool = (v1 <= req_a2) and (req_a2 < v2);
+  let tor_3_c0: Bool = (v2 <= req_a0) and (req_a0 < v3);
+  let tor_3_c1: Bool = (v2 <= req_a1) and (req_a1 < v3);
+  let tor_3_c2: Bool = (v2 <= req_a2) and (req_a2 < v3);
+
+  // ── region_match_all[c][r] = mode-specific match (R-MODE-1..5) ───
+  let m_0_c0: Bool =
+    (cfg0_mode == PMP_MODE_NA4   and na4_0_c0)
+    or (cfg0_mode == PMP_MODE_NAPOT and napot_0_c0)
+    or (cfg0_mode == PMP_MODE_TOR   and tor_0_c0);
+  let m_0_c1: Bool =
+    (cfg0_mode == PMP_MODE_NA4   and na4_0_c1)
+    or (cfg0_mode == PMP_MODE_NAPOT and napot_0_c1)
+    or (cfg0_mode == PMP_MODE_TOR   and tor_0_c1);
+  let m_0_c2: Bool =
+    (cfg0_mode == PMP_MODE_NA4   and na4_0_c2)
+    or (cfg0_mode == PMP_MODE_NAPOT and napot_0_c2)
+    or (cfg0_mode == PMP_MODE_TOR   and tor_0_c2);
+  let m_1_c0: Bool =
+    (cfg1_mode == PMP_MODE_NA4   and na4_1_c0)
+    or (cfg1_mode == PMP_MODE_NAPOT and napot_1_c0)
+    or (cfg1_mode == PMP_MODE_TOR   and tor_1_c0);
+  let m_1_c1: Bool =
+    (cfg1_mode == PMP_MODE_NA4   and na4_1_c1)
+    or (cfg1_mode == PMP_MODE_NAPOT and napot_1_c1)
+    or (cfg1_mode == PMP_MODE_TOR   and tor_1_c1);
+  let m_1_c2: Bool =
+    (cfg1_mode == PMP_MODE_NA4   and na4_1_c2)
+    or (cfg1_mode == PMP_MODE_NAPOT and napot_1_c2)
+    or (cfg1_mode == PMP_MODE_TOR   and tor_1_c2);
+  let m_2_c0: Bool =
+    (cfg2_mode == PMP_MODE_NA4   and na4_2_c0)
+    or (cfg2_mode == PMP_MODE_NAPOT and napot_2_c0)
+    or (cfg2_mode == PMP_MODE_TOR   and tor_2_c0);
+  let m_2_c1: Bool =
+    (cfg2_mode == PMP_MODE_NA4   and na4_2_c1)
+    or (cfg2_mode == PMP_MODE_NAPOT and napot_2_c1)
+    or (cfg2_mode == PMP_MODE_TOR   and tor_2_c1);
+  let m_2_c2: Bool =
+    (cfg2_mode == PMP_MODE_NA4   and na4_2_c2)
+    or (cfg2_mode == PMP_MODE_NAPOT and napot_2_c2)
+    or (cfg2_mode == PMP_MODE_TOR   and tor_2_c2);
+  let m_3_c0: Bool =
+    (cfg3_mode == PMP_MODE_NA4   and na4_3_c0)
+    or (cfg3_mode == PMP_MODE_NAPOT and napot_3_c0)
+    or (cfg3_mode == PMP_MODE_TOR   and tor_3_c0);
+  let m_3_c1: Bool =
+    (cfg3_mode == PMP_MODE_NA4   and na4_3_c1)
+    or (cfg3_mode == PMP_MODE_NAPOT and napot_3_c1)
+    or (cfg3_mode == PMP_MODE_TOR   and tor_3_c1);
+  let m_3_c2: Bool =
+    (cfg3_mode == PMP_MODE_NA4   and na4_3_c2)
+    or (cfg3_mode == PMP_MODE_NAPOT and napot_3_c2)
+    or (cfg3_mode == PMP_MODE_TOR   and tor_3_c2);
+
+  // ── Per-(region, channel) basic permission (R-PERM-1) ────────────
+  // basic_perm_check = exec if EXEC, write if WRITE, read if READ,
+  // 0 if reserved (A5).
+  let bp_0_c0: Bool =
+    (pmp_req_type_i[0] == PMP_ACC_EXEC  and cfg0_exec)
+    or (pmp_req_type_i[0] == PMP_ACC_WRITE and cfg0_write)
+    or (pmp_req_type_i[0] == PMP_ACC_READ  and cfg0_read);
+  let bp_0_c1: Bool =
+    (pmp_req_type_i[1] == PMP_ACC_EXEC  and cfg0_exec)
+    or (pmp_req_type_i[1] == PMP_ACC_WRITE and cfg0_write)
+    or (pmp_req_type_i[1] == PMP_ACC_READ  and cfg0_read);
+  let bp_0_c2: Bool =
+    (pmp_req_type_i[2] == PMP_ACC_EXEC  and cfg0_exec)
+    or (pmp_req_type_i[2] == PMP_ACC_WRITE and cfg0_write)
+    or (pmp_req_type_i[2] == PMP_ACC_READ  and cfg0_read);
+  let bp_1_c0: Bool =
+    (pmp_req_type_i[0] == PMP_ACC_EXEC  and cfg1_exec)
+    or (pmp_req_type_i[0] == PMP_ACC_WRITE and cfg1_write)
+    or (pmp_req_type_i[0] == PMP_ACC_READ  and cfg1_read);
+  let bp_1_c1: Bool =
+    (pmp_req_type_i[1] == PMP_ACC_EXEC  and cfg1_exec)
+    or (pmp_req_type_i[1] == PMP_ACC_WRITE and cfg1_write)
+    or (pmp_req_type_i[1] == PMP_ACC_READ  and cfg1_read);
+  let bp_1_c2: Bool =
+    (pmp_req_type_i[2] == PMP_ACC_EXEC  and cfg1_exec)
+    or (pmp_req_type_i[2] == PMP_ACC_WRITE and cfg1_write)
+    or (pmp_req_type_i[2] == PMP_ACC_READ  and cfg1_read);
+  let bp_2_c0: Bool =
+    (pmp_req_type_i[0] == PMP_ACC_EXEC  and cfg2_exec)
+    or (pmp_req_type_i[0] == PMP_ACC_WRITE and cfg2_write)
+    or (pmp_req_type_i[0] == PMP_ACC_READ  and cfg2_read);
+  let bp_2_c1: Bool =
+    (pmp_req_type_i[1] == PMP_ACC_EXEC  and cfg2_exec)
+    or (pmp_req_type_i[1] == PMP_ACC_WRITE and cfg2_write)
+    or (pmp_req_type_i[1] == PMP_ACC_READ  and cfg2_read);
+  let bp_2_c2: Bool =
+    (pmp_req_type_i[2] == PMP_ACC_EXEC  and cfg2_exec)
+    or (pmp_req_type_i[2] == PMP_ACC_WRITE and cfg2_write)
+    or (pmp_req_type_i[2] == PMP_ACC_READ  and cfg2_read);
+  let bp_3_c0: Bool =
+    (pmp_req_type_i[0] == PMP_ACC_EXEC  and cfg3_exec)
+    or (pmp_req_type_i[0] == PMP_ACC_WRITE and cfg3_write)
+    or (pmp_req_type_i[0] == PMP_ACC_READ  and cfg3_read);
+  let bp_3_c1: Bool =
+    (pmp_req_type_i[1] == PMP_ACC_EXEC  and cfg3_exec)
+    or (pmp_req_type_i[1] == PMP_ACC_WRITE and cfg3_write)
+    or (pmp_req_type_i[1] == PMP_ACC_READ  and cfg3_read);
+  let bp_3_c2: Bool =
+    (pmp_req_type_i[2] == PMP_ACC_EXEC  and cfg3_exec)
+    or (pmp_req_type_i[2] == PMP_ACC_WRITE and cfg3_write)
+    or (pmp_req_type_i[2] == PMP_ACC_READ  and cfg3_read);
+
+  // ── Per-(region, channel) MML-aware permission (R-PERM-2/3, R-MML-1/2/3) ─
+  // mml_shared_RW = region with cfg.read=0 AND cfg.write=1 (the ePMP
+  // shared-RW reinterpretation table per R-MML-1).
+  // mml_shared_RO = region with cfg.read=1 AND cfg.write=1 AND cfg.exec=1
+  // AND cfg.lock=1 (R-MML-2).
+  let is_M_c0: Bool = priv_mode_i[0] == PRIV_LVL_M;
+  let is_M_c1: Bool = priv_mode_i[1] == PRIV_LVL_M;
+  let is_M_c2: Bool = priv_mode_i[2] == PRIV_LVL_M;
+
+  // Per-region MML special-encoding flags.
+  let mml_sRW_0: Bool = (not cfg0_read) and cfg0_write;
+  let mml_sRW_1: Bool = (not cfg1_read) and cfg1_write;
+  let mml_sRW_2: Bool = (not cfg2_read) and cfg2_write;
+  let mml_sRW_3: Bool = (not cfg3_read) and cfg3_write;
+  let mml_sRO_0: Bool = cfg0_lock and cfg0_read and cfg0_write and cfg0_exec;
+  let mml_sRO_1: Bool = cfg1_lock and cfg1_read and cfg1_write and cfg1_exec;
+  let mml_sRO_2: Bool = cfg2_lock and cfg2_read and cfg2_write and cfg2_exec;
+  let mml_sRO_3: Bool = cfg3_lock and cfg3_read and cfg3_write and cfg3_exec;
+
+  // R-MML-1 four-row table (region with R=0,W=1):
+  //   {L=0,X=0}: READ any priv; WRITE only M.
+  //   {L=0,X=1}: READ or WRITE any priv.
+  //   {L=1,X=0}: EXEC only, any priv.
+  //   {L=1,X=1}: EXEC any; READ only M.
+  // Helper for one region r:
+  //   mml_sRW_perm(L, X, type, is_M):
+  //     (L=0,X=0) → (type==READ) or (type==WRITE and is_M)
+  //     (L=0,X=1) → (type==READ) or (type==WRITE)
+  //     (L=1,X=0) → (type==EXEC)
+  //     (L=1,X=1) → (type==EXEC) or (type==READ and is_M)
+
+  // Per-(region, channel) permission under MML=1 sRW encoding.
+  let mml_p_sRW_0_c0: Bool =
+    (((not cfg0_lock) and (not cfg0_exec))
+        and ((pmp_req_type_i[0] == PMP_ACC_READ)
+             or ((pmp_req_type_i[0] == PMP_ACC_WRITE) and is_M_c0)))
+    or (((not cfg0_lock) and cfg0_exec)
+        and ((pmp_req_type_i[0] == PMP_ACC_READ)
+             or (pmp_req_type_i[0] == PMP_ACC_WRITE)))
+    or ((cfg0_lock and (not cfg0_exec))
+        and (pmp_req_type_i[0] == PMP_ACC_EXEC))
+    or ((cfg0_lock and cfg0_exec)
+        and ((pmp_req_type_i[0] == PMP_ACC_EXEC)
+             or ((pmp_req_type_i[0] == PMP_ACC_READ) and is_M_c0)));
+  let mml_p_sRW_0_c1: Bool =
+    (((not cfg0_lock) and (not cfg0_exec))
+        and ((pmp_req_type_i[1] == PMP_ACC_READ)
+             or ((pmp_req_type_i[1] == PMP_ACC_WRITE) and is_M_c1)))
+    or (((not cfg0_lock) and cfg0_exec)
+        and ((pmp_req_type_i[1] == PMP_ACC_READ)
+             or (pmp_req_type_i[1] == PMP_ACC_WRITE)))
+    or ((cfg0_lock and (not cfg0_exec))
+        and (pmp_req_type_i[1] == PMP_ACC_EXEC))
+    or ((cfg0_lock and cfg0_exec)
+        and ((pmp_req_type_i[1] == PMP_ACC_EXEC)
+             or ((pmp_req_type_i[1] == PMP_ACC_READ) and is_M_c1)));
+  let mml_p_sRW_0_c2: Bool =
+    (((not cfg0_lock) and (not cfg0_exec))
+        and ((pmp_req_type_i[2] == PMP_ACC_READ)
+             or ((pmp_req_type_i[2] == PMP_ACC_WRITE) and is_M_c2)))
+    or (((not cfg0_lock) and cfg0_exec)
+        and ((pmp_req_type_i[2] == PMP_ACC_READ)
+             or (pmp_req_type_i[2] == PMP_ACC_WRITE)))
+    or ((cfg0_lock and (not cfg0_exec))
+        and (pmp_req_type_i[2] == PMP_ACC_EXEC))
+    or ((cfg0_lock and cfg0_exec)
+        and ((pmp_req_type_i[2] == PMP_ACC_EXEC)
+             or ((pmp_req_type_i[2] == PMP_ACC_READ) and is_M_c2)));
+  // Region 1 sRW
+  let mml_p_sRW_1_c0: Bool =
+    (((not cfg1_lock) and (not cfg1_exec))
+        and ((pmp_req_type_i[0] == PMP_ACC_READ)
+             or ((pmp_req_type_i[0] == PMP_ACC_WRITE) and is_M_c0)))
+    or (((not cfg1_lock) and cfg1_exec)
+        and ((pmp_req_type_i[0] == PMP_ACC_READ)
+             or (pmp_req_type_i[0] == PMP_ACC_WRITE)))
+    or ((cfg1_lock and (not cfg1_exec))
+        and (pmp_req_type_i[0] == PMP_ACC_EXEC))
+    or ((cfg1_lock and cfg1_exec)
+        and ((pmp_req_type_i[0] == PMP_ACC_EXEC)
+             or ((pmp_req_type_i[0] == PMP_ACC_READ) and is_M_c0)));
+  let mml_p_sRW_1_c1: Bool =
+    (((not cfg1_lock) and (not cfg1_exec))
+        and ((pmp_req_type_i[1] == PMP_ACC_READ)
+             or ((pmp_req_type_i[1] == PMP_ACC_WRITE) and is_M_c1)))
+    or (((not cfg1_lock) and cfg1_exec)
+        and ((pmp_req_type_i[1] == PMP_ACC_READ)
+             or (pmp_req_type_i[1] == PMP_ACC_WRITE)))
+    or ((cfg1_lock and (not cfg1_exec))
+        and (pmp_req_type_i[1] == PMP_ACC_EXEC))
+    or ((cfg1_lock and cfg1_exec)
+        and ((pmp_req_type_i[1] == PMP_ACC_EXEC)
+             or ((pmp_req_type_i[1] == PMP_ACC_READ) and is_M_c1)));
+  let mml_p_sRW_1_c2: Bool =
+    (((not cfg1_lock) and (not cfg1_exec))
+        and ((pmp_req_type_i[2] == PMP_ACC_READ)
+             or ((pmp_req_type_i[2] == PMP_ACC_WRITE) and is_M_c2)))
+    or (((not cfg1_lock) and cfg1_exec)
+        and ((pmp_req_type_i[2] == PMP_ACC_READ)
+             or (pmp_req_type_i[2] == PMP_ACC_WRITE)))
+    or ((cfg1_lock and (not cfg1_exec))
+        and (pmp_req_type_i[2] == PMP_ACC_EXEC))
+    or ((cfg1_lock and cfg1_exec)
+        and ((pmp_req_type_i[2] == PMP_ACC_EXEC)
+             or ((pmp_req_type_i[2] == PMP_ACC_READ) and is_M_c2)));
+  // Region 2 sRW
+  let mml_p_sRW_2_c0: Bool =
+    (((not cfg2_lock) and (not cfg2_exec))
+        and ((pmp_req_type_i[0] == PMP_ACC_READ)
+             or ((pmp_req_type_i[0] == PMP_ACC_WRITE) and is_M_c0)))
+    or (((not cfg2_lock) and cfg2_exec)
+        and ((pmp_req_type_i[0] == PMP_ACC_READ)
+             or (pmp_req_type_i[0] == PMP_ACC_WRITE)))
+    or ((cfg2_lock and (not cfg2_exec))
+        and (pmp_req_type_i[0] == PMP_ACC_EXEC))
+    or ((cfg2_lock and cfg2_exec)
+        and ((pmp_req_type_i[0] == PMP_ACC_EXEC)
+             or ((pmp_req_type_i[0] == PMP_ACC_READ) and is_M_c0)));
+  let mml_p_sRW_2_c1: Bool =
+    (((not cfg2_lock) and (not cfg2_exec))
+        and ((pmp_req_type_i[1] == PMP_ACC_READ)
+             or ((pmp_req_type_i[1] == PMP_ACC_WRITE) and is_M_c1)))
+    or (((not cfg2_lock) and cfg2_exec)
+        and ((pmp_req_type_i[1] == PMP_ACC_READ)
+             or (pmp_req_type_i[1] == PMP_ACC_WRITE)))
+    or ((cfg2_lock and (not cfg2_exec))
+        and (pmp_req_type_i[1] == PMP_ACC_EXEC))
+    or ((cfg2_lock and cfg2_exec)
+        and ((pmp_req_type_i[1] == PMP_ACC_EXEC)
+             or ((pmp_req_type_i[1] == PMP_ACC_READ) and is_M_c1)));
+  let mml_p_sRW_2_c2: Bool =
+    (((not cfg2_lock) and (not cfg2_exec))
+        and ((pmp_req_type_i[2] == PMP_ACC_READ)
+             or ((pmp_req_type_i[2] == PMP_ACC_WRITE) and is_M_c2)))
+    or (((not cfg2_lock) and cfg2_exec)
+        and ((pmp_req_type_i[2] == PMP_ACC_READ)
+             or (pmp_req_type_i[2] == PMP_ACC_WRITE)))
+    or ((cfg2_lock and (not cfg2_exec))
+        and (pmp_req_type_i[2] == PMP_ACC_EXEC))
+    or ((cfg2_lock and cfg2_exec)
+        and ((pmp_req_type_i[2] == PMP_ACC_EXEC)
+             or ((pmp_req_type_i[2] == PMP_ACC_READ) and is_M_c2)));
+  // Region 3 sRW
+  let mml_p_sRW_3_c0: Bool =
+    (((not cfg3_lock) and (not cfg3_exec))
+        and ((pmp_req_type_i[0] == PMP_ACC_READ)
+             or ((pmp_req_type_i[0] == PMP_ACC_WRITE) and is_M_c0)))
+    or (((not cfg3_lock) and cfg3_exec)
+        and ((pmp_req_type_i[0] == PMP_ACC_READ)
+             or (pmp_req_type_i[0] == PMP_ACC_WRITE)))
+    or ((cfg3_lock and (not cfg3_exec))
+        and (pmp_req_type_i[0] == PMP_ACC_EXEC))
+    or ((cfg3_lock and cfg3_exec)
+        and ((pmp_req_type_i[0] == PMP_ACC_EXEC)
+             or ((pmp_req_type_i[0] == PMP_ACC_READ) and is_M_c0)));
+  let mml_p_sRW_3_c1: Bool =
+    (((not cfg3_lock) and (not cfg3_exec))
+        and ((pmp_req_type_i[1] == PMP_ACC_READ)
+             or ((pmp_req_type_i[1] == PMP_ACC_WRITE) and is_M_c1)))
+    or (((not cfg3_lock) and cfg3_exec)
+        and ((pmp_req_type_i[1] == PMP_ACC_READ)
+             or (pmp_req_type_i[1] == PMP_ACC_WRITE)))
+    or ((cfg3_lock and (not cfg3_exec))
+        and (pmp_req_type_i[1] == PMP_ACC_EXEC))
+    or ((cfg3_lock and cfg3_exec)
+        and ((pmp_req_type_i[1] == PMP_ACC_EXEC)
+             or ((pmp_req_type_i[1] == PMP_ACC_READ) and is_M_c1)));
+  let mml_p_sRW_3_c2: Bool =
+    (((not cfg3_lock) and (not cfg3_exec))
+        and ((pmp_req_type_i[2] == PMP_ACC_READ)
+             or ((pmp_req_type_i[2] == PMP_ACC_WRITE) and is_M_c2)))
+    or (((not cfg3_lock) and cfg3_exec)
+        and ((pmp_req_type_i[2] == PMP_ACC_READ)
+             or (pmp_req_type_i[2] == PMP_ACC_WRITE)))
+    or ((cfg3_lock and (not cfg3_exec))
+        and (pmp_req_type_i[2] == PMP_ACC_EXEC))
+    or ((cfg3_lock and cfg3_exec)
+        and ((pmp_req_type_i[2] == PMP_ACC_EXEC)
+             or ((pmp_req_type_i[2] == PMP_ACC_READ) and is_M_c2)));
+
+  // R-MML-3 polarity-flipped basic check (when MML and not sRW and not sRO):
+  //   perm = basic & (M ? lock : ~lock)
+  let mml_p_flip_0_c0: Bool = bp_0_c0 and (is_M_c0 ? cfg0_lock : (not cfg0_lock));
+  let mml_p_flip_0_c1: Bool = bp_0_c1 and (is_M_c1 ? cfg0_lock : (not cfg0_lock));
+  let mml_p_flip_0_c2: Bool = bp_0_c2 and (is_M_c2 ? cfg0_lock : (not cfg0_lock));
+  let mml_p_flip_1_c0: Bool = bp_1_c0 and (is_M_c0 ? cfg1_lock : (not cfg1_lock));
+  let mml_p_flip_1_c1: Bool = bp_1_c1 and (is_M_c1 ? cfg1_lock : (not cfg1_lock));
+  let mml_p_flip_1_c2: Bool = bp_1_c2 and (is_M_c2 ? cfg1_lock : (not cfg1_lock));
+  let mml_p_flip_2_c0: Bool = bp_2_c0 and (is_M_c0 ? cfg2_lock : (not cfg2_lock));
+  let mml_p_flip_2_c1: Bool = bp_2_c1 and (is_M_c1 ? cfg2_lock : (not cfg2_lock));
+  let mml_p_flip_2_c2: Bool = bp_2_c2 and (is_M_c2 ? cfg2_lock : (not cfg2_lock));
+  let mml_p_flip_3_c0: Bool = bp_3_c0 and (is_M_c0 ? cfg3_lock : (not cfg3_lock));
+  let mml_p_flip_3_c1: Bool = bp_3_c1 and (is_M_c1 ? cfg3_lock : (not cfg3_lock));
+  let mml_p_flip_3_c2: Bool = bp_3_c2 and (is_M_c2 ? cfg3_lock : (not cfg3_lock));
+
+  // R-MML-2 sRO (L=R=W=X=1): only READ allowed, any priv.
+  let mml_p_sRO_0_c0: Bool = pmp_req_type_i[0] == PMP_ACC_READ;
+  let mml_p_sRO_0_c1: Bool = pmp_req_type_i[1] == PMP_ACC_READ;
+  let mml_p_sRO_0_c2: Bool = pmp_req_type_i[2] == PMP_ACC_READ;
+  let mml_p_sRO_1_c0: Bool = pmp_req_type_i[0] == PMP_ACC_READ;
+  let mml_p_sRO_1_c1: Bool = pmp_req_type_i[1] == PMP_ACC_READ;
+  let mml_p_sRO_1_c2: Bool = pmp_req_type_i[2] == PMP_ACC_READ;
+  let mml_p_sRO_2_c0: Bool = pmp_req_type_i[0] == PMP_ACC_READ;
+  let mml_p_sRO_2_c1: Bool = pmp_req_type_i[1] == PMP_ACC_READ;
+  let mml_p_sRO_2_c2: Bool = pmp_req_type_i[2] == PMP_ACC_READ;
+  let mml_p_sRO_3_c0: Bool = pmp_req_type_i[0] == PMP_ACC_READ;
+  let mml_p_sRO_3_c1: Bool = pmp_req_type_i[1] == PMP_ACC_READ;
+  let mml_p_sRO_3_c2: Bool = pmp_req_type_i[2] == PMP_ACC_READ;
+
+  // ── Final region_perm_check[c][r] (R-PERM, R-MML) ────────────────
+  // Selection priority: under MML=1, sRO > sRW > flip; under MML=0,
+  // M-mode unlocked allows, M-mode locked uses basic, non-M uses basic.
+  let p_0_c0: Bool =
+    mml ? (mml_sRO_0 ? mml_p_sRO_0_c0 :
+           (mml_sRW_0 ? mml_p_sRW_0_c0 : mml_p_flip_0_c0))
+        : (is_M_c0 ? ((not cfg0_lock) or bp_0_c0) : bp_0_c0);
+  let p_0_c1: Bool =
+    mml ? (mml_sRO_0 ? mml_p_sRO_0_c1 :
+           (mml_sRW_0 ? mml_p_sRW_0_c1 : mml_p_flip_0_c1))
+        : (is_M_c1 ? ((not cfg0_lock) or bp_0_c1) : bp_0_c1);
+  let p_0_c2: Bool =
+    mml ? (mml_sRO_0 ? mml_p_sRO_0_c2 :
+           (mml_sRW_0 ? mml_p_sRW_0_c2 : mml_p_flip_0_c2))
+        : (is_M_c2 ? ((not cfg0_lock) or bp_0_c2) : bp_0_c2);
+  let p_1_c0: Bool =
+    mml ? (mml_sRO_1 ? mml_p_sRO_1_c0 :
+           (mml_sRW_1 ? mml_p_sRW_1_c0 : mml_p_flip_1_c0))
+        : (is_M_c0 ? ((not cfg1_lock) or bp_1_c0) : bp_1_c0);
+  let p_1_c1: Bool =
+    mml ? (mml_sRO_1 ? mml_p_sRO_1_c1 :
+           (mml_sRW_1 ? mml_p_sRW_1_c1 : mml_p_flip_1_c1))
+        : (is_M_c1 ? ((not cfg1_lock) or bp_1_c1) : bp_1_c1);
+  let p_1_c2: Bool =
+    mml ? (mml_sRO_1 ? mml_p_sRO_1_c2 :
+           (mml_sRW_1 ? mml_p_sRW_1_c2 : mml_p_flip_1_c2))
+        : (is_M_c2 ? ((not cfg1_lock) or bp_1_c2) : bp_1_c2);
+  let p_2_c0: Bool =
+    mml ? (mml_sRO_2 ? mml_p_sRO_2_c0 :
+           (mml_sRW_2 ? mml_p_sRW_2_c0 : mml_p_flip_2_c0))
+        : (is_M_c0 ? ((not cfg2_lock) or bp_2_c0) : bp_2_c0);
+  let p_2_c1: Bool =
+    mml ? (mml_sRO_2 ? mml_p_sRO_2_c1 :
+           (mml_sRW_2 ? mml_p_sRW_2_c1 : mml_p_flip_2_c1))
+        : (is_M_c1 ? ((not cfg2_lock) or bp_2_c1) : bp_2_c1);
+  let p_2_c2: Bool =
+    mml ? (mml_sRO_2 ? mml_p_sRO_2_c2 :
+           (mml_sRW_2 ? mml_p_sRW_2_c2 : mml_p_flip_2_c2))
+        : (is_M_c2 ? ((not cfg2_lock) or bp_2_c2) : bp_2_c2);
+  let p_3_c0: Bool =
+    mml ? (mml_sRO_3 ? mml_p_sRO_3_c0 :
+           (mml_sRW_3 ? mml_p_sRW_3_c0 : mml_p_flip_3_c0))
+        : (is_M_c0 ? ((not cfg3_lock) or bp_3_c0) : bp_3_c0);
+  let p_3_c1: Bool =
+    mml ? (mml_sRO_3 ? mml_p_sRO_3_c1 :
+           (mml_sRW_3 ? mml_p_sRW_3_c1 : mml_p_flip_3_c1))
+        : (is_M_c1 ? ((not cfg3_lock) or bp_3_c1) : bp_3_c1);
+  let p_3_c2: Bool =
+    mml ? (mml_sRO_3 ? mml_p_sRO_3_c2 :
+           (mml_sRW_3 ? mml_p_sRW_3_c2 : mml_p_flip_3_c2))
+        : (is_M_c2 ? ((not cfg3_lock) or bp_3_c2) : bp_3_c2);
+
+  // ── Region priority + default-deny (R-PRIO-1, R-MMWP) ────────────
+  // Lowest matching region wins. If no match, default depends on
+  // priv mode + mmwp + MML+EXEC.
+  let any_match_c0: Bool = m_0_c0 or m_1_c0 or m_2_c0 or m_3_c0;
+  let any_match_c1: Bool = m_0_c1 or m_1_c1 or m_2_c1 or m_3_c1;
+  let any_match_c2: Bool = m_0_c2 or m_1_c2 or m_2_c2 or m_3_c2;
+
+  // Lowest-match permission per channel.
+  let matched_perm_c0: Bool =
+    m_0_c0 ? p_0_c0 :
+    (m_1_c0 ? p_1_c0 :
+    (m_2_c0 ? p_2_c0 :
+    (m_3_c0 ? p_3_c0 : false)));
+  let matched_perm_c1: Bool =
+    m_0_c1 ? p_0_c1 :
+    (m_1_c1 ? p_1_c1 :
+    (m_2_c1 ? p_2_c1 :
+    (m_3_c1 ? p_3_c1 : false)));
+  let matched_perm_c2: Bool =
+    m_0_c2 ? p_0_c2 :
+    (m_1_c2 ? p_1_c2 :
+    (m_2_c2 ? p_2_c2 :
+    (m_3_c2 ? p_3_c2 : false)));
+
+  // No-match default verdict (R-MMWP-1..4).
+  //   non-M: deny.
+  //   M, mml=1, EXEC: deny (R-MMWP-3).
+  //   M, mmwp=1: deny (R-MMWP-1).
+  //   M, mmwp=0, !(mml & EXEC): allow (R-MMWP-2).
+  let unmatched_allow_c0: Bool =
+    is_M_c0
+    and (not mmwp)
+    and (not (mml and (pmp_req_type_i[0] == PMP_ACC_EXEC)));
+  let unmatched_allow_c1: Bool =
+    is_M_c1
+    and (not mmwp)
+    and (not (mml and (pmp_req_type_i[1] == PMP_ACC_EXEC)));
+  let unmatched_allow_c2: Bool =
+    is_M_c2
+    and (not mmwp)
+    and (not (mml and (pmp_req_type_i[2] == PMP_ACC_EXEC)));
+
+  let allow_c0: Bool = any_match_c0 ? matched_perm_c0 : unmatched_allow_c0;
+  let allow_c1: Bool = any_match_c1 ? matched_perm_c1 : unmatched_allow_c1;
+  let allow_c2: Bool = any_match_c2 ? matched_perm_c2 : unmatched_allow_c2;
+
+  // ── Debug-mode bypass (R-DBG-1/2/3) + final output ───────────────
+  // R-DBG-3: ONLY bits [31:0] participate in the bypass test; bits
+  // [33:32] are ignored (per spec). In practice ibex_core drives
+  // `{2'b00, byte_addr[31:0]}` so [33:32] are always zero, but the
+  // spec mandates we don't rely on that.
+  let dm_match_c0: Bool =
+    debug_mode_i
+    and ((pmp_req_addr_i[0][31:0] & (~DmAddrMask)) == DmBaseAddr);
+  let dm_match_c1: Bool =
+    debug_mode_i
+    and ((pmp_req_addr_i[1][31:0] & (~DmAddrMask)) == DmBaseAddr);
+  let dm_match_c2: Bool =
+    debug_mode_i
+    and ((pmp_req_addr_i[2][31:0] & (~DmAddrMask)) == DmBaseAddr);
+
+  // R-CHAN-3: pmp_req_err_o[c] = ~debug_allowed[c] & access_fault[c].
+  // access_fault = ~allow.
+  comb
+    pmp_req_err_o[0] = (not dm_match_c0) and (not allow_c0);
+    pmp_req_err_o[1] = (not dm_match_c1) and (not allow_c1);
+    pmp_req_err_o[2] = (not dm_match_c2) and (not allow_c2);
+  end comb
+
+end module ibex_pmp
