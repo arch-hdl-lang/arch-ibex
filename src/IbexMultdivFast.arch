@@ -135,7 +135,7 @@ module ibex_multdiv_fast
   /// documented as redundant in the spec — the 2 MSBs of the
   /// multiplicants and the 16 MSBs of `accum` always agree, so
   /// `mac_res_ext[34] == mac_res_ext[33]`.
-  function MacRes(sign_a: Bool, op_a16: UInt<16>,
+  shared function MacRes(sign_a: Bool, op_a16: UInt<16>,
                   sign_b: Bool, op_b16: UInt<16>,
                   accum:  UInt<34>) -> UInt<34>
     let a17:    SInt<17> = signed({sign_a, op_a16});
