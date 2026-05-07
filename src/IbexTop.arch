@@ -37,7 +37,7 @@ module ibex_top
   /// Bit-typed params use the `[0:0]: const = 1'd0` form (per
   /// `feedback_arch_syntax_pitfalls` rule #12) so ternaries and
   /// conditional folds compile cleanly.
-  param PMPEnable[0:0]:           const = 1'd0;
+  param PMPEnable[0:0]:           const = 1'd1;
   param PMPGranularity:           const = 0;
   param PMPNumRegions:            const = 4;
   param MHPMCounterNum:           const = 0;

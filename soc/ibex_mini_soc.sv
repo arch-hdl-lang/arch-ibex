@@ -468,6 +468,7 @@ module ibex_mini_soc
   // ── Ibex core ──────────────────────────────────────────────────
   ibex_top_tracing #(
     .ICache          (1'b1),
+    .PMPEnable       (1'b1),
     .DmBaseAddr      (32'h0000_0000),
     .DmAddrMask      (32'h0000_0003),
     .DmHaltAddr      (32'h0000_0000),
