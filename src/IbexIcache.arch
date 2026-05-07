@@ -1118,6 +1118,13 @@ module ibex_icache
       (out_beat_idx == 2'd0)
         ? fb_err_beat0_out_sel : fb_err_beat1_out_sel));
 
+  // Tried (2026-05-07 followup): explicit per-register WE+D form
+  // (hoist priority decode into 7 `_act_*` named signals, then
+  // `if (X_we) X <= X_d;` per reg). Result: -366 µm² REGRESSION
+  // (38,063 → 38,429). yosys-slang was already extracting the
+  // priority chain efficiently across all 5 regs; naming the
+  // intermediate `_act_*` signals blocked its cross-register CSE
+  // and forced separate decode trees. Keeping the priority chain.
   seq on clk_i rising
     if branch_i
       // R-OUT-2 + R-OUT-6: branch cancels valid + clears skid.
