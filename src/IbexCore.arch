@@ -38,6 +38,21 @@
 
 use IbexCoreSharedPkg;
 
+// External SV enums from upstream Ibex's `ibex_pkg` package. Declared
+// extern so arch-com can use them as port types in the
+// `ibex_cs_registers.archi` interface stub (which is hand-written for
+// the upstream-SV cs_registers per spec note N-2). yosys-slang requires
+// explicit `pkg::enum'(sig)` casts at upstream-RTL inst boundaries when
+// the destination port is enum-typed; declaring the wire as the same
+// extern enum eliminates the cast.
+extern package ibex_pkg
+  type csr_num_e;
+  type csr_op_e;
+  type dbg_cause_e;
+end extern package ibex_pkg
+
+use ibex_pkg;
+
 domain SysDomain
   freq_mhz: 100
 end domain SysDomain

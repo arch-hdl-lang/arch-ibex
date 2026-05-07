@@ -25,9 +25,9 @@ module ibex_cs_registers
   port csr_mtvec_init_i: in Bool;
   port boot_addr_i: in UInt<32>;
   port csr_access_i: in Bool;
-  port csr_addr_i: in UInt<12>;
+  port csr_addr_i: in csr_num_e;
   port csr_wdata_i: in UInt<32>;
-  port csr_op_i: in UInt<2>;
+  port csr_op_i: in csr_op_e;
   port csr_op_en_i: in Bool;
   port csr_rdata_o: out UInt<32>;
   port irq_software_i: in Bool;
@@ -45,7 +45,7 @@ module ibex_cs_registers
   port csr_pmp_mseccfg_o: out UInt<3>;
   port debug_mode_i: in Bool;
   port debug_mode_entering_i: in Bool;
-  port debug_cause_i: in UInt<3>;
+  port debug_cause_i: in dbg_cause_e;
   port debug_csr_save_i: in Bool;
   port csr_depc_o: out UInt<32>;
   port debug_single_step_o: out Bool;
