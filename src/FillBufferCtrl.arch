@@ -29,8 +29,11 @@ module FillBufferCtrl
   // ── Allocate/IC1 inputs (R-FB-2) ─────────────────────────────────
   /// One-cycle pulse from outer module: this FB takes the new lookup.
   port allocate: in Bool;
-  /// Lookup line address captured on `allocate`.
-  port alloc_addr: in UInt<32>;
+  // alloc_addr port removed in 2026-05-07-icache-area-restructure
+  // slice 2: outer module owns `fill_addr_q[fb]` and writes it
+  // directly when its own `fb*_allocate` strobe fires (same edge as
+  // FillBufferCtrl's PhIdle→PhAlloc transition). The address never
+  // needs to enter this module.
   /// Initial cache-allocate flag (icache_enable_i & ¬inval_block_cache).
   port alloc_cache: in Bool;
 
@@ -67,7 +70,9 @@ module FillBufferCtrl
 
   // ── Outputs ──────────────────────────────────────────────────────
   port busy: out Bool;
-  port addr: out UInt<32>;
+  // addr port removed in 2026-05-07 slice 2: see alloc_addr note above.
+  // Consumers (`fb_addr_bus_sel`, `fb_addr_wb_sel`, `fb_addr_out_sel`,
+  // CAM hit detection) now read `fill_addr_q[fb]` directly.
   port wants_bus: out Bool;
   port wants_wb: out Bool;
   port wants_out: out Bool;
@@ -105,7 +110,7 @@ module FillBufferCtrl
 
   // ── Per-FB state regs (written by the seq blocks below) ──────────
   reg busy_q:       Bool reset rst => false;
-  reg addr_q:       UInt<32> reset none;
+  // addr_q removed in 2026-05-07 slice 2 — see addr/alloc_addr notes.
   reg alloc_q:      Bool reset rst => false;
   reg stale_q:      Bool reset rst => false;
   reg hit_q:        Bool reset rst => false;
@@ -136,7 +141,6 @@ module FillBufferCtrl
 
   comb
     busy       = busy_q;
-    addr       = addr_q;
     alloc_flag = alloc_q;
     err        = err_q;
     err_beat0  = err_beat0_q;
@@ -220,7 +224,8 @@ module FillBufferCtrl
     if (phase_q == 2'd0) and allocate
       phase_q      <= 2'd1;
       busy_q       <= true;
-      addr_q       <= alloc_addr;
+      // addr_q write removed: outer writes fill_addr_q[fb] on the
+      // same edge using its own fb*_allocate strobe + lookup_addr_ic0.
       alloc_q      <= alloc_cache;
       stale_q      <= false;
       hit_q        <= false;
