@@ -57,6 +57,7 @@ PROGRAMS: list[CpuProgram] = [
     CpuProgram(name="wfi_isr",      cocotb_module="test_wfi_isr"),
     CpuProgram(name="ecall_isr",    cocotb_module="test_ecall_isr"),
     CpuProgram(name="pmp_exec_isr", cocotb_module="test_pmp_exec_isr"),
+    CpuProgram(name="pmp_load_isr", cocotb_module="test_pmp_load_isr"),
 ]
 
 

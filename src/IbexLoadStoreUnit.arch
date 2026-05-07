@@ -450,9 +450,30 @@ module ibex_load_store_unit
     // non-idle (busy_o goes high next cycle). Latch the held-request
     // flop so `data_req_o` keeps asserting after the upstream consumer
     // (ID stage) drops `lsu_req_i` — see `data_req_pending_q` decl.
+    //
+    // PMP-deny address phase: capture pmp_err_q on the IDLE→WAIT_GNT
+    // edge regardless of gnt timing. Mirrors upstream `pmp_err_d =
+    // data_pmp_err_i;` in the IDLE FSM block. Without this, a
+    // PMP-denied request never advances: the bus suppresses
+    // data_req_o (gated by ~pmp_req_err[2] in ibex_core), data_gnt_i
+    // never arrives, the line-466 gnt-gated capture never fires,
+    // and lsu_resp_valid_o never pulses → infinite ID stall.
+    // For the pmp_err case we also skip data_req_pending_q because
+    // no bus transaction will ever succeed; the response is delivered
+    // entirely from the registered pmp_err_q via the `(pmp_err_q and
+    // lsu_busy_q)` clause at the bottom of this seq block.
     if lsu_req_i and not data_gnt_i and not lsu_busy_q
       lsu_busy_q          <= true;
-      data_req_pending_q  <= true;
+      pmp_err_q           <= data_pmp_err_i;
+      if data_pmp_err_i
+        // Capture the faulting address for mtval delivery — the
+        // gnt-gated capture at line 466 won't fire for a PMP-denied
+        // request. Mirrors upstream `addr_update` in the WAIT_GNT
+        // pmp_err_q exit path.
+        addr_last_q        <= data_addr;
+      else
+        data_req_pending_q  <= true;
+      end if
     end if
 
     // First grant (IDLE or WAIT_GNT → next state):
@@ -502,6 +523,27 @@ module ibex_load_store_unit
     if (data_rvalid_i and not awaiting_first_mis_rvalid_q and lsu_busy_q)
        or (pmp_err_q and lsu_busy_q)
       lsu_busy_q <= false;
+    end if
+
+    // PMP-deny pulse cleanup: lsu_resp_valid_o pulses combinationally
+    // on (pmp_err_q=1 ∧ lsu_busy_q=0). Without clearing pmp_err_q
+    // afterward, the response stays asserted indefinitely and
+    // load_err_o keeps pulsing past the controller's StFlush — every
+    // re-entry into StDecode would re-trap on the same stale error.
+    // Clear conditions:
+    //   1. `not lsu_busy_q` — we're back in IDLE.
+    //   2. `not lsu_req_i`  — no in-flight request the controller is
+    //      still trying to dispatch (otherwise the response is still
+    //      being delivered for this very cycle).
+    //   3. `not data_rvalid_i` — no concurrent rvalid driving the
+    //      response. The unit test `test_resp_valid_pmp_error` latches
+    //      pmp_err_q via the gnt-path and then asserts rvalid in a
+    //      later cycle to drive lsu_resp_valid_o + store_err_o; if
+    //      we cleared pmp_err_q on that cycle, store_err_o would
+    //      collapse to 0 because `bus_or_pmp_err` reads pmp_err_q
+    //      after the NBA resolves.
+    if pmp_err_q and not lsu_busy_q and not lsu_req_i and not data_rvalid_i
+      pmp_err_q <= false;
     end if
   end seq
 
