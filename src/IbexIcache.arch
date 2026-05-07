@@ -949,7 +949,11 @@ module ibex_icache
     if fb3_data_we_beat1   fill_data_q[3][63:32] <= instr_rdata_i;      end if
   end seq
 
-  // ── 4:1 muxes from FB outputs (indexed by *_grant_requester) ─────
+  // 4:1 ternary chains over per-FB alias wires (NOT direct Vec reads
+  // — empirically, the Vec-read form regresses ~900 µm² because the
+  // ternary chains share their outputs across multiple consumers
+  // (CAM-bypass, bus, wb, out), letting yosys CSE the comparators.
+  // Direct Vec reads create one decode per consumer.)
   let fb_addr_bus_sel: UInt<32> =
     (bus_grant_requester == 2'd0) ? fb0_addr :
     ((bus_grant_requester == 2'd1) ? fb1_addr :
@@ -963,8 +967,6 @@ module ibex_icache
     (wb_grant_requester == 2'd0) ? fb0_addr :
     ((wb_grant_requester == 2'd1) ? fb1_addr :
     ((wb_grant_requester == 2'd2) ? fb2_addr : fb3_addr));
-  // Centralized fill-data Vec read (proposal 2026-05-07-icache-area-restructure):
-  // collapses the per-FB 64-bit out_data 4:1 mux into one Vec read.
   let fb_data_wb_sel: UInt<64> = fill_data_q[wb_grant_requester];
   let fb_hit_way_wb_sel: UInt<1> =
     (wb_grant_requester == 2'd0) ? fb0_hit_way :
@@ -976,11 +978,11 @@ module ibex_icache
     ((out_grant_requester == 2'd1) ? fb1_addr :
     ((out_grant_requester == 2'd2) ? fb2_addr : fb3_addr));
   let fb_data_out_sel: UInt<64> = fill_data_q[out_grant_requester];
+  // 4:1 ternary chains (NOT Vec reads — see comment on fb_addr_bus_sel).
   let fb_err_out_sel: Bool =
     (out_grant_requester == 2'd0) ? fb0_err :
     ((out_grant_requester == 2'd1) ? fb1_err :
     ((out_grant_requester == 2'd2) ? fb2_err : fb3_err));
-  // R-OUT-5: per-beat error flags from the granted FB.
   let fb_err_beat0_out_sel: Bool =
     (out_grant_requester == 2'd0) ? fb0_err_beat0 :
     ((out_grant_requester == 2'd1) ? fb1_err_beat0 :
@@ -1049,6 +1051,9 @@ module ibex_icache
   // skid_valid_q tracks whether skid_data_q holds a captured upper
   // halfword awaiting its companion lower halfword from the next
   // beat. Cleared on branch_i (R-OUT-6).
+  // skid_data_q / skid_err_q kept reset-bearing because arch-com's
+  // RDC checker conservatively flags reset-none regs whose D-path
+  // crosses the rst_ni domain (would need `guard skid_valid_q`).
   reg skid_data_q:  UInt<16> reset rst_ni => 16'd0;
   reg skid_valid_q: Bool     reset rst_ni => false;
   reg skid_err_q:   Bool     reset rst_ni => false;
