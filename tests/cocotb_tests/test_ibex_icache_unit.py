@@ -672,14 +672,64 @@ async def test_r_lk_2_tag_match_drives_hit_data(dut):
     raise AssertionError("valid_o never rose on way-1 hit")
 
 
-@cocotb.test(skip=True)
+@cocotb.test()
 async def test_r_lk_3_victim_picks_invalid_way_first(dut):
-    """R-LK-3: victim-way selection is internal allocation policy and not
-    deterministically observable at the unit level without direct
-    fill-buffer state inspection. Covered loosely in full-regression S6.
+    """R-LK-3: on miss, the cache MUST select the lowest-indexed invalid
+    way as the victim. Externally observable on the writeback cycle:
+    `ic_tag_req_o[way] = 1, ic_tag_write_o = 1` for the chosen way.
+
+    Stimulus:
+      - Cold cache (both ways invalid out of inval).
+      - Branch to addr A.
+      - Tag rdata: both ways invalid (rdata=0, valid bit clear).
+      - Bus delivers 2 beats cleanly.
+      - Once the FB has both beats and the inval-write port is free,
+        it writes back. With both ways invalid, way 0 is the lowest
+        invalid → `ic_tag_req_o[0]=1, ic_tag_req_o[1]=0`.
+
     Spec §R-LK-3.
     """
-    pass
+    await _start_clock(dut)
+    await _reset(dut)
+    await _wait_until_idle(dut)
+    dut.icache_enable_i.value = 1   # allow allocation (writeback path)
+    addr = 0x0420_0080
+    dut.req_i.value = 1
+    dut.ready_i.value = 1
+    dut.branch_i.value = 1
+    dut.addr_i.value = addr
+    await _settle(dut)
+    await RisingEdge(dut.clk_i)
+    dut.branch_i.value = 0
+    # Both ways invalid (rdata=0).
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 0, 0)
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 1, 0)
+    await _settle(dut)
+    # Drop req_i so prefetch doesn't allocate extra FBs.
+    dut.req_i.value = 0
+    # Service two beats.
+    for _ in range(IC_LINE_BEATS):
+        served = await _bus_grant_and_beat(dut, rdata=0xCAFEBABE, max_wait=8)
+        assert served
+    # Watch for the writeback. With both ways invalid, victim = way 0.
+    saw_writeback = False
+    for _ in range(40):
+        await ReadOnly()
+        if int(dut.ic_tag_write_o.value) == 1:
+            tag_req = int(dut.ic_tag_req_o.value)
+            assert tag_req & 0b01, (
+                f"writeback should target way 0 (lowest invalid); "
+                f"ic_tag_req_o = {tag_req:#04b}"
+            )
+            assert (tag_req & 0b10) == 0, (
+                f"way 1 should NOT be written when way 0 is invalid; "
+                f"ic_tag_req_o = {tag_req:#04b}"
+            )
+            saw_writeback = True
+            break
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+    assert saw_writeback, "no fill writeback observed within 40 cycles"
 
 
 @cocotb.test()
@@ -790,21 +840,90 @@ async def test_r_fb_1_pool_full_stalls_lookup(dut):
     )
 
 
-@cocotb.test(skip=True)
+@cocotb.test()
 async def test_r_fb_2_each_grant_allocates_one_fb(dut):
-    """R-FB-2: each granted lookup allocates exactly one FB. FB allocation
-    is internal state with no externally observable per-grant counter.
-    Indirectly covered by R-FB-1 saturation. Spec §R-FB-2.
+    """R-FB-2: each granted lookup allocates exactly one FB. Externally
+    observable via `fb_busy_mask` (exposed by the icache impl):
+    successive grants for distinct cache lines (so the strengthened
+    R-LK-4 CAM doesn't coalesce) must increment popcount(fb_busy_mask)
+    by exactly 1 per grant, until the pool saturates at NUM_FB=4.
+
+    Stimulus:
+      - Cold cache, all FBs free.
+      - Drive 4 branches to 4 distinct lines, one per cycle, granting
+        the bus + holding `req_i = 1`.
+      - Don't service rvalids — keeps FBs busy across all 4 allocations.
+      - Sample fb_busy_mask after each grant.
+
+    Spec §R-FB-2.
     """
-    pass
+    await _start_clock(dut)
+    await _reset(dut)
+    await _wait_until_idle(dut)
+    dut.icache_enable_i.value = 1
+    dut.req_i.value = 1
+    dut.ready_i.value = 0   # don't drain output
+    # Tag rdata = 0 → all lookups miss → each allocates an FB.
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 0, 0)
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 1, 0)
+    await _settle(dut)
+    # Issue 4 distinct-line branches and watch popcount(fb_busy_mask).
+    addrs = [0x0100_0080, 0x0200_0080, 0x0300_0080, 0x0400_0080]
+    for i, addr in enumerate(addrs):
+        dut.branch_i.value = 1
+        dut.addr_i.value = addr
+        await _settle(dut)
+        await RisingEdge(dut.clk_i)
+        dut.branch_i.value = 0
+        # Allow 1 settle + 1 cycle for FB to enter PhAlloc/busy.
+        await _settle(dut)
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+        # Grant a bus request if pending (so the FB's bus handshake
+        # progresses without rvalid stalling new allocations).
+        if int(dut.instr_req_o.value) == 1:
+            dut.instr_gnt_i.value = 1
+            await RisingEdge(dut.clk_i)
+            dut.instr_gnt_i.value = 0
+            await _settle(dut)
+        await ReadOnly()
+        busy = int(dut.fb_busy_mask.value)
+        popcount = bin(busy).count("1")
+        # popcount MUST equal i+1: each prior grant allocated exactly
+        # one FB, and none have released (we never serve rvalids).
+        assert popcount == i + 1, (
+            f"after {i+1} grants for distinct lines, fb_busy_mask popcount "
+            f"= {popcount} (= {busy:#06b}); expected {i+1}"
+        )
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
 
 
 @cocotb.test(skip=True)
 async def test_r_fb_3_fb_records_state_fields(dut):
-    """R-FB-3: per-FB state fields (lookup addr, stale flag, allocate
-    flag, hit/miss, per-beat err, line data) are not externally
-    observable. Indirectly covered by behavioural full-regression
-    scenarios S2, S5, S7, S9. Spec §R-FB-3.
+    """R-FB-3 is an *existence* claim about internal FB structure: each
+    FB holds (lookup addr, stale flag, allocate flag, hit/miss,
+    per-beat err, line data). The icache exposes no status / debug
+    register that reads any of these directly — verified by the port
+    list (no `fb_state_o`, no debug bus). Each field's *behavioural
+    consequence* IS runtime-checked, but by a named test elsewhere
+    that exercises the downstream output port:
+
+      lookup addr  → R-LK-1, R-EXT-3 (drives `ic_*_addr_o`,
+                                       `instr_addr_o`)
+      stale flag   → R-INV-A, R-INV-B (no writeback after inval)
+      alloc flag   → R-LK-3            (gates `ic_tag_write_o` after
+                                        fill)
+      hit / miss   → R-LK-1, R-FB-2    (miss ⇒ `instr_req_o` + FB
+                                        allocation)
+      per-beat err → R-OUT-5            (drives `err_o` / `err_plus2_o`)
+      line data    → R-LK-1, R-LK-4    (drives `rdata_o`)
+
+    A dedicated R-FB-3 test would either (a) duplicate one of those
+    behavioural tests, or (b) poke `dut.fb_inst[i].field_q` directly,
+    which validates the test scaffold's white-box read path rather
+    than the impl's contract. Source inspection of the FB regs is the
+    appropriate check for the existence claim. Spec §R-FB-3.
     """
     pass
 
@@ -954,13 +1073,62 @@ async def test_r_ext_2_instr_req_addr_stable_until_gnt(dut):
         )
 
 
-@cocotb.test(skip=True)
+@cocotb.test()
 async def test_r_ext_3_instr_addr_word_aligned(dut):
-    """R-EXT-3: instr_addr_o[1:0]=0 is structurally guaranteed by the
-    UInt<32> port being driven from line-beat counters with low bits
-    constructed as 0. Vacuous to test. Spec §R-EXT-3.
+    """R-EXT-3: every cycle that `instr_req_o = 1`, `instr_addr_o[1:0]`
+    MUST be 0 (word-aligned bus master). Structurally enforced by the
+    impl's `(line_base & ~7) | (beats_sent << 2)` construction, but
+    runtime-checkable: drive a misaligned-PC branch (bit 1 set on the
+    IF-side `addr_i`) so a regression that leaks the misaligned bit
+    into the bus-side `instr_addr_o` would surface here.
+
+    Spec §R-EXT-3.
     """
-    pass
+    await _start_clock(dut)
+    await _reset(dut)
+    await _wait_until_idle(dut)
+    dut.icache_enable_i.value = 1
+    # Branch to a misaligned (bit-1 set) PC inside an unaligned line.
+    # The bus-side instr_addr_o still must be word-aligned; bit 1 of
+    # the IF-side branch belongs in the IF-side `addr_o`, not on
+    # `instr_addr_o`.
+    dut.req_i.value = 1
+    dut.ready_i.value = 1
+    dut.branch_i.value = 1
+    dut.addr_i.value = 0x0800_0082
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 0, 0)
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 1, 0)
+    await _settle(dut)
+    await RisingEdge(dut.clk_i)
+    dut.branch_i.value = 0
+    await _settle(dut)
+    # Watch every cycle the bus master is asserting a request.
+    saw_req = False
+    for _ in range(40):
+        await ReadOnly()
+        if int(dut.instr_req_o.value) == 1:
+            saw_req = True
+            addr = int(dut.instr_addr_o.value)
+            assert (addr & 0x3) == 0, (
+                f"instr_addr_o = {addr:#010x}; low 2 bits MUST be 0 "
+                f"(R-EXT-3 word alignment) but are {addr & 0x3:#04b}"
+            )
+        # Drive the gnt/rvalid handshake along so the FB completes.
+        if int(dut.instr_req_o.value) == 1:
+            await RisingEdge(dut.clk_i)
+            dut.instr_gnt_i.value = 1
+            await RisingEdge(dut.clk_i)
+            dut.instr_gnt_i.value = 0
+            dut.instr_rvalid_i.value = 1
+            dut.instr_rdata_i.value = 0xCAFEF00D
+            dut.instr_err_i.value = 0
+            await RisingEdge(dut.clk_i)
+            dut.instr_rvalid_i.value = 0
+            await _settle(dut)
+        else:
+            await RisingEdge(dut.clk_i)
+            await _settle(dut)
+    assert saw_req, "instr_req_o never asserted; R-EXT-3 not exercised"
 
 
 @cocotb.test()
@@ -1660,12 +1828,81 @@ async def test_r_busy_1_busy_o_during_inval_or_pending_traffic(dut):
     assert saw_busy, "busy_o never rose with a live FB"
 
 
-@cocotb.test(skip=True)
+@cocotb.test()
 async def test_r_busy_2_no_self_clockgate(dut):
-    """R-BUSY-2: 'MUST NOT gate itself' is a non-action requirement;
-    nothing to assert at the unit level. Spec §R-BUSY-2.
+    """R-BUSY-2: `busy_o = 0` is a permission for the SoC to clock-gate;
+    the implementation MUST NOT gate itself. A self-gate would manifest
+    as: after busy_o transitions to 0 (idle), the cache cannot wake to
+    service a new branch+req — its own state machines would be frozen.
+
+    Stimulus:
+      - Cold reset, wait until idle (busy_o = 0).
+      - Sit idle for 50 cycles.
+      - Drive a branch + req to a fresh line.
+      - Cache MUST drive `instr_req_o` (the bus-side wake) within a
+        bounded window. A self-gated cache would hang silently.
+      - Service one beat to confirm the FB is alive (i.e. the SR-FF /
+        FSM updated normally on this clk_i edge — not gated).
+
+    Indirectly covered by every test that goes idle and re-engages, but
+    made explicit here so a regression introducing a self-gate is
+    caught by name. Spec §R-BUSY-2.
     """
-    pass
+    await _start_clock(dut)
+    await _reset(dut)
+    await _wait_until_idle(dut)
+    # Confirm we're actually idle.
+    await ReadOnly()
+    assert int(dut.busy_o.value) == 0, (
+        "precondition: cache should be idle (busy_o=0) after _wait_until_idle"
+    )
+    # Long idle window — gives a self-gate ample time to engage.
+    for _ in range(50):
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+    await ReadOnly()
+    assert int(dut.busy_o.value) == 0, (
+        "cache should still be idle after 50-cycle idle window"
+    )
+    await RisingEdge(dut.clk_i)
+    # Wake: branch + req to a line guaranteed to miss (cold cache).
+    dut.icache_enable_i.value = 1
+    dut.req_i.value = 1
+    dut.ready_i.value = 1
+    dut.branch_i.value = 1
+    dut.addr_i.value = 0x0700_0080
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 0, 0)
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 1, 0)
+    await _settle(dut)
+    await RisingEdge(dut.clk_i)
+    dut.branch_i.value = 0
+    await _settle(dut)
+    # Bus-side wake — a self-gated cache would never raise instr_req_o.
+    saw_req = False
+    for _ in range(16):
+        await ReadOnly()
+        if int(dut.instr_req_o.value) == 1:
+            saw_req = True
+            break
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+    assert saw_req, (
+        "after 50-cycle idle, branch+req did not produce instr_req_o "
+        "within 16 cycles — cache appears to have self-gated"
+    )
+    # busy_o should now reflect the in-flight FB. Sample in the same
+    # ReadOnly phase that the loop's last iteration left us in.
+    busy = int(dut.busy_o.value)
+    assert busy == 1, (
+        f"cache woke for the request but busy_o = {busy}; "
+        "expected 1 (FB in flight)"
+    )
+    # Service the beats so the test exits cleanly. Advance out of the
+    # ReadOnly phase first since `_bus_grant_and_beat` writes signals.
+    await RisingEdge(dut.clk_i)
+    for _ in range(IC_LINE_BEATS):
+        served = await _bus_grant_and_beat(dut, rdata=0xDEADBEEF, max_wait=8)
+        assert served
 
 
 # ──────────────────────────────────────────────────────────────────────
