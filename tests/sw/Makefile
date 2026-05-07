@@ -31,7 +31,7 @@ ASFLAGS   := -march=$(MARCH) -mabi=$(MABI) -c -I.
 BUILD     ?= build
 
 PROGS     := timer_isr sw_isr ext_isr multictx_isr wfi_isr \
-             ecall_isr
+             ecall_isr pmp_exec_isr
 
 VMEMS     := $(PROGS:%=$(BUILD)/%.vmem)
 DISES     := $(PROGS:%=$(BUILD)/%.dis)
