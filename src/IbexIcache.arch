@@ -170,13 +170,15 @@ module ibex_icache
   wire fb2_busy: Bool;
   wire fb3_busy: Bool;
 
-  // FB line addresses (proposal 2026-05-07 slice 2). Indexed by FB
-  // number at all consumer sites (CAM bypass at IC0, three
-  // *_grant_requester muxes at output stage). Replaces 4× per-FB
-  // `addr` ports + 3× 32-bit 4:1 muxes with one Vec read. Decl
-  // hoisted here (above CAM use at line ~410) per yosys-slang's
-  // strict decl-before-use requirement.
-  reg fill_addr_q: Vec<UInt<32>, 4> reset none;
+  // FB line-address forward decls — needed at IC0 for the strengthened
+  // R-LK-4 inflight-line bypass (`inflight_line_match_ic0`). These are
+  // re-declared once here at IC0 scope; the FB instance bindings drive
+  // them. The original textually-later decls are kept (and consume
+  // these via `let`s where they were used) to minimise diff churn.
+  wire fb0_addr: UInt<32>;
+  wire fb1_addr: UInt<32>;
+  wire fb2_addr: UInt<32>;
+  wire fb3_addr: UInt<32>;
 
   let fb_busy_mask: UInt<4> = {fb3_busy, fb2_busy, fb1_busy, fb0_busy};
   let fb_full: Bool = fb_busy_mask == 4'd15;
@@ -405,10 +407,10 @@ module ibex_icache
   let lookup_line_ic0: UInt<22> = lookup_addr_ic0[31:10];
 
   let inflight_line_match_ic0: Bool =
-    (fb0_busy and (fill_addr_q[0][31:10] == lookup_line_ic0)) or
-    (fb1_busy and (fill_addr_q[1][31:10] == lookup_line_ic0)) or
-    (fb2_busy and (fill_addr_q[2][31:10] == lookup_line_ic0)) or
-    (fb3_busy and (fill_addr_q[3][31:10] == lookup_line_ic0));
+    (fb0_busy and (fb0_addr[31:10] == lookup_line_ic0)) or
+    (fb1_busy and (fb1_addr[31:10] == lookup_line_ic0)) or
+    (fb2_busy and (fb2_addr[31:10] == lookup_line_ic0)) or
+    (fb3_busy and (fb3_addr[31:10] == lookup_line_ic0));
 
   let pending_alloc_match_ic0: Bool =
     lookup_alloc_ic1_q and
@@ -529,8 +531,6 @@ module ibex_icache
   // 4:1 ternary chain. The seq block updating this Vec sits after the
   // 4× FillBufferCtrl insts so it can reference their strobe wires.
   reg fill_data_q: Vec<UInt<64>, 4> reset rst_ni => 64'd0;
-  // (`fill_addr_q` decl is hoisted earlier in the file, above the
-  // CAM hit-detection use site at IC0.)
   wire fb0_hit_way:    UInt<1>;
   wire fb1_hit_way:    UInt<1>;
   wire fb2_hit_way:    UInt<1>;
@@ -725,6 +725,7 @@ module ibex_icache
     clk             <- clk_i;
     rst             <- rst_ni;
     allocate        <- fb0_allocate;
+    alloc_addr      <- lookup_addr_ic0;
     alloc_cache     <- alloc_cache_flag_ic0;
     branch          <- branch_i;
     inval_pulse     <- icache_inval_i;
@@ -741,6 +742,7 @@ module ibex_icache
     wb_grant        <- fill_grant and (wb_grant_requester == 2'd0);
     out_done_pulse  <- fb0_out_done_pulse;
     busy             -> fb0_busy;
+    addr             -> fb0_addr;
     wants_bus        -> fb0_wants_bus;
     wants_wb         -> fb0_wants_wb;
     wants_out        -> fb0_wants_out;
@@ -761,6 +763,7 @@ module ibex_icache
     clk             <- clk_i;
     rst             <- rst_ni;
     allocate        <- fb1_allocate;
+    alloc_addr      <- lookup_addr_ic0;
     alloc_cache     <- alloc_cache_flag_ic0;
     branch          <- branch_i;
     inval_pulse     <- icache_inval_i;
@@ -777,6 +780,7 @@ module ibex_icache
     wb_grant        <- fill_grant and (wb_grant_requester == 2'd1);
     out_done_pulse  <- fb1_out_done_pulse;
     busy             -> fb1_busy;
+    addr             -> fb1_addr;
     wants_bus        -> fb1_wants_bus;
     wants_wb         -> fb1_wants_wb;
     wants_out        -> fb1_wants_out;
@@ -797,6 +801,7 @@ module ibex_icache
     clk             <- clk_i;
     rst             <- rst_ni;
     allocate        <- fb2_allocate;
+    alloc_addr      <- lookup_addr_ic0;
     alloc_cache     <- alloc_cache_flag_ic0;
     branch          <- branch_i;
     inval_pulse     <- icache_inval_i;
@@ -813,6 +818,7 @@ module ibex_icache
     wb_grant        <- fill_grant and (wb_grant_requester == 2'd2);
     out_done_pulse  <- fb2_out_done_pulse;
     busy             -> fb2_busy;
+    addr             -> fb2_addr;
     wants_bus        -> fb2_wants_bus;
     wants_wb         -> fb2_wants_wb;
     wants_out        -> fb2_wants_out;
@@ -833,6 +839,7 @@ module ibex_icache
     clk             <- clk_i;
     rst             <- rst_ni;
     allocate        <- fb3_allocate;
+    alloc_addr      <- lookup_addr_ic0;
     alloc_cache     <- alloc_cache_flag_ic0;
     branch          <- branch_i;
     inval_pulse     <- icache_inval_i;
@@ -849,6 +856,7 @@ module ibex_icache
     wb_grant        <- fill_grant and (wb_grant_requester == 2'd3);
     out_done_pulse  <- fb3_out_done_pulse;
     busy             -> fb3_busy;
+    addr             -> fb3_addr;
     wants_bus        -> fb3_wants_bus;
     wants_wb         -> fb3_wants_wb;
     wants_out        -> fb3_wants_out;
@@ -893,13 +901,19 @@ module ibex_icache
   end seq
 
   // ── 4:1 muxes from FB outputs (indexed by *_grant_requester) ─────
-  let fb_addr_bus_sel: UInt<32> = fill_addr_q[bus_grant_requester];
+  let fb_addr_bus_sel: UInt<32> =
+    (bus_grant_requester == 2'd0) ? fb0_addr :
+    ((bus_grant_requester == 2'd1) ? fb1_addr :
+    ((bus_grant_requester == 2'd2) ? fb2_addr : fb3_addr));
   let fb_beats_sent_bus_sel: UInt<2> =
     (bus_grant_requester == 2'd0) ? fb0_beats_sent :
     ((bus_grant_requester == 2'd1) ? fb1_beats_sent :
     ((bus_grant_requester == 2'd2) ? fb2_beats_sent : fb3_beats_sent));
 
-  let fb_addr_wb_sel: UInt<32> = fill_addr_q[wb_grant_requester];
+  let fb_addr_wb_sel: UInt<32> =
+    (wb_grant_requester == 2'd0) ? fb0_addr :
+    ((wb_grant_requester == 2'd1) ? fb1_addr :
+    ((wb_grant_requester == 2'd2) ? fb2_addr : fb3_addr));
   // Centralized fill-data Vec read (proposal 2026-05-07-icache-area-restructure):
   // collapses the per-FB 64-bit out_data 4:1 mux into one Vec read.
   let fb_data_wb_sel: UInt<64> = fill_data_q[wb_grant_requester];
@@ -908,7 +922,10 @@ module ibex_icache
     ((wb_grant_requester == 2'd1) ? fb1_hit_way :
     ((wb_grant_requester == 2'd2) ? fb2_hit_way : fb3_hit_way));
 
-  let fb_addr_out_sel: UInt<32> = fill_addr_q[out_grant_requester];
+  let fb_addr_out_sel: UInt<32> =
+    (out_grant_requester == 2'd0) ? fb0_addr :
+    ((out_grant_requester == 2'd1) ? fb1_addr :
+    ((out_grant_requester == 2'd2) ? fb2_addr : fb3_addr));
   let fb_data_out_sel: UInt<64> = fill_data_q[out_grant_requester];
   let fb_err_out_sel: Bool =
     (out_grant_requester == 2'd0) ? fb0_err :
@@ -1177,25 +1194,17 @@ module ibex_icache
        and (out_beat_q[out_grant_requester] == 2'd0)
       out_beat_q[out_grant_requester] <= 2'd1;
     end if
-    // Per-FB allocation: capture the lookup address into `fill_addr_q`
-    // (slice 2) on the same edge as the FB transitions PhIdle→PhAlloc.
-    // `lookup_addr_ic0` is the outer-side source previously routed
-    // into FillBufferCtrl via `alloc_addr <- lookup_addr_ic0;`.
     if fb0_allocate
-      out_beat_q[0]   <= alloc_beat_idx_ic0;
-      fill_addr_q[0]  <= lookup_addr_ic0;
+      out_beat_q[0] <= alloc_beat_idx_ic0;
     end if
     if fb1_allocate
-      out_beat_q[1]   <= alloc_beat_idx_ic0;
-      fill_addr_q[1]  <= lookup_addr_ic0;
+      out_beat_q[1] <= alloc_beat_idx_ic0;
     end if
     if fb2_allocate
-      out_beat_q[2]   <= alloc_beat_idx_ic0;
-      fill_addr_q[2]  <= lookup_addr_ic0;
+      out_beat_q[2] <= alloc_beat_idx_ic0;
     end if
     if fb3_allocate
-      out_beat_q[3]   <= alloc_beat_idx_ic0;
-      fill_addr_q[3]  <= lookup_addr_ic0;
+      out_beat_q[3] <= alloc_beat_idx_ic0;
     end if
   end seq
 
