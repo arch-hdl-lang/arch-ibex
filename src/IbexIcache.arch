@@ -151,7 +151,8 @@ module ibex_icache
   reg lookup_valid_ic1_q: Bool reset rst_ni => false;
   reg lookup_branch_ic1_q: Bool reset rst_ni => false;
   reg lookup_cache_alloc_ic1_q: Bool reset rst_ni => false;
-  reg lookup_fb_idx_ic1_q: UInt<2> reset rst_ni => 2'd0;
+  // Gated by lookup_alloc_ic1_q; reset value never observed.
+  reg lookup_fb_idx_ic1_q: UInt<2> reset none;
   /// `lookup_alloc_ic1_q`: 1 cycle after IC0 if the IC0 lookup actually
   /// caused an FB allocate (not coalesced into an in-flight FB per the
   /// strengthened R-LK-4). Drives CAM-write, age update, and victim-RR
@@ -168,18 +169,32 @@ module ibex_icache
   // parallelism is preserved (each `phase_q[fb]` advances
   // independently); only the textual duplication (and the
   // module-boundary tax that prevented some yosys CSE) is removed.
+  // Reset policy (sky130 cell-mix optimization, 2026-05-07 followup):
+  // sky130 has no `edfrtp` (enable + reset) cell. With BOTH reset and
+  // enable, yosys must pick one — and it picks reset (`dfrtp_1`),
+  // synthesizing the data path as `D = (we ? data : Q)` in front of a
+  // reset-FF. The `(we ? data : Q)` MUX is wide combinational logic.
+  //
+  // Switching data-path Vecs to `reset none` lets yosys pick `edfxtp_1`
+  // (enable-FF, no reset) instead — D is just `data`, the enable pin
+  // gates the write, and the input MUX disappears. Safe because each
+  // data-path reg is gated by a control bit that DOES reset:
+  //   - hit_way_q[fb] read only when hit_q[fb]=true (alloc-set on hit)
+  //   - beats_rcvd_q/beats_sent_q[fb] set to 0 on alloc edge
+  //   - err_beat0_q/err_beat1_q[fb] read only when err_q[fb]=true
+  // Control bits keep `reset rst_ni`.
   reg phase_q:      Vec<UInt<2>, 4> reset rst_ni => 2'd0;
   reg busy_q:       Vec<Bool, 4>    reset rst_ni => false;
   reg addr_q:       Vec<UInt<32>, 4> reset none;
   reg alloc_q:      Vec<Bool, 4>    reset rst_ni => false;
   reg stale_q:      Vec<Bool, 4>    reset rst_ni => false;
   reg hit_q:        Vec<Bool, 4>    reset rst_ni => false;
-  reg hit_way_q:    Vec<UInt<1>, 4> reset rst_ni => 1'd0;
+  reg hit_way_q:    Vec<UInt<1>, 4> reset none;
   reg err_q:        Vec<Bool, 4>    reset rst_ni => false;
-  reg err_beat0_q:  Vec<Bool, 4>    reset rst_ni => false;
-  reg err_beat1_q:  Vec<Bool, 4>    reset rst_ni => false;
-  reg beats_rcvd_q: Vec<UInt<2>, 4> reset rst_ni => 2'd0;
-  reg beats_sent_q: Vec<UInt<2>, 4> reset rst_ni => 2'd0;
+  reg err_beat0_q:  Vec<Bool, 4>    reset none;
+  reg err_beat1_q:  Vec<Bool, 4>    reset none;
+  reg beats_rcvd_q: Vec<UInt<2>, 4> reset none;
+  reg beats_sent_q: Vec<UInt<2>, 4> reset none;
   reg out_done_q:   Vec<Bool, 4>    reset rst_ni => false;
   reg wb_done_q:    Vec<Bool, 4>    reset rst_ni => false;
 
@@ -512,7 +527,9 @@ module ibex_icache
 
   // R-LK-3: victim-way selection. Lowest-indexed invalid way first;
   // else round-robin.
-  reg victim_rr_q: UInt<1> reset rst_ni => 1'd0;
+  // Round-robin victim — initial value cosmetic (any FB is fine on the
+  // first miss). `reset none` lets yosys infer enable-FF.
+  reg victim_rr_q: UInt<1> reset none;
   let victim_way: UInt<1> =
     (not way0_valid) ? 1'd0 :
     ((not way1_valid) ? 1'd1 : victim_rr_q);
@@ -553,7 +570,9 @@ module ibex_icache
 
   // Age reg lives at outer scope: FbAgeArb consumes a packed view, and
   // age is a relative cross-FB ordering, not per-FB lifecycle.
-  reg fb_age_q: Vec<UInt<2>, 4> reset rst_ni => 2'd0;
+  // LRU age — relative ordering. Initial absolute values don't matter
+  // until the first allocation rewrites them. `reset none` for enable-FF.
+  reg fb_age_q: Vec<UInt<2>, 4> reset none;
   let fb_ages_packed: UInt<8> =
     {fb_age_q[3], fb_age_q[2], fb_age_q[1], fb_age_q[0]};
 
@@ -564,7 +583,11 @@ module ibex_icache
   // beats_sent) or right after the lifecycle seq/comb block
   // (comb-derived: wants_bus, wants_wb, wants_out, data_we_*).)
 
-  reg fill_data_q: Vec<UInt<64>, 4> reset rst_ni => 64'd0;
+  // `reset none`: line data is gated by valid_q + per-FB control bits
+  // (busy_q, hit_q) that DO reset. Letting fill_data_q drop reset frees
+  // yosys to pick enable-FF (`edfxtp_1`), removing the `(we ? data : Q)`
+  // input MUX. ~256 FFs × ~7 µm² of saved MUX = significant.
+  reg fill_data_q: Vec<UInt<64>, 4> reset none;
 
   // ── R-LK-4 (strengthened): in-flight-line CAM lookup ────────────
   // Search at IC0 with `lookup_line_ic0` (= lookup_addr_ic0[31:10]).
@@ -686,7 +709,8 @@ module ibex_icache
   // Track the in-flight requester via a small in-flight queue. For a
   // 1-deep upstream bus model (test stimulus drives gnt + rvalid back
   // to back), one register suffices.
-  reg bus_inflight_fb_q:    UInt<2> reset rst_ni => 2'd0;
+  // Gated by bus_inflight_valid_q; reset value never observed.
+  reg bus_inflight_fb_q:    UInt<2> reset none;
   reg bus_inflight_valid_q: Bool reset rst_ni => false;
   seq on clk_i rising
     if bus_grant_valid and instr_gnt_i
@@ -998,7 +1022,9 @@ module ibex_icache
   //   - skid registers for cross-beat misaligned 32-bit reassembly
   // FillBufferCtrl owns the line data + line addr + err flag; we
   // mux/slice/register here.
-  reg out_beat_q: Vec<UInt<2>, 4> reset rst_ni => 2'd0;
+  // Per-FB beat pointer — set to alloc_beat_idx_ic0 on each alloc
+  // before any reader reads. `reset none` for enable-FF.
+  reg out_beat_q: Vec<UInt<2>, 4> reset none;
 
   let out_fb_idx:    UInt<2>  = out_grant_requester;
   let out_line:      UInt<64> = fb_data_out_sel;
