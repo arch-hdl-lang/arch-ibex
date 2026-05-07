@@ -41,9 +41,12 @@ module ibex_pmp
   // ── Ports (spec §Module interface) ───────────────────────────────
   /// pmp_cfg_t — 6 bits packed: lock[5], mode[4:3], exec[2], write[1],
   /// read[0]. Modeled as raw UInt<6>; field access via slice.
-  port csr_pmp_cfg_i:     in unpacked Vec<UInt<6>, PMPNumRegions>;
+  /// `ascending` matches upstream cs_registers' `[PMPNumRegions]` array
+  /// dim ordering — without it, port-boundary index mapping silently
+  /// reverses (arch-com#307 / PR #309).
+  port csr_pmp_cfg_i:     in unpacked ascending Vec<UInt<6>, PMPNumRegions>;
   /// 34-bit region address (PMP_ADDR_MSB=33).
-  port csr_pmp_addr_i:    in unpacked Vec<UInt<34>, PMPNumRegions>;
+  port csr_pmp_addr_i:    in unpacked ascending Vec<UInt<34>, PMPNumRegions>;
   /// pmp_mseccfg_t — 3 bits: rlb[2] (unused per A4), mmwp[1], mml[0].
   port csr_pmp_mseccfg_i: in UInt<3>;
 

@@ -283,8 +283,10 @@ module ibex_core
   port rvfi_ext_debug_mode:   out Bool;
   port rvfi_ext_rf_wr_suppress: out Bool;
   port rvfi_ext_mcycle:       out UInt<64>;
-  port rvfi_ext_mhpmcounters:    out unpacked Vec<UInt<32>, 10>;
-  port rvfi_ext_mhpmcountersh:   out unpacked Vec<UInt<32>, 10>;
+  // `ascending` matches upstream ibex_top_tracing's `[10]` dim
+  // ordering. arch-com#307 / PR #309.
+  port rvfi_ext_mhpmcounters:    out unpacked ascending Vec<UInt<32>, 10>;
+  port rvfi_ext_mhpmcountersh:   out unpacked ascending Vec<UInt<32>, 10>;
   port rvfi_ext_ic_scr_key_valid: out Bool;
   port rvfi_ext_irq_valid:    out Bool;
   port rvfi_ext_expanded_insn_valid: out Bool;
@@ -456,8 +458,12 @@ module ibex_core
   wire trigger_match:         Bool;
 
   // ── PMP CSR outputs (sunk under PMPEnable=0) ─────────────────────────
-  wire csr_pmp_cfg:           unpacked Vec<UInt<6>, 4>;
-  wire csr_pmp_addr:          unpacked Vec<UInt<34>, 4>;
+  // `ascending` matches upstream cs_registers' `[PMPNumRegions]` array
+  // dim ordering. Without it, IEEE 1800-2017 §10.10 element-by-position
+  // port mapping silently reverses the index correspondence
+  // (cs_registers' region 0 → our index 3, etc.). arch-com#307 / PR #309.
+  wire csr_pmp_cfg:           unpacked ascending Vec<UInt<6>, 4>;
+  wire csr_pmp_addr:          unpacked ascending Vec<UInt<34>, 4>;
   wire csr_pmp_mseccfg:       UInt<3>;
 
   // ── PMP request errors (spec R20: tied 0 under PMPEnable=0) ──────────
