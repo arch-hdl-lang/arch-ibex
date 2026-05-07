@@ -489,6 +489,59 @@ fsm ibex_controller
         exc_pc_mux_o     = debug_mode_q ? 2'd3 : 2'd0;  // EXC_PC_DBG_EXC : EXC_PC_EXC
         csr_save_cause_o = 1'b1;
         // csr_save_id_o = 0 under WritebackStage=0 (g_no_writeback_mepc_save).
+
+        // Priority ladder for exc_cause_o + csr_mtval_o (Spec
+        // Requirement 7 ordering, mirrors upstream FLUSH `unique case`
+        // under WritebackStage=0 — see ibex_controller.sv:756-797).
+        // Without this, every synchronous exception (ecall, illegal,
+        // instr-fetch-err, ebrk, load/store err) reaches cs_registers
+        // with the StDecode-default `lower_cause: 5'd0`, mapping every
+        // sync trap to ExcCauseInsnAddrMisa = 0. The 5 existing ISR
+        // programs all test interrupts (StIrqTaken's separate ladder),
+        // so this gap was undetected until ecall_isr added explicit
+        // sync-exception coverage.
+        if instr_fetch_err
+          exc_cause_o = ExcCause {
+            irq_int: 1'b0, irq_ext: 1'b0,
+            lower_cause: 5'd1            // ExcCauseInstrAccessFault
+          };
+          csr_mtval_o = instr_fetch_err_plus2_i ? (pc_id_i +% 32'd2) : pc_id_i;
+        elsif illegal_insn_q
+          exc_cause_o = ExcCause {
+            irq_int: 1'b0, irq_ext: 1'b0,
+            lower_cause: 5'd2            // ExcCauseIllegalInsn
+          };
+          csr_mtval_o = instr_is_compressed_i ? {16'd0, instr_compressed_i} : instr_i;
+        elsif ecall_insn
+          exc_cause_o = (priv_mode_i == 2'd3)
+            ? ExcCause { irq_int: 1'b0, irq_ext: 1'b0, lower_cause: 5'd11 }   // ExcCauseEcallMMode
+            : ExcCause { irq_int: 1'b0, irq_ext: 1'b0, lower_cause: 5'd8 };   // ExcCauseEcallUMode
+        elsif ebrk_insn
+          if debug_mode_q or ebreak_into_debug
+            // EBREAK enters debug — route handled by transition to
+            // StDbgTakenId. Suppress exception bookkeeping per
+            // upstream (pc_set/csr_save_cause cleared).
+            pc_set_o         = 1'b0;
+            csr_save_cause_o = 1'b0;
+          else
+            exc_cause_o = ExcCause {
+              irq_int: 1'b0, irq_ext: 1'b0,
+              lower_cause: 5'd3          // ExcCauseBreakpoint
+            };
+          end if
+        elsif store_err_q
+          exc_cause_o = ExcCause {
+            irq_int: 1'b0, irq_ext: 1'b0,
+            lower_cause: 5'd7            // ExcCauseStoreAccessFault
+          };
+          csr_mtval_o = lsu_addr_last_i;
+        elsif load_err_q
+          exc_cause_o = ExcCause {
+            irq_int: 1'b0, irq_ext: 1'b0,
+            lower_cause: 5'd5            // ExcCauseLoadAccessFault
+          };
+          csr_mtval_o = lsu_addr_last_i;
+        end if
       elsif mret_insn
         pc_set_o              = 1'b1;
         pc_mux_o              = 3'd3;   // PC_ERET
