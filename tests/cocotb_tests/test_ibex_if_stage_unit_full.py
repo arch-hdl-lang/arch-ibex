@@ -643,16 +643,17 @@ async def req6_pmp_plus2_on_misaligned_uncompressed(dut):
     await _start_clock(dut)
     await _reset(dut)
     # branch_addr=0x0010_0082 → addr[1]=1.
-    # rdata 0x00100093 (RV32 ADDI). Fetch returns the half at [31:16] of
-    # the word at addr & ~3 = 0x0010_0080. We control rdata directly so
-    # set rdata[31:16] = 0x0010 (low bits of ADDI's upper half) and
-    # rdata[15:0] = 0x0093 ... but we don't actually need a meaningful
-    # word: the prefetch buffer's FIFO assembles the instruction at the
-    # half-aligned address boundary.
-    # Simpler: drive the same word, the FIFO will recognise the instr
-    # straddling the half boundary as RV32 (low bits 2'b11).
+    # The icache delivers the misaligned 32-bit instruction by
+    # combining the upper halfword of the current beat (= bytes
+    # [82..83]) with the lower halfword of the NEXT beat (= bytes
+    # [84..85]). For the icache to recognise it as RV32 (not
+    # compressed) we need both halfwords to have bits[1:0]=2'b11 in
+    # their LOW positions: rdata[17:16]==2'b11 (gates output_valid)
+    # AND the assembled rdata_o[1:0]==2'b11 (drives compressed=0).
+    # Choosing rdata=0x00130013 satisfies both since bits[1:0]=11
+    # and bits[17:16]=11.
     landed = await _land_one_instruction(
-        dut, branch_addr=0x0010_0082, rdata=0x00100093,
+        dut, branch_addr=0x0010_0082, rdata=0x00130013,
         pmp_err_if=0, pmp_err_if_plus2=1,
     )
     assert landed, "instruction never reached IF→ID register"

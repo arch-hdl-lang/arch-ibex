@@ -920,8 +920,9 @@ module ibex_icache
   // Pull beats from the out-arb winner. Outer module owns:
   //   - per-FB beat-pointer (which 32-bit slot of the 64-bit line)
   //   - the output skid valid/data/addr/err regs
-  // FillBufferCtrl owns the line data + line addr + err flag; we just
-  // mux + slice + register here.
+  //   - skid registers for cross-beat misaligned 32-bit reassembly
+  // FillBufferCtrl owns the line data + line addr + err flag; we
+  // mux/slice/register here.
   reg out_beat_q: Vec<UInt<2>, 4> reset rst_ni => 2'd0;
 
   let out_fb_idx:    UInt<2>  = out_grant_requester;
@@ -938,6 +939,18 @@ module ibex_icache
   reg addr_out_q:  UInt<32> reset rst_ni => 0;
   reg err_out_q:   Bool reset rst_ni => false;
   reg err_plus2_q: Bool reset rst_ni => false;
+
+  // Skid registers (R-OUT misaligned-uncompressed cross-beat path).
+  // When a misaligned 32-bit instruction (addr[1]=1, halfword[1:0]=11)
+  // straddles a 4-byte beat boundary, the icache must capture the
+  // current beat's upper halfword AND combine it with the next
+  // beat's lower halfword to deliver the full RV32 instruction.
+  // skid_valid_q tracks whether skid_data_q holds a captured upper
+  // halfword awaiting its companion lower halfword from the next
+  // beat. Cleared on branch_i (R-OUT-6).
+  reg skid_data_q:  UInt<16> reset rst_ni => 16'd0;
+  reg skid_valid_q: Bool     reset rst_ni => false;
+  reg skid_err_q:   Bool     reset rst_ni => false;
 
   // Beat-availability gate: out_arb may grant before the FB has
   // captured the beat for the current out_beat_idx. Specifically, on a
@@ -964,61 +977,127 @@ module ibex_icache
   // fast-path covers the FIRST output beat; the FB-side path handles
   // beat 1 (and any subsequent fills) via out_arb / new_beat_avail.
   let ic1_hit_now: Bool = lookup_valid_ic1_q and any_hit_ic1;
-  // Beat 0 of the line (matches the addr_out_q starting at line base).
-  let ic1_hit_beat0_data: UInt<32> = hit_data_ic1[31:0];
+  // The IC1 fast-path's beat depends on lookup_addr_ic1_q[2]: branch
+  // into upper half of an 8-byte line wants beat 1 first.
+  let ic1_hit_beat_data: UInt<32> =
+    lookup_addr_ic1_q[2] ? hit_data_ic1[63:32] : hit_data_ic1[31:0];
+
+  // Halfword-aware view of the latched/incoming 32-bit beat. For the
+  // misaligned 32-bit straddle scenario (addr_out_q[1]=1, upper
+  // halfword has bits[1:0]=11), we need to load the skid buffer with
+  // the upper halfword and wait for the next beat. Alignment stays
+  // governed by `addr_out_q` (advances on consume) — the skid logic
+  // here only adds a TWO-CYCLE bridge for the cross-beat case,
+  // leaving aligned RV32I delivery (the dominant case) unchanged.
+
+  // skid_complete_instr: a compressed instruction (or err) is wholly
+  // contained in the skid buffer; we can deliver from skid alone
+  // without consuming a new FB beat.
+  let skid_complete_instr: Bool =
+    skid_valid_q and ((skid_data_q[1:0] != 2'd3) or skid_err_q);
+
+  // Combinational view of "would this delivery want skid?" — used
+  // only in the latch path so existing aligned timing is preserved.
+  // For the latch trigger, output_data (= the FB beat we'd deliver)
+  // has bits[17:16] = upper halfword[1:0]. If addr_out_q[1]=1 (mid-
+  // beat misaligned PC) and that upper halfword is uncompressed
+  // (bits[17:16]==11) and there's no skid yet and no err → we need
+  // to load skid + advance FB before delivering the full RV32.
+  let need_skid_load: Bool =
+    (new_beat_avail or ic1_hit_now)
+    and addr_out_q[1]
+    and (not skid_valid_q)
+    and (out_beat_data[17:16] == 2'd3)
+    and (not (
+      (out_beat_idx == 2'd0)
+        ? fb_err_beat0_out_sel : fb_err_beat1_out_sel));
 
   seq on clk_i rising
     if branch_i
-      // R-OUT-2 + R-OUT-6: branch cancels valid.
-      valid_q    <= false;
-      addr_out_q <= addr_i;
+      // R-OUT-2 + R-OUT-6: branch cancels valid + clears skid.
+      valid_q      <= false;
+      addr_out_q   <= addr_i;
+      skid_valid_q <= false;
     elsif valid_q and ready_i
       // Beat accepted. R-OUT-4: address advances by 2 (compressed) or
-      // 4 (32-bit). compressed iff rdata_q[1:0] != 2'b11.
+      // 4 (uncompressed) based on the LATCHED rdata_q's low bits.
       if rdata_q[1:0] != 2'd3
         addr_out_q <= addr_out_q +% 32'd2;
       else
         addr_out_q <= addr_out_q +% 32'd4;
       end if
       valid_q <= false;
-    elsif (not valid_q) and ic1_hit_now
-      // R-OUT-7 fast-path: IC1 hit visible this cycle ⇒ register beat 0
-      // immediately so valid_o rises at IC1+1 (= 2 cycles after IC0
-      // grant). The corresponding FB also captures hit_q on the same
-      // edge (PhAlloc→PhRunning) and will drive beat 1 via out_arb.
+      // Drain skid when the registered output came from skid (= the
+      // misaligned-uncompressed-32 path's second cycle delivered the
+      // combined word; the consumed instruction's lower halfword
+      // came from skid_data_q, so skid is now empty).
+      if skid_valid_q
+        skid_valid_q <= false;
+      end if
+    elsif (not valid_q) and skid_complete_instr
+      // Skid alone holds a complete compressed instruction — deliver
+      // it without consuming a new FB beat.
       valid_q     <= true;
-      rdata_q     <= ic1_hit_beat0_data;
+      // skid_data_q in lower half; upper half doesn't matter (compr).
+      rdata_q     <= ({16'd0, skid_data_q}).resize<32>();
+      addr_out_q  <= addr_out_q;
+      err_out_q   <= skid_err_q;
+      err_plus2_q <= false;
+    elsif (not valid_q) and need_skid_load
+      // Cross-beat misaligned 32-bit: load skid with the upper
+      // halfword of the current beat, advance FB to expose next beat
+      // next cycle. Don't latch valid yet — wait for the second half.
+      skid_data_q  <= ic1_hit_now ? ic1_hit_beat_data[31:16]
+                                  : out_beat_data[31:16];
+      skid_valid_q <= true;
+      skid_err_q   <= ic1_hit_now ? false :
+                       ((out_beat_idx == 2'd0)
+                          ? fb_err_beat0_out_sel
+                          : fb_err_beat1_out_sel);
+      // Bump out_beat_q for the granted FB so next cycle's
+      // out_beat_data is the next 32-bit beat.
+      // (Falls through the `if fb_beat_consume_skid` block below.)
+    elsif (not valid_q) and ic1_hit_now
+      // R-OUT-7 fast-path (aligned, no skid): IC1 hit visible this
+      // cycle ⇒ register beat immediately so valid_o rises at IC1+1.
+      valid_q     <= true;
+      rdata_q     <= ic1_hit_beat_data;
       addr_out_q  <= lookup_addr_ic1_q;
       err_out_q   <= false;
       err_plus2_q <= false;
+    elsif (not valid_q) and skid_valid_q and new_beat_avail
+      // Misaligned-uncompressed completion: skid has lower halfword
+      // from prior beat; new beat's lower halfword is the upper half
+      // of the RV32 instruction. Combine + deliver.
+      valid_q     <= true;
+      rdata_q     <= {out_beat_data[15:0], skid_data_q};
+      // addr_out_q stays at the misaligned PC (advances on consume).
+      addr_out_q  <= addr_out_q;
+      // Err handling: per upstream, err_o = (skid_err) or (current
+      // beat's err on the lower halfword). err_plus2 = skid valid
+      // without skid_err (i.e., the err is from the current beat,
+      // upper halfword of the misaligned RV32).
+      err_out_q   <= skid_err_q or
+                       ((out_beat_idx == 2'd0)
+                          ? fb_err_beat0_out_sel
+                          : fb_err_beat1_out_sel);
+      err_plus2_q <= (not skid_err_q) and skid_valid_q and
+                       ((out_beat_idx == 2'd0)
+                          ? fb_err_beat0_out_sel
+                          : fb_err_beat1_out_sel);
     elsif (not valid_q) and new_beat_avail
       valid_q     <= true;
       rdata_q     <= out_beat_data;
-      // Address must reflect the actual word being served, not the
-      // line base — the controller passes addr_o through to its PC
-      // tracker (`if_instr_addr` → ID stage), and a beat-0/beat-1
-      // mismatch shifts every subsequent instruction one slot out of
-      // alignment with the controller's PC view. Line base is bits
-      // [31:3], beat selects bit [2], halfword position carries from
-      // `out_fb_addr[1]` (the original branch-target's halfword
-      // alignment). Without that last term, a misaligned-half RV32
-      // branch (alloc_addr[1]=1) would emit addr_out_q with bit 1
-      // cleared, breaking IF's `if_instr_pmp_err` rule (R-OUT-5 +
-      // IF-stage Req 6: pmp_err_plus2 only fires when addr[1] AND
-      // !compressed). D2-flip surfaced this via
-      // `req6_pmp_plus2_on_misaligned_uncompressed` in
-      // `tests/cocotb_tests/test_ibex_if_stage_unit_full.py`.
+      // Address must reflect the actual word being served: line base
+      // is bits [31:3], beat selects bit [2], halfword position
+      // carries from `out_fb_addr[1]` (the original branch-target's
+      // halfword alignment). For misaligned-into-upper-half-of-line
+      // (alloc_addr[1]=1) this preserves the halfword offset; for
+      // sequential aligned (alloc_addr[1]=0) it leaves bit 1 clear.
       addr_out_q  <= (out_fb_addr & 32'hFFFF_FFF8)
                      | ({29'd0, out_beat_idx} << 2'd2)
                      | (out_fb_addr & 32'd2);
-      // R-OUT-5: err_o reflects the per-beat error of the line beat
-      // currently being delivered. err_plus2_o = 1 iff we're delivering
-      // the SECOND output beat (= line beat 1, bytes [4..7]) AND that
-      // beat had a bus error AND the FB started misaligned
-      // (alloc_addr[1]=1). The IF stage further qualifies with
-      // !is_compressed; the icache-level signal is the upstream-pin
-      // promise that the fault-bearing word IS the upper halfword of
-      // an unaligned access.
+      // R-OUT-5: per-beat error of the line beat being delivered.
       err_out_q   <= (out_beat_idx == 2'd0)
                        ? fb_err_beat0_out_sel
                        : fb_err_beat1_out_sel;
@@ -1028,48 +1107,43 @@ module ibex_icache
     end if
   end seq
 
-  // Per-FB beat-pointer + out_done pulse (R-OUT-4 → R-FB-5):
-  // when `valid_q & ready_i` and current beat==0, bump to 1; if
-  // current beat==1, the FB has delivered both halves → pulse
-  // out_done_pulse to the corresponding FillBufferCtrl.
+  // FB-beat consume: the OLD path (`valid_q & ready_i & beat==0`) plus
+  // the skid-load path (need_skid_load fires when ~valid_q). Both
+  // bump out_beat_q to expose the next beat next cycle.
+  let fb_beat_consume_skid: Bool = (not valid_q) and need_skid_load;
+
+  // Per-FB out_done pulse (R-OUT-4 → R-FB-5):
+  // when `valid_q & ready_i` and current beat==1, pulse out_done; if
+  // current beat==0, bump to 1.
   comb
     fb0_out_done_pulse =
-      valid_q and ready_i and (out_grant_requester == 2'd0)
+      ((valid_q and ready_i) or fb_beat_consume_skid)
+      and (out_grant_requester == 2'd0)
       and (out_beat_q[0] == 2'd1);
     fb1_out_done_pulse =
-      valid_q and ready_i and (out_grant_requester == 2'd1)
+      ((valid_q and ready_i) or fb_beat_consume_skid)
+      and (out_grant_requester == 2'd1)
       and (out_beat_q[1] == 2'd1);
     fb2_out_done_pulse =
-      valid_q and ready_i and (out_grant_requester == 2'd2)
+      ((valid_q and ready_i) or fb_beat_consume_skid)
+      and (out_grant_requester == 2'd2)
       and (out_beat_q[2] == 2'd1);
     fb3_out_done_pulse =
-      valid_q and ready_i and (out_grant_requester == 2'd3)
+      ((valid_q and ready_i) or fb_beat_consume_skid)
+      and (out_grant_requester == 2'd3)
       and (out_beat_q[3] == 2'd1);
   end comb
 
-  // Initial beat pointer on alloc: when the lookup is a branch-into-
-  // mid-line (addr_i[2] = 1), the controller wants the upper 32-bit
-  // word of the line first (beat 1). Sequential prefetches always
-  // target line-aligned addresses (low bit 2 clear), so they start at
-  // beat 0. The branch-with-grant case captured `addr_i` into
-  // `lookup_addr_ic0` directly; sequential lookups use prefetch_addr_q
-  // which is line-aligned by construction. So the alloc-time beat
-  // index is exactly bit [2] of the lookup address used at IC0.
+  // Initial beat pointer on alloc: bit [2] of lookup address.
   let alloc_beat_idx_ic0: UInt<2> = {1'd0, lookup_addr_ic0[2]};
 
   seq on clk_i rising
-    // Bump per-FB beat-pointer on accept of beat 0; reset on FB
-    // allocation (PhAlloc one cycle after IC0 grant).
-    if valid_q and ready_i and (out_beat_q[out_grant_requester] == 2'd0)
+    // Bump per-FB beat-pointer on accept of beat 0 (consume) OR on
+    // skid-load (cross-beat misaligned uncompressed).
+    if ((valid_q and ready_i) or fb_beat_consume_skid)
+       and (out_beat_q[out_grant_requester] == 2'd0)
       out_beat_q[out_grant_requester] <= 2'd1;
     end if
-    // Reset beat pointer on each FB's allocate pulse so that a fresh
-    // line starts streaming from the requested half — beat 0 for a
-    // line-aligned address, beat 1 for a branch into the upper half
-    // of a line. Without the bit-[2] mux, mid-line branches (notably
-    // IRQ vector dispatches into the upper 4 bytes of an 8-byte line)
-    // delivered beat 0 first, shifting the controller's PC view by 4
-    // bytes for the rest of the trap handler.
     if fb0_allocate
       out_beat_q[0] <= alloc_beat_idx_ic0;
     end if

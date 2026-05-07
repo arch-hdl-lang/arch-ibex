@@ -28,10 +28,21 @@ CFLAGS    := -march=$(MARCH) -mabi=$(MABI) -nostdlib -nostartfiles \
              -Wl,-T,link.ld -Wl,--no-relax
 ASFLAGS   := -march=$(MARCH) -mabi=$(MABI) -c -I.
 
+# Per-target MARCH override. pmp_misaligned_isr needs the C extension to
+# emit a `c.nop` that pushes the next 32-bit instruction to a 2-byte-
+# misaligned PC, so the IF-stage straddle fault path
+# (`pmp_err_if_plus2_i` → `instr_fetch_err_plus2`) can be exercised.
+# Other programs stay on the default MARCH (= no C) so their compiled
+# layout — and the hard-coded address constants in their .py tests —
+# don't shift. The MARCH-override pattern uses GNU make target-specific
+# variables, which fully replace the global ASFLAGS/CFLAGS for those
+# build targets.
+MARCH_C   := rv32imc_zicsr
+
 BUILD     ?= build
 
 PROGS     := timer_isr sw_isr ext_isr multictx_isr wfi_isr \
-             ecall_isr pmp_exec_isr pmp_load_isr
+             ecall_isr pmp_exec_isr pmp_load_isr pmp_misaligned_isr
 
 VMEMS     := $(PROGS:%=$(BUILD)/%.vmem)
 DISES     := $(PROGS:%=$(BUILD)/%.dis)
@@ -57,6 +68,15 @@ $(BUILD)/%.vmem: $(BUILD)/%.bin bin2vmem.py
 
 $(BUILD)/%.dis: $(BUILD)/%.elf
 	$(OBJDUMP) -d -M no-aliases $< > $@
+
+# Per-program MARCH overrides (must come AFTER the generic build rules
+# so the target-specific variables attach to the rule body via GNU
+# make's target-scoped expansion).
+$(BUILD)/pmp_misaligned_isr.o: ASFLAGS := -march=$(MARCH_C) -mabi=$(MABI) -c -I.
+$(BUILD)/pmp_misaligned_isr.elf: CFLAGS := -march=$(MARCH_C) -mabi=$(MABI) \
+                                            -nostdlib -nostartfiles \
+                                            -ffreestanding -Os -g \
+                                            -Wl,-T,link.ld -Wl,--no-relax
 
 clean:
 	rm -rf $(BUILD)
