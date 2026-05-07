@@ -24,7 +24,7 @@
 //! SoC parameter pinning (spec §"Pinned parameter values"):
 //!   RV32E=0, RV32M=RV32MFast(=2), RV32B=RV32BNone(=0),
 //!   BranchTargetALU=0, WritebackStage=0, ICache=0,
-//!   BranchPredictor=0, DbgTriggerEn=0, MemECC=0, DataIndTiming=0,
+//!   BranchPredictor=0, DbgTriggerEn=1, MemECC=0, DataIndTiming=0,
 //!   DummyInstructions=0, PMPEnable=0, SecureIbex=0, ResetAll=0,
 //!   RegFileECC=0.
 //!
@@ -58,8 +58,12 @@ module ibex_core
   param ICache[0:0]: const = 1'd0;
   /// `BranchPredictor`: pinned 0 (no BP).
   param BranchPredictor[0:0]: const = 1'd0;
-  /// `DbgTriggerEn`: pinned 0 (no debug triggers).
-  param DbgTriggerEn[0:0]: const = 1'd0;
+  /// `DbgTriggerEn`: pinned 1 (single hw trigger from upstream
+  /// `ibex_cs_registers`). The trigger logic stays upstream-SV
+  /// (spec note N-2 keeps `ibex_cs_registers` upstream); we only
+  /// flip the gate so debug-trigger CSRs (tselect/tdata1/tdata2)
+  /// are reachable and `trigger_match_o` can fire.
+  param DbgTriggerEn[0:0]: const = 1'd1;
   /// `MemECC`: pinned 0 (no memory ECC).
   param MemECC[0:0]: const = 1'd0;
   /// `DataIndTiming`: pinned 0 (no DIT).
@@ -834,7 +838,7 @@ module ibex_core
   /// `csr_wdata_i` is aliased to `alu_operand_a_ex` per spec §1053
   /// (CSR write-port aliasing) and spec note N-13.
   inst cs_registers_i: ibex_cs_registers
-    param DbgTriggerEn       = 1'd0;
+    param DbgTriggerEn       = DbgTriggerEn;
     param DbgHwBreakNum      = DbgHwBreakNum;
     param DataIndTiming      = 1'd0;
     param DummyInstructions  = 1'd0;
