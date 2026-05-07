@@ -71,7 +71,16 @@ module FillBufferCtrl
   port wants_bus: out Bool;
   port wants_wb: out Bool;
   port wants_out: out Bool;
-  port out_data: out UInt<64>;
+  /// Strobes for outer-module `fill_data_q` Vec writes (proposal
+  /// 2026-05-07-icache-area-restructure: line data lives in outer
+  /// to collapse per-FB 64-bit out_data 4:1 mux into a Vec read).
+  /// `data_we_ic1_hit`: pulse on the PhAlloc→PhRunning edge when
+  ///   IC1 reported a hit; outer writes `fill_data_q[fb] <= ic1_hit_data_combo`.
+  /// `data_we_beat0`/`data_we_beat1`: per-beat pulses on rvalid
+  ///   while in PhRunning; outer writes the matching 32-bit half.
+  port data_we_ic1_hit: out Bool;
+  port data_we_beat0: out Bool;
+  port data_we_beat1: out Bool;
   port hit_way: out UInt<1>;
   /// `err`: OR of all per-beat errors (any beat had a bus error).
   /// Used by writeback-suppression and FB-release logic.
@@ -107,7 +116,13 @@ module FillBufferCtrl
   reg err_q:        Bool reset rst => false;
   reg err_beat0_q:  Bool reset rst => false;
   reg err_beat1_q:  Bool reset rst => false;
-  reg data_q:       UInt<64> reset none;
+  // Note: line data (`data_q`) was removed in the
+  // 2026-05-07-icache-area-restructure. The 64-bit register lives in
+  // the outer `IbexIcache` as `fill_data_q: Vec<UInt<64>, 4>`, written
+  // by per-FB strobes (data_we_ic1_hit / data_we_beat0 / data_we_beat1)
+  // emitted by this module. This collapses the per-FB out_data 4:1
+  // mux at the outer level to a single Vec read indexed by the
+  // out-arbiter winner.
   reg beats_rcvd_q: UInt<2> reset rst => 2'd0;
   reg beats_sent_q: UInt<2> reset rst => 2'd0;
   reg out_done_q:   Bool reset rst => false;
@@ -126,11 +141,18 @@ module FillBufferCtrl
     err        = err_q;
     err_beat0  = err_beat0_q;
     err_beat1  = err_beat1_q;
-    out_data   = data_q;
     hit_way    = hit_way_q;
     beats_rcvd = beats_rcvd_q;
     beats_sent = beats_sent_q;
     stale      = stale_q;
+
+    // Outer-module fill_data_q write strobes. Comb defs mirror the
+    // (now-removed) seq guards on data_q so the same edge that
+    // would have written data_q in the old shape now writes
+    // fill_data_q[fb] in the outer module's seq block.
+    data_we_ic1_hit = (phase_q == 2'd1) and ic1_hit;
+    data_we_beat0   = (phase_q == 2'd3) and instr_rvalid and (beats_rcvd_q == 2'd0);
+    data_we_beat1   = (phase_q == 2'd3) and instr_rvalid and (beats_rcvd_q != 2'd0);
 
     // R-FB-3: needs another bus beat? Only valid in PhRunning — earlier
     // phases haven't done IC1 hit-check yet (`hit_q` is unknown), and
@@ -205,7 +227,11 @@ module FillBufferCtrl
       err_q        <= false;
       err_beat0_q  <= false;
       err_beat1_q  <= false;
-      data_q       <= 64'd0;
+      // data_q removed: outer module owns fill_data_q[fb]. The new
+      // outer per-FB seq block doesn't zero on alloc — the existing
+      // gate `wants_out = ... and (hit_q or beats_rcvd_q != 0)` keeps
+      // any reader from seeing pre-alloc stale data, and per-beat
+      // writes overwrite cleanly without needing a pre-zero.
       beats_rcvd_q <= 2'd0;
       beats_sent_q <= 2'd0;
       out_done_q   <= false;
@@ -226,7 +252,9 @@ module FillBufferCtrl
       phase_q <= 2'd3;
       if ic1_hit
         hit_q        <= true;
-        data_q       <= ic1_hit_data;
+        // data_q write moved to outer module — strobe via
+        // data_we_ic1_hit comb (asserted this cycle by the
+        // `phase_q == 2'd1 and ic1_hit` predicate above).
         hit_way_q    <= ic1_hit_way;
         // hit ⇒ line already in cache, beats_rcvd snaps to total,
         // wb_done snaps so no RAM write-back is requested.
@@ -252,11 +280,10 @@ module FillBufferCtrl
 
       // R-EXT-4: rvalid beat capture (outer-routed, gated to this FB).
       if instr_rvalid
-        if beats_rcvd_q == 2'd0
-          data_q <= ({32'd0, instr_rdata}).resize<64>();
-        else
-          data_q <= ({instr_rdata, data_q[31:0]}).resize<64>();
-        end if
+        // data_q writes moved to outer fill_data_q[fb] — strobed by
+        // data_we_beat0 / data_we_beat1 (comb above). Per-beat halves
+        // are written independently, so the outer Vec can stay packed
+        // at the 64-bit boundary without needing to read-modify-write.
         beats_rcvd_q <= (beats_rcvd_q + 2'd1).trunc<2>();
         // R-OUT-5: per-beat error capture.
         // Bus master issues line beat 0 first (line_base), then beat 1

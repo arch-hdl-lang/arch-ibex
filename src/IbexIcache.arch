@@ -508,10 +508,29 @@ module ibex_icache
   // sites textually appear (because they feed CAM driver, output mux,
   // bus-master driver, fill-write driver, busy_o). `fb*_addr` already
   // forward-declared above (needed at IC0 for the inflight bypass).
-  wire fb0_out_data:   UInt<64>;
-  wire fb1_out_data:   UInt<64>;
-  wire fb2_out_data:   UInt<64>;
-  wire fb3_out_data:   UInt<64>;
+  // Per-FB fill-data write strobes (line data lives in outer
+  // `fill_data_q` Vec — see proposal 2026-05-07-icache-area-restructure).
+  wire fb0_data_we_ic1_hit: Bool;
+  wire fb1_data_we_ic1_hit: Bool;
+  wire fb2_data_we_ic1_hit: Bool;
+  wire fb3_data_we_ic1_hit: Bool;
+  wire fb0_data_we_beat0:   Bool;
+  wire fb1_data_we_beat0:   Bool;
+  wire fb2_data_we_beat0:   Bool;
+  wire fb3_data_we_beat0:   Bool;
+  wire fb0_data_we_beat1:   Bool;
+  wire fb1_data_we_beat1:   Bool;
+  wire fb2_data_we_beat1:   Bool;
+  wire fb3_data_we_beat1:   Bool;
+
+  // Centralized fill-data store (proposal 2026-05-07-icache-area-restructure).
+  // Each FB owns its own lifecycle FSM but writes into this shared
+  // Vec via the strobes above. Indexed by `out_grant_requester` /
+  // `wb_grant_requester` at read time, so yosys lowers the read to a
+  // single broadside mux instead of N 64-bit per-FB outputs feeding a
+  // 4:1 ternary chain. The seq block updating this Vec sits after the
+  // 4× FillBufferCtrl insts so it can reference their strobe wires.
+  reg fill_data_q: Vec<UInt<64>, 4> reset rst_ni => 64'd0;
   wire fb0_hit_way:    UInt<1>;
   wire fb1_hit_way:    UInt<1>;
   wire fb2_hit_way:    UInt<1>;
@@ -722,20 +741,22 @@ module ibex_icache
     instr_err       <- instr_err_i;
     wb_grant        <- fill_grant and (wb_grant_requester == 2'd0);
     out_done_pulse  <- fb0_out_done_pulse;
-    busy            -> fb0_busy;
-    addr            -> fb0_addr;
-    wants_bus       -> fb0_wants_bus;
-    wants_wb        -> fb0_wants_wb;
-    wants_out       -> fb0_wants_out;
-    out_data        -> fb0_out_data;
-    hit_way         -> fb0_hit_way;
-    err             -> fb0_err;
-    err_beat0       -> fb0_err_beat0;
-    err_beat1       -> fb0_err_beat1;
-    alloc_flag      -> fb0_alloc_flag;
-    beats_rcvd      -> fb0_beats_rcvd;
-    beats_sent      -> fb0_beats_sent;
-    stale           -> fb0_stale;
+    busy             -> fb0_busy;
+    addr             -> fb0_addr;
+    wants_bus        -> fb0_wants_bus;
+    wants_wb         -> fb0_wants_wb;
+    wants_out        -> fb0_wants_out;
+    data_we_ic1_hit  -> fb0_data_we_ic1_hit;
+    data_we_beat0    -> fb0_data_we_beat0;
+    data_we_beat1    -> fb0_data_we_beat1;
+    hit_way          -> fb0_hit_way;
+    err              -> fb0_err;
+    err_beat0        -> fb0_err_beat0;
+    err_beat1        -> fb0_err_beat1;
+    alloc_flag       -> fb0_alloc_flag;
+    beats_rcvd       -> fb0_beats_rcvd;
+    beats_sent       -> fb0_beats_sent;
+    stale            -> fb0_stale;
   end inst fb0
 
   inst fb1: FillBufferCtrl
@@ -758,20 +779,22 @@ module ibex_icache
     instr_err       <- instr_err_i;
     wb_grant        <- fill_grant and (wb_grant_requester == 2'd1);
     out_done_pulse  <- fb1_out_done_pulse;
-    busy            -> fb1_busy;
-    addr            -> fb1_addr;
-    wants_bus       -> fb1_wants_bus;
-    wants_wb        -> fb1_wants_wb;
-    wants_out       -> fb1_wants_out;
-    out_data        -> fb1_out_data;
-    hit_way         -> fb1_hit_way;
-    err             -> fb1_err;
-    err_beat0       -> fb1_err_beat0;
-    err_beat1       -> fb1_err_beat1;
-    alloc_flag      -> fb1_alloc_flag;
-    beats_rcvd      -> fb1_beats_rcvd;
-    beats_sent      -> fb1_beats_sent;
-    stale           -> fb1_stale;
+    busy             -> fb1_busy;
+    addr             -> fb1_addr;
+    wants_bus        -> fb1_wants_bus;
+    wants_wb         -> fb1_wants_wb;
+    wants_out        -> fb1_wants_out;
+    data_we_ic1_hit  -> fb1_data_we_ic1_hit;
+    data_we_beat0    -> fb1_data_we_beat0;
+    data_we_beat1    -> fb1_data_we_beat1;
+    hit_way          -> fb1_hit_way;
+    err              -> fb1_err;
+    err_beat0        -> fb1_err_beat0;
+    err_beat1        -> fb1_err_beat1;
+    alloc_flag       -> fb1_alloc_flag;
+    beats_rcvd       -> fb1_beats_rcvd;
+    beats_sent       -> fb1_beats_sent;
+    stale            -> fb1_stale;
   end inst fb1
 
   inst fb2: FillBufferCtrl
@@ -794,20 +817,22 @@ module ibex_icache
     instr_err       <- instr_err_i;
     wb_grant        <- fill_grant and (wb_grant_requester == 2'd2);
     out_done_pulse  <- fb2_out_done_pulse;
-    busy            -> fb2_busy;
-    addr            -> fb2_addr;
-    wants_bus       -> fb2_wants_bus;
-    wants_wb        -> fb2_wants_wb;
-    wants_out       -> fb2_wants_out;
-    out_data        -> fb2_out_data;
-    hit_way         -> fb2_hit_way;
-    err             -> fb2_err;
-    err_beat0       -> fb2_err_beat0;
-    err_beat1       -> fb2_err_beat1;
-    alloc_flag      -> fb2_alloc_flag;
-    beats_rcvd      -> fb2_beats_rcvd;
-    beats_sent      -> fb2_beats_sent;
-    stale           -> fb2_stale;
+    busy             -> fb2_busy;
+    addr             -> fb2_addr;
+    wants_bus        -> fb2_wants_bus;
+    wants_wb         -> fb2_wants_wb;
+    wants_out        -> fb2_wants_out;
+    data_we_ic1_hit  -> fb2_data_we_ic1_hit;
+    data_we_beat0    -> fb2_data_we_beat0;
+    data_we_beat1    -> fb2_data_we_beat1;
+    hit_way          -> fb2_hit_way;
+    err              -> fb2_err;
+    err_beat0        -> fb2_err_beat0;
+    err_beat1        -> fb2_err_beat1;
+    alloc_flag       -> fb2_alloc_flag;
+    beats_rcvd       -> fb2_beats_rcvd;
+    beats_sent       -> fb2_beats_sent;
+    stale            -> fb2_stale;
   end inst fb2
 
   inst fb3: FillBufferCtrl
@@ -830,21 +855,50 @@ module ibex_icache
     instr_err       <- instr_err_i;
     wb_grant        <- fill_grant and (wb_grant_requester == 2'd3);
     out_done_pulse  <- fb3_out_done_pulse;
-    busy            -> fb3_busy;
-    addr            -> fb3_addr;
-    wants_bus       -> fb3_wants_bus;
-    wants_wb        -> fb3_wants_wb;
-    wants_out       -> fb3_wants_out;
-    out_data        -> fb3_out_data;
-    hit_way         -> fb3_hit_way;
-    err             -> fb3_err;
-    err_beat0       -> fb3_err_beat0;
-    err_beat1       -> fb3_err_beat1;
-    alloc_flag      -> fb3_alloc_flag;
-    beats_rcvd      -> fb3_beats_rcvd;
-    beats_sent      -> fb3_beats_sent;
-    stale           -> fb3_stale;
+    busy             -> fb3_busy;
+    addr             -> fb3_addr;
+    wants_bus        -> fb3_wants_bus;
+    wants_wb         -> fb3_wants_wb;
+    wants_out        -> fb3_wants_out;
+    data_we_ic1_hit  -> fb3_data_we_ic1_hit;
+    data_we_beat0    -> fb3_data_we_beat0;
+    data_we_beat1    -> fb3_data_we_beat1;
+    hit_way          -> fb3_hit_way;
+    err              -> fb3_err;
+    err_beat0        -> fb3_err_beat0;
+    err_beat1        -> fb3_err_beat1;
+    alloc_flag       -> fb3_alloc_flag;
+    beats_rcvd       -> fb3_beats_rcvd;
+    beats_sent       -> fb3_beats_sent;
+    stale            -> fb3_stale;
   end inst fb3
+
+  // ── Centralized fill_data_q updates (proposal 2026-05-07) ──────────
+  // Each FB emits three thin strobes (1 bit each) and the outer
+  // module owns the 64-bit storage + write-back. Beat-wise writes
+  // are independent half-line stores so the Vec can stay packed at
+  // the 64-bit boundary without read-modify-write. IC1-hit captures
+  // the full line in one cycle (combinational hit data from the way
+  // mux). Per-FB strobes are mutually exclusive across cycles by
+  // the lifecycle FSM (only one IC1-hit path active per cycle, only
+  // one rvalid-routed FB per cycle), so independent `if` arms are
+  // semantically equivalent to a one-hot case mux.
+  seq on clk_i rising
+    if fb0_data_we_ic1_hit fill_data_q[0]        <= ic1_hit_data_combo; end if
+    if fb1_data_we_ic1_hit fill_data_q[1]        <= ic1_hit_data_combo; end if
+    if fb2_data_we_ic1_hit fill_data_q[2]        <= ic1_hit_data_combo; end if
+    if fb3_data_we_ic1_hit fill_data_q[3]        <= ic1_hit_data_combo; end if
+
+    if fb0_data_we_beat0   fill_data_q[0][31:0]  <= instr_rdata_i;      end if
+    if fb1_data_we_beat0   fill_data_q[1][31:0]  <= instr_rdata_i;      end if
+    if fb2_data_we_beat0   fill_data_q[2][31:0]  <= instr_rdata_i;      end if
+    if fb3_data_we_beat0   fill_data_q[3][31:0]  <= instr_rdata_i;      end if
+
+    if fb0_data_we_beat1   fill_data_q[0][63:32] <= instr_rdata_i;      end if
+    if fb1_data_we_beat1   fill_data_q[1][63:32] <= instr_rdata_i;      end if
+    if fb2_data_we_beat1   fill_data_q[2][63:32] <= instr_rdata_i;      end if
+    if fb3_data_we_beat1   fill_data_q[3][63:32] <= instr_rdata_i;      end if
+  end seq
 
   // ── 4:1 muxes from FB outputs (indexed by *_grant_requester) ─────
   let fb_addr_bus_sel: UInt<32> =
@@ -860,10 +914,9 @@ module ibex_icache
     (wb_grant_requester == 2'd0) ? fb0_addr :
     ((wb_grant_requester == 2'd1) ? fb1_addr :
     ((wb_grant_requester == 2'd2) ? fb2_addr : fb3_addr));
-  let fb_data_wb_sel: UInt<64> =
-    (wb_grant_requester == 2'd0) ? fb0_out_data :
-    ((wb_grant_requester == 2'd1) ? fb1_out_data :
-    ((wb_grant_requester == 2'd2) ? fb2_out_data : fb3_out_data));
+  // Centralized fill-data Vec read (proposal 2026-05-07-icache-area-restructure):
+  // collapses the per-FB 64-bit out_data 4:1 mux into one Vec read.
+  let fb_data_wb_sel: UInt<64> = fill_data_q[wb_grant_requester];
   let fb_hit_way_wb_sel: UInt<1> =
     (wb_grant_requester == 2'd0) ? fb0_hit_way :
     ((wb_grant_requester == 2'd1) ? fb1_hit_way :
@@ -873,10 +926,7 @@ module ibex_icache
     (out_grant_requester == 2'd0) ? fb0_addr :
     ((out_grant_requester == 2'd1) ? fb1_addr :
     ((out_grant_requester == 2'd2) ? fb2_addr : fb3_addr));
-  let fb_data_out_sel: UInt<64> =
-    (out_grant_requester == 2'd0) ? fb0_out_data :
-    ((out_grant_requester == 2'd1) ? fb1_out_data :
-    ((out_grant_requester == 2'd2) ? fb2_out_data : fb3_out_data));
+  let fb_data_out_sel: UInt<64> = fill_data_q[out_grant_requester];
   let fb_err_out_sel: Bool =
     (out_grant_requester == 2'd0) ? fb0_err :
     ((out_grant_requester == 2'd1) ? fb1_err :
