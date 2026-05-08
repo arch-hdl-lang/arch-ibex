@@ -1037,6 +1037,13 @@ module ibex_icache
   let out_beat_data: UInt<32> =
     (out_beat_idx == 2'd0) ? out_line_lo : out_line_hi;
 
+  // Tried (post-arch-com#260): `guard valid_q reset none` for
+  // err_out_q / err_plus2_q to drop reset and infer enable-FF.
+  // Result: +1,077 µm² REGRESSION on icache. Same pattern as the
+  // prior rdata_q / addr_out_q attempt — the 7-way if/elsif chain
+  // feeding the output regs defeats enable-FF extraction even for
+  // single-bit signals. Yosys was already merging the reset-FF +
+  // small-mux pattern more efficiently. Keeping reset-bearing.
   reg valid_q:     Bool reset rst_ni => false;
   reg rdata_q:     UInt<32> reset rst_ni => 0;
   reg addr_out_q:  UInt<32> reset rst_ni => 0;
@@ -1054,6 +1061,9 @@ module ibex_icache
   // skid_data_q / skid_err_q kept reset-bearing because arch-com's
   // RDC checker conservatively flags reset-none regs whose D-path
   // crosses the rst_ni domain (would need `guard skid_valid_q`).
+  // skid_data_q / skid_err_q kept reset-bearing — same regression
+  // as err_out_q (multi-path output seq prevents enable-FF
+  // inference even with arch-com#260's `guard` waiver).
   reg skid_data_q:  UInt<16> reset rst_ni => 16'd0;
   reg skid_valid_q: Bool     reset rst_ni => false;
   reg skid_err_q:   Bool     reset rst_ni => false;
