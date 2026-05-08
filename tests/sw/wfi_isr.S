@@ -54,18 +54,19 @@ _start:
     csrw   mie, t0
 
     // Schedule the comparator: mtimecmp = mtime + delta.
-    // Pick delta = 128 cycles — generous enough that any in-flight
+    // Pick delta = 256 cycles — generous enough that any in-flight
     // prefetch FBs in the icache have drained their bus traffic
     // (clearing icache.busy_o) before the timer fires, so the
     // cocotb harness can observe `core_sleep_o == 1` between WFI
-    // and trap. Was 32 with the prefetch_buffer impl; the icache's
-    // continuous prefetch keeps busy_o asserted for ~10-15 extra
-    // cycles after WFI as 1-2 FBs finish their bus fills.
+    // and trap. Was 32 with the prefetch_buffer impl; bumped to
+    // 128 then 256 with the icache flip + IC_NUM_LINES=256 because
+    // the icache's continuous prefetch keeps busy_o asserted for
+    // many cycles after WFI as in-flight FBs finish their bus fills.
     li     t0, CLINT_MTIME_LO
     lw     t1, 0(t0)             // mtime_lo
-    addi   t1, t1, 128
+    addi   t1, t1, 256
     li     t0, CLINT_MTIMECMP_LO
-    sw     t1, 0(t0)             // mtimecmp_lo = mtime_lo + 128
+    sw     t1, 0(t0)             // mtimecmp_lo = mtime_lo + 256
     sw     zero, 4(t0)           // mtimecmp_hi = 0
 
     // Unleash traps globally.

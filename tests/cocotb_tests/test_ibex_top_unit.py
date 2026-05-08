@@ -144,11 +144,11 @@ async def _reset(dut):
     await _settle(dut)
 
 
-async def _wait_for_instr_req(dut, max_wait: int = 200) -> bool:
+async def _wait_for_instr_req(dut, max_wait: int = 320) -> bool:
     """Wait up to max_wait cycles for `instr_req_o` to assert.
 
-    Default `max_wait=200` covers the icache cold-boot inval walk
-    (`IC_NUM_LINES=128` cycles + slack) introduced by D1's
+    Default `max_wait=320` covers the icache cold-boot inval walk
+    (`IC_NUM_LINES=256` cycles + slack) introduced by D1's
     `ICache=1` flip.
     """
     for _ in range(max_wait):
@@ -163,7 +163,7 @@ async def _wait_for_instr_req(dut, max_wait: int = 200) -> bool:
 IC_LINE_BEATS_PER_FILL = 2
 
 
-async def _serve_instr(dut, *, instr: int, max_wait: int = 200) -> int:
+async def _serve_instr(dut, *, instr: int, max_wait: int = 320) -> int:
     """Wait for `instr_req_o`, then serve `IC_LINE_BEATS_PER_FILL = 2`
     bus beats with the same `instr` word so the icache can complete
     a full line fill. Returns the address of the first beat.
@@ -287,7 +287,7 @@ async def req3_fetch_enable_buffer(dut):
     await _reset(dut)
     # With IbexMuBiOn, IF should eventually issue instr_req_o (after
     # icache cold-boot inval walk).
-    assert await _wait_for_instr_req(dut, max_wait=200), (
+    assert await _wait_for_instr_req(dut, max_wait=320), (
         "fetch_enable_i = IbexMuBiOn should let IF reach instr_req_o"
     )
     # Drop fetch_enable_i to IbexMuBiOff (bit 0 = 0).

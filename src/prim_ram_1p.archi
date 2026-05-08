@@ -5,8 +5,8 @@
 /// (2 ways × {tag, data}) under `gen_noscramble_rams` when ICache=1
 /// (D1 SoC integration). The upstream cell is parameterised by
 /// `Width`, `Depth`, `DataBitsPerMask`, `MemInitFile`. We pin
-/// `Depth=128` (the SoC's `IC_NUM_LINES`) so the address width is
-/// fixed at `Aw=7` and we can keep the stub simple.
+/// `Depth=256` (the SoC's `IC_NUM_LINES`) so the address width is
+/// fixed at `Aw=8` and we can keep the stub simple.
 ///
 /// The `ram_1p_cfg_t` / `ram_1p_cfg_rsp_t` packed structs from
 /// `prim_ram_1p_pkg` are carried as flat `UInt<W>` because arch-com
@@ -19,19 +19,19 @@
 /// upstream default `""` selects the synthesis-shape RAM).
 module prim_ram_1p
   param Width: const = 32;
-  param Depth: const = 128;
+  param Depth: const = 256;
   param DataBitsPerMask: const = 1;
   // Note: upstream's `Aw = $clog2(Depth)` is a SystemVerilog
   // `localparam` and Verilator rejects parameter-override attempts on
   // it. The stub therefore baked the address-port width to a fixed
-  // numeric (7 bits = $clog2(128), matching the SoC's pinned
-  // Depth=128). Stays in lockstep with `IbexTop.arch:IC_INDEX_W=7`.
+  // numeric (8 bits = $clog2(256), matching the SoC's pinned
+  // Depth=256). Stays in lockstep with `IbexTop.arch:IC_INDEX_W=8`.
 
   port clk_i: in Clock<SysDomain>;
   port rst_ni: in Reset<Async, Low>;
   port req_i: in Bool;
   port write_i: in Bool;
-  port addr_i: in UInt<7>;
+  port addr_i: in UInt<8>;
   port wdata_i: in UInt<Width>;
   port wmask_i: in UInt<Width>;
   port rdata_o: out UInt<Width>;

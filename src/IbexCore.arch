@@ -116,8 +116,9 @@ module ibex_core
   param BusSizeECC: const = 32;
   /// `TagSizeECC` / `LineSizeECC` / `IC_INDEX_W` derive from
   /// `ICacheECC=0` ∧ the ARCH IbexIcache pinning of
-  /// `IC_NUM_LINES=128 / IC_LINE_SIZE=64`:
-  ///   IC_INDEX_W  = $clog2(IC_NUM_LINES) = 7
+  /// `IC_NUM_LINES=256 / IC_LINE_SIZE=64` (matches upstream Ibex
+  /// 4 kB / 2-way / 64-bit-line cache):
+  ///   IC_INDEX_W  = $clog2(IC_NUM_LINES) = 8
   ///   IC_TAG_SIZE = ADDR_W - IC_INDEX_W - IC_LINE_W + 1 = 22
   ///   LineSizeECC = BUS_SIZE * IC_LINE_BEATS = 32 * 2 = 64
   /// (D1: defaults aligned to icache hardcoded port widths.)
@@ -125,7 +126,7 @@ module ibex_core
   param LineSizeECC: const = 64;
   param MemDataWidth: const = 32;
   param IC_NUM_WAYS: const = 2;
-  param IC_INDEX_W: const = 7;
+  param IC_INDEX_W: const = 8;
   param ICacheECC[0:0]: const = 1'd0;
   param ICacheTweakInfection[0:0]: const = 1'd0;
   param PCIncrCheck[0:0]: const = 1'd0;

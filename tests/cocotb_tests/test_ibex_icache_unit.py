@@ -12,8 +12,8 @@ In-scope SoC parameter pinning (per spec § "Parameters"):
   - BranchCache    = 0   (allocate-every-miss when enabled)
   - TweakInfection = 0
   - NUM_FB         = 4, FB_THRESHOLD = 2
-  - IC_NUM_WAYS    = 2, IC_LINE_BEATS = 2, IC_NUM_LINES = 128,
-    IC_INDEX_W   = 7, IC_TAG_SIZE = 22, IC_LINE_SIZE = 64
+  - IC_NUM_WAYS    = 2, IC_LINE_BEATS = 2, IC_NUM_LINES = 256,
+    IC_INDEX_W   = 8, IC_TAG_SIZE = 22, IC_LINE_SIZE = 64
 
 Tag-RAM read width 22 = {valid_bit, tag[20:0]}.
 
@@ -39,8 +39,8 @@ CLK_PERIOD_NS = 10  # 100 MHz
 # Cache geometry (from spec § Module interface / Parameters)
 IC_NUM_WAYS    = 2
 IC_LINE_BEATS  = 2
-IC_NUM_LINES   = 128
-IC_INDEX_W     = 7
+IC_NUM_LINES   = 256
+IC_INDEX_W     = 8
 IC_LINE_SIZE   = 64        # bits
 IC_LINE_BYTES  = 8
 IC_TAG_SIZE    = 22        # 1 valid + 21 tag bits
@@ -54,13 +54,13 @@ MASK64 = 0xFFFF_FFFF_FFFF_FFFF
 
 # Address layout: addr[31:IC_INDEX_HI+1] = tag, addr[IC_INDEX_HI:LINE_W] = index,
 # addr[LINE_W-1:0] = byte-in-line. With IC_LINE_SIZE=64 (=8B), IC_LINE_W=3,
-# IC_INDEX_W=7, IC_INDEX_HI = 3+7-1 = 9; tag = addr[31:10].
+# IC_INDEX_W=8, IC_INDEX_HI = 3+8-1 = 10; tag = addr[31:11].
 
 ADDR_W      = 32
 IC_LINE_W   = 3                          # log2(IC_LINE_BYTES)
 INDEX_LO    = IC_LINE_W                  # = 3
-INDEX_HI    = INDEX_LO + IC_INDEX_W - 1  # = 9
-TAG_LO      = INDEX_HI + 1               # = 10
+INDEX_HI    = INDEX_LO + IC_INDEX_W - 1  # = 10
+TAG_LO      = INDEX_HI + 1               # = 11
 
 
 def _index_of(addr: int) -> int:
@@ -135,12 +135,13 @@ async def _reset(dut):
     await _settle(dut)
 
 
-async def _wait_until_idle(dut, *, max_cycles: int = 200) -> int:
+async def _wait_until_idle(dut, *, max_cycles: int = 320) -> int:
     """Walk past the cold-boot invalidation FSM until busy_o drops to 0.
 
     Returns the number of cycles waited. The cold-boot walk is
     OUT_OF_RESET → AWAIT_SCRAMBLE_KEY (1c) → INVAL_CACHE (IC_NUM_LINES c)
-    → IDLE; with ic_scr_key_valid_i tied 1 this is ~130 cycles.
+    → IDLE; with ic_scr_key_valid_i tied 1 this is ~258 cycles
+    (IC_NUM_LINES=256 + a few cycles of state machine overhead).
     """
     for n in range(max_cycles):
         if int(dut.busy_o.value) == 0:

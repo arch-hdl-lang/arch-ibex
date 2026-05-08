@@ -40,9 +40,9 @@ module ibex_if_stage
   /// still be parameterised so they match the upstream port contract.
   param IC_NUM_WAYS: const = 2;
   /// Defaults aligned to the ARCH IbexIcache hardcoded widths
-  /// (`IC_NUM_LINES=128 → IC_INDEX_W=7`, `IC_TAG_SIZE=22`,
+  /// (`IC_NUM_LINES=256 → IC_INDEX_W=8`, `IC_TAG_SIZE=22`,
   /// `LineSizeECC=64`). D1 SoC integration.
-  param IC_INDEX_W: const = 7;
+  param IC_INDEX_W: const = 8;
   param TagSizeECC: const = 22;
   param LineSizeECC: const = 64;
 
@@ -206,7 +206,7 @@ module ibex_if_stage
   /// and control (`icache_enable_i`, `icache_inval_i`, `busy_o`,
   /// `ecc_error_o`).
   ///
-  /// IbexIcache hardcodes `IC_INDEX_W=7`, `TagSizeECC=22`,
+  /// IbexIcache hardcodes `IC_INDEX_W=8`, `TagSizeECC=22`,
   /// `LineSizeECC=64` — IfStage's own params now match (D1).
   /// `ic_*_req_o` is `Vec<UInt<1>, 2>` from icache; IfStage exports
   /// it as `UInt<IC_NUM_WAYS>` (packed UInt<2>) — bit-equivalent at
