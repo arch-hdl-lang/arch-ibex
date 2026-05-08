@@ -217,12 +217,12 @@ module ibex_core
   port ic_tag_write_o:      out Bool;
   port ic_tag_addr_o:       out UInt<IC_INDEX_W>;
   port ic_tag_wdata_o:      out UInt<TagSizeECC>;
-  port ic_tag_rdata_i:      in  unpacked Vec<UInt<TagSizeECC>, IC_NUM_WAYS>;
+  port ic_tag_rdata_i:      in  unpacked ascending Vec<UInt<TagSizeECC>, IC_NUM_WAYS>;
   port ic_data_req_o:       out UInt<IC_NUM_WAYS>;
   port ic_data_write_o:     out Bool;
   port ic_data_addr_o:      out UInt<IC_INDEX_W>;
   port ic_data_wdata_o:     out UInt<LineSizeECC>;
-  port ic_data_rdata_i:     in  unpacked Vec<UInt<LineSizeECC>, IC_NUM_WAYS>;
+  port ic_data_rdata_i:     in  unpacked ascending Vec<UInt<LineSizeECC>, IC_NUM_WAYS>;
   port ic_scr_key_valid_i:  in  Bool;
   port ic_scr_key_req_o:    out Bool;
 

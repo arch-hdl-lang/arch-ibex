@@ -84,14 +84,14 @@ module ibex_icache
   port ic_tag_write_o: out Bool;
   port ic_tag_addr_o:  out UInt<7>;
   port ic_tag_wdata_o: out UInt<22>;
-  port ic_tag_rdata_i: in  unpacked Vec<UInt<22>, 2>;
+  port ic_tag_rdata_i: in  unpacked ascending Vec<UInt<22>, 2>;
 
   // ── Data-RAM port (R-ARB / R-LK) ─────────────────────────────────
   port ic_data_req_o:   out Vec<UInt<1>, 2>;
   port ic_data_write_o: out Bool;
   port ic_data_addr_o:  out UInt<7>;
   port ic_data_wdata_o: out UInt<64>;
-  port ic_data_rdata_i: in  unpacked Vec<UInt<64>, 2>;
+  port ic_data_rdata_i: in  unpacked ascending Vec<UInt<64>, 2>;
 
   // ── Scramble-key handshake (R-INV-3, R-INV-6) ────────────────────
   port ic_scr_key_valid_i: in  Bool;
