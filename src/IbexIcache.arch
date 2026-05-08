@@ -445,11 +445,18 @@ module ibex_icache
 
   // ── R-LK-4 (strengthened): coalesce same-line allocs ─────────────
   // The lookup at IC0 must NOT trigger a fresh FB allocate if a live
-  // FB already covers the same cache line. Three sources contribute:
+  // FB already covers the same cache line. Two sources contribute:
   //
-  //   1. `inflight_line_match_ic0`: live FBs whose captured line tag
-  //      equals lookup_addr_ic0[31:10]. Combinational; sees FBs from
-  //      PhAlloc onward (busy=1, addr_q latched).
+  //   1. `inflight_line_match_ic0`: live + just-released FBs whose
+  //      captured line tag equals lookup_addr_ic0[31:10]. The "just
+  //      released" component covers the 1-cycle window between
+  //      busy_q[fb] going low and the cache writeback settling in
+  //      RAM — without it, a same-line refetch in that window would
+  //      allocate a redundant FB that races with the IC1 tag-hit
+  //      path (observed: sw_isr / multictx_isr / pmp_load_isr hung
+  //      when this gate was missing). Implemented as
+  //      `fb_busy_prev_q | fb_busy_mask` (high during busy AND for
+  //      one cycle after release).
   //
   //   2. `pending_alloc_match_ic0`: an FB that was allocated last
   //      cycle is now in PhAlloc capturing addr_q — its `busy=1` is
@@ -457,11 +464,12 @@ module ibex_icache
   //      from the prior IC0 grant is still in flight and matches the
   //      current IC0 line, treat as a hit.
   //
-  //   3. `cam_search_any`: the FillBufferCam (DEPTH=NUM_FB) hit when
-  //      searched at IC0 with line-tag key. Redundant w/ (1) in the
-  //      common case but kept load-bearing per proposal §Construct
-  //      enumeration. Stale by 1 cycle relative to the live FB regs
-  //      (CAM write fires at IC1) — (2) covers that race.
+  // (Previously: a 3rd source `cam_search_any` from a `FillBufferCam`
+  // module instance. That CAM stored a duplicate of `addr_q[i][31:10]`
+  // and produced the same boolean as `inflight_line_match_ic0`. Its
+  // 1-cycle write-clear lag IS what the `fb_busy_prev_q` term in (1)
+  // now provides — and the inline form costs ~4.1k µm² less. Removed
+  // 2026-05-08 followup.)
   // Coalesce key: addr[31:10] (page-tag granularity). Per spec
   // ambiguity 3 ("same-line second allocation is permitted"), the
   // coalesce check is best-effort — using the tag-only slice is
@@ -474,22 +482,35 @@ module ibex_icache
   // (≤30 cycles after both bus beats served) holds.
   let lookup_line_ic0: UInt<22> = lookup_addr_ic0[31:10];
 
+  // 1-cycle post-release coverage: `fb_busy_prev_q` latches
+  // `fb_busy_mask` once per cycle, so it equals "was busy last
+  // cycle". `fb*_busy or fb_busy_prev_q[i]` is therefore high
+  // during the busy cycles AND for one extra cycle after release
+  // — the window in which the CAM's lagged clear used to suppress
+  // a same-line refetch. `addr_q` retains its value through that
+  // window (`reset none` and no clear in seq), so the tag compare
+  // remains valid.
+  reg fb_busy_prev_q: UInt<4> reset rst_ni => 4'd0;
+  seq on clk_i rising
+    fb_busy_prev_q <= fb_busy_mask;
+  end seq
+  let fb0_recently_busy: Bool = fb0_busy or fb_busy_prev_q[0];
+  let fb1_recently_busy: Bool = fb1_busy or fb_busy_prev_q[1];
+  let fb2_recently_busy: Bool = fb2_busy or fb_busy_prev_q[2];
+  let fb3_recently_busy: Bool = fb3_busy or fb_busy_prev_q[3];
+
   let inflight_line_match_ic0: Bool =
-    (fb0_busy and (fb0_addr[31:10] == lookup_line_ic0)) or
-    (fb1_busy and (fb1_addr[31:10] == lookup_line_ic0)) or
-    (fb2_busy and (fb2_addr[31:10] == lookup_line_ic0)) or
-    (fb3_busy and (fb3_addr[31:10] == lookup_line_ic0));
+    (fb0_recently_busy and (fb0_addr[31:10] == lookup_line_ic0)) or
+    (fb1_recently_busy and (fb1_addr[31:10] == lookup_line_ic0)) or
+    (fb2_recently_busy and (fb2_addr[31:10] == lookup_line_ic0)) or
+    (fb3_recently_busy and (fb3_addr[31:10] == lookup_line_ic0));
 
   let pending_alloc_match_ic0: Bool =
     lookup_alloc_ic1_q and
     (lookup_addr_ic1_q[31:10] == lookup_line_ic0);
 
-  // `cam_search_any_ic0` is the CAM output (driven below; the CAM is
-  // searched with `lookup_line_ic0`). Forward reference via wire.
-  wire cam_search_any_ic0: Bool;
-
   let coalesce_ic0: Bool =
-    cam_search_any_ic0 or inflight_line_match_ic0 or pending_alloc_match_ic0;
+    inflight_line_match_ic0 or pending_alloc_match_ic0;
 
   // Per-FB IC0 allocate pulses. R-LK-4 (strengthened): suppress when
   // the lookup line is already covered by an in-flight FB. The lookup
@@ -589,42 +610,11 @@ module ibex_icache
   // input MUX. ~256 FFs × ~7 µm² of saved MUX = significant.
   reg fill_data_q: Vec<UInt<64>, 4> reset none;
 
-  // ── R-LK-4 (strengthened): in-flight-line CAM lookup ────────────
-  // Search at IC0 with `lookup_line_ic0` (= lookup_addr_ic0[31:10]).
-  // Search-result `cam_search_any` drives `coalesce_ic0` above. The
-  // CAM is the architectural construct backing R-LK-4; the inflight-
-  // bypass (`inflight_line_match_ic0`) covers the 1-cycle write-to-
-  // search latency since CAM writes fire at IC1.
-  let cam_search_key: UInt<22> = lookup_line_ic0;
-  wire cam_search_mask:  UInt<4>;
-  wire cam_search_first: UInt<2>;
-
-  // CAM write port driven below from FB allocate/release. Aliased into
-  // wires here so they can be driven from comb based on lookup_grant.
-  wire cam_write_valid: Bool;
-  wire cam_write_idx:   UInt<2>;
-  wire cam_write_key:   UInt<22>;
-  wire cam_write_set:   Bool;
-
-  inst fb_cam: FillBufferCam
-    clk <- clk_i;
-    rst <- rst_ni;
-    write_valid  <- cam_write_valid;
-    write_idx    <- cam_write_idx;
-    write_key    <- cam_write_key;
-    write_set    <- cam_write_set;
-    search_key   <- cam_search_key;
-    search_mask  -> cam_search_mask;
-    search_any   -> cam_search_any_ic0;
-    search_first -> cam_search_first;
-  end inst fb_cam
-
-  // FB allocation / clear drives the CAM write port. We write the CAM
-  // at IC1 (one cycle after IC0 grant), gated by `lookup_alloc_ic1_q`
-  // so coalesced lookups don't insert a duplicate entry.
-  let fb_alloc_now: Bool = lookup_alloc_ic1_q;
-  // CAM clear on FB release fires below; resolved from a "release"
-  // mask computed in comb.
+  // (FillBufferCam removed 2026-05-08: redundant with the inline
+  // `inflight_line_match_ic0` 4× compare above. The CAM stored a
+  // duplicate of `addr_q[i][31:10]` and produced the same boolean
+  // for `coalesce_ic0`. Its 1-cycle clear lag is now provided by
+  // the `fb_busy_prev_q` term in `inflight_line_match_ic0`.)
 
   // ── Per-FB request masks for the FbAgeArb (R-FB-4) ───────────────
   // FillBufferCtrl computes wants_bus / wants_wb / wants_out per
@@ -1302,61 +1292,11 @@ module ibex_icache
     end if
   end seq
 
-  // ── CAM write driver ─────────────────────────────────────────────
-  // Insert on FB allocate (IC1 cycle), clear on FB release (busy
-  // falling edge — best-effort: CAM search results are unused in this
-  // baseline impl, so a 1-cycle-late clear is benign per spec
-  // ambiguity 3, "same-line second allocation is permitted").
-  reg fb_busy_prev_q: UInt<4> reset rst_ni => 4'd0;
-  seq on clk_i rising
-    fb_busy_prev_q <= fb_busy_mask;
-  end seq
-
-  let fb_releasing_0: Bool = fb_busy_prev_q[0] and (not fb0_busy);
-  let fb_releasing_1: Bool = fb_busy_prev_q[1] and (not fb1_busy);
-  let fb_releasing_2: Bool = fb_busy_prev_q[2] and (not fb2_busy);
-  let fb_releasing_3: Bool = fb_busy_prev_q[3] and (not fb3_busy);
-
-  comb
-    if fb_alloc_now
-      cam_write_valid = true;
-      cam_write_idx   = lookup_fb_idx_ic1_q;
-      cam_write_key   = lookup_addr_ic1_q[31:10];
-      cam_write_set   = true;
-    elsif fb_releasing_0
-      cam_write_valid = true;
-      cam_write_idx   = 2'd0;
-      cam_write_key   = 22'd0;
-      cam_write_set   = false;
-    elsif fb_releasing_1
-      cam_write_valid = true;
-      cam_write_idx   = 2'd1;
-      cam_write_key   = 22'd0;
-      cam_write_set   = false;
-    elsif fb_releasing_2
-      cam_write_valid = true;
-      cam_write_idx   = 2'd2;
-      cam_write_key   = 22'd0;
-      cam_write_set   = false;
-    elsif fb_releasing_3
-      cam_write_valid = true;
-      cam_write_idx   = 2'd3;
-      cam_write_key   = 22'd0;
-      cam_write_set   = false;
-    else
-      cam_write_valid = false;
-      cam_write_idx   = 2'd0;
-      cam_write_key   = 22'd0;
-      cam_write_set   = false;
-    end if
-  end comb
-
-  // CAM search outputs: `search_any` is now load-bearing via
-  // `coalesce_ic0` (drives FB-allocate gating). `search_mask` and
-  // `search_first` remain unused in this implementation — sink to
-  // avoid lint warnings.
-  let _unused_cam_mask: UInt<4> = cam_search_mask;
-  let _unused_cam_first: UInt<2> = cam_search_first;
+  // (CAM write driver + per-FB releasing flags removed 2026-05-08.
+  // `fb_busy_prev_q` was kept and moved earlier in the file; it's
+  // now used by `inflight_line_match_ic0` to provide the 1-cycle
+  // post-release coalesce coverage that the CAM's clear-lag
+  // previously gave.)
 
   // Sink unused arbiter ready outputs (single-issue grants; readys
   // not consumed by the icache, only the grant_* outputs).
