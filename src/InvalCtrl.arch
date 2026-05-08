@@ -37,17 +37,17 @@ fsm InvalCtrl
 
   // ── RAM-port arbiter request[0] driver (R-INV-5) ─────────────────
   port inval_write_req: out Bool;
-  /// Index walked during INVAL_CACHE (0..IC_NUM_LINES-1=127).
-  port inval_walk_idx: out UInt<7>;
+  /// Index walked during INVAL_CACHE (0..IC_NUM_LINES-1=255).
+  port inval_walk_idx: out UInt<8>;
 
   // ── Scramble-key request (R-INV-3, R-INV-6). Latched one cycle
   //                          to keep glitches off the SoC port. ────
   port scr_key_req: out Bool;
 
   // ── Walk counter ─────────────────────────────────────────────────
-  /// Walk progresses 0..127 within StInvalCache. Resets to 0 on every
+  /// Walk progresses 0..255 within StInvalCache. Resets to 0 on every
   /// state entry that begins a new walk.
-  reg inval_index_q: UInt<7> reset rst => 7'd0;
+  reg inval_index_q: UInt<8> reset rst => 8'd0;
 
   /// Latched scramble-key request (R-INV-3, R-INV-6).
   /// The comb scr_key_req_d is set in OUT_OF_RESET (when key not yet
@@ -95,7 +95,7 @@ fsm InvalCtrl
       if not ic_scr_key_valid_i
         scr_key_req_q <= true;
       end if
-      inval_index_q <= 7'd0;
+      inval_index_q <= 8'd0;
     end seq
     -> StAwaitScrambleKey;
   end state StOutOfReset
@@ -108,7 +108,7 @@ fsm InvalCtrl
     end comb
     seq
       // Walk counter held at 0 until INVAL_CACHE.
-      inval_index_q <= 7'd0;
+      inval_index_q <= 8'd0;
     end seq
     -> StInvalCache when ic_scr_key_valid_i;
   end state StAwaitScrambleKey
@@ -126,18 +126,18 @@ fsm InvalCtrl
     seq
       // Advance walk counter when not restarting.
       if not icache_inval_i
-        if inval_index_q != 7'd127
-          inval_index_q <= (inval_index_q + 7'd1).trunc<7>();
+        if inval_index_q != 8'd255
+          inval_index_q <= (inval_index_q + 8'd1).trunc<8>();
         else
-          inval_index_q <= 7'd0;
+          inval_index_q <= 8'd0;
         end if
       else
         // Restart pending — counter resets on entry to AWAIT.
-        inval_index_q <= 7'd0;
+        inval_index_q <= 8'd0;
       end if
     end seq
     -> StAwaitScrambleKey when icache_inval_i;
-    -> StIdle when (not icache_inval_i) and (inval_index_q == 7'd127);
+    -> StIdle when (not icache_inval_i) and (inval_index_q == 8'd255);
   end state StInvalCache
 
   // ── State: IDLE (R-INV-6) ────────────────────────────────────────
@@ -150,7 +150,7 @@ fsm InvalCtrl
     seq
       if icache_inval_i
         scr_key_req_q <= true;
-        inval_index_q <= 7'd0;
+        inval_index_q <= 8'd0;
       end if
     end seq
     -> StAwaitScrambleKey when icache_inval_i;

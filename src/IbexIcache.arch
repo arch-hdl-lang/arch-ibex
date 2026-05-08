@@ -1,5 +1,5 @@
 /// IbexIcache — instruction cache between IF stage and the instruction-bus
-/// master. 2-way 4 kB cache (IC_NUM_LINES=128, IC_LINE_SIZE=64) with a
+/// master. 2-way 4 kB cache (IC_NUM_LINES=256, IC_LINE_SIZE=64) with a
 /// pool of NUM_FB=4 fill buffers for outstanding misses, prefetch, and
 /// stream-output multiplexing.
 ///
@@ -82,14 +82,14 @@ module ibex_icache
   // ── Tag-RAM port (R-ARB / R-INV / R-LK) ──────────────────────────
   port ic_tag_req_o:   out Vec<UInt<1>, 2>;
   port ic_tag_write_o: out Bool;
-  port ic_tag_addr_o:  out UInt<7>;
+  port ic_tag_addr_o:  out UInt<8>;
   port ic_tag_wdata_o: out UInt<22>;
   port ic_tag_rdata_i: in  unpacked ascending Vec<UInt<22>, 2>;
 
   // ── Data-RAM port (R-ARB / R-LK) ─────────────────────────────────
   port ic_data_req_o:   out Vec<UInt<1>, 2>;
   port ic_data_write_o: out Bool;
-  port ic_data_addr_o:  out UInt<7>;
+  port ic_data_addr_o:  out UInt<8>;
   port ic_data_wdata_o: out UInt<64>;
   port ic_data_rdata_i: in  unpacked ascending Vec<UInt<64>, 2>;
 
@@ -122,7 +122,7 @@ module ibex_icache
 
   wire inval_state:     UInt<2>;
   wire inval_write_req: Bool;
-  wire inval_walk_idx:  UInt<7>;
+  wire inval_walk_idx:  UInt<8>;
   wire scr_key_req:     Bool;
 
   inst inval_ctrl: InvalCtrl
@@ -309,7 +309,7 @@ module ibex_icache
   // `fill_write_req`: a live FB has all beats and is ready to commit
   // its line to RAM. Driven below in fill-buffer logic.
   wire fill_write_req: Bool;
-  wire fill_write_idx: UInt<7>;
+  wire fill_write_idx: UInt<8>;
   wire fill_write_way: UInt<1>;
   wire fill_write_data: UInt<64>;
   wire fill_write_tag:  UInt<22>;
@@ -358,29 +358,29 @@ module ibex_icache
       ic_data_addr_o   = fill_write_idx;
       ic_data_wdata_o  = fill_write_data;
     elsif lookup_grant
-      // Lookup: both ways read in parallel. Index is bits [9:3] of
-      // lookup address.
+      // Lookup: both ways read in parallel. Index is bits [10:3] of
+      // lookup address (8-bit index for IC_NUM_LINES=256).
       ic_tag_req_o[0]  = 1'd1;
       ic_tag_req_o[1]  = 1'd1;
       ic_tag_write_o   = false;
-      ic_tag_addr_o    = lookup_addr_ic0[9:3];
+      ic_tag_addr_o    = lookup_addr_ic0[10:3];
       ic_tag_wdata_o   = 22'd0;
       ic_data_req_o[0] = 1'd1;
       ic_data_req_o[1] = 1'd1;
       ic_data_write_o  = false;
-      ic_data_addr_o   = lookup_addr_ic0[9:3];
+      ic_data_addr_o   = lookup_addr_ic0[10:3];
       ic_data_wdata_o  = 64'd0;
     else
       // No grant: drive all RAM-port strobes 0 (R-RST-1).
       ic_tag_req_o[0]  = 1'd0;
       ic_tag_req_o[1]  = 1'd0;
       ic_tag_write_o   = false;
-      ic_tag_addr_o    = 7'd0;
+      ic_tag_addr_o    = 8'd0;
       ic_tag_wdata_o   = 22'd0;
       ic_data_req_o[0] = 1'd0;
       ic_data_req_o[1] = 1'd0;
       ic_data_write_o  = false;
-      ic_data_addr_o   = 7'd0;
+      ic_data_addr_o   = 8'd0;
       ic_data_wdata_o  = 64'd0;
     end if
   end comb
@@ -458,7 +458,7 @@ module ibex_icache
   // FB already covers the same cache line. Two sources contribute:
   //
   //   1. `inflight_line_match_ic0`: live + just-released FBs whose
-  //      captured line tag equals lookup_addr_ic0[31:10]. The "just
+  //      captured line tag equals lookup_addr_ic0[31:11]. The "just
   //      released" component covers the 1-cycle window between
   //      busy_q[fb] going low and the cache writeback settling in
   //      RAM — without it, a same-line refetch in that window would
@@ -475,22 +475,22 @@ module ibex_icache
   //      current IC0 line, treat as a hit.
   //
   // (Previously: a 3rd source `cam_search_any` from a `FillBufferCam`
-  // module instance. That CAM stored a duplicate of `addr_q[i][31:10]`
+  // module instance. That CAM stored a duplicate of `addr_q[i][31:11]`
   // and produced the same boolean as `inflight_line_match_ic0`. Its
   // 1-cycle write-clear lag IS what the `fb_busy_prev_q` term in (1)
   // now provides — and the inline form costs ~4.1k µm² less. Removed
   // 2026-05-08 followup.)
-  // Coalesce key: addr[31:10] (page-tag granularity). Per spec
-  // ambiguity 3 ("same-line second allocation is permitted"), the
-  // coalesce check is best-effort — using the tag-only slice is
+  // Coalesce key: addr[31:11] (tag-only, 21 bits at IC_INDEX_W=8).
+  // Per spec ambiguity 3 ("same-line second allocation is permitted"),
+  // the coalesce check is best-effort — using the tag-only slice is
   // coarser than necessary but effectively serialises new allocates
-  // for prefetches advancing within the same 1-KiB page. That
+  // for prefetches advancing within the same 2-KiB page. That
   // serialisation lets the bus-fill→writeback→output path drain a
   // line before the next allocate, matching the test stimulus
   // assumption (R-FB-5 / R-EXT-4 / R-EXT-5 single-line scenarios)
   // and keeping fb_count low enough that the R-FB-5 release window
   // (≤30 cycles after both bus beats served) holds.
-  let lookup_line_ic0: UInt<22> = lookup_addr_ic0[31:10];
+  let lookup_line_ic0: UInt<21> = lookup_addr_ic0[31:11];
 
   // 1-cycle post-release coverage: `fb_busy_prev_q` latches
   // `fb_busy_mask` once per cycle, so it equals "was busy last
@@ -510,14 +510,14 @@ module ibex_icache
   let fb3_recently_busy: Bool = fb3_busy or fb_busy_prev_q[3];
 
   let inflight_line_match_ic0: Bool =
-    (fb0_recently_busy and (fb0_addr[31:10] == lookup_line_ic0)) or
-    (fb1_recently_busy and (fb1_addr[31:10] == lookup_line_ic0)) or
-    (fb2_recently_busy and (fb2_addr[31:10] == lookup_line_ic0)) or
-    (fb3_recently_busy and (fb3_addr[31:10] == lookup_line_ic0));
+    (fb0_recently_busy and (fb0_addr[31:11] == lookup_line_ic0)) or
+    (fb1_recently_busy and (fb1_addr[31:11] == lookup_line_ic0)) or
+    (fb2_recently_busy and (fb2_addr[31:11] == lookup_line_ic0)) or
+    (fb3_recently_busy and (fb3_addr[31:11] == lookup_line_ic0));
 
   let pending_alloc_match_ic0: Bool =
     lookup_alloc_ic1_q and
-    (lookup_addr_ic1_q[31:10] == lookup_line_ic0);
+    (lookup_addr_ic1_q[31:11] == lookup_line_ic0);
 
   let coalesce_ic0: Bool =
     inflight_line_match_ic0 or pending_alloc_match_ic0;
@@ -535,12 +535,12 @@ module ibex_icache
   // =================================================================
 
   // Address line-tag (the part stored in tag RAM): valid bit at MSB
-  // (bit 21), tag in lower 21 bits = lookup_addr[30:10]. Index is
-  // bits [9:3] (IC_INDEX_HI=9, IC_LINE_W=3) so the tag starts at
-  // bit 10. With TagSizeECC=22 (1 valid + 21 tag bits) that's
-  // addr[30:10] for the tag. Upstream IC_TAG_SIZE=23 would include
-  // bit 31 too; the SoC pinning in this port drops it.
-  let lookup_line_tag_ic1: UInt<21> = lookup_addr_ic1_q[30:10];
+  // (bit 21), tag in lower 21 bits = lookup_addr[31:11]. Index is
+  // bits [10:3] (IC_INDEX_HI=10, IC_LINE_W=3) so the tag starts at
+  // bit 11. With TagSizeECC=22 (1 valid + 21 tag bits) that's
+  // addr[31:11] for the tag. Matches upstream IC_TAG_SIZE=22 at
+  // IC_NUM_LINES=256 / IC_LINE_SIZE=64.
+  let lookup_line_tag_ic1: UInt<21> = lookup_addr_ic1_q[31:11];
 
   let way0_valid: Bool = ic_tag_rdata_i[0][21] == 1'b1;
   let way0_tag:   UInt<21> = ic_tag_rdata_i[0][20:0];
@@ -622,7 +622,7 @@ module ibex_icache
 
   // (FillBufferCam removed 2026-05-08: redundant with the inline
   // `inflight_line_match_ic0` 4× compare above. The CAM stored a
-  // duplicate of `addr_q[i][31:10]` and produced the same boolean
+  // duplicate of `addr_q[i][31:11]` and produced the same boolean
   // for `coalesce_ic0`. Its 1-cycle clear lag is now provided by
   // the `fb_busy_prev_q` term in `inflight_line_match_ic0`.)
 
@@ -1011,10 +1011,10 @@ module ibex_icache
   // ── Cache write-back driver (R-FB-5(b), R-ARB-1..4) ──────────────
   comb
     fill_write_req  = wb_grant_valid;
-    fill_write_idx  = fb_addr_wb_sel[9:3];
+    fill_write_idx  = fb_addr_wb_sel[10:3];
     fill_write_way  = fb_hit_way_wb_sel;   // overloaded: hit_way OR victim_way (FB sets this in PhCheck)
     fill_write_data = fb_data_wb_sel;
-    fill_write_tag  = {1'd1, fb_addr_wb_sel[30:10]};
+    fill_write_tag  = {1'd1, fb_addr_wb_sel[31:11]};
   end comb
 
   // ── R-OUT: output stream ─────────────────────────────────────────

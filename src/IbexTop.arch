@@ -102,10 +102,11 @@ module ibex_top
   param MemDataWidth:            const = 32;
   // `BusSizeECC`/`LineSizeECC`/`TagSizeECC` derive from ICacheECC=0
   // (spec N-19) under our SoC pinning, AND from the ARCH-side
-  // IbexIcache pinning of IC_NUM_LINES=128 / IC_LINE_SIZE=64:
+  // IbexIcache pinning of IC_NUM_LINES=256 / IC_LINE_SIZE=64
+  // (matches upstream Ibex's default 4 kB / 2-way / 64-bit-line cache):
   //   IC_NUM_WAYS = 2, IC_LINE_BEATS = IC_LINE_BYTES/BUS_BYTES = 8/4 = 2
-  //   IC_INDEX_W  = $clog2(IC_NUM_LINES) = $clog2(128) = 7
-  //   IC_TAG_SIZE = ADDR_W - IC_INDEX_W - IC_LINE_W + 1 = 32-7-3+1 = 22
+  //   IC_INDEX_W  = $clog2(IC_NUM_LINES) = $clog2(256) = 8
+  //   IC_TAG_SIZE = ADDR_W - IC_INDEX_W - IC_LINE_W + 1 = 32-8-3+1 = 22
   //   BusSizeECC  = 32, LineSizeECC = 32*2 = 64
   // (D1: under ICache=1 these widths must match the ARCH IbexIcache
   // module's hardcoded port widths.)
@@ -113,10 +114,10 @@ module ibex_top
   local param TagSizeECC:              const = 22;
   local param LineSizeECC:             const = 64;
   local param IC_NUM_WAYS:             const = 2;
-  local param IC_INDEX_W:              const = 7;
-  // `IC_NUM_LINES`: cache geometry. Pinned 128 to match the ARCH
-  // IbexIcache module (which hardcodes `UInt<7>` for `ic_*_addr_o`).
-  local param IC_NUM_LINES:            const = 128;
+  local param IC_INDEX_W:              const = 8;
+  // `IC_NUM_LINES`: cache geometry. Pinned 256 to match upstream Ibex.
+  // The ARCH IbexIcache module hardcodes `UInt<8>` for `ic_*_addr_o`.
+  local param IC_NUM_LINES:            const = 256;
   // `NumAddrScrRounds`: 0 under ICacheScramble=0 (spec N-20).
   local param NumAddrScrRounds:        const = 0;
   // `RAM_1P_CFG_W`: width of upstream `prim_ram_1p_pkg::ram_1p_cfg_t`
@@ -659,9 +660,9 @@ module ibex_top
   /// write path under our pinning, matching upstream's
   /// `{TagSizeECC{1'b1}}` / `{LineSizeECC{1'b1}}`).
   ///
-  /// `Depth = 128` is the SoC pinning (`IC_NUM_LINES = 4096B / 2 ways
-  /// / 8 bytes-per-line`); `addr_i` is therefore 7 bits wide
-  /// (matching the prim_ram_1p stub's `Aw=7` localparam).
+  /// `Depth = 256` is the SoC pinning (`IC_NUM_LINES = 4096B / 2 ways
+  /// / 8 bytes-per-line`); `addr_i` is therefore 8 bits wide
+  /// (matching the prim_ram_1p stub's `Aw=8` localparam).
   ///
   /// `cfg_i` is the 12-bit `prim_ram_1p_pkg::ram_1p_cfg_t` (carried
   /// as `UInt<12>` per IbexTop's flat shape); `cfg_rsp_o` is the

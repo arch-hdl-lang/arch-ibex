@@ -920,12 +920,13 @@ async def ps2_core_sleep_rises_when_drained(dut):
 
     INSTR_NOP = 0x0000_0013   # `addi x0, x0, 0`
     saw_sleep = False
-    # Bumped from 64 → 200 cycles. Under D1's `ICache=1` flip the
+    # Bumped from 64 → 200 → 320 cycles. Under D1's `ICache=1` flip the
     # icache may have several in-flight prefetch FBs (each NUM_FB=4
     # entry needs 2 bus beats), so the drain window before
     # `core_sleep_o = 1` can be much longer than under prefetch_buffer
-    # semantics.
-    for _ in range(200):
+    # semantics. At IC_NUM_LINES=256 the cold-boot inval walk eats
+    # ~256 cycles before WFI can even commit.
+    for _ in range(320):
         # Drain any outstanding prefetch (NOP rdata; controller will
         # discard them once it's in SLEEP). Without this the icache
         # would hold its `instr_req_o` high indefinitely (FB-driven)

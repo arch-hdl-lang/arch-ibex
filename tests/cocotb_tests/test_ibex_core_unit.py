@@ -155,7 +155,7 @@ async def _reset(dut):
     await _settle(dut)
 
 
-async def _serve_instr(dut, *, instr: int, max_wait: int = 200) -> int:
+async def _serve_instr(dut, *, instr: int, max_wait: int = 320) -> int:
     """Wait for the IF stage to assert `instr_req_o`, then serve the
     bus side until the icache delivers a valid instruction word equal
     to `instr` to the IF→ID interface. Returns the address that was
@@ -553,7 +553,7 @@ async def req10_fetch_enable_gating(dut):
     await _start_clock(dut)
     await _reset(dut)
     # Wait through the icache cold-boot inval walk + first instr_req_o.
-    for _ in range(200):
+    for _ in range(320):
         if int(dut.instr_req_o.value) == 1:
             break
         await RisingEdge(dut.clk_i)

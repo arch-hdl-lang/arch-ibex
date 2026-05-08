@@ -100,8 +100,10 @@ async def wfi_drains_and_wakes_on_timer(dut) -> None:
 
     # 2. Watch core_sleep_o until either we observe the post-WFI drain
     #    (success) or the trap fires (failure — never slept).
+    #    At IC_NUM_LINES=256 the icache cold-boot walk plus the
+    #    in-flight FB drain after WFI commit can take >500 cycles.
     saw_sleep = False
-    for _ in range(500):
+    for _ in range(800):
         await RisingEdge(dut.IO_CLK)
         if _core_sleep(dut) == 1:
             saw_sleep = True
