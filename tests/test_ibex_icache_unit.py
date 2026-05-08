@@ -55,8 +55,7 @@ def icache_runner(verilator_bin, tmp_path_factory):
     # strip pass) to avoid MODDUP at SoC link time. Add them ahead of
     # the consumer .sv so Verilator sees the decls before the inst sites.
     build_dir = ICACHE_SV.parent
-    for sib in ("fb_age_arb.sv", "ram_port_arb.sv", "fill_buffer_cam.sv",
-                "fill_buffer_ctrl.sv", "inval_ctrl.sv"):
+    for sib in ("fb_age_arb.sv", "ram_port_arb.sv", "inval_ctrl.sv"):
         sib_path = build_dir / sib
         if sib_path.is_file():
             sources.append(str(sib_path))

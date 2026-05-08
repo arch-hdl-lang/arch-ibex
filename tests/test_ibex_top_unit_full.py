@@ -45,8 +45,6 @@ REGISTER_FILE_FF_SV   = BUILD_DIR / "ibex_register_file_ff.sv"
 ICACHE_SV             = BUILD_DIR / "ibex_icache.sv"
 FB_AGE_ARB_SV         = BUILD_DIR / "fb_age_arb.sv"
 RAM_PORT_ARB_SV       = BUILD_DIR / "ram_port_arb.sv"
-FILL_BUFFER_CAM_SV    = BUILD_DIR / "fill_buffer_cam.sv"
-FILL_BUFFER_CTRL_SV   = BUILD_DIR / "fill_buffer_ctrl.sv"
 INVAL_CTRL_SV         = BUILD_DIR / "inval_ctrl.sv"
 PMP_SV                = BUILD_DIR / "ibex_pmp.sv"
 
@@ -73,8 +71,6 @@ ARCH_SV_FILES = [
     # D1: icache + sub-constructs (linked into IfStage when ICache=1).
     FB_AGE_ARB_SV,
     RAM_PORT_ARB_SV,
-    FILL_BUFFER_CAM_SV,
-    FILL_BUFFER_CTRL_SV,
     INVAL_CTRL_SV,
     ICACHE_SV,
     PMP_SV,
