@@ -461,7 +461,16 @@ module ibex_icache
   //      searched at IC0 with line-tag key. Redundant w/ (1) in the
   //      common case but kept load-bearing per proposal §Construct
   //      enumeration. Stale by 1 cycle relative to the live FB regs
-  //      (CAM write fires at IC1) — (2) covers that race.
+  //      (CAM write fires at IC1) — (2) covers that race. ALSO:
+  //      keeps `coalesce` asserted for one cycle AFTER an FB
+  //      releases (the CAM clear lags busy_q[fb] by 1 cycle), which
+  //      turns out to be load-bearing for ISR re-entry timing
+  //      (sw_isr / multictx_isr / pmp_load_isr). 2026-05-08
+  //      experiment removing the CAM saved -3,326 µm² isolated
+  //      synth but hung 3 ISR programs at the SoC level. Diagnosis
+  //      (incomplete): the post-release window allows a duplicate
+  //      FB allocate for the just-released line, which then races
+  //      with the writeback→IC1-tag-hit path. Reverted; CAM stays.
   // Coalesce key: addr[31:10] (page-tag granularity). Per spec
   // ambiguity 3 ("same-line second allocation is permitted"), the
   // coalesce check is best-effort — using the tag-only slice is
