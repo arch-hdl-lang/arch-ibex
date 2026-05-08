@@ -660,6 +660,16 @@ module ibex_top
   /// write path under our pinning, matching upstream's
   /// `{TagSizeECC{1'b1}}` / `{LineSizeECC{1'b1}}`).
   ///
+  /// `tag_wmask_all` / `data_wmask_all` are parameter-driven all-1s
+  /// constants; they replace earlier hardcoded `22'h3F_FFFF` /
+  /// `64'hFFFF…` literals that would silently zero-extend if a future
+  /// build raised `TagSizeECC`/`LineSizeECC` (e.g. `ICacheECC=1`
+  /// promotes `LineSizeECC` to 78 — a 64-bit literal would leave the
+  /// top 14 bits at 0, the prim_ram_1p `&wmask_i` reduction would
+  /// fold to 0, and the data RAM would be silently DCE'd).
+  let tag_wmask_all:  UInt<TagSizeECC>  = ~(1'd0.zext<TagSizeECC>());
+  let data_wmask_all: UInt<LineSizeECC> = ~(1'd0.zext<LineSizeECC>());
+  ///
   /// `Depth = 256` is the SoC pinning (`IC_NUM_LINES = 4096B / 2 ways
   /// / 8 bytes-per-line`); `addr_i` is therefore 8 bits wide
   /// (matching the prim_ram_1p stub's `Aw=8` localparam).
@@ -678,7 +688,7 @@ module ibex_top
     write_i   <- ic_tag_write;
     addr_i    <- ic_tag_addr;
     wdata_i   <- ic_tag_wdata;
-    wmask_i   <- 22'h3F_FFFF;
+    wmask_i   <- tag_wmask_all;
     rdata_o   -> ic_tag_rdata_w0;
     cfg_i     <- ram_cfg_icache_tag_i;
     cfg_rsp_o -> ram_cfg_rsp_icache_tag_w0;
@@ -694,7 +704,7 @@ module ibex_top
     write_i   <- ic_tag_write;
     addr_i    <- ic_tag_addr;
     wdata_i   <- ic_tag_wdata;
-    wmask_i   <- 22'h3F_FFFF;
+    wmask_i   <- tag_wmask_all;
     rdata_o   -> ic_tag_rdata_w1;
     cfg_i     <- ram_cfg_icache_tag_i;
     cfg_rsp_o -> ram_cfg_rsp_icache_tag_w1;
@@ -710,7 +720,7 @@ module ibex_top
     write_i   <- ic_data_write;
     addr_i    <- ic_data_addr;
     wdata_i   <- ic_data_wdata;
-    wmask_i   <- 64'hFFFF_FFFF_FFFF_FFFF;
+    wmask_i   <- data_wmask_all;
     rdata_o   -> ic_data_rdata_w0;
     cfg_i     <- ram_cfg_icache_data_i;
     cfg_rsp_o -> ram_cfg_rsp_icache_data_w0;
@@ -726,7 +736,7 @@ module ibex_top
     write_i   <- ic_data_write;
     addr_i    <- ic_data_addr;
     wdata_i   <- ic_data_wdata;
-    wmask_i   <- 64'hFFFF_FFFF_FFFF_FFFF;
+    wmask_i   <- data_wmask_all;
     rdata_o   -> ic_data_rdata_w1;
     cfg_i     <- ram_cfg_icache_data_i;
     cfg_rsp_o -> ram_cfg_rsp_icache_data_w1;
