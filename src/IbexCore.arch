@@ -865,7 +865,13 @@ module ibex_core
     param DataIndTiming      = 1'd0;
     param DummyInstructions  = 1'd0;
     param ShadowCSR          = 1'd0;
-    param ICache             = 1'd0;
+    // Forward the module-level ICache parameter so cpuctrlsts.icache_enable
+    // is mapped to a real flop in the hybrid CSR file (gen_icache_enable
+    // arm) instead of being tied to 0 by gen_no_icache. With the previous
+    // hardcoded `1'd0` here, software writes to cpuctrlsts.icache_enable
+    // (csrsi 0x7c0, 1) were silently dropped — every fetch went through
+    // the FB pipeline as a cache-disabled bus fill.
+    param ICache             = ICache;
     param MHPMCounterNum     = MHPMCounterNum;
     param MHPMCounterWidth   = MHPMCounterWidth;
     param PMPEnable          = PMPEnable;
