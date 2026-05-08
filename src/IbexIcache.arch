@@ -1044,11 +1044,16 @@ module ibex_icache
   // feeding the output regs defeats enable-FF extraction even for
   // single-bit signals. Yosys was already merging the reset-FF +
   // small-mux pattern more efficiently. Keeping reset-bearing.
+  // rdata_q / err_out_q / err_plus2_q dropped 2026-05-08: replaced
+  // with combinational `rdata_o_d` / `err_o_d` / `err_plus2_o_d`
+  // computed from (skid_data_q, skid_err_q, out_beat_data,
+  // fb_err_beat0/1_out_sel). Mirrors upstream Ibex's combinational
+  // output shape. The 32-bit data reg + 2 single-bit err regs +
+  // their wide D-MUXes (~1.2k µm² combined) are eliminated; only
+  // the same skid+beat read paths remain (already needed for
+  // valid_q latching / consume advance).
   reg valid_q:     Bool reset rst_ni => false;
-  reg rdata_q:     UInt<32> reset rst_ni => 0;
   reg addr_out_q:  UInt<32> reset rst_ni => 0;
-  reg err_out_q:   Bool reset rst_ni => false;
-  reg err_plus2_q: Bool reset rst_ni => false;
 
   // Skid registers (R-OUT misaligned-uncompressed cross-beat path).
   // When a misaligned 32-bit instruction (addr[1]=1, halfword[1:0]=11)
@@ -1064,9 +1069,15 @@ module ibex_icache
   // skid_data_q / skid_err_q kept reset-bearing — same regression
   // as err_out_q (multi-path output seq prevents enable-FF
   // inference even with arch-com#260's `guard` waiver).
-  reg skid_data_q:  UInt<16> reset rst_ni => 16'd0;
+  // skid_data_q / skid_err_q `guard skid_valid_q reset none`
+  // (arch-com#260 RDC waiver): gated by skid_valid_q (which DOES
+  // reset to false), so the deassert-window metastability hazard
+  // is structurally contained. With rdata_q + err_out_q gone, the
+  // D-mux feeding skid_data_q is narrow (single source from the
+  // need_skid_load arm), so enable-FF extraction can win here.
+  reg skid_data_q:  UInt<16> guard skid_valid_q reset none;
   reg skid_valid_q: Bool     reset rst_ni => false;
-  reg skid_err_q:   Bool     reset rst_ni => false;
+  reg skid_err_q:   Bool     guard skid_valid_q reset none;
 
   // Beat-availability gate: out_arb may grant before the FB has
   // captured the beat for the current out_beat_idx. Specifically, on a
@@ -1143,8 +1154,12 @@ module ibex_icache
       skid_valid_q <= false;
     elsif valid_q and ready_i
       // Beat accepted. R-OUT-4: address advances by 2 (compressed) or
-      // 4 (uncompressed) based on the LATCHED rdata_q's low bits.
-      if rdata_q[1:0] != 2'd3
+      // 4 (uncompressed) based on the CURRENT rdata_o's low bits
+      // (rdata_o is now combinational; rdata_o[1:0] == rdata_o_d[1:0]
+      // and is stable across the wait-for-ready window because
+      // out_grant_requester / fill_data_q[fb] / skid_q are all stable
+      // until consume fires).
+      if rdata_o_d[1:0] != 2'd3
         addr_out_q <= addr_out_q +% 32'd2;
       else
         addr_out_q <= addr_out_q +% 32'd4;
@@ -1159,13 +1174,10 @@ module ibex_icache
       end if
     elsif (not valid_q) and skid_complete_instr
       // Skid alone holds a complete compressed instruction — deliver
-      // it without consuming a new FB beat.
+      // it without consuming a new FB beat. rdata_o is comb from
+      // skid_data_q (skid_complete_instr arm of rdata_o_d).
       valid_q     <= true;
-      // skid_data_q in lower half; upper half doesn't matter (compr).
-      rdata_q     <= ({16'd0, skid_data_q}).resize<32>();
       addr_out_q  <= addr_out_q;
-      err_out_q   <= skid_err_q;
-      err_plus2_q <= false;
     elsif (not valid_q) and need_skid_load
       // Cross-beat misaligned 32-bit: load skid with the upper
       // halfword of the current beat, advance FB to expose next beat
@@ -1182,35 +1194,26 @@ module ibex_icache
       // (Falls through the `if fb_beat_consume_skid` block below.)
     elsif (not valid_q) and ic1_hit_now
       // R-OUT-7 fast-path (aligned, no skid): IC1 hit visible this
-      // cycle ⇒ register beat immediately so valid_o rises at IC1+1.
+      // cycle ⇒ register valid_q immediately so valid_o rises at
+      // IC1+1. rdata_o is comb: at IC1+1, fill_data_q[fb] holds the
+      // hit data (data_we_ic1_hit fired at the IC1 edge) and
+      // out_grant_requester points to this just-hit FB (it has
+      // wants_out high, no older FB has wants_out — invariant
+      // because valid_q was false here, meaning no in-progress
+      // delivery).
       valid_q     <= true;
-      rdata_q     <= ic1_hit_beat_data;
       addr_out_q  <= lookup_addr_ic1_q;
-      err_out_q   <= false;
-      err_plus2_q <= false;
     elsif (not valid_q) and skid_valid_q and new_beat_avail
       // Misaligned-uncompressed completion: skid has lower halfword
       // from prior beat; new beat's lower halfword is the upper half
-      // of the RV32 instruction. Combine + deliver.
+      // of the RV32 instruction. rdata_o is comb (skid_valid arm).
       valid_q     <= true;
-      rdata_q     <= {out_beat_data[15:0], skid_data_q};
       // addr_out_q stays at the misaligned PC (advances on consume).
       addr_out_q  <= addr_out_q;
-      // Err handling: per upstream, err_o = (skid_err) or (current
-      // beat's err on the lower halfword). err_plus2 = skid valid
-      // without skid_err (i.e., the err is from the current beat,
-      // upper halfword of the misaligned RV32).
-      err_out_q   <= skid_err_q or
-                       ((out_beat_idx == 2'd0)
-                          ? fb_err_beat0_out_sel
-                          : fb_err_beat1_out_sel);
-      err_plus2_q <= (not skid_err_q) and skid_valid_q and
-                       ((out_beat_idx == 2'd0)
-                          ? fb_err_beat0_out_sel
-                          : fb_err_beat1_out_sel);
+      // err_o / err_plus2_o now combinational — see definitions below.
     elsif (not valid_q) and new_beat_avail
       valid_q     <= true;
-      rdata_q     <= out_beat_data;
+      // rdata_o is comb (regular new_beat arm = out_beat_data).
       // Address must reflect the actual word being served: line base
       // is bits [31:3], beat selects bit [2], halfword position
       // carries from `out_fb_addr[1]` (the original branch-target's
@@ -1220,13 +1223,6 @@ module ibex_icache
       addr_out_q  <= (out_fb_addr & 32'hFFFF_FFF8)
                      | ({29'd0, out_beat_idx} << 2'd2)
                      | (out_fb_addr & 32'd2);
-      // R-OUT-5: per-beat error of the line beat being delivered.
-      err_out_q   <= (out_beat_idx == 2'd0)
-                       ? fb_err_beat0_out_sel
-                       : fb_err_beat1_out_sel;
-      err_plus2_q <= (out_beat_idx == 2'd1)
-                       and fb_err_beat1_out_sel
-                       and out_fb_addr[1];
     end if
   end seq
 
@@ -1281,12 +1277,46 @@ module ibex_icache
     end if
   end seq
 
+  // Combinational output drivers (replace dropped rdata_q / err_out_q
+  // / err_plus2_q registers, 2026-05-08 followup). Mirrors upstream
+  // Ibex's combinational shape. valid_q stays registered to gate the
+  // priority chain in the seq block.
+  //
+  // rdata_o_d: 3-arm mux covering all delivery cases.
+  //   - skid_complete_instr: compressed instr from skid alone.
+  //     Upper halfword zeroed (IF gates on the halfword bit).
+  //   - skid_valid_q (and not skid_complete): misaligned-32 reassembly.
+  //     `out_beat_data` already points at the NEXT beat (out_beat_q[fb]
+  //     was bumped during the skid_load arm via fb_beat_consume_skid).
+  //   - else: regular delivery, the current beat data.
+  let rdata_o_d: UInt<32> =
+    skid_complete_instr ? ({16'd0, skid_data_q}).resize<32>() :
+    skid_valid_q        ? {out_beat_data[15:0], skid_data_q} :
+                          out_beat_data;
+
+  // err_o_d / err_plus2_o_d: same arm semantics as the prior
+  // registered values. _beat_err_sel selects the per-beat error of
+  // the granted FB at the current beat index.
+  let _beat_err_sel: Bool = (out_beat_idx == 2'd0)
+                              ? fb_err_beat0_out_sel
+                              : fb_err_beat1_out_sel;
+  let err_o_d: Bool =
+    skid_complete_instr ? skid_err_q :
+    skid_valid_q        ? (skid_err_q or _beat_err_sel) :
+                          _beat_err_sel;
+  let err_plus2_o_d: Bool =
+    skid_complete_instr ? false :
+    skid_valid_q        ? ((not skid_err_q) and _beat_err_sel) :
+                          ((out_beat_idx == 2'd1)
+                             and fb_err_beat1_out_sel
+                             and out_fb_addr[1]);
+
   comb
     valid_o     = valid_q;
-    rdata_o     = rdata_q;
+    rdata_o     = rdata_o_d;
     addr_o      = addr_out_q;
-    err_o       = err_out_q;
-    err_plus2_o = err_plus2_q;
+    err_o       = err_o_d;
+    err_plus2_o = err_plus2_o_d;
   end comb
 
   // =================================================================
