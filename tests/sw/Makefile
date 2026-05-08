@@ -42,7 +42,8 @@ MARCH_C   := rv32imc_zicsr
 BUILD     ?= build
 
 PROGS     := timer_isr sw_isr ext_isr multictx_isr wfi_isr \
-             ecall_isr pmp_exec_isr pmp_load_isr pmp_misaligned_isr
+             ecall_isr pmp_exec_isr pmp_load_isr pmp_misaligned_isr \
+             icache_bench
 
 VMEMS     := $(PROGS:%=$(BUILD)/%.vmem)
 DISES     := $(PROGS:%=$(BUILD)/%.dis)
