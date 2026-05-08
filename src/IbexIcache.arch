@@ -6,16 +6,26 @@
 /// Spec: changes/2026-05-05-port-ibex_icache/specs/icache/spec.md
 ///   - 33 RFC-2119 requirements, 10 G/W/T scenarios.
 ///
-/// Construct mapping (per proposal):
+/// Construct mapping (per proposal, post-2026-05-08 cleanup):
 ///   - module IbexIcache         outer wrapper, ports per spec module-interface
 ///   - fsm InvalCtrl             OUT_OF_RESET / AWAIT_SCRAMBLE_KEY /
 ///                               INVAL_CACHE / IDLE  (R-INV-1..7)
-///   - cam FillBufferCam         DEPTH=NUM_FB=4, KEY_W=line tag width 22
-///                               bits — R-LK-4 in-flight-line search.
 ///   - arbiter RamPortArb        policy priority, NUM_REQ=3 — R-ARB-1..4.
 ///   - function AgeOrderedGrant + arbiter FbAgeArb (policy custom),
 ///                               three inst sites: bus-master, RAM
 ///                               write-back, IF-output mux — R-FB-4.
+///
+/// Removed (now inline in this module):
+///   - cam FillBufferCam         R-LK-4 in-flight-line search now done
+///                               via inline 4× compare against `addr_q`
+///                               Vec, with a `fb_busy_prev_q` 1-cycle
+///                               post-release coverage bit (mimics
+///                               upstream Ibex's `fill_addr_q[fb] ==
+///                               lookup_line` style).
+///   - module FillBufferCtrl     Per-FB lifecycle FSM (4 instances)
+///                               collapsed into a single `for fb in 0..3`
+///                               body in this module — state lives in
+///                               13 `Vec<_, 4>` regs.
 ///
 /// SoC parameter pinning:
 ///   ICacheECC=0, ResetAll=0, BusSizeECC=BUS_SIZE=32, TagSizeECC=22,
@@ -33,7 +43,7 @@ end domain SysDomain
 // ─── Top-level icache module ──────────────────────────────────────────
 // Function `AgeOrderedGrant` + `arbiter FbAgeArb`  → src/FbAgeArb.arch
 // `arbiter RamPortArb`                              → src/RamPortArb.arch
-// `cam FillBufferCam`                               → src/FillBufferCam.arch
+// `fsm InvalCtrl`                                   → src/InvalCtrl.arch
 module ibex_icache
   /// SoC pinned parameters — declared so upstream `ibex_top` parameter
   /// bindings don't raise PINNOTFOUND. All four are pinned per spec

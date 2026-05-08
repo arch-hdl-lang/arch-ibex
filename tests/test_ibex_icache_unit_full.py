@@ -37,8 +37,7 @@ def icache_full_runner(verilator_bin, tmp_path_factory):
     if SHARED_PKG_SV.is_file():
         sources.append(str(SHARED_PKG_SV))
     build_dir = ICACHE_SV.parent
-    for sib in ("fb_age_arb.sv", "ram_port_arb.sv", "fill_buffer_cam.sv",
-                "fill_buffer_ctrl.sv", "inval_ctrl.sv"):
+    for sib in ("fb_age_arb.sv", "ram_port_arb.sv", "inval_ctrl.sv"):
         sib_path = build_dir / sib
         if sib_path.is_file():
             sources.append(str(sib_path))
