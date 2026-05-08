@@ -151,7 +151,8 @@ module ibex_icache
   reg lookup_valid_ic1_q: Bool reset rst_ni => false;
   reg lookup_branch_ic1_q: Bool reset rst_ni => false;
   reg lookup_cache_alloc_ic1_q: Bool reset rst_ni => false;
-  reg lookup_fb_idx_ic1_q: UInt<2> reset rst_ni => 2'd0;
+  // Gated by lookup_alloc_ic1_q; reset value never observed.
+  reg lookup_fb_idx_ic1_q: UInt<2> reset none;
   /// `lookup_alloc_ic1_q`: 1 cycle after IC0 if the IC0 lookup actually
   /// caused an FB allocate (not coalesced into an in-flight FB per the
   /// strengthened R-LK-4). Drives CAM-write, age update, and victim-RR
@@ -161,24 +162,91 @@ module ibex_icache
   /// the IC0 coalesce check (`pending_alloc_match_ic0`).
   reg lookup_alloc_ic1_q: Bool reset rst_ni => false;
 
-  // FB busy mask (R-FB-1, R-REQ-3) — assembled below from per-FB
-  // FillBufferCtrl `busy` outputs. Forward-declared so the IC0 lookup
-  // logic can throttle and pick a free slot before the FB instances
-  // appear textually.
-  wire fb0_busy: Bool;
-  wire fb1_busy: Bool;
-  wire fb2_busy: Bool;
-  wire fb3_busy: Bool;
+  // ── Per-FB lifecycle state Vecs (1-FSM rewrite, 2026-05-07) ─────
+  // Replaces 4× FillBufferCtrl module instances. State described
+  // once per FB; the lifecycle logic below uses `for fb in 0..3`
+  // loops so the source carries one FSM definition. Per-FB
+  // parallelism is preserved (each `phase_q[fb]` advances
+  // independently); only the textual duplication (and the
+  // module-boundary tax that prevented some yosys CSE) is removed.
+  // Reset policy (sky130 cell-mix optimization, 2026-05-07 followup):
+  // sky130 has no `edfrtp` (enable + reset) cell. With BOTH reset and
+  // enable, yosys must pick one — and it picks reset (`dfrtp_1`),
+  // synthesizing the data path as `D = (we ? data : Q)` in front of a
+  // reset-FF. The `(we ? data : Q)` MUX is wide combinational logic.
+  //
+  // Switching data-path Vecs to `reset none` lets yosys pick `edfxtp_1`
+  // (enable-FF, no reset) instead — D is just `data`, the enable pin
+  // gates the write, and the input MUX disappears. Safe because each
+  // data-path reg is gated by a control bit that DOES reset:
+  //   - hit_way_q[fb] read only when hit_q[fb]=true (alloc-set on hit)
+  //   - beats_rcvd_q/beats_sent_q[fb] set to 0 on alloc edge
+  //   - err_beat0_q/err_beat1_q[fb] read only when err_q[fb]=true
+  // Control bits keep `reset rst_ni`.
+  reg phase_q:      Vec<UInt<2>, 4> reset rst_ni => 2'd0;
+  reg busy_q:       Vec<Bool, 4>    reset rst_ni => false;
+  reg addr_q:       Vec<UInt<32>, 4> reset none;
+  reg alloc_q:      Vec<Bool, 4>    reset rst_ni => false;
+  reg stale_q:      Vec<Bool, 4>    reset rst_ni => false;
+  reg hit_q:        Vec<Bool, 4>    reset rst_ni => false;
+  reg hit_way_q:    Vec<UInt<1>, 4> reset none;
+  reg err_q:        Vec<Bool, 4>    reset rst_ni => false;
+  reg err_beat0_q:  Vec<Bool, 4>    reset none;
+  reg err_beat1_q:  Vec<Bool, 4>    reset none;
+  reg beats_rcvd_q: Vec<UInt<2>, 4> reset none;
+  reg beats_sent_q: Vec<UInt<2>, 4> reset none;
+  reg out_done_q:   Vec<Bool, 4>    reset rst_ni => false;
+  reg wb_done_q:    Vec<Bool, 4>    reset rst_ni => false;
 
-  // FB line-address forward decls — needed at IC0 for the strengthened
-  // R-LK-4 inflight-line bypass (`inflight_line_match_ic0`). These are
-  // re-declared once here at IC0 scope; the FB instance bindings drive
-  // them. The original textually-later decls are kept (and consume
-  // these via `let`s where they were used) to minimise diff churn.
-  wire fb0_addr: UInt<32>;
-  wire fb1_addr: UInt<32>;
-  wire fb2_addr: UInt<32>;
-  wire fb3_addr: UInt<32>;
+  // Per-FB output aliases — kept so the rest of the file (200+
+  // existing `fb*_signal` references in CAM lookup, age/LRU,
+  // arbitration, output stage, etc.) compiles unchanged. Each
+  // alias is a Vec read; yosys collapses them with the consumer
+  // muxes via flatten + opt.
+  let fb0_busy:       Bool     = busy_q[0];
+  let fb1_busy:       Bool     = busy_q[1];
+  let fb2_busy:       Bool     = busy_q[2];
+  let fb3_busy:       Bool     = busy_q[3];
+  let fb0_addr:       UInt<32> = addr_q[0];
+  let fb1_addr:       UInt<32> = addr_q[1];
+  let fb2_addr:       UInt<32> = addr_q[2];
+  let fb3_addr:       UInt<32> = addr_q[3];
+  let fb0_alloc_flag: Bool     = alloc_q[0];
+  let fb1_alloc_flag: Bool     = alloc_q[1];
+  let fb2_alloc_flag: Bool     = alloc_q[2];
+  let fb3_alloc_flag: Bool     = alloc_q[3];
+  let fb0_stale:      Bool     = stale_q[0];
+  let fb1_stale:      Bool     = stale_q[1];
+  let fb2_stale:      Bool     = stale_q[2];
+  let fb3_stale:      Bool     = stale_q[3];
+  let fb0_hit_way:    UInt<1>  = hit_way_q[0];
+  let fb1_hit_way:    UInt<1>  = hit_way_q[1];
+  let fb2_hit_way:    UInt<1>  = hit_way_q[2];
+  let fb3_hit_way:    UInt<1>  = hit_way_q[3];
+  let fb0_err:        Bool     = err_q[0];
+  let fb1_err:        Bool     = err_q[1];
+  let fb2_err:        Bool     = err_q[2];
+  let fb3_err:        Bool     = err_q[3];
+  let fb0_err_beat0:  Bool     = err_beat0_q[0];
+  let fb1_err_beat0:  Bool     = err_beat0_q[1];
+  let fb2_err_beat0:  Bool     = err_beat0_q[2];
+  let fb3_err_beat0:  Bool     = err_beat0_q[3];
+  let fb0_err_beat1:  Bool     = err_beat1_q[0];
+  let fb1_err_beat1:  Bool     = err_beat1_q[1];
+  let fb2_err_beat1:  Bool     = err_beat1_q[2];
+  let fb3_err_beat1:  Bool     = err_beat1_q[3];
+  let fb0_beats_rcvd: UInt<2>  = beats_rcvd_q[0];
+  let fb1_beats_rcvd: UInt<2>  = beats_rcvd_q[1];
+  let fb2_beats_rcvd: UInt<2>  = beats_rcvd_q[2];
+  let fb3_beats_rcvd: UInt<2>  = beats_rcvd_q[3];
+  let fb0_beats_sent: UInt<2>  = beats_sent_q[0];
+  let fb1_beats_sent: UInt<2>  = beats_sent_q[1];
+  let fb2_beats_sent: UInt<2>  = beats_sent_q[2];
+  let fb3_beats_sent: UInt<2>  = beats_sent_q[3];
+
+  // wants_*, data_we_* aliases live further down where the comb
+  // block computing them sits (cannot reference comb outputs in lets
+  // before the comb is declared in arch source).
 
   let fb_busy_mask: UInt<4> = {fb3_busy, fb2_busy, fb1_busy, fb0_busy};
   let fb_full: Bool = fb_busy_mask == 4'd15;
@@ -459,7 +527,9 @@ module ibex_icache
 
   // R-LK-3: victim-way selection. Lowest-indexed invalid way first;
   // else round-robin.
-  reg victim_rr_q: UInt<1> reset rst_ni => 1'd0;
+  // Round-robin victim — initial value cosmetic (any FB is fine on the
+  // first miss). `reset none` lets yosys infer enable-FF.
+  reg victim_rr_q: UInt<1> reset none;
   let victim_way: UInt<1> =
     (not way0_valid) ? 1'd0 :
     ((not way1_valid) ? 1'd1 : victim_rr_q);
@@ -500,63 +570,24 @@ module ibex_icache
 
   // Age reg lives at outer scope: FbAgeArb consumes a packed view, and
   // age is a relative cross-FB ordering, not per-FB lifecycle.
-  reg fb_age_q: Vec<UInt<2>, 4> reset rst_ni => 2'd0;
+  // LRU age — relative ordering. Initial absolute values don't matter
+  // until the first allocation rewrites them. `reset none` for enable-FF.
+  reg fb_age_q: Vec<UInt<2>, 4> reset none;
   let fb_ages_packed: UInt<8> =
     {fb_age_q[3], fb_age_q[2], fb_age_q[1], fb_age_q[0]};
 
-  // Forward-declared wires for FB outputs consumed before the inst
-  // sites textually appear (because they feed CAM driver, output mux,
-  // bus-master driver, fill-write driver, busy_o). `fb*_addr` already
-  // forward-declared above (needed at IC0 for the inflight bypass).
-  wire fb0_out_data:   UInt<64>;
-  wire fb1_out_data:   UInt<64>;
-  wire fb2_out_data:   UInt<64>;
-  wire fb3_out_data:   UInt<64>;
-  wire fb0_hit_way:    UInt<1>;
-  wire fb1_hit_way:    UInt<1>;
-  wire fb2_hit_way:    UInt<1>;
-  wire fb3_hit_way:    UInt<1>;
-  wire fb0_err:        Bool;
-  wire fb1_err:        Bool;
-  wire fb2_err:        Bool;
-  wire fb3_err:        Bool;
-  // R-OUT-5: per-beat error flags from each FB.
-  wire fb0_err_beat0:  Bool;
-  wire fb0_err_beat1:  Bool;
-  wire fb1_err_beat0:  Bool;
-  wire fb1_err_beat1:  Bool;
-  wire fb2_err_beat0:  Bool;
-  wire fb2_err_beat1:  Bool;
-  wire fb3_err_beat0:  Bool;
-  wire fb3_err_beat1:  Bool;
-  wire fb0_alloc_flag: Bool;
-  wire fb1_alloc_flag: Bool;
-  wire fb2_alloc_flag: Bool;
-  wire fb3_alloc_flag: Bool;
-  wire fb0_beats_rcvd: UInt<2>;
-  wire fb1_beats_rcvd: UInt<2>;
-  wire fb2_beats_rcvd: UInt<2>;
-  wire fb3_beats_rcvd: UInt<2>;
-  wire fb0_beats_sent: UInt<2>;
-  wire fb1_beats_sent: UInt<2>;
-  wire fb2_beats_sent: UInt<2>;
-  wire fb3_beats_sent: UInt<2>;
-  wire fb0_stale:      Bool;
-  wire fb1_stale:      Bool;
-  wire fb2_stale:      Bool;
-  wire fb3_stale:      Bool;
-  wire fb0_wants_bus:  Bool;
-  wire fb1_wants_bus:  Bool;
-  wire fb2_wants_bus:  Bool;
-  wire fb3_wants_bus:  Bool;
-  wire fb0_wants_wb:   Bool;
-  wire fb1_wants_wb:   Bool;
-  wire fb2_wants_wb:   Bool;
-  wire fb3_wants_wb:   Bool;
-  wire fb0_wants_out:  Bool;
-  wire fb1_wants_out:  Bool;
-  wire fb2_wants_out:  Bool;
-  wire fb3_wants_out:  Bool;
+  // (All forward-decl per-FB wires removed in the 1-FSM rewrite —
+  // each per-FB output is now a `let alias = vec_q_or_signal[fb]`
+  // declared either at the top of the module (reg-direct: busy,
+  // addr, alloc_flag, stale, hit_way, err, err_beat0/1, beats_rcvd,
+  // beats_sent) or right after the lifecycle seq/comb block
+  // (comb-derived: wants_bus, wants_wb, wants_out, data_we_*).)
+
+  // `reset none`: line data is gated by valid_q + per-FB control bits
+  // (busy_q, hit_q) that DO reset. Letting fill_data_q drop reset frees
+  // yosys to pick enable-FF (`edfxtp_1`), removing the `(we ? data : Q)`
+  // input MUX. ~256 FFs × ~7 µm² of saved MUX = significant.
+  reg fill_data_q: Vec<UInt<64>, 4> reset none;
 
   // ── R-LK-4 (strengthened): in-flight-line CAM lookup ────────────
   // Search at IC0 with `lookup_line_ic0` (= lookup_addr_ic0[31:10]).
@@ -678,7 +709,8 @@ module ibex_icache
   // Track the in-flight requester via a small in-flight queue. For a
   // 1-deep upstream bus model (test stimulus drives gnt + rvalid back
   // to back), one register suffices.
-  reg bus_inflight_fb_q:    UInt<2> reset rst_ni => 2'd0;
+  // Gated by bus_inflight_valid_q; reset value never observed.
+  reg bus_inflight_fb_q:    UInt<2> reset none;
   reg bus_inflight_valid_q: Bool reset rst_ni => false;
   seq on clk_i rising
     if bus_grant_valid and instr_gnt_i
@@ -701,152 +733,227 @@ module ibex_icache
   wire fb2_out_done_pulse: Bool;
   wire fb3_out_done_pulse: Bool;
 
-  // ── 4× FillBufferCtrl instances (proposal §Construct: module FB) ─
-  inst fb0: FillBufferCtrl
-    clk             <- clk_i;
-    rst             <- rst_ni;
-    allocate        <- fb0_allocate;
-    alloc_addr      <- lookup_addr_ic0;
-    alloc_cache     <- alloc_cache_flag_ic0;
-    branch          <- branch_i;
-    inval_pulse     <- icache_inval_i;
-    enable_drop     <- not icache_enable_i;
-    ic1_hit         <- ic1_hit_combo;
-    ic1_hit_data    <- ic1_hit_data_combo;
-    ic1_hit_way     <- ic1_hit_way_combo;
-    ic1_victim_way  <- ic1_victim_way_combo;
-    bus_grant       <- bus_grant_valid and (bus_grant_requester == 2'd0);
-    instr_gnt       <- instr_gnt_i;
-    instr_rvalid    <- instr_rvalid_i and rvalid_route_0;
-    instr_rdata     <- instr_rdata_i;
-    instr_err       <- instr_err_i;
-    wb_grant        <- fill_grant and (wb_grant_requester == 2'd0);
-    out_done_pulse  <- fb0_out_done_pulse;
-    busy            -> fb0_busy;
-    addr            -> fb0_addr;
-    wants_bus       -> fb0_wants_bus;
-    wants_wb        -> fb0_wants_wb;
-    wants_out       -> fb0_wants_out;
-    out_data        -> fb0_out_data;
-    hit_way         -> fb0_hit_way;
-    err             -> fb0_err;
-    err_beat0       -> fb0_err_beat0;
-    err_beat1       -> fb0_err_beat1;
-    alloc_flag      -> fb0_alloc_flag;
-    beats_rcvd      -> fb0_beats_rcvd;
-    beats_sent      -> fb0_beats_sent;
-    stale           -> fb0_stale;
-  end inst fb0
+  // ── Per-FB lifecycle (1-FSM rewrite, 2026-05-07 followup) ────────
+  // Replaces the prior 4× FillBufferCtrl module instances. The state
+  // (phase_q[fb], busy_q[fb], …) is declared as Vecs at the top of
+  // the module; the lifecycle below operates per-FB via `for` loops
+  // so the source is one FSM definition. Per-FB parallelism is
+  // preserved (each `phase_q[fb]` evolves independently).
 
-  inst fb1: FillBufferCtrl
-    clk             <- clk_i;
-    rst             <- rst_ni;
-    allocate        <- fb1_allocate;
-    alloc_addr      <- lookup_addr_ic0;
-    alloc_cache     <- alloc_cache_flag_ic0;
-    branch          <- branch_i;
-    inval_pulse     <- icache_inval_i;
-    enable_drop     <- not icache_enable_i;
-    ic1_hit         <- ic1_hit_combo;
-    ic1_hit_data    <- ic1_hit_data_combo;
-    ic1_hit_way     <- ic1_hit_way_combo;
-    ic1_victim_way  <- ic1_victim_way_combo;
-    bus_grant       <- bus_grant_valid and (bus_grant_requester == 2'd1);
-    instr_gnt       <- instr_gnt_i;
-    instr_rvalid    <- instr_rvalid_i and rvalid_route_1;
-    instr_rdata     <- instr_rdata_i;
-    instr_err       <- instr_err_i;
-    wb_grant        <- fill_grant and (wb_grant_requester == 2'd1);
-    out_done_pulse  <- fb1_out_done_pulse;
-    busy            -> fb1_busy;
-    addr            -> fb1_addr;
-    wants_bus       -> fb1_wants_bus;
-    wants_wb        -> fb1_wants_wb;
-    wants_out       -> fb1_wants_out;
-    out_data        -> fb1_out_data;
-    hit_way         -> fb1_hit_way;
-    err             -> fb1_err;
-    err_beat0       -> fb1_err_beat0;
-    err_beat1       -> fb1_err_beat1;
-    alloc_flag      -> fb1_alloc_flag;
-    beats_rcvd      -> fb1_beats_rcvd;
-    beats_sent      -> fb1_beats_sent;
-    stale           -> fb1_stale;
-  end inst fb1
+  // Per-FB event Vecs: routed/gated inputs. Forward-declared as
+  // wires here; per-element assigns sit in the comb block below
+  // (arch HDL doesn't have a Vec-literal initializer syntax).
+  wire allocate_v:      Vec<Bool, 4>;
+  wire bus_grant_v:     Vec<Bool, 4>;
+  wire rvalid_v:        Vec<Bool, 4>;
+  wire wb_grant_v:      Vec<Bool, 4>;
+  wire out_done_pulse_v: Vec<Bool, 4>;
+  let beats_total: UInt<2> = 2'd2;
 
-  inst fb2: FillBufferCtrl
-    clk             <- clk_i;
-    rst             <- rst_ni;
-    allocate        <- fb2_allocate;
-    alloc_addr      <- lookup_addr_ic0;
-    alloc_cache     <- alloc_cache_flag_ic0;
-    branch          <- branch_i;
-    inval_pulse     <- icache_inval_i;
-    enable_drop     <- not icache_enable_i;
-    ic1_hit         <- ic1_hit_combo;
-    ic1_hit_data    <- ic1_hit_data_combo;
-    ic1_hit_way     <- ic1_hit_way_combo;
-    ic1_victim_way  <- ic1_victim_way_combo;
-    bus_grant       <- bus_grant_valid and (bus_grant_requester == 2'd2);
-    instr_gnt       <- instr_gnt_i;
-    instr_rvalid    <- instr_rvalid_i and rvalid_route_2;
-    instr_rdata     <- instr_rdata_i;
-    instr_err       <- instr_err_i;
-    wb_grant        <- fill_grant and (wb_grant_requester == 2'd2);
-    out_done_pulse  <- fb2_out_done_pulse;
-    busy            -> fb2_busy;
-    addr            -> fb2_addr;
-    wants_bus       -> fb2_wants_bus;
-    wants_wb        -> fb2_wants_wb;
-    wants_out       -> fb2_wants_out;
-    out_data        -> fb2_out_data;
-    hit_way         -> fb2_hit_way;
-    err             -> fb2_err;
-    err_beat0       -> fb2_err_beat0;
-    err_beat1       -> fb2_err_beat1;
-    alloc_flag      -> fb2_alloc_flag;
-    beats_rcvd      -> fb2_beats_rcvd;
-    beats_sent      -> fb2_beats_sent;
-    stale           -> fb2_stale;
-  end inst fb2
+  // Per-FB derived comb Vecs. Defined as wires here; assigned in
+  // the comb block below. Mirrored to per-FB `fb*_X` lets after the
+  // comb so existing consumer references compile unchanged.
+  wire wants_bus_v:        Vec<Bool, 4>;
+  wire wants_wb_v:         Vec<Bool, 4>;
+  wire wants_out_v:        Vec<Bool, 4>;
+  wire data_we_ic1_hit_v:  Vec<Bool, 4>;
+  wire data_we_beat0_v:    Vec<Bool, 4>;
+  wire data_we_beat1_v:    Vec<Bool, 4>;
+  wire releasing_v:        Vec<Bool, 4>;
 
-  inst fb3: FillBufferCtrl
-    clk             <- clk_i;
-    rst             <- rst_ni;
-    allocate        <- fb3_allocate;
-    alloc_addr      <- lookup_addr_ic0;
-    alloc_cache     <- alloc_cache_flag_ic0;
-    branch          <- branch_i;
-    inval_pulse     <- icache_inval_i;
-    enable_drop     <- not icache_enable_i;
-    ic1_hit         <- ic1_hit_combo;
-    ic1_hit_data    <- ic1_hit_data_combo;
-    ic1_hit_way     <- ic1_hit_way_combo;
-    ic1_victim_way  <- ic1_victim_way_combo;
-    bus_grant       <- bus_grant_valid and (bus_grant_requester == 2'd3);
-    instr_gnt       <- instr_gnt_i;
-    instr_rvalid    <- instr_rvalid_i and rvalid_route_3;
-    instr_rdata     <- instr_rdata_i;
-    instr_err       <- instr_err_i;
-    wb_grant        <- fill_grant and (wb_grant_requester == 2'd3);
-    out_done_pulse  <- fb3_out_done_pulse;
-    busy            -> fb3_busy;
-    addr            -> fb3_addr;
-    wants_bus       -> fb3_wants_bus;
-    wants_wb        -> fb3_wants_wb;
-    wants_out       -> fb3_wants_out;
-    out_data        -> fb3_out_data;
-    hit_way         -> fb3_hit_way;
-    err             -> fb3_err;
-    err_beat0       -> fb3_err_beat0;
-    err_beat1       -> fb3_err_beat1;
-    alloc_flag      -> fb3_alloc_flag;
-    beats_rcvd      -> fb3_beats_rcvd;
-    beats_sent      -> fb3_beats_sent;
-    stale           -> fb3_stale;
-  end inst fb3
+  comb
+    // Input event Vecs (unrolled because per-FB inputs come from
+    // separate scalar wires that were originally inst-port-bound).
+    allocate_v[0] = fb0_allocate;
+    allocate_v[1] = fb1_allocate;
+    allocate_v[2] = fb2_allocate;
+    allocate_v[3] = fb3_allocate;
+    out_done_pulse_v[0] = fb0_out_done_pulse;
+    out_done_pulse_v[1] = fb1_out_done_pulse;
+    out_done_pulse_v[2] = fb2_out_done_pulse;
+    out_done_pulse_v[3] = fb3_out_done_pulse;
+    bus_grant_v[0] = bus_grant_valid and (bus_grant_requester == 2'd0);
+    bus_grant_v[1] = bus_grant_valid and (bus_grant_requester == 2'd1);
+    bus_grant_v[2] = bus_grant_valid and (bus_grant_requester == 2'd2);
+    bus_grant_v[3] = bus_grant_valid and (bus_grant_requester == 2'd3);
+    wb_grant_v[0]  = fill_grant and (wb_grant_requester == 2'd0);
+    wb_grant_v[1]  = fill_grant and (wb_grant_requester == 2'd1);
+    wb_grant_v[2]  = fill_grant and (wb_grant_requester == 2'd2);
+    wb_grant_v[3]  = fill_grant and (wb_grant_requester == 2'd3);
 
-  // ── 4:1 muxes from FB outputs (indexed by *_grant_requester) ─────
+    for fb in 0..3
+      // Lifecycle-derived signals (mirror the old FillBufferCtrl comb).
+      wants_bus_v[fb]       = (phase_q[fb] == 2'd3) and (not hit_q[fb])
+                              and (beats_sent_q[fb] != beats_total)
+                              and (not stale_q[fb]) and (not err_q[fb]);
+      wants_wb_v[fb]        = (phase_q[fb] == 2'd3) and alloc_q[fb]
+                              and (not err_q[fb]) and (not wb_done_q[fb])
+                              and (beats_rcvd_q[fb] == beats_total);
+      wants_out_v[fb]       = (phase_q[fb] == 2'd3) and (not stale_q[fb])
+                              and (not out_done_q[fb])
+                              and (hit_q[fb] or (beats_rcvd_q[fb] != 2'd0));
+      data_we_ic1_hit_v[fb] = (phase_q[fb] == 2'd1) and ic1_hit_combo;
+      releasing_v[fb] = (phase_q[fb] == 2'd3)
+                        and (beats_rcvd_q[fb] == beats_total)
+                        and wb_done_q[fb] and out_done_q[fb];
+    end for
+    // rvalid_v split out — refers to rvalid_route_N which is one wire
+    // per FB at outer scope (computed elsewhere). Loop indexing into
+    // those scalar wires isn't legal, so unroll.
+    rvalid_v[0] = instr_rvalid_i and rvalid_route_0;
+    rvalid_v[1] = instr_rvalid_i and rvalid_route_1;
+    rvalid_v[2] = instr_rvalid_i and rvalid_route_2;
+    rvalid_v[3] = instr_rvalid_i and rvalid_route_3;
+    // data_we_beat0/1 also depend on rvalid_v which is unrolled.
+    data_we_beat0_v[0] = (phase_q[0] == 2'd3) and rvalid_v[0] and (beats_rcvd_q[0] == 2'd0);
+    data_we_beat0_v[1] = (phase_q[1] == 2'd3) and rvalid_v[1] and (beats_rcvd_q[1] == 2'd0);
+    data_we_beat0_v[2] = (phase_q[2] == 2'd3) and rvalid_v[2] and (beats_rcvd_q[2] == 2'd0);
+    data_we_beat0_v[3] = (phase_q[3] == 2'd3) and rvalid_v[3] and (beats_rcvd_q[3] == 2'd0);
+    data_we_beat1_v[0] = (phase_q[0] == 2'd3) and rvalid_v[0] and (beats_rcvd_q[0] != 2'd0);
+    data_we_beat1_v[1] = (phase_q[1] == 2'd3) and rvalid_v[1] and (beats_rcvd_q[1] != 2'd0);
+    data_we_beat1_v[2] = (phase_q[2] == 2'd3) and rvalid_v[2] and (beats_rcvd_q[2] != 2'd0);
+    data_we_beat1_v[3] = (phase_q[3] == 2'd3) and rvalid_v[3] and (beats_rcvd_q[3] != 2'd0);
+  end comb
+
+  // Per-FB lifecycle seq — single body, indexed by fb.
+  seq on clk_i rising
+    for fb in 0..3
+      // Phase 0 → 1: Idle → Alloc
+      if (phase_q[fb] == 2'd0) and allocate_v[fb]
+        phase_q[fb]      <= 2'd1;
+        busy_q[fb]       <= true;
+        addr_q[fb]       <= lookup_addr_ic0;
+        alloc_q[fb]      <= alloc_cache_flag_ic0;
+        stale_q[fb]      <= false;
+        hit_q[fb]        <= false;
+        err_q[fb]        <= false;
+        err_beat0_q[fb]  <= false;
+        err_beat1_q[fb]  <= false;
+        beats_rcvd_q[fb] <= 2'd0;
+        beats_sent_q[fb] <= 2'd0;
+        out_done_q[fb]   <= false;
+        wb_done_q[fb]    <= false;
+      end if
+
+      // Phase 1 → 3: Alloc → Running (+ same-edge IC1 capture)
+      if phase_q[fb] == 2'd1
+        phase_q[fb] <= 2'd3;
+        if ic1_hit_combo
+          hit_q[fb]        <= true;
+          hit_way_q[fb]    <= ic1_hit_way_combo;
+          beats_rcvd_q[fb] <= beats_total;
+          wb_done_q[fb]    <= true;
+        else
+          hit_way_q[fb] <= ic1_victim_way_combo;
+        end if
+      end if
+
+      // Phase 3: Running
+      if phase_q[fb] == 2'd3
+        if branch_i
+          stale_q[fb] <= true;
+        end if
+        if icache_inval_i or (not icache_enable_i)
+          alloc_q[fb] <= false;
+        end if
+
+        if rvalid_v[fb]
+          beats_rcvd_q[fb] <= (beats_rcvd_q[fb] + 2'd1).trunc<2>();
+          if instr_err_i
+            err_q[fb] <= true;
+            if beats_rcvd_q[fb] == 2'd0
+              err_beat0_q[fb] <= true;
+            else
+              err_beat1_q[fb] <= true;
+            end if
+          end if
+        end if
+
+        if bus_grant_v[fb] and instr_gnt_i
+          beats_sent_q[fb] <= (beats_sent_q[fb] + 2'd1).trunc<2>();
+        end if
+
+        if wb_grant_v[fb] or err_q[fb] or (not alloc_q[fb])
+          wb_done_q[fb] <= true;
+        end if
+
+        if out_done_pulse_v[fb] or stale_q[fb]
+          out_done_q[fb] <= true;
+        end if
+
+        if releasing_v[fb]
+          phase_q[fb] <= 2'd0;
+          busy_q[fb]  <= false;
+          alloc_q[fb] <= false;
+          stale_q[fb] <= false;
+          hit_q[fb]   <= false;
+          err_q[fb]   <= false;
+          err_beat0_q[fb] <= false;
+          err_beat1_q[fb] <= false;
+        end if
+      end if
+    end for
+  end seq
+
+  // Per-FB output aliases for comb-derived signals (regs already
+  // aliased at the top of the module).
+  let fb0_wants_bus:       Bool = wants_bus_v[0];
+  let fb1_wants_bus:       Bool = wants_bus_v[1];
+  let fb2_wants_bus:       Bool = wants_bus_v[2];
+  let fb3_wants_bus:       Bool = wants_bus_v[3];
+  let fb0_wants_wb:        Bool = wants_wb_v[0];
+  let fb1_wants_wb:        Bool = wants_wb_v[1];
+  let fb2_wants_wb:        Bool = wants_wb_v[2];
+  let fb3_wants_wb:        Bool = wants_wb_v[3];
+  let fb0_wants_out:       Bool = wants_out_v[0];
+  let fb1_wants_out:       Bool = wants_out_v[1];
+  let fb2_wants_out:       Bool = wants_out_v[2];
+  let fb3_wants_out:       Bool = wants_out_v[3];
+  let fb0_data_we_ic1_hit: Bool = data_we_ic1_hit_v[0];
+  let fb1_data_we_ic1_hit: Bool = data_we_ic1_hit_v[1];
+  let fb2_data_we_ic1_hit: Bool = data_we_ic1_hit_v[2];
+  let fb3_data_we_ic1_hit: Bool = data_we_ic1_hit_v[3];
+  let fb0_data_we_beat0:   Bool = data_we_beat0_v[0];
+  let fb1_data_we_beat0:   Bool = data_we_beat0_v[1];
+  let fb2_data_we_beat0:   Bool = data_we_beat0_v[2];
+  let fb3_data_we_beat0:   Bool = data_we_beat0_v[3];
+  let fb0_data_we_beat1:   Bool = data_we_beat1_v[0];
+  let fb1_data_we_beat1:   Bool = data_we_beat1_v[1];
+  let fb2_data_we_beat1:   Bool = data_we_beat1_v[2];
+  let fb3_data_we_beat1:   Bool = data_we_beat1_v[3];
+
+  // ── Centralized fill_data_q updates (proposal 2026-05-07) ──────────
+  // Each FB emits three thin strobes (1 bit each) and the outer
+  // module owns the 64-bit storage + write-back. Beat-wise writes
+  // are independent half-line stores so the Vec can stay packed at
+  // the 64-bit boundary without read-modify-write. IC1-hit captures
+  // the full line in one cycle (combinational hit data from the way
+  // mux). Per-FB strobes are mutually exclusive across cycles by
+  // the lifecycle FSM (only one IC1-hit path active per cycle, only
+  // one rvalid-routed FB per cycle), so independent `if` arms are
+  // semantically equivalent to a one-hot case mux.
+  seq on clk_i rising
+    if fb0_data_we_ic1_hit fill_data_q[0]        <= ic1_hit_data_combo; end if
+    if fb1_data_we_ic1_hit fill_data_q[1]        <= ic1_hit_data_combo; end if
+    if fb2_data_we_ic1_hit fill_data_q[2]        <= ic1_hit_data_combo; end if
+    if fb3_data_we_ic1_hit fill_data_q[3]        <= ic1_hit_data_combo; end if
+
+    if fb0_data_we_beat0   fill_data_q[0][31:0]  <= instr_rdata_i;      end if
+    if fb1_data_we_beat0   fill_data_q[1][31:0]  <= instr_rdata_i;      end if
+    if fb2_data_we_beat0   fill_data_q[2][31:0]  <= instr_rdata_i;      end if
+    if fb3_data_we_beat0   fill_data_q[3][31:0]  <= instr_rdata_i;      end if
+
+    if fb0_data_we_beat1   fill_data_q[0][63:32] <= instr_rdata_i;      end if
+    if fb1_data_we_beat1   fill_data_q[1][63:32] <= instr_rdata_i;      end if
+    if fb2_data_we_beat1   fill_data_q[2][63:32] <= instr_rdata_i;      end if
+    if fb3_data_we_beat1   fill_data_q[3][63:32] <= instr_rdata_i;      end if
+  end seq
+
+  // 4:1 ternary chains over per-FB alias wires (NOT direct Vec reads
+  // — empirically, the Vec-read form regresses ~900 µm² because the
+  // ternary chains share their outputs across multiple consumers
+  // (CAM-bypass, bus, wb, out), letting yosys CSE the comparators.
+  // Direct Vec reads create one decode per consumer.)
   let fb_addr_bus_sel: UInt<32> =
     (bus_grant_requester == 2'd0) ? fb0_addr :
     ((bus_grant_requester == 2'd1) ? fb1_addr :
@@ -860,10 +967,7 @@ module ibex_icache
     (wb_grant_requester == 2'd0) ? fb0_addr :
     ((wb_grant_requester == 2'd1) ? fb1_addr :
     ((wb_grant_requester == 2'd2) ? fb2_addr : fb3_addr));
-  let fb_data_wb_sel: UInt<64> =
-    (wb_grant_requester == 2'd0) ? fb0_out_data :
-    ((wb_grant_requester == 2'd1) ? fb1_out_data :
-    ((wb_grant_requester == 2'd2) ? fb2_out_data : fb3_out_data));
+  let fb_data_wb_sel: UInt<64> = fill_data_q[wb_grant_requester];
   let fb_hit_way_wb_sel: UInt<1> =
     (wb_grant_requester == 2'd0) ? fb0_hit_way :
     ((wb_grant_requester == 2'd1) ? fb1_hit_way :
@@ -873,15 +977,12 @@ module ibex_icache
     (out_grant_requester == 2'd0) ? fb0_addr :
     ((out_grant_requester == 2'd1) ? fb1_addr :
     ((out_grant_requester == 2'd2) ? fb2_addr : fb3_addr));
-  let fb_data_out_sel: UInt<64> =
-    (out_grant_requester == 2'd0) ? fb0_out_data :
-    ((out_grant_requester == 2'd1) ? fb1_out_data :
-    ((out_grant_requester == 2'd2) ? fb2_out_data : fb3_out_data));
+  let fb_data_out_sel: UInt<64> = fill_data_q[out_grant_requester];
+  // 4:1 ternary chains (NOT Vec reads — see comment on fb_addr_bus_sel).
   let fb_err_out_sel: Bool =
     (out_grant_requester == 2'd0) ? fb0_err :
     ((out_grant_requester == 2'd1) ? fb1_err :
     ((out_grant_requester == 2'd2) ? fb2_err : fb3_err));
-  // R-OUT-5: per-beat error flags from the granted FB.
   let fb_err_beat0_out_sel: Bool =
     (out_grant_requester == 2'd0) ? fb0_err_beat0 :
     ((out_grant_requester == 2'd1) ? fb1_err_beat0 :
@@ -923,7 +1024,9 @@ module ibex_icache
   //   - skid registers for cross-beat misaligned 32-bit reassembly
   // FillBufferCtrl owns the line data + line addr + err flag; we
   // mux/slice/register here.
-  reg out_beat_q: Vec<UInt<2>, 4> reset rst_ni => 2'd0;
+  // Per-FB beat pointer — set to alloc_beat_idx_ic0 on each alloc
+  // before any reader reads. `reset none` for enable-FF.
+  reg out_beat_q: Vec<UInt<2>, 4> reset none;
 
   let out_fb_idx:    UInt<2>  = out_grant_requester;
   let out_line:      UInt<64> = fb_data_out_sel;
@@ -948,6 +1051,9 @@ module ibex_icache
   // skid_valid_q tracks whether skid_data_q holds a captured upper
   // halfword awaiting its companion lower halfword from the next
   // beat. Cleared on branch_i (R-OUT-6).
+  // skid_data_q / skid_err_q kept reset-bearing because arch-com's
+  // RDC checker conservatively flags reset-none regs whose D-path
+  // crosses the rst_ni domain (would need `guard skid_valid_q`).
   reg skid_data_q:  UInt<16> reset rst_ni => 16'd0;
   reg skid_valid_q: Bool     reset rst_ni => false;
   reg skid_err_q:   Bool     reset rst_ni => false;
@@ -1012,6 +1118,13 @@ module ibex_icache
       (out_beat_idx == 2'd0)
         ? fb_err_beat0_out_sel : fb_err_beat1_out_sel));
 
+  // Tried (2026-05-07 followup): explicit per-register WE+D form
+  // (hoist priority decode into 7 `_act_*` named signals, then
+  // `if (X_we) X <= X_d;` per reg). Result: -366 µm² REGRESSION
+  // (38,063 → 38,429). yosys-slang was already extracting the
+  // priority chain efficiently across all 5 regs; naming the
+  // intermediate `_act_*` signals blocked its cross-register CSE
+  // and forced separate decode trees. Keeping the priority chain.
   seq on clk_i rising
     if branch_i
       // R-OUT-2 + R-OUT-6: branch cancels valid + clears skid.

@@ -134,19 +134,21 @@ module ibex_alu
 
   wire cmp_result: Bool;
   comb
-    if (operator_i == ALU_GE) or (operator_i == ALU_GEU)
-      cmp_result = is_greater_equal;
-    elsif (operator_i == ALU_LT)  or (operator_i == ALU_LTU) or
-          (operator_i == ALU_SLT) or (operator_i == ALU_SLTU)
-      cmp_result = not is_greater_equal;
-    elsif operator_i == ALU_EQ
-      cmp_result = is_equal_result_o;
-    elsif operator_i == ALU_NE
-      cmp_result = not is_equal_result_o;
-    else
-      // Spec mandates the `default` arm folds to `is_equal_result_o`.
-      cmp_result = is_equal_result_o;
-    end if
+    // unique match → parallel mux. Per-operator arm; yosys CSEs the
+    // shared bodies (GE/GEU; LT/LTU/SLT/SLTU; EQ + default both fold
+    // to is_equal_result_o per spec).
+    unique match operator_i
+      ALU_GE   => cmp_result = is_greater_equal;
+      ALU_GEU  => cmp_result = is_greater_equal;
+      ALU_LT   => cmp_result = not is_greater_equal;
+      ALU_LTU  => cmp_result = not is_greater_equal;
+      ALU_SLT  => cmp_result = not is_greater_equal;
+      ALU_SLTU => cmp_result = not is_greater_equal;
+      ALU_NE   => cmp_result = not is_equal_result_o;
+      // Spec: ALU_EQ and the catch-all default both fold to is_equal_result_o.
+      ALU_EQ   => cmp_result = is_equal_result_o;
+      _        => cmp_result = is_equal_result_o;
+    end match
   end comb
 
   let comparison_result_o = cmp_result;
@@ -206,26 +208,32 @@ module ibex_alu
   //               §"RV32B-inert behavior") ────────────────────────────
   wire result_w: UInt<32>;
   comb
-    if (operator_i == ALU_ADD) or (operator_i == ALU_SUB)
-      result_w = adder_sum_ext[32:1];
-    elsif operator_i == ALU_AND
-      result_w = operand_a_i & operand_b_i;
-    elsif operator_i == ALU_OR
-      result_w = operand_a_i | operand_b_i;
-    elsif operator_i == ALU_XOR
-      result_w = operand_a_i ^ operand_b_i;
-    elsif (operator_i == ALU_SLL) or (operator_i == ALU_SRL) or (operator_i == ALU_SRA)
-      result_w = shift_result;
-    elsif (operator_i == ALU_EQ)  or (operator_i == ALU_NE)  or
-          (operator_i == ALU_GE)  or (operator_i == ALU_GEU) or
-          (operator_i == ALU_LT)  or (operator_i == ALU_LTU) or
-          (operator_i == ALU_SLT) or (operator_i == ALU_SLTU)
-      result_w = {31'b0, cmp_result};
-    else
+    // unique match → SV `unique case`, which yosys-slang lowers to a
+    // parallel mux (vs the priority encoder of `if/elsif`). One arm
+    // per operator since arch HDL match arms support a single pattern.
+    // Identical bodies (ADD/SUB share adder; SLL/SRL/SRA share shifter;
+    // 8 compare ops share cmp_result) are CSE'd downstream by yosys.
+    unique match operator_i
+      ALU_ADD  => result_w = adder_sum_ext[32:1];
+      ALU_SUB  => result_w = adder_sum_ext[32:1];
+      ALU_AND  => result_w = operand_a_i & operand_b_i;
+      ALU_OR   => result_w = operand_a_i | operand_b_i;
+      ALU_XOR  => result_w = operand_a_i ^ operand_b_i;
+      ALU_SLL  => result_w = shift_result;
+      ALU_SRL  => result_w = shift_result;
+      ALU_SRA  => result_w = shift_result;
+      ALU_EQ   => result_w = {31'b0, cmp_result};
+      ALU_NE   => result_w = {31'b0, cmp_result};
+      ALU_GE   => result_w = {31'b0, cmp_result};
+      ALU_GEU  => result_w = {31'b0, cmp_result};
+      ALU_LT   => result_w = {31'b0, cmp_result};
+      ALU_LTU  => result_w = {31'b0, cmp_result};
+      ALU_SLT  => result_w = {31'b0, cmp_result};
+      ALU_SLTU => result_w = {31'b0, cmp_result};
       // RV32B-inert: every RV32B-only operator yields zero on result_o
       // under RV32BNone (spec §"RV32B-inert behavior").
-      result_w = 32'h0000_0000;
-    end if
+      _        => result_w = 32'h0000_0000;
+    end match
   end comb
 
   let result_o = result_w;
