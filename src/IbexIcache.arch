@@ -1069,9 +1069,15 @@ module ibex_icache
   // skid_data_q / skid_err_q kept reset-bearing — same regression
   // as err_out_q (multi-path output seq prevents enable-FF
   // inference even with arch-com#260's `guard` waiver).
-  reg skid_data_q:  UInt<16> reset rst_ni => 16'd0;
+  // skid_data_q / skid_err_q `guard skid_valid_q reset none`
+  // (arch-com#260 RDC waiver): gated by skid_valid_q (which DOES
+  // reset to false), so the deassert-window metastability hazard
+  // is structurally contained. With rdata_q + err_out_q gone, the
+  // D-mux feeding skid_data_q is narrow (single source from the
+  // need_skid_load arm), so enable-FF extraction can win here.
+  reg skid_data_q:  UInt<16> guard skid_valid_q reset none;
   reg skid_valid_q: Bool     reset rst_ni => false;
-  reg skid_err_q:   Bool     reset rst_ni => false;
+  reg skid_err_q:   Bool     guard skid_valid_q reset none;
 
   // Beat-availability gate: out_arb may grant before the FB has
   // captured the beat for the current out_beat_idx. Specifically, on a
