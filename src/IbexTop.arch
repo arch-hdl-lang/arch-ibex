@@ -318,13 +318,17 @@ module ibex_top
   wire ic_data_write: Bool;
   wire ic_data_addr:  UInt<IC_INDEX_W>;
   wire ic_data_wdata: UInt<LineSizeECC>;
-  /// `ic_*_rdata` feed back into `u_ibex_core` and are now driven by
-  /// the per-way `prim_ram_1p` `gen_noscramble_rams` instances under
-  /// `ICache=1` (D1).  Per spec N-7, they MUST be declared as
-  /// `unpacked Vec` to match `build/ibex_core.sv:129,134` which
-  /// emits `logic [W-1:0] x [N-1:0]`.
-  wire ic_tag_rdata:  unpacked Vec<UInt<TagSizeECC>,  IC_NUM_WAYS>;
-  wire ic_data_rdata: unpacked Vec<UInt<LineSizeECC>, IC_NUM_WAYS>;
+  /// `ic_*_rdata` feed back into `u_ibex_core` and are driven by the
+  /// per-way `prim_ram_1p` instances. `unpacked ascending` matches
+  /// upstream Ibex's `[IC_NUM_WAYS]` shorthand at the SoC boundary
+  /// (= `[0:N-1]`); without `ascending`, our `[N-1:0]` descending
+  /// form silently reverses indices per LRM §10.10 at the
+  /// upstream-arch-prim_ram_1p connection, and yosys-slang's DCE
+  /// then propagates the unbacked indices as constants → eliminates
+  /// the entire RAM-bank fanout. (Discovered via SoC top synth
+  /// comparison; see arch-com#307 / `feedback_unpacked_vec_ascending_interop`.)
+  wire ic_tag_rdata:  unpacked ascending Vec<UInt<TagSizeECC>,  IC_NUM_WAYS>;
+  wire ic_data_rdata: unpacked ascending Vec<UInt<LineSizeECC>, IC_NUM_WAYS>;
 
   // Per-way RAM rdata / cfg-rsp wires — bound by the `prim_ram_1p`
   // instances and stitched into the `unpacked Vec` / `UInt` wires

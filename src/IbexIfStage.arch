@@ -87,8 +87,8 @@ module ibex_if_stage
   port icache_ecc_error_o: out Bool;
 
   // ── ICache read-back (unpacked Vec; absorbed) ─────────────────────
-  port ic_tag_rdata_i: in unpacked Vec<UInt<TagSizeECC>, IC_NUM_WAYS>;
-  port ic_data_rdata_i: in unpacked Vec<UInt<LineSizeECC>, IC_NUM_WAYS>;
+  port ic_tag_rdata_i: in unpacked ascending Vec<UInt<TagSizeECC>, IC_NUM_WAYS>;
+  port ic_data_rdata_i: in unpacked ascending Vec<UInt<LineSizeECC>, IC_NUM_WAYS>;
   port ic_scr_key_valid_i: in Bool;
   port icache_enable_i: in Bool;
   port icache_inval_i: in Bool;
