@@ -124,3 +124,62 @@ The +4,601 µm² module-level gap at IC=256 breaks down approximately:
    FbAgeArb arbiter generality, but neither has a clear path.
 3. **yosys upstream issue** — file the flatten-before-memory DCE
    reproducer with yosys-slang + native frontends both demonstrating it.
+4. **icache cache-hit functional bugs** — surfaced after PR #43 fixed
+   the `cs_registers ICache` parameter wiring. The bench is currently
+   `@cocotb.test(skip=True)`. Two distinct bugs in the swap's
+   cache-enabled path identified via VCD:
+
+   **Bug A — writeback / lookup deadlock.**
+   `fill_grant = fill_write_req & ~lookup_req_ic0`. When the CPU
+   issues back-to-back same-line lookups during a tight loop, the
+   coalesce check suppresses new FB allocations (so `fb_count` stays
+   at 1, never hitting the throttle threshold at 3) but the
+   `lookup_req_ic0=1` simultaneously gates `fill_grant` low. The
+   miss FB has data ready (`beats_rcvd=2`, `wants_wb=1`) but its
+   writeback never gets RAM-port grant. FB stays pinned forever.
+
+   **Workaround validated:** suppress `lookup_req_ic0` for one cycle
+   when `coalesce_ic0 && (fb_wants_wb != 0)`. This lets `fill_grant`
+   fire, the writeback drains, the FB releases. Gate stays at 129/130
+   with this fix applied — but it doesn't address Bug B.
+
+   **Bug B — addr_out_q vs FB-data desynchronization.**
+   With Bug A worked-around, the CPU progresses through the bench's
+   soak loop and warm-up but immediately loops `kernel_start →
+   halt → kernel_start` for thousands of iterations. VCD trace at
+   the loop hot-spot:
+
+   - Cycle T: `pc_id=0x10018c` (bnez consumed), `valid=1`,
+     `rdata=fe0298e3` (correct, the bnez)
+   - Cycle T+1: bnez branch_i fires → `addr_out_q := 0x10017c`
+     (loop body start)
+   - Cycle T+2: `valid=1`, `rdata=00730333` (the `add` at 0x10017c) —
+     correct so far. Consume → `addr_out_q := 0x100180`.
+   - Cycle T+4: `valid=1` again with **same `rdata=00730333`** but
+     `addr_out_q=0x100180` (the `mul`/`add` slot). The cache
+     re-delivers the previously-fetched `add` instead of the
+     instruction at the new address.
+   - Eventually `addr_out_q` jumps to `0x10016c`, the icache
+     delivers `0x0000006f` (the halt instruction at that address),
+     CPU consumes — but it's been executing wrong instructions for
+     several cycles, so the architectural state is corrupted.
+
+   Root cause: on a `branch_i` pulse, `addr_out_q` updates to the
+   branch target, but the output stage may still be granting the
+   PRIOR FB (which holds data from the old fetch line). The FB's
+   data and `addr_out_q` are out of sync — `valid_q` rises with
+   addr=new but data=old. The CPU executes the wrong instruction.
+
+   Fix sketch (not implemented): when `branch_i` fires, also clear
+   `valid_q` and force `out_arb` to invalidate any in-flight grant
+   so the next `valid_q` rise comes from a fresh, post-branch FB
+   allocation. Upstream Ibex does something analogous via
+   `fill_stale_q` gating on `fill_out_req` (line 795 of
+   `ibex_icache.sv`). The swap has `stale_q` per FB, but `wants_out`
+   suppresses on stale only AFTER the current cycle's grant — the
+   pre-stale-delivered output still propagates to `valid_q`.
+
+   Both fixes together would let icache_bench run to completion and
+   give a real cache-enabled CPI measurement. Requires careful
+   FB-lifecycle restructuring; estimate 1-2 days of focused work
+   plus verification against the existing 129-test gate.
