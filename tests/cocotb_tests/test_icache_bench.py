@@ -2,7 +2,7 @@
 
 The companion `tests/sw/icache_bench.S` enables the icache (writes
 `cpuctrlsts.icache_enable = 1`), warms it up, then measures `mcycle`
-across N=32 invocations of a tight RV32IM loop kernel. The measured
+across N=8 invocations of a tight RV32IM loop kernel. The measured
 cycle delta is stored to `result_cycles` and the program writes
 `done_marker = 0xFEEDFACE` to hand off.
 
@@ -46,26 +46,8 @@ def _load_vmem(dut, path: str) -> int:
     return count
 
 
-@cocotb.test(skip=True)
+@cocotb.test()
 async def icache_bench(dut):
-    # SKIP: bench-perf gap. The original deadlock (Bug C) was
-    # writeback starvation — `lookup_grant = lookup_req_ic0` always
-    # won over `fill_grant = fill_write_req ∧ ¬lookup_req_ic0`, so
-    # the FB's wb_done never fired and it never released. Fixed by
-    # yielding lookup to fill when the lookup is coalesced (no
-    # PhAlloc would happen anyway), plus refining Bug B to keep
-    # alloc_q for FBs with all bus reqs already sent so writeback
-    # actually completes across branch_i pulses.
-    #
-    # With those fixes the bench MAKES PROGRESS — PC advances
-    # through bench_kernel and saw_trap stays 0 — but completion
-    # is far slower than the 100k-cycle ceiling (still running
-    # past 5M cycles in trace). Likely a separate perf issue
-    # outside the icache (multdiv per-mul latency? IF stall
-    # patterns?). Out of scope for the deadlock fix.
-    #
-    # Re-enable once the bench-perf gap is closed.
-    pass
     cocotb.start_soon(Clock(dut.IO_CLK, 10, units="ns").start())
 
     # Tie off external IRQs.
@@ -105,7 +87,6 @@ async def icache_bench(dut):
     # Sanity: kernel does 200 × 5 ops × 8 invocations = 8000 base ops.
     # At 1 IPC that's 8000 cycles minimum; mul + branch overhead pulls
     # it higher. Reject obvious nonsense (= 0 / x).
-    # Sanity: 8 × ~200 iter loop with mul = a few thousand cycles minimum.
     assert result_cycles > 1_000, (
         f"result_cycles={result_cycles} suspiciously low; "
         f"kernel didn't run or mcycle isn't ticking"
