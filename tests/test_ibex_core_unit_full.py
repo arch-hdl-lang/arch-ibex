@@ -44,6 +44,7 @@ ICACHE_SV             = BUILD_DIR / "ibex_icache.sv"
 FB_AGE_ARB_SV         = BUILD_DIR / "fb_age_arb.sv"
 RAM_PORT_ARB_SV       = BUILD_DIR / "ram_port_arb.sv"
 INVAL_CTRL_SV         = BUILD_DIR / "inval_ctrl.sv"
+ICACHE_OUTPUT_STAGE_SV = BUILD_DIR / "ibex_icache_output_stage.sv"
 PMP_SV                = BUILD_DIR / "ibex_pmp.sv"
 
 IBEX_PKG_SV       = IBEX_ROOT / "rtl" / "ibex_pkg.sv"
@@ -68,6 +69,7 @@ ARCH_SV_FILES = [
     FB_AGE_ARB_SV,
     RAM_PORT_ARB_SV,
     INVAL_CTRL_SV,
+    ICACHE_OUTPUT_STAGE_SV,
     ICACHE_SV,
     PMP_SV,
     ID_STAGE_SV,
