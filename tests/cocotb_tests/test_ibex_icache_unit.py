@@ -869,13 +869,18 @@ async def test_r_fb_2_each_grant_allocates_one_fb(dut):
     _set_unpacked_vec(dut.ic_tag_rdata_i, 1, 0)
     await _settle(dut)
     # Issue 4 distinct-line branches and watch popcount(fb_busy_mask).
+    # Drop req_i to 0 between branches so the prefetcher doesn't
+    # auto-allocate intermediate lines — the spec is about per-grant
+    # allocation, not about prefetch behaviour.
     addrs = [0x0100_0080, 0x0200_0080, 0x0300_0080, 0x0400_0080]
     for i, addr in enumerate(addrs):
+        dut.req_i.value = 1
         dut.branch_i.value = 1
         dut.addr_i.value = addr
         await _settle(dut)
         await RisingEdge(dut.clk_i)
         dut.branch_i.value = 0
+        dut.req_i.value = 0   # suppress prefetch between branches
         # Allow 1 settle + 1 cycle for FB to enter PhAlloc/busy.
         await _settle(dut)
         await RisingEdge(dut.clk_i)
@@ -1177,6 +1182,10 @@ async def test_r_ext_5_no_further_req_after_recorded_bus_error(dut):
     dut.req_i.value = 1
     dut.ready_i.value = 1
     await _branch(dut, 0x00C0_0000)
+    # Drop req_i so the prefetcher doesn't allocate further FBs that
+    # would legitimately issue bus requests for OTHER lines. The spec
+    # is about the errored FB, not about other prefetch traffic.
+    dut.req_i.value = 0
     _set_unpacked_vec(dut.ic_tag_rdata_i, 0, 0)
     _set_unpacked_vec(dut.ic_tag_rdata_i, 1, 0)
     # Serve beat 0 with err=1.
@@ -1997,3 +2006,133 @@ async def test_boot_branch_during_inval_walk(dut):
         await RisingEdge(dut.clk_i)
         await _settle(dut)
     raise AssertionError("icache never delivered valid_o after 2 beats")
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Regression: cache-hit on a re-allocated FB must not leak the previous
+# allocation's `fill_data_q` bytes. Reproduces the icache_bench
+# corruption diagnosed in PR #45 (changes/2026-05-07-icache-area-
+# restructure/results.md).
+#
+#   `fill_data_q` is the only FB-state reg declared `reset none`
+#   (IbexIcache.arch:621). The PhAlloc transition (line 822-834) clears
+#   alloc_q/stale_q/hit_q/beats_rcvd_q/out_done_q/wb_done_q but NOT
+#   `fill_data_q`. The output stage selects
+#   `fb_data_out_sel = fill_data_q[out_grant_requester]` at line 980.
+#   The invariant relied on by the design is that `wants_out_v[fb]`
+#   (line 792-794) cannot fire before either `data_we_ic1_hit_v[fb]`
+#   (cache hit) or `data_we_beat0_v[fb]` (bus fill) has run for the
+#   new allocation. This test stresses that invariant on the cache-hit
+#   path.
+# ──────────────────────────────────────────────────────────────────────
+
+@cocotb.test()
+async def test_r_fb_realloc_hit_no_stale_rdata(dut):
+    """A cache-hit on a re-allocated FB MUST present the new line's
+    data, not the previous allocation's bytes still latched in
+    `fill_data_q[fb]`.
+
+    Sequence:
+      1. Branch to line A; drive both ways tag-MISS; let bus serve two
+         beats with a recognisable pattern (0xAAAA.../0xBBBB...). FB[0]
+         allocates and reaches PhRunning. Hold `ready_i = 0` so FB[0]
+         stays live and `fill_data_q[0]` holds line A's bytes.
+      2. While FB[0] is still live, branch to line B — a *different*
+         line in the *same* 2 KiB page (so addr[31:11] matches but
+         addr[31:3] does not). Drive a way-0 tag HIT with NEW data.
+      3. Sample `rdata_o` on the first cycle `valid_o` rises with
+         `addr_o` aligned to line B.
+
+    Failure: rdata_o contains 0xAAAA00.. or 0xBBBB00.. bytes (line A
+    pattern). The IC0 lookup for line B was tag-coarse-coalesced
+    against FB[0]'s live line A allocation (`addr_a[31:11] ==
+    addr_b[31:11]`), so no PhAlloc fired and `data_we_ic1_hit` never
+    refreshed `fill_data_q`. The R-OUT-7 fast path still committed
+    `valid_q + addr_out_q` from the IC1 hit, and the output mux read
+    stale fill_data_q[0].
+    """
+    await _start_clock(dut)
+    await _reset(dut)
+    await _wait_until_idle(dut)
+
+    # ── Phase 1: prime FB[0] with line A and KEEP it live ──────────
+    addr_a       = 0x0010_0080
+    pat_a_lo     = 0xAAAA0011  # beat 0 (low half of fill_data_q[0])
+    pat_a_hi     = 0xBBBB0022  # beat 1 (high half)
+    pattern_a    = {pat_a_lo, pat_a_hi}
+
+    dut.req_i.value   = 1
+    dut.ready_i.value = 0   # hold sticky so FB[0] stays live (in PhRunning)
+    await _branch(dut, addr_a)
+    # Drop req_i so the prefetcher doesn't allocate a second FB while
+    # this test is servicing line A's beats.
+    dut.req_i.value = 0
+    # Both ways invalid → IC1 reports miss → FB launches a bus fill.
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 0, 0)
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 1, 0)
+    _set_unpacked_vec(dut.ic_data_rdata_i, 0, 0)
+    _set_unpacked_vec(dut.ic_data_rdata_i, 1, 0)
+    await _settle(dut)
+    for beat in range(IC_LINE_BEATS):
+        served = await _bus_grant_and_beat(
+            dut,
+            rdata=(pat_a_lo if beat == 0 else pat_a_hi),
+            max_wait=16,
+        )
+        assert served, f"no bus grant for line A beat {beat}"
+    # FB[0] is now in PhRunning with fill_data_q[0] = {pat_a_hi, pat_a_lo}.
+    # Don't drain — keep ready_i=0 so it stays live.
+
+    # ── Phase 2: branch to line B, drive a tag-HIT with NEW pattern ─
+    addr_b       = 0x0010_0200
+    pat_b_lo     = 0x11110033
+    pat_b_hi     = 0x22220044
+    pat_b_64     = (pat_b_hi << 32) | pat_b_lo
+    pattern_b    = {pat_b_lo, pat_b_hi}
+
+    # Pre-stage idle RAM signals for the cycle BEFORE the lookup grant.
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 0, 0)
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 1, 0)
+    _set_unpacked_vec(dut.ic_data_rdata_i, 0, 0)
+    _set_unpacked_vec(dut.ic_data_rdata_i, 1, 0)
+
+    dut.req_i.value    = 1
+    dut.ready_i.value  = 0   # hold valid_o sticky so we sample the
+                             # FIRST output cycle, not a later one.
+    dut.branch_i.value = 1
+    dut.addr_i.value   = addr_b
+    await _settle(dut)
+    await RisingEdge(dut.clk_i)  # IC0 lookup-grant for line B
+    dut.branch_i.value = 0
+    # IC1 cycle: present a way-0 tag HIT with line B's data.
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 0, _tag_word(addr_b, valid=1))
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 1, 0)
+    _set_unpacked_vec(dut.ic_data_rdata_i, 0, pat_b_64)
+    _set_unpacked_vec(dut.ic_data_rdata_i, 1, 0)
+    await _settle(dut)
+
+    # First cycle valid_o rises with addr_o aligned to line B is the
+    # one that exposes a stale-fill_data_q leak.
+    for _ in range(8):
+        await ReadOnly()
+        if int(dut.valid_o.value) == 1:
+            addr_out = int(dut.addr_o.value) & MASK32
+            rd       = int(dut.rdata_o.value) & MASK32
+            assert (addr_out & ~7) == (addr_b & ~7), (
+                f"valid_o fired with addr_o={addr_out:#010x}, "
+                f"expected line {addr_b & ~7:#010x}"
+            )
+            assert rd not in pattern_a, (
+                f"STALE fill_data_q LEAK: rdata_o={rd:#010x} matches "
+                f"line A pattern {pat_a_lo:#010x}/{pat_a_hi:#010x}; "
+                f"FB was re-allocated for line B (addr_o={addr_out:#010x}) "
+                f"but fb_data_out_sel still latched the previous fill."
+            )
+            assert rd in pattern_b, (
+                f"rdata_o={rd:#010x} does not match line B's data "
+                f"{pat_b_lo:#010x}/{pat_b_hi:#010x}"
+            )
+            return
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+    raise AssertionError("valid_o never rose for the realloc-hit branch")
