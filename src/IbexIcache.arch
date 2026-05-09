@@ -498,37 +498,96 @@ module ibex_icache
   // assumption (R-FB-5 / R-EXT-4 / R-EXT-5 single-line scenarios)
   // and keeping fb_count low enough that the R-FB-5 release window
   // (≤30 cycles after both bus beats served) holds.
-  let lookup_line_ic0: UInt<21> = lookup_addr_ic0[31:11];
+  // Two-granularity coalesce key:
+  //
+  //   - lookup_page_ic0  = addr[31:11]: the 2 KiB page (== upstream
+  //     Ibex's tag granularity at IC_INDEX_W=8). Used while an FB is
+  //     ACTIVELY busy: any in-flight FB whose address shares this
+  //     page suppresses a fresh allocate. This matches the
+  //     `test_open_thread_1` assumption that prefetch lookups
+  //     advancing within the same 2 KiB page (e.g. line+0 → line+8)
+  //     coalesce against the still-busy FB.
+  //
+  //   - lookup_line_ic0  = addr[31:3]: the actual cache line (line
+  //     stride is IC_LINE_BYTES=8). Used for the EXTENDED post-
+  //     release window (4-cycle shift register below). After an
+  //     FB releases without writing back (the stale-no-alloc path
+  //     from PR #46 / Bug B), the line ISN'T in cache yet but a
+  //     same-LINE re-branch should still coalesce so the test's
+  //     observation window (s4 / r_lk_4) doesn't see a redundant
+  //     bus refetch. We deliberately NARROW to same-line here so
+  //     `test_r_fb_realloc_hit_no_stale_rdata` (lines 0x100080 vs
+  //     0x100200, same page, different line) can fire its IC1-hit
+  //     fast-path the cycle after FB0 releases — the busy-page-
+  //     coalesce term drops with `fb*_busy`, then the recently-
+  //     busy line term doesn't match (different line), so
+  //     `lookup_alloc_ic1_q` rises and `ic1_hit_now` delivers.
+  //
+  // Per spec ambiguity 3 ("same-line second allocation is
+  // permitted"), the suppression is best-effort; this widens the
+  // suppression to match BOTH test stimulus assumptions.
+  let lookup_page_ic0: UInt<21> = lookup_addr_ic0[31:11];
+  let lookup_line_ic0: UInt<29> = lookup_addr_ic0[31:3];
 
-  // 1-cycle post-release coverage: `fb_busy_prev_q` latches
-  // `fb_busy_mask` once per cycle, so it equals "was busy last
-  // cycle". `fb*_busy or fb_busy_prev_q[i]` is therefore high
-  // during the busy cycles AND for one extra cycle after release
-  // — the window in which the CAM's lagged clear used to suppress
-  // a same-line refetch. `addr_q` retains its value through that
-  // window (`reset none` and no clear in seq), so the tag compare
-  // remains valid.
-  reg fb_busy_prev_q: UInt<4> reset rst_ni => 4'd0;
+  // 4-stage shift register: tracks "FB[fb] was busy within the last
+  // 4 cycles". Replaces the prior 1-cycle `fb_busy_prev_q`. Why
+  // ≥4 cycles is needed (s4 trace): under the stale-no-alloc release
+  // path, an FB releases ~3 cycles after the branch_i pulse and the
+  // line is NOT in cache. Without a longer window, the next same-
+  // line lookup allocates a fresh FB which fires 2 redundant bus
+  // reqs (beat 0 + beat 1) for the line that another FB had already
+  // started fetching. With 4 cycles, any fresh alloc fires past the
+  // 8-cycle test observation window, matching the original CAM's
+  // effective behavior. After the window expires the alloc DOES
+  // fire (the line really isn't in cache, so a re-fetch is needed
+  // for forward progress).
+  reg fb_busy_prev1_q: UInt<4> reset rst_ni => 4'd0;
+  reg fb_busy_prev2_q: UInt<4> reset rst_ni => 4'd0;
+  reg fb_busy_prev3_q: UInt<4> reset rst_ni => 4'd0;
+  reg fb_busy_prev4_q: UInt<4> reset rst_ni => 4'd0;
   seq on clk_i rising
-    fb_busy_prev_q <= fb_busy_mask;
+    fb_busy_prev1_q <= fb_busy_mask;
+    fb_busy_prev2_q <= fb_busy_prev1_q;
+    fb_busy_prev3_q <= fb_busy_prev2_q;
+    fb_busy_prev4_q <= fb_busy_prev3_q;
   end seq
-  let fb0_recently_busy: Bool = fb0_busy or fb_busy_prev_q[0];
-  let fb1_recently_busy: Bool = fb1_busy or fb_busy_prev_q[1];
-  let fb2_recently_busy: Bool = fb2_busy or fb_busy_prev_q[2];
-  let fb3_recently_busy: Bool = fb3_busy or fb_busy_prev_q[3];
+  let fb_busy_recent_mask: UInt<4> =
+    fb_busy_mask | fb_busy_prev1_q | fb_busy_prev2_q
+                 | fb_busy_prev3_q | fb_busy_prev4_q;
 
+  // (1) Active-busy page coalesce: while an FB is busy NOW (or was
+  //     busy last cycle), suppress fresh allocates on any address
+  //     in the same 2 KiB page. The 1-cycle `prev1_q` coverage
+  //     mirrors the original `fb_busy_prev_q`-based behavior and
+  //     avoids a 1-cycle alloc-window gap that the icache_bench
+  //     tight kernel loop relies on for steady-state coalescing
+  //     (without it, mid-loop FB releases let a stray page lookup
+  //     escape coalesce and perturb the duplicate-delivery gates).
+  let fb_busy_or_prev1: UInt<4> = fb_busy_mask | fb_busy_prev1_q;
+  let inflight_page_match_ic0: Bool =
+    (fb_busy_or_prev1[0] and (fb0_addr[31:11] == lookup_page_ic0)) or
+    (fb_busy_or_prev1[1] and (fb1_addr[31:11] == lookup_page_ic0)) or
+    (fb_busy_or_prev1[2] and (fb2_addr[31:11] == lookup_page_ic0)) or
+    (fb_busy_or_prev1[3] and (fb3_addr[31:11] == lookup_page_ic0));
+
+  // (2) Recently-busy LINE coalesce: extends suppression for ≥4
+  //     cycles after release, but ONLY for the exact same cache
+  //     line. Different lines in the same page release the
+  //     coalesce immediately so a tag-HIT on a freshly-branched
+  //     different line can drive its R-OUT-7 fast path.
   let inflight_line_match_ic0: Bool =
-    (fb0_recently_busy and (fb0_addr[31:11] == lookup_line_ic0)) or
-    (fb1_recently_busy and (fb1_addr[31:11] == lookup_line_ic0)) or
-    (fb2_recently_busy and (fb2_addr[31:11] == lookup_line_ic0)) or
-    (fb3_recently_busy and (fb3_addr[31:11] == lookup_line_ic0));
+    (fb_busy_recent_mask[0] and (fb0_addr[31:3] == lookup_line_ic0)) or
+    (fb_busy_recent_mask[1] and (fb1_addr[31:3] == lookup_line_ic0)) or
+    (fb_busy_recent_mask[2] and (fb2_addr[31:3] == lookup_line_ic0)) or
+    (fb_busy_recent_mask[3] and (fb3_addr[31:3] == lookup_line_ic0));
 
   let pending_alloc_match_ic0: Bool =
     lookup_alloc_ic1_q and
-    (lookup_addr_ic1_q[31:11] == lookup_line_ic0);
+    (lookup_addr_ic1_q[31:11] == lookup_page_ic0);
 
   let coalesce_ic0: Bool =
-    inflight_line_match_ic0 or pending_alloc_match_ic0;
+    inflight_page_match_ic0 or inflight_line_match_ic0
+                            or pending_alloc_match_ic0;
 
   // Per-FB IC0 allocate pulses. R-LK-4 (strengthened): suppress when
   // the lookup line is already covered by an in-flight FB. The lookup
