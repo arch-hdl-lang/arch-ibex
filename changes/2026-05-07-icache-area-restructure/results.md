@@ -183,3 +183,58 @@ The +4,601 µm² module-level gap at IC=256 breaks down approximately:
    give a real cache-enabled CPI measurement. Requires careful
    FB-lifecycle restructuring; estimate 1-2 days of focused work
    plus verification against the existing 129-test gate.
+
+   **Bug B refinement (post-PR #44 dig).** A second VCD pass with
+   `wants_out_v[fb] |= !branch_i` applied (mirroring upstream's
+   gating) showed *zero* behavioural change — same kernel→halt loop,
+   same wrong-rdata pattern. The root cause is one layer deeper:
+
+   `fill_data_q[fb]` is a per-FB 64-bit register that is *not*
+   reset on FB allocation. When an FB releases and is later
+   re-allocated for a different line, `fill_data_q[fb]` still
+   holds the *previous* line's content until either
+   `data_we_ic1_hit` (cache hit) or `data_we_beat0/beat1` (bus
+   fill arrival) overwrites it.
+
+   VCD evidence at the loop hot-spot (cycle right after FB0 is
+   re-allocated from line 0x100178 to line 0x100180):
+
+   - `fb0_addr` transitions `0x00100178 → 0x00100180`
+   - `fb_busy_mask` goes `0 → 0001`
+   - `out_grant_valid` goes high one cycle later
+   - `valid_q` rises with `rdata_o = 0x00700393` (the `addi t2,
+     zero, 7` instruction at *0x100178* — the prior line) but
+     `addr_out_q = 0x00100180`
+   - `fill_data_q[0]` shows `0x73033300700393` — the OLD
+     line-0x100178 content, *unchanged* across the re-allocation
+
+   So the cache-hit fast path's `data_we_ic1_hit_v[fb] = (phase==1)
+   && ic1_hit_combo` either didn't fire, or fired with stale
+   `ic_data_rdata_i`, leaving `fill_data_q[fb]` carrying the
+   previous allocation's data when `wants_out_v[fb]` re-asserts.
+
+   Likely cause hypotheses to investigate next:
+
+   1. **Tag-only false hit.** If `way0_valid && way0_tag matches`
+      reports a hit for a line that was written into a DIFFERENT
+      cache index due to the stale-FB writeback (Bug A's pre-fix
+      state poisoned the cache), the lookup would "hit" with
+      mismatched data. Mitigation: invalidate cache writebacks
+      from stale FBs.
+   2. **`data_we_ic1_hit` timing race.** The hit-data capture is
+      gated on `phase==1`, but `phase` updates on the same edge
+      that the FB transitions PhAlloc→PhCheck (1) → PhRunning (3).
+      If `phase==1` evaluates as the *registered* value at the
+      tag-compare edge, the write-enable could miss the actual
+      hit cycle. Mitigation: use `data_we_ic1_hit` based on the
+      *next* phase value (combinational) or a dedicated allocation
+      flag.
+   3. **`fill_data_q` needs an explicit reset/clear on alloc.** A
+      one-cycle preset of fill_data_q[fb] on PhAlloc entry would
+      eliminate the stale-data hazard at the cost of a small mux,
+      but ensures `out_grant_valid` can never deliver pre-realloc
+      content.
+
+   Hypothesis (3) is the most defensive and likely the right path.
+   Estimate adjusted: 2–3 days of focused work + full gate
+   regression + icache_bench CPI re-measurement against upstream.

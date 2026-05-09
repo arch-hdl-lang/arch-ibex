@@ -48,18 +48,41 @@ def _load_vmem(dut, path: str) -> int:
 
 @cocotb.test(skip=True)
 async def icache_bench(dut):
-    # SKIP: After the IbexCore.arch:868 `param ICache = ICache;` fix,
-    # the swap's `cpuctrlsts.icache_enable` CSR write actually takes
-    # effect (was previously silently dropped — the CSR file's
-    # `gen_no_icache` arm tied the bit to 0). This bench is the ONLY
-    # test that flips icache_enable=1 at runtime, so it exposes a
-    # latent functional bug in the swap's cache-hit path: a deadlock
-    # between fill_grant (gated by `~lookup_req_ic0`) and writeback,
-    # plus apparent data corruption where reads at line[63:32] return
-    # stale values. VCD evidence captured during the dig session. The
-    # bench passes pre-fix only because the cache was effectively off
-    # for the entire run; re-enable this test once the cache-hit
-    # path is functionally repaired.
+    # SKIP: chain of icache bugs under investigation (PR #45 + dig).
+    #
+    # Bug A (reproduced):
+    #   Tag-coarse `coalesce_ic0` (`addr[31:11]`, IbexIcache.arch:493)
+    #   false-matches different lines that share a 2 KiB page tag.
+    #   In the post-release window (`fb_busy_prev_q`), the new line's
+    #   PhAlloc is suppressed while R-OUT-7's fast path (`:1195`)
+    #   still commits `valid_q + addr_out_q` from the IC1 hit. The
+    #   output mux reads stale `fill_data_q[fb]` bytes. Unit
+    #   reproducer: tests/cocotb_tests/test_ibex_icache_unit.py
+    #   ::test_r_fb_realloc_hit_no_stale_rdata.
+    #
+    # Bug B (surfaced when Bug A's tag-coarse coalesce is tightened):
+    #   `wants_bus_v[fb]` is gated on `not stale_q[fb]` (`:780`), so
+    #   a stale FB with `beats_sent == 0` never issues a bus req.
+    #   `releasing_v[fb]` requires `beats_rcvd == beats_total`
+    #   (`:789`), so it never receives the beats it never requested
+    #   — permanent PhRunning deadlock. Tag-coarse coalesce was
+    #   masking this by suppressing the speculative-prefetch FBs
+    #   that get caught mid-flight by branch_i. Targeted patch
+    #   (extend `releasing_v` with `stale_q AND beats_rcvd ==
+    #   beats_sent`, plus clear `alloc_q` on `branch_i`) clears the
+    #   deadlock.
+    #
+    # Bug C (still unpinned):
+    #   With Bugs A+B fixed, timer_isr still fails. PC trace shows
+    #   the icache delivering data at unexpected `addr_o` values
+    #   (e.g. cyc=147 jumps `ica` from 0x100158 → 0x100168 with
+    #   `pc_id_o=0x100154`), and the CPU eventually executes mret
+    #   with `mepc=0`, jumping into low memory. Hypothesis: another
+    #   FB-realloc data path with stale `addr_q` or `out_beat_q`
+    #   when a stale FB releases earlier than the prior tag-coarse
+    #   serialisation assumed.
+    #
+    # Re-enable once Bug C is identified and fixed.
     pass
     cocotb.start_soon(Clock(dut.IO_CLK, 10, units="ns").start())
 
