@@ -72,13 +72,49 @@ async def icache_bench(dut):
     # loop of ~5 ops with a multi-cycle `mul`, so per-kernel cost is
     # in the low thousands of cycles. 8 measured runs + 1 warm-up
     # plus boot fits well inside a 100k ceiling.
-    for _ in range(100_000):
+    pc_path = dut.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.pc_id_o
+    iv_path = dut.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.instr_valid_id_o
+    rfwe_path = dut.u_ibex.u_ibex_top.u_ibex_core.id_stage_i.rf_we_id_o
+    instr_done_path = dut.u_ibex.u_ibex_top.u_ibex_core.id_stage_i.instr_done
+
+    BINS = [
+        ("loop_add",     0x10017c, 0x100180),
+        ("loop_mul",     0x100180, 0x100184),
+        ("loop_addi_t2", 0x100184, 0x100188),
+        ("loop_addi_t0", 0x100188, 0x10018c),
+        ("loop_bne",     0x10018c, 0x100190),
+    ]
+    bin_cycles  = {n: 0 for n, _, _ in BINS}
+    bin_commits = {n: 0 for n, _, _ in BINS}
+
+    completed = False
+    for cy in range(100_000):
         await RisingEdge(dut.IO_CLK)
+        try:
+            pc   = int(pc_path.value) & 0xFFFF_FFFF
+            iv   = int(iv_path.value)
+            done = int(instr_done_path.value)
+        except Exception:
+            pc, iv, done = 0, 0, 0
+        for n, lo, hi in BINS:
+            if lo <= pc < hi:
+                bin_cycles[n] += 1
+                if iv == 1 and done == 1:
+                    bin_commits[n] += 1
+                break
         if _mem_word(dut, DONE_MARKER) == 0xFEEDFACE:
+            completed = True
             break
-    else:
-        raise AssertionError(
-            "icache_bench never wrote done_marker"
+    if not completed:
+        raise AssertionError("icache_bench never wrote done_marker")
+
+    dut._log.info("─── per-loop-instr cycles / commits ───")
+    for n, _, _ in BINS:
+        c = bin_cycles[n]
+        k = bin_commits[n]
+        cpc = (c / k) if k > 0 else 0.0
+        dut._log.info(
+            f"  {n:14s}  cycles={c:>7d}  commits={k:>7d}  cy/commit={cpc:5.2f}"
         )
 
     result_cycles = _mem_word(dut, RESULT_CYCLES)
