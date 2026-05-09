@@ -322,10 +322,18 @@ module ibex_icache
   //   inval_grant  = inval_write_req            (unconditional)
   // The RAM-port driver mux below picks inval > fill > lookup
   // (R-ARB-4) for the actual SRAM op.
-  let lookup_grant: Bool = lookup_req_ic0;
+  // Bug C: a coalesced lookup wouldn't allocate anyway (no PhAlloc
+  // happens when coalesce_ic0=true), so it has no real progress to
+  // make. Let it yield to a pending writeback so wb_done can fire.
+  // Without this yield, sustained `req_i + had_branch_q` keeps
+  // lookup_req_ic0 high every cycle, and the priority arb
+  // (fill_grant = fill_write_req ∧ ¬lookup_req_ic0) starves the
+  // writeback indefinitely — the FB can never release.
+  let lookup_grant: Bool =
+    lookup_req_ic0 and (not (coalesce_ic0 and fill_write_req));
   let inval_grant:  Bool = inval_write_req;
   let fill_grant:   Bool =
-    fill_write_req and (not lookup_req_ic0) and (not inval_write_req);
+    fill_write_req and (not lookup_grant) and (not inval_write_req);
 
   // R-ARB-4: drive RAM-port outputs based on grant.
   // Tag write on inval = clear valid; on fill = set valid + tag.
@@ -854,7 +862,13 @@ module ibex_icache
       if phase_q[fb] == 2'd3
         if branch_i
           stale_q[fb] <= true;
-          alloc_q[fb] <= false;
+          // Only clear alloc_q for FBs that haven't fully sent their
+          // bus reqs — those won't complete a writeback. FBs with
+          // beats_sent=beats_total keep alloc_q so the cache warms
+          // up across branch_i pulses.
+          if beats_sent_q[fb] != beats_total
+            alloc_q[fb] <= false;
+          end if
         end if
         if icache_inval_i or (not icache_enable_i)
           alloc_q[fb] <= false;

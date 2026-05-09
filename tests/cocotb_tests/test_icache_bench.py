@@ -48,25 +48,23 @@ def _load_vmem(dut, path: str) -> int:
 
 @cocotb.test(skip=True)
 async def icache_bench(dut):
-    # SKIP: residual icache realloc bug ("Bug C"). The earlier
-    # cache-hit-on-realloc stale-`fill_data_q` leak (Bug A) is now
-    # fixed by the R-OUT-7 comb-bypass (`ic1_fast_data_q` /
-    # `ic1_fast_valid_q` in IbexIcache.arch), and the stale-FB
-    # lifecycle deadlock (Bug B) is fixed by the stale-aware
-    # `releasing_v` arm + `alloc_q ← false on branch_i`. Unit
-    # reproducer (`test_r_fb_realloc_hit_no_stale_rdata`) passes.
+    # SKIP: bench-perf gap. The original deadlock (Bug C) was
+    # writeback starvation — `lookup_grant = lookup_req_ic0` always
+    # won over `fill_grant = fill_write_req ∧ ¬lookup_req_ic0`, so
+    # the FB's wb_done never fired and it never released. Fixed by
+    # yielding lookup to fill when the lookup is coalesced (no
+    # PhAlloc would happen anyway), plus refining Bug B to keep
+    # alloc_q for FBs with all bus reqs already sent so writeback
+    # actually completes across branch_i pulses.
     #
-    # Bug C remains: the SoC bench's tight icache-enabled loop still
-    # hangs. Trace under a line-precise coalesce experiment showed
-    # the icache delivering data at unexpected `addr_o` values on
-    # the FB-realloc-after-branch path (e.g. cyc=147 `ica` jumped
-    # 0x100158 → 0x100168 with `pc_id_o=0x100154`) and the CPU
-    # eventually mret-ing with `mepc=0` into low memory. Hypothesis:
-    # a second realloc-related stale path involving `addr_q` or
-    # `out_beat_q` when a stale FB releases under the new tighter
-    # `releasing_v` semantics.
+    # With those fixes the bench MAKES PROGRESS — PC advances
+    # through bench_kernel and saw_trap stays 0 — but completion
+    # is far slower than the 100k-cycle ceiling (still running
+    # past 5M cycles in trace). Likely a separate perf issue
+    # outside the icache (multdiv per-mul latency? IF stall
+    # patterns?). Out of scope for the deadlock fix.
     #
-    # Re-enable once Bug C is identified and fixed.
+    # Re-enable once the bench-perf gap is closed.
     pass
     cocotb.start_soon(Clock(dut.IO_CLK, 10, units="ns").start())
 
