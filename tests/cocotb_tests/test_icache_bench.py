@@ -48,39 +48,23 @@ def _load_vmem(dut, path: str) -> int:
 
 @cocotb.test(skip=True)
 async def icache_bench(dut):
-    # SKIP: chain of icache bugs under investigation (PR #45 + dig).
+    # SKIP: residual icache realloc bug ("Bug C"). The earlier
+    # cache-hit-on-realloc stale-`fill_data_q` leak (Bug A) is now
+    # fixed by the R-OUT-7 comb-bypass (`ic1_fast_data_q` /
+    # `ic1_fast_valid_q` in IbexIcache.arch), and the stale-FB
+    # lifecycle deadlock (Bug B) is fixed by the stale-aware
+    # `releasing_v` arm + `alloc_q ← false on branch_i`. Unit
+    # reproducer (`test_r_fb_realloc_hit_no_stale_rdata`) passes.
     #
-    # Bug A (reproduced):
-    #   Tag-coarse `coalesce_ic0` (`addr[31:11]`, IbexIcache.arch:493)
-    #   false-matches different lines that share a 2 KiB page tag.
-    #   In the post-release window (`fb_busy_prev_q`), the new line's
-    #   PhAlloc is suppressed while R-OUT-7's fast path (`:1195`)
-    #   still commits `valid_q + addr_out_q` from the IC1 hit. The
-    #   output mux reads stale `fill_data_q[fb]` bytes. Unit
-    #   reproducer: tests/cocotb_tests/test_ibex_icache_unit.py
-    #   ::test_r_fb_realloc_hit_no_stale_rdata.
-    #
-    # Bug B (surfaced when Bug A's tag-coarse coalesce is tightened):
-    #   `wants_bus_v[fb]` is gated on `not stale_q[fb]` (`:780`), so
-    #   a stale FB with `beats_sent == 0` never issues a bus req.
-    #   `releasing_v[fb]` requires `beats_rcvd == beats_total`
-    #   (`:789`), so it never receives the beats it never requested
-    #   — permanent PhRunning deadlock. Tag-coarse coalesce was
-    #   masking this by suppressing the speculative-prefetch FBs
-    #   that get caught mid-flight by branch_i. Targeted patch
-    #   (extend `releasing_v` with `stale_q AND beats_rcvd ==
-    #   beats_sent`, plus clear `alloc_q` on `branch_i`) clears the
-    #   deadlock.
-    #
-    # Bug C (still unpinned):
-    #   With Bugs A+B fixed, timer_isr still fails. PC trace shows
-    #   the icache delivering data at unexpected `addr_o` values
-    #   (e.g. cyc=147 jumps `ica` from 0x100158 → 0x100168 with
-    #   `pc_id_o=0x100154`), and the CPU eventually executes mret
-    #   with `mepc=0`, jumping into low memory. Hypothesis: another
-    #   FB-realloc data path with stale `addr_q` or `out_beat_q`
-    #   when a stale FB releases earlier than the prior tag-coarse
-    #   serialisation assumed.
+    # Bug C remains: the SoC bench's tight icache-enabled loop still
+    # hangs. Trace under a line-precise coalesce experiment showed
+    # the icache delivering data at unexpected `addr_o` values on
+    # the FB-realloc-after-branch path (e.g. cyc=147 `ica` jumped
+    # 0x100158 → 0x100168 with `pc_id_o=0x100154`) and the CPU
+    # eventually mret-ing with `mepc=0` into low memory. Hypothesis:
+    # a second realloc-related stale path involving `addr_q` or
+    # `out_beat_q` when a stale FB releases under the new tighter
+    # `releasing_v` semantics.
     #
     # Re-enable once Bug C is identified and fixed.
     pass

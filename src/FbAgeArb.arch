@@ -28,14 +28,17 @@ function AgeOrderedGrant(req_mask: UInt<4>, ages: UInt<8>) -> UInt<4>
   let r2: Bool = req_mask[2];
   let r3: Bool = req_mask[3];
 
-  let c0: UInt<2> = r0 ? a0 : 2'd3;
-  let c1: UInt<2> = r1 ? a1 : 2'd3;
-  let c2: UInt<2> = r2 ? a2 : 2'd3;
-  let c3: UInt<2> = r3 ? a3 : 2'd3;
+  // Cost is 3 bits so non-requesters (cost=4) strictly exceed any valid
+  // age (max 3). Otherwise an age-3 requester ties with a non-requester
+  // at cost=3 and the lowest-index tiebreak grants the non-requester.
+  let c0: UInt<3> = r0 ? {1'd0, a0} : 3'd4;
+  let c1: UInt<3> = r1 ? {1'd0, a1} : 3'd4;
+  let c2: UInt<3> = r2 ? {1'd0, a2} : 3'd4;
+  let c3: UInt<3> = r3 ? {1'd0, a3} : 3'd4;
 
-  let min01:  UInt<2> = c0 <= c1 ? c0 : c1;
+  let min01:  UInt<3> = c0 <= c1 ? c0 : c1;
   let min01i: UInt<2> = c0 <= c1 ? 2'd0 : 2'd1;
-  let min23:  UInt<2> = c2 <= c3 ? c2 : c3;
+  let min23:  UInt<3> = c2 <= c3 ? c2 : c3;
   let min23i: UInt<2> = c2 <= c3 ? 2'd2 : 2'd3;
   let mini:   UInt<2> = min01 <= min23 ? min01i : min23i;
 
