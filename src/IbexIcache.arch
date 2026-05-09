@@ -1076,9 +1076,29 @@ module ibex_icache
   // valid_q, also capture the IC1 hit data combinationally so rdata_o
   // is sourced from the just-hit tag-RAM data (NOT fill_data_q[fb],
   // which can hold stale bits from a prior allocation that didn't
-  // clear at release). Sticky-1 cycle: cleared on consume or branch.
-  reg ic1_fast_data_q:  UInt<32> reset rst_ni => 0;
+  // clear at release). Widened to 64 bits (Fix B): on a cache-hit
+  // beat-0 fast-path delivery, the within-line beat-1 must be
+  // re-deliverable from the SAME tag-RAM hit data, even after the
+  // next IC1 lookup (at prefetch_addr_q = A+8) overwrites
+  // hit_data_ic1. ic1_fast_valid_q is sticky for the FIRST delivery;
+  // out_beat_pending_q (below) extends the data lifetime for the
+  // beat-1 delivery.
+  reg ic1_fast_data_q:  UInt<64> reset rst_ni => 0;
   reg ic1_fast_valid_q: Bool     reset rst_ni => false;
+
+  // Fix B (within-line beat-1 skip): tracks "we owe within-line
+  // beat 1 from the line whose beat 0 we just delivered via the
+  // R-OUT-7 IC1 fast-path." Without this, the next-cycle IC1 hit
+  // at the prefetched line (A+8) clobbers addr_out_q at the
+  // `(not valid_q) and ic1_hit_now` arm before beat 1 of line A
+  // (PC=A+4) is delivered. Set on the consume edge after a
+  // fast-path beat-0 delivery; cleared on beat-1 delivery (consume
+  // edge with addr_out_q[2]=1) or branch.
+  reg out_beat_pending_q: Bool reset rst_ni => false;
+  // Cached line base + halfword bit of the fast-path delivery, so
+  // the beat-1 emit address can be reconstructed without depending
+  // on lookup_addr_ic1_q (which has moved on to the prefetched line).
+  reg fast_path_addr_q: UInt<32> reset rst_ni => 0;
 
   // Skid registers (R-OUT misaligned-uncompressed cross-beat path).
   // When a misaligned 32-bit instruction (addr[1]=1, halfword[1:0]=11)
@@ -1217,7 +1237,20 @@ module ibex_icache
       // Bump out_beat_q for the granted FB so next cycle's
       // out_beat_data is the next 32-bit beat.
       // (Falls through the `if fb_beat_consume_skid` block below.)
-    elsif (not valid_q) and ic1_hit_now
+    elsif (not valid_q) and out_beat_pending_q
+      // Fix B: deliver within-line beat 1 from the cached IC1
+      // fast-path data BEFORE letting the next IC1 hit (which
+      // would target the prefetched line A+8) clobber addr_out_q.
+      // ic1_fast_data_q holds the full 64-bit hit_data of the just-
+      // delivered line; rdata_o_d sources from
+      // ic1_fast_data_q[63:32] this cycle (the beat-1 half).
+      // Reconstruct beat-1 address from the cached line base and
+      // halfword bit (matches the FB-side new_beat_avail arm shape).
+      valid_q     <= true;
+      addr_out_q  <= (fast_path_addr_q & 32'hFFFF_FFF8)
+                     | 32'd4
+                     | (fast_path_addr_q & 32'd2);
+    elsif (not valid_q) and ic1_hit_now and (not out_beat_pending_q)
       // R-OUT-7 fast-path (aligned, no skid): IC1 hit visible this
       // cycle ⇒ register valid_q immediately so valid_o rises at
       // IC1+1. rdata_o is comb: at IC1+1, fill_data_q[fb] holds the
@@ -1226,6 +1259,9 @@ module ibex_icache
       // wants_out high, no older FB has wants_out — invariant
       // because valid_q was false here, meaning no in-progress
       // delivery).
+      // Fix B gate: out_beat_pending_q blocks this arm so the
+      // within-line beat-1 of the previously-delivered line is
+      // served first.
       valid_q     <= true;
       addr_out_q  <= lookup_addr_ic1_q;
     elsif (not valid_q) and skid_valid_q and new_beat_avail
@@ -1253,23 +1289,74 @@ module ibex_icache
 
   // R-OUT-7 stale-bypass capture (separate seq to avoid tangling with
   // the valid_q/addr_out_q/skid priority chain). Captures the IC1 hit
-  // halfword-selected combinationally so rdata_o doesn't depend on
+  // FULL 64-bit data (Fix B widening) so rdata_o doesn't depend on
   // fill_data_q[fb] (which can leak a prior allocation's data, see
-  // test_r_fb_realloc_hit_no_stale_rdata). Sticky-1: cleared on the
-  // single delivery edge (valid_q & ready_i) or on branch.
+  // test_r_fb_realloc_hit_no_stale_rdata) AND so the within-line
+  // beat-1 (high half) can be served from cache after the IC1 lookup
+  // moves on to the next prefetched line.
+  // ic1_fast_valid_q is sticky-1 for the FIRST (beat-0) delivery;
+  // out_beat_pending_q below extends the data lifetime through the
+  // beat-1 delivery. We must NOT clear ic1_fast_data_q on the consume
+  // edge while out_beat_pending_q is being set this same cycle —
+  // keeping the data is safe (only ic1_fast_valid_q flips false).
   seq on clk_i rising
     if branch_i
       ic1_fast_valid_q <= false;
     elsif valid_q and ready_i
       ic1_fast_valid_q <= false;
     elsif (not valid_q) and ic1_hit_now
+        and (not out_beat_pending_q)
         and (not skid_complete_instr)
         and (not need_skid_load)
       // Same arm as the fast-path branch above.
       ic1_fast_valid_q <= true;
-      ic1_fast_data_q  <= lookup_addr_ic1_q[2]
-                            ? hit_data_ic1[63:32]
-                            : hit_data_ic1[31:0];
+      ic1_fast_data_q  <= hit_data_ic1;
+      fast_path_addr_q <= lookup_addr_ic1_q;
+    end if
+  end seq
+
+  // Fix B: out_beat_pending_q lifecycle.
+  //   Set:   on the consume edge of a beat-0 delivery whose data came
+  //          from the IC1 fast path (ic1_fast_valid_q=1 entering this
+  //          edge), where the line has another beat (beat 1) yet to
+  //          deliver. The "another beat to deliver" condition is:
+  //          either the consumed instr was compressed and the next
+  //          PC stays in beat 0 of the same line (lookup_addr_ic1_q[2]=0
+  //          and rdata_o_d[1:0]!=11 → next addr stays in beat 0, but
+  //          we still owe beat 1 next), OR the consumed instr was
+  //          uncompressed and addr_out_q crosses to beat 1 within
+  //          the line.  A unifying predicate: the just-delivered
+  //          fast-path beat was beat 0 (lookup_addr_ic1_q[2]=0 ⇒
+  //          we delivered the low half), and the next sequential PC
+  //          (addr_out_q after advance) still lives in the same
+  //          8-byte line. Equivalently the new addr_out_q[31:3]
+  //          equals lookup_addr_ic1_q[31:3] ∧ new addr_out_q[2]=1
+  //          (advanced into beat 1) OR new addr_out_q[2]=0 (still
+  //          two compressed instrs away from line crossing).
+  //          Conservative form: the fast-path delivered beat 0
+  //          (addr_out_q[2]=0 entering the consume) AND we're not
+  //          line-crossing yet.
+  //   Clear: branch, OR consume of beat 1 (addr_out_q[2]=1 entering
+  //          the consume edge), OR the next addr crosses the line
+  //          (addr_out_q + advance ≥ next line) — the consume rule
+  //          covers both naturally.
+  // Implementation note: read PRE-edge values (addr_out_q,
+  // ic1_fast_valid_q) to decide.  The consume-arm above advances
+  // addr_out_q in this same cycle, but seq reads pre-edge values.
+  let beat0_consume_keeps_line: Bool =
+    valid_q and ready_i and ic1_fast_valid_q and (not addr_out_q[2]);
+  let beat1_consume: Bool =
+    valid_q and ready_i and addr_out_q[2];
+  seq on clk_i rising
+    if branch_i
+      out_beat_pending_q <= false;
+    elsif beat1_consume
+      // Beat 1 delivered — clear pending.
+      out_beat_pending_q <= false;
+    elsif beat0_consume_keeps_line
+      // Just consumed the fast-path beat 0; the next consume is
+      // beat 1 from cached ic1_fast_data_q[63:32].
+      out_beat_pending_q <= true;
     end if
   end seq
 
@@ -1341,8 +1428,15 @@ module ibex_icache
   // (which can leak stale bits from a prior allocation). Sticky-1:
   // ic1_fast_valid_q clears on the consume edge, so this arm only
   // fires for the single fast-path delivery cycle.
+  // Fix B: ic1_fast_data_q is now 64-bit. The fast-path beat-0
+  // delivery picks the half indicated by addr_out_q[2] (which equals
+  // lookup_addr_ic1_q[2] of the just-captured fast-path lookup).
+  // The fast-path beat-1 delivery (out_beat_pending_q arm) always
+  // targets the high half (the within-line beat 1 = bits[63:32]).
   let rdata_o_d: UInt<32> =
-    ic1_fast_valid_q    ? ic1_fast_data_q :
+    out_beat_pending_q  ? ic1_fast_data_q[63:32] :
+    ic1_fast_valid_q    ? (addr_out_q[2] ? ic1_fast_data_q[63:32]
+                                         : ic1_fast_data_q[31:0]) :
     skid_complete_instr ? ({16'd0, skid_data_q}).resize<32>() :
     skid_valid_q        ? {out_beat_data[15:0], skid_data_q} :
                           out_beat_data;

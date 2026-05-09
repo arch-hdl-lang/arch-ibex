@@ -891,11 +891,18 @@ module ibex_id_stage
   let rf_ren_b_o   = rf_ren_b;
   let rf_waddr_id_o = rf_waddr_dec;
   let rf_wdata_id_o = rf_wdata_id_w;
-  /// `rf_we_id_o = rf_we_raw & instr_executing & ~illegal_csr_insn_i`
-  /// (Spec §"Requirement 6"). Even though `rf_we_raw` is already gated
-  /// by FSM defaults, the extra `instr_executing` and illegal-CSR
-  /// guards are required to suppress writes on flushed/illegal cycles.
-  let rf_we_id_o = rf_we_raw and instr_executing and (not illegal_csr_insn_i);
+  /// `rf_we_id_o = rf_we_raw & instr_done & ~illegal_csr_insn_i`
+  /// (Spec §"Requirement 6"). The `instr_done` gate (= `!stall_id &
+  /// !flush_id & instr_executing`) is critical: without it, the WE
+  /// pulses every cycle the instruction sits in ID waiting for the
+  /// next fetch (e.g., during an icache stall the icache holds its
+  /// output sticky and `instr_valid_i` stays high). Under WB=0 the
+  /// regfile sees the WE directly (`rf_we_wb_o = rf_we_id_i`), so a
+  /// multi-cycle WE = multiple writebacks of the same instruction —
+  /// e.g., `addi t0, t0, -1` decrements t0 multiple times per
+  /// commit, producing an infinite loop in icache_bench's tight
+  /// kernel where the icache is the stalling stage.
+  let rf_we_id_o = rf_we_raw and instr_done and (not illegal_csr_insn_i);
   /// WB-bypass match outputs are constant 0 under WB=0 (Spec §"Req 16").
   let rf_rd_a_wb_match_o = 1'b0;
   let rf_rd_b_wb_match_o = 1'b0;
