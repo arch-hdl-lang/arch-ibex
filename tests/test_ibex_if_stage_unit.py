@@ -42,6 +42,7 @@ ICACHE_SV             = BUILD_DIR / "ibex_icache.sv"
 FB_AGE_ARB_SV         = BUILD_DIR / "fb_age_arb.sv"
 RAM_PORT_ARB_SV       = BUILD_DIR / "ram_port_arb.sv"
 INVAL_CTRL_SV         = BUILD_DIR / "inval_ctrl.sv"
+ICACHE_OUTPUT_STAGE_SV = BUILD_DIR / "ibex_icache_output_stage.sv"
 
 
 pytest.importorskip("cocotb_tools.runner")
@@ -57,7 +58,7 @@ def if_stage_runner(verilator_bin, tmp_path_factory):
 
     needed = [SHARED_PKG_SV, IF_STAGE_SV, PREFETCH_BUFFER_SV, FETCH_FIFO_SV,
               COMPRESSED_DECODER_SV, ICACHE_SV, FB_AGE_ARB_SV, RAM_PORT_ARB_SV,
-              INVAL_CTRL_SV]
+              INVAL_CTRL_SV, ICACHE_OUTPUT_STAGE_SV]
     for sv in needed:
         if not sv.is_file():
             pytest.skip(f"missing {sv}; run `make build` first")
@@ -74,6 +75,7 @@ def if_stage_runner(verilator_bin, tmp_path_factory):
             str(FB_AGE_ARB_SV),
             str(RAM_PORT_ARB_SV),
             str(INVAL_CTRL_SV),
+            str(ICACHE_OUTPUT_STAGE_SV),
             str(ICACHE_SV),
             str(IF_STAGE_SV),
         ],

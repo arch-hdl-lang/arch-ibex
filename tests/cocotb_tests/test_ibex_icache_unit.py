@@ -2164,7 +2164,13 @@ async def test_r_fb_realloc_hit_no_stale_rdata(dut):
 
 
 def _snapshot(dut) -> dict:
-    """Sample the post-PR-46 / post-PR-48 signals of interest."""
+    """Sample the post-PR-46 / post-PR-48 signals of interest.
+
+    Note: `addr_out_q` / `valid_q` moved into the `output_stage`
+    sub-block (IbexIcacheOutputStage); access them through the
+    instance.
+    """
+    out = dut.output_stage
     return {
         "valid_o":           int(dut.valid_o.value),
         "addr_o":            int(dut.addr_o.value) & MASK32,
@@ -2172,8 +2178,8 @@ def _snapshot(dut) -> dict:
         "ready_i":           int(dut.ready_i.value),
         "branch_i":          int(dut.branch_i.value),
         "req_i":             int(dut.req_i.value),
-        "addr_out_q":        int(dut.addr_out_q.value) & MASK32,
-        "valid_q":           int(dut.valid_q.value),
+        "addr_out_q":        int(out.addr_out_q.value) & MASK32,
+        "valid_q":           int(out.valid_q.value),
         "prefetch_addr_q":   int(dut.prefetch_addr_q.value) & MASK32,
         "lookup_addr_ic1_q": int(dut.lookup_addr_ic1_q.value) & MASK32,
         "coalesce_ic0":      int(dut.coalesce_ic0.value),
