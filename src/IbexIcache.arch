@@ -794,8 +794,10 @@ module ibex_icache
                               and (hit_q[fb] or (beats_rcvd_q[fb] != 2'd0));
       data_we_ic1_hit_v[fb] = (phase_q[fb] == 2'd1) and ic1_hit_combo;
       releasing_v[fb] = (phase_q[fb] == 2'd3)
-                        and (beats_rcvd_q[fb] == beats_total)
-                        and wb_done_q[fb] and out_done_q[fb];
+                        and wb_done_q[fb] and out_done_q[fb]
+                        and ( (beats_rcvd_q[fb] == beats_total)
+                          or (stale_q[fb]
+                              and (beats_rcvd_q[fb] == beats_sent_q[fb])) );
     end for
     // rvalid_v split out — refers to rvalid_route_N which is one wire
     // per FB at outer scope (computed elsewhere). Loop indexing into
@@ -852,6 +854,7 @@ module ibex_icache
       if phase_q[fb] == 2'd3
         if branch_i
           stale_q[fb] <= true;
+          alloc_q[fb] <= false;
         end if
         if icache_inval_i or (not icache_enable_i)
           alloc_q[fb] <= false;
@@ -1055,6 +1058,14 @@ module ibex_icache
   reg valid_q:     Bool reset rst_ni => false;
   reg addr_out_q:  UInt<32> reset rst_ni => 0;
 
+  // R-OUT-7 fast-path comb-bypass: when the IC1-hit fast-path latches
+  // valid_q, also capture the IC1 hit data combinationally so rdata_o
+  // is sourced from the just-hit tag-RAM data (NOT fill_data_q[fb],
+  // which can hold stale bits from a prior allocation that didn't
+  // clear at release). Sticky-1 cycle: cleared on consume or branch.
+  reg ic1_fast_data_q:  UInt<32> reset rst_ni => 0;
+  reg ic1_fast_valid_q: Bool     reset rst_ni => false;
+
   // Skid registers (R-OUT misaligned-uncompressed cross-beat path).
   // When a misaligned 32-bit instruction (addr[1]=1, halfword[1:0]=11)
   // straddles a 4-byte beat boundary, the icache must capture the
@@ -1226,6 +1237,28 @@ module ibex_icache
     end if
   end seq
 
+  // R-OUT-7 stale-bypass capture (separate seq to avoid tangling with
+  // the valid_q/addr_out_q/skid priority chain). Captures the IC1 hit
+  // halfword-selected combinationally so rdata_o doesn't depend on
+  // fill_data_q[fb] (which can leak a prior allocation's data, see
+  // test_r_fb_realloc_hit_no_stale_rdata). Sticky-1: cleared on the
+  // single delivery edge (valid_q & ready_i) or on branch.
+  seq on clk_i rising
+    if branch_i
+      ic1_fast_valid_q <= false;
+    elsif valid_q and ready_i
+      ic1_fast_valid_q <= false;
+    elsif (not valid_q) and ic1_hit_now
+        and (not skid_complete_instr)
+        and (not need_skid_load)
+      // Same arm as the fast-path branch above.
+      ic1_fast_valid_q <= true;
+      ic1_fast_data_q  <= lookup_addr_ic1_q[2]
+                            ? hit_data_ic1[63:32]
+                            : hit_data_ic1[31:0];
+    end if
+  end seq
+
   // FB-beat consume: the OLD path (`valid_q & ready_i & beat==0`) plus
   // the skid-load path (need_skid_load fires when ~valid_q). Both
   // bump out_beat_q to expose the next beat next cycle.
@@ -1289,7 +1322,13 @@ module ibex_icache
   //     `out_beat_data` already points at the NEXT beat (out_beat_q[fb]
   //     was bumped during the skid_load arm via fb_beat_consume_skid).
   //   - else: regular delivery, the current beat data.
+  // Top-priority arm: when the IC1-hit fast path is delivering, source
+  // rdata_o from the just-captured tag-RAM hit data, NOT fill_data_q
+  // (which can leak stale bits from a prior allocation). Sticky-1:
+  // ic1_fast_valid_q clears on the consume edge, so this arm only
+  // fires for the single fast-path delivery cycle.
   let rdata_o_d: UInt<32> =
+    ic1_fast_valid_q    ? ic1_fast_data_q :
     skid_complete_instr ? ({16'd0, skid_data_q}).resize<32>() :
     skid_valid_q        ? {out_beat_data[15:0], skid_data_q} :
                           out_beat_data;
