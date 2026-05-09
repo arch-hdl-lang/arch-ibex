@@ -1148,7 +1148,19 @@ module ibex_icache
   // to roll PhAlloc → PhRunning → wants_out → out_arb → valid_q. The
   // fast-path covers the FIRST output beat; the FB-side path handles
   // beat 1 (and any subsequent fills) via out_arb / new_beat_avail.
-  let ic1_hit_now: Bool = lookup_valid_ic1_q and any_hit_ic1;
+  // Gate on lookup_alloc_ic1_q (= lookup_grant ∧ ¬coalesce_ic0), NOT
+  // lookup_valid_ic1_q. ic1_hit_now must be a per-allocation PULSE,
+  // not a sustained signal: under coalesce_ic0=1 (e.g. a tight loop
+  // hot in cache where bne back-branches keep hitting the same line),
+  // lookup_valid_ic1_q stays high and any_hit_ic1 stays true, so the
+  // R-OUT-7 fast-path arm `(not valid_q) and ic1_hit_now` would
+  // re-fire every cycle after consume, clobbering addr_out_q with
+  // the stale lookup_addr_ic1_q and re-delivering the same instr 2-3×
+  // before prefetch_addr_q can advance. Caught at icache_bench bne-
+  // back loop where the branch-target `add t1,t1,t2` was being
+  // committed three times per iter, causing t0 to wrap past 0
+  // without landing exactly on 0 → kernel never terminating.
+  let ic1_hit_now: Bool = lookup_alloc_ic1_q and any_hit_ic1;
   // The IC1 fast-path's beat depends on lookup_addr_ic1_q[2]: branch
   // into upper half of an 8-byte line wants beat 1 first.
   let ic1_hit_beat_data: UInt<32> =
