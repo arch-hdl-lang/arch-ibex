@@ -801,8 +801,17 @@ module ibex_icache
                               and (not out_done_q[fb])
                               and (hit_q[fb] or (beats_rcvd_q[fb] != 2'd0));
       data_we_ic1_hit_v[fb] = (phase_q[fb] == 2'd1) and ic1_hit_combo;
+      // Fix B: on cache HIT, the FB has nothing to wait on after the
+      // consume of beat 1 — wb_done is set on phase-1→3 (data already
+      // in RAM) and out_done would only register on the cycle AFTER
+      // beat 1 consume. Allow same-cycle release on hit when the
+      // out_done_pulse fires, collapsing 1 cycle off the FB-on-hit
+      // lifecycle. The non-hit path keeps the out_done_q gate to
+      // preserve the bus/writeback ordering invariants.
       releasing_v[fb] = (phase_q[fb] == 2'd3)
-                        and wb_done_q[fb] and out_done_q[fb]
+                        and wb_done_q[fb]
+                        and ( out_done_q[fb]
+                              or (hit_q[fb] and out_done_pulse_v[fb]) )
                         and ( (beats_rcvd_q[fb] == beats_total)
                           or (stale_q[fb]
                               and (beats_rcvd_q[fb] == beats_sent_q[fb])) );
