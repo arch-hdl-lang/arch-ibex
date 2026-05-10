@@ -126,6 +126,7 @@ async def timer_isr_fires_and_stashes_mcause(dut) -> None:
 
     # Ibex's program runs to completion in well under 500 cycles on a
     # warm RAM; 5000 is a wide margin that still keeps the sim fast.
+    completed = False
     for cy in range(5000):
         await RisingEdge(dut.IO_CLK)
         if trace_fh is not None:
@@ -168,10 +169,11 @@ async def timer_isr_fires_and_stashes_mcause(dut) -> None:
             except Exception:
                 pass
         if _mem_word(dut, DONE_MARKER) == 0xFEEDFACE:
+            completed = True
             break
     if trace_fh is not None:
         trace_fh.close()
-    else:
+    if not completed:
         # Test failed — pull the interesting state out of RAM + Ibex for
         # diagnosis and include it in the assertion message.
         mcause = _mem_word(dut, SAVED_MCAUSE)
