@@ -2437,3 +2437,381 @@ async def test_open_thread_2_within_line_second_instr_cache_hit(dut):
         f"duplicate-delivery at PC=A+4={pc_ap4:#010x}: count={len(seen_ap4)}; "
         f"deliveries={[(hex(a), hex(d)) for a, d in zip(delivered_addrs, delivered_data)]}"
     )
+
+
+# ──────────────────────────────────────────────────────────────────────
+# IRQ-wait + branch_i reproducers
+#
+# 4 redesign attempts (2026-05-09) all passed unit suites but failed at
+# SoC level on tests sharing one pattern: async IRQ delivery + multi-cycle
+# `ready_i=0` wait, then `branch_i=1` to redirect (e.g. WFI-then-IRQ,
+# polling-loop-then-IRQ). 6 of the 7 failing cpu_programs run with
+# `icache_enable_i=0` (bus passthrough); `icache_bench` is the lone
+# enabled one.
+#
+# These tests reduce that pattern to icache-leaf inputs: hold `ready_i=0`
+# for a stretch (with the icache still delivering a sticky `valid_o=1`),
+# pulse `branch_i=1` to redirect, and verify the branch target delivers
+# correctly with no spurious advance / stale data / hang.
+#
+# Pre-PR-52 main passes all of these. Any future redesign that breaks
+# them would be caught at the unit suite (~3 sec) instead of at the
+# SoC gate (~2 min) — saving ~30 min per failed iteration.
+# ──────────────────────────────────────────────────────────────────────
+
+
+@cocotb.test()
+async def test_e2e_branch_during_ready_stall_passthrough(dut):
+    """icache_disable=1 (bus passthrough). Branch to addr A; bus serves
+    A. Hold `ready_i=0` for 8 cycles (CPU stall, e.g. WFI). Mid-stall,
+    pulse `branch_i=1` to addr B (different page so no coalesce).
+    Bus serves B. Drive `ready_i=1`; verify next valid_o is at B with
+    B's bus pattern.
+
+    This is the smallest reproducer of the IRQ-redirect-during-WFI
+    pattern that broke 5 cpu_programs in 2026-05-09 redesign attempts
+    #1 and #4 (timer_isr, sw_isr, ext_isr, multictx_isr, wfi_isr —
+    all use a `wait-for-IRQ` loop under icache_enable=0).
+    """
+    await _start_clock(dut)
+    await _reset(dut)
+    await _wait_until_idle(dut)
+
+    addr_a = 0x0500_0040
+    addr_b = 0x0500_2080  # different 2KB page, no coalesce
+    pat_a  = 0x12345013   # `addi x0,x0,0x123` (uncompressed)
+    pat_b  = 0x67890013   # `addi x0,x0,0x678` (uncompressed)
+
+    dut.icache_enable_i.value = 0
+    dut.req_i.value           = 1
+    dut.ready_i.value         = 0   # hold ready_i=0 from the start so valid_o stays sticky at A
+    _zero_unpacked_vec(dut.ic_tag_rdata_i)
+    _zero_unpacked_vec(dut.ic_data_rdata_i)
+
+    # Branch to A. Bus serves A's beat.
+    await _branch(dut, addr_a)
+    served = await _bus_grant_and_beat(dut, rdata=pat_a, max_wait=16)
+    assert served, "no instr_req_o for first branch under enable=0"
+
+    # Wait for valid_o at addr_a (sticky because ready_i=0).
+    delivered_a = False
+    for _ in range(12):
+        await ReadOnly()
+        if int(dut.valid_o.value) == 1:
+            assert (int(dut.addr_o.value) & MASK32) == addr_a
+            assert (int(dut.rdata_o.value) & MASK32) == pat_a
+            delivered_a = True
+            break
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+    assert delivered_a, f"valid_o never asserted for branch to A={addr_a:#x}"
+
+    # Verify valid_o stays sticky for several cycles under ready_i=0.
+    for _ in range(8):
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+        await ReadOnly()
+        assert int(dut.valid_o.value) == 1, (
+            "valid_o dropped during ready_i=0 stall (R-OUT-VALID-4 violation)"
+        )
+        assert (int(dut.addr_o.value) & MASK32) == addr_a, (
+            f"addr_o drifted during stall: {int(dut.addr_o.value):#x} vs {addr_a:#x}"
+        )
+    # Advance to writable phase before pulsing branch_i.
+    await RisingEdge(dut.clk_i)
+    await _settle(dut)
+
+    # Mid-stall: pulse branch_i to addr_b (the IRQ vector).
+    dut.branch_i.value = 1
+    dut.addr_i.value   = addr_b
+    await _settle(dut)
+    await RisingEdge(dut.clk_i)
+    dut.branch_i.value = 0
+    await _settle(dut)
+
+    # Bus serves B's beat. ready_i still 0 — the icache should hold
+    # B's data sticky once available.
+    served = await _bus_grant_and_beat(dut, rdata=pat_b, max_wait=16)
+    assert served, "no instr_req_o for branch to B under enable=0"
+
+    # Now raise ready_i and verify next delivery is at B with B's data.
+    dut.ready_i.value = 1
+    delivered_b = False
+    for _ in range(12):
+        await ReadOnly()
+        if int(dut.valid_o.value) == 1:
+            ao = int(dut.addr_o.value) & MASK32
+            rd = int(dut.rdata_o.value) & MASK32
+            if ao == addr_b:
+                assert rd == pat_b, (
+                    f"after IRQ-style branch to B={addr_b:#x}, "
+                    f"valid_o asserted with rdata={rd:#x}, expected {pat_b:#x}"
+                )
+                delivered_b = True
+                break
+            elif ao == addr_a:
+                # Should NOT happen — sticky pre-branch addr leaked through.
+                raise AssertionError(
+                    f"after branch_i to B, valid_o re-asserted at OLD addr A={addr_a:#x} "
+                    f"with rdata={rd:#x}. The pre-branch sticky output was not "
+                    f"properly cancelled."
+                )
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+    assert delivered_b, f"branch to B={addr_b:#x} never delivered"
+
+
+@cocotb.test()
+async def test_e2e_branch_during_ready_stall_cache_hit(dut):
+    """icache_enable=1 + cache hit. Branch to addr A (warm); deliver A;
+    drop ready_i=0 mid-stream; pulse branch_i to a DIFFERENT line (B,
+    also warm); verify B delivers correctly without stale-A leakage.
+
+    This is the smallest reproducer of the icache-enabled IRQ-redirect
+    pattern. icache_bench hits this when the kernel branch-back into
+    the soak loop transitions to the warmup `call bench_kernel` —
+    exactly where the 4th redesign attempt hung at PC=0x100124.
+    """
+    await _start_clock(dut)
+    await _reset(dut)
+    await _wait_until_idle(dut)
+
+    addr_a    = 0x0060_0040
+    addr_b    = 0x0060_2080  # different page, no coalesce
+    line_a    = addr_a & ~0x7
+    line_b    = addr_b & ~0x7
+    pat_a     = 0xCAFE_0033
+    pat_b     = 0xBEEF_0033
+    line_a_64 = ((0xDEAD_DEAD) << 32) | pat_a
+    line_b_64 = ((0xFACE_FACE) << 32) | pat_b
+
+    # Pre-warm both lines via cold misses.
+    async def _prewarm(branch_addr: int, line64: int) -> None:
+        dut.req_i.value           = 1
+        dut.ready_i.value         = 1
+        dut.icache_enable_i.value = 1
+        _zero_unpacked_vec(dut.ic_tag_rdata_i)
+        _zero_unpacked_vec(dut.ic_data_rdata_i)
+        await _branch(dut, branch_addr)
+        for beat in range(IC_LINE_BEATS):
+            half = (line64 >> (beat * 32)) & MASK32
+            served = await _bus_grant_and_beat(dut, rdata=half, max_wait=32)
+            assert served
+        for _ in range(40):
+            await RisingEdge(dut.clk_i)
+            await _settle(dut)
+            if (int(dut.fb_busy_mask.value) == 0
+                    and int(dut.valid_o.value) == 0):
+                break
+
+    await _prewarm(line_a, line_a_64)
+    await _prewarm(line_b, line_b_64)
+
+    # Branch to A; drive way-0 tag HIT for line_a so IC1 sees a hit.
+    # Hold ready_i=0 from the start so valid_o is sticky at addr_a.
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 0, _tag_word(line_a, valid=1))
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 1, 0)
+    _set_unpacked_vec(dut.ic_data_rdata_i, 0, line_a_64)
+    _set_unpacked_vec(dut.ic_data_rdata_i, 1, 0)
+    dut.req_i.value   = 1
+    dut.ready_i.value = 0
+    await _branch(dut, addr_a)
+
+    # Wait for valid_o at addr_a (sticky).
+    delivered_a = False
+    for _ in range(12):
+        await ReadOnly()
+        if (int(dut.valid_o.value) == 1
+                and (int(dut.addr_o.value) & MASK32) == addr_a):
+            delivered_a = True
+            break
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+    assert delivered_a, f"valid_o never asserted for cache-hit branch to A={addr_a:#x}"
+
+    # Verify sticky for 8 cycles under ready_i=0.
+    for _ in range(8):
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+        await ReadOnly()
+        assert int(dut.valid_o.value) == 1, (
+            f"valid_o dropped during cache-hit stall (R-OUT-VALID-4 violation); "
+            f"addr_o={int(dut.addr_o.value):#x}"
+        )
+        assert (int(dut.addr_o.value) & MASK32) == addr_a, (
+            f"addr_o drifted during stall: {int(dut.addr_o.value):#x} vs A={addr_a:#x}"
+        )
+    # Advance to writable phase before pulsing branch_i.
+    await RisingEdge(dut.clk_i)
+    await _settle(dut)
+
+    # Pulse branch_i to addr_b (IRQ-style redirect during stall).
+    # Drive line_b's tag/data so IC1 sees a hit on the new lookup.
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 0, _tag_word(line_b, valid=1))
+    _set_unpacked_vec(dut.ic_data_rdata_i, 0, line_b_64)
+    dut.branch_i.value = 1
+    dut.addr_i.value   = addr_b
+    await _settle(dut)
+    await RisingEdge(dut.clk_i)
+    dut.branch_i.value = 0
+    await _settle(dut)
+
+    # Raise ready_i and wait for delivery at addr_b. The icache MUST
+    # NOT re-deliver A (its old sticky data must be cancelled by the
+    # branch).
+    dut.ready_i.value = 1
+    delivered_b = False
+    for _ in range(20):
+        await ReadOnly()
+        if int(dut.valid_o.value) == 1:
+            ao = int(dut.addr_o.value) & MASK32
+            if ao == addr_b:
+                delivered_b = True
+                break
+            elif ao == addr_a:
+                raise AssertionError(
+                    f"after branch to B, valid_o re-asserted at A={addr_a:#x} "
+                    f"(stale sticky leak)"
+                )
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+    assert delivered_b, f"branch to B={addr_b:#x} never delivered after stall"
+
+
+@cocotb.test()
+async def test_e2e_repeated_branch_during_long_stall(dut):
+    """Stress: branch to A; long ready_i=0 stall; branch to B; longer
+    stall; branch to C; verify each branch target delivers correctly.
+    Catches "sticky valid_o accumulator" / branch-i edge-detection
+    bugs that may only appear after multiple redirects.
+    """
+    await _start_clock(dut)
+    await _reset(dut)
+    await _wait_until_idle(dut)
+
+    dut.icache_enable_i.value = 0  # bus passthrough — same as IRQ-driven tests
+    dut.req_i.value           = 1
+    dut.ready_i.value         = 1
+    _zero_unpacked_vec(dut.ic_tag_rdata_i)
+    _zero_unpacked_vec(dut.ic_data_rdata_i)
+
+    targets = [
+        (0x0700_0040, 0xAAAA0033),
+        (0x0700_2080, 0xBBBB0033),
+        (0x0700_4040, 0xCCCC0033),
+    ]
+
+    for i, (addr, pat) in enumerate(targets):
+        # Hold ready_i=0 across the branch so valid_o stays sticky at addr.
+        dut.ready_i.value = 0
+        await _branch(dut, addr)
+        served = await _bus_grant_and_beat(dut, rdata=pat, max_wait=16)
+        assert served, f"branch #{i} no bus grant"
+
+        # Wait for valid_o at this addr (sticky under ready_i=0).
+        landed = False
+        for _ in range(12):
+            await ReadOnly()
+            if (int(dut.valid_o.value) == 1
+                    and (int(dut.addr_o.value) & MASK32) == addr):
+                assert (int(dut.rdata_o.value) & MASK32) == pat, (
+                    f"branch #{i} to {addr:#x}: got rdata={int(dut.rdata_o.value):#x}, expected {pat:#x}"
+                )
+                landed = True
+                break
+            await RisingEdge(dut.clk_i)
+            await _settle(dut)
+        assert landed, f"branch #{i} to {addr:#x} never delivered"
+
+        # Verify sticky over an increasing stall length each iter.
+        stall_cycles = 4 + (i * 4)
+        for _ in range(stall_cycles):
+            await RisingEdge(dut.clk_i)
+            await _settle(dut)
+            await ReadOnly()
+            assert int(dut.valid_o.value) == 1, (
+                f"branch #{i}: valid_o dropped during {stall_cycles}-cy stall"
+            )
+            assert (int(dut.addr_o.value) & MASK32) == addr, (
+                f"branch #{i}: addr_o drifted during stall"
+            )
+        # Advance to writable phase before next loop iter.
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+
+
+@cocotb.test()
+async def test_e2e_branch_to_same_addr_during_stall(dut):
+    """Edge case: branch to addr A during stall, and the new branch
+    target == the current addr_o. The icache must CANCEL the sticky
+    output and reissue from the redirect (matches branch-on-mispredict
+    semantics). Should NOT just keep delivering the old sticky value.
+    """
+    await _start_clock(dut)
+    await _reset(dut)
+    await _wait_until_idle(dut)
+
+    dut.icache_enable_i.value = 0
+    dut.req_i.value           = 1
+    dut.ready_i.value         = 1
+    _zero_unpacked_vec(dut.ic_tag_rdata_i)
+    _zero_unpacked_vec(dut.ic_data_rdata_i)
+
+    addr_a = 0x0900_0080
+    pat_a1 = 0x11110013
+    pat_a2 = 0x22220013  # different bus pattern after re-fetch
+
+    await _branch(dut, addr_a)
+    served = await _bus_grant_and_beat(dut, rdata=pat_a1, max_wait=16)
+    assert served
+
+    # Wait for valid_o.
+    for _ in range(12):
+        await ReadOnly()
+        if int(dut.valid_o.value) == 1:
+            assert (int(dut.addr_o.value) & MASK32) == addr_a
+            assert (int(dut.rdata_o.value) & MASK32) == pat_a1
+            break
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+
+    # Stall.
+    await RisingEdge(dut.clk_i)
+    await _settle(dut)
+    dut.ready_i.value = 0
+    for _ in range(6):
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+
+    # Re-branch to SAME addr (mispredict to same target case).
+    dut.branch_i.value = 1
+    dut.addr_i.value   = addr_a
+    await _settle(dut)
+    await RisingEdge(dut.clk_i)
+    dut.branch_i.value = 0
+    await _settle(dut)
+
+    # Bus must serve again (the branch invalidates the prior fetch in
+    # the disabled-cache path). Drive a NEW pattern to detect stale
+    # leakage.
+    served = await _bus_grant_and_beat(dut, rdata=pat_a2, max_wait=16)
+    assert served, "after re-branch, no bus grant for re-fetch"
+
+    dut.ready_i.value = 1
+    for _ in range(12):
+        await ReadOnly()
+        if int(dut.valid_o.value) == 1:
+            ao = int(dut.addr_o.value) & MASK32
+            rd = int(dut.rdata_o.value) & MASK32
+            if ao == addr_a:
+                # Either pattern is acceptable per spec — stale-OK if
+                # design doesn't drop sticky on same-addr branch. But
+                # if rdata leaked the OLD pattern when bus served NEW,
+                # that's a stale-data bug.
+                assert rd == pat_a2, (
+                    f"after re-branch, valid_o delivered OLD bus pattern "
+                    f"{rd:#x}, expected NEW pattern {pat_a2:#x} (stale leak)"
+                )
+                break
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)

@@ -103,12 +103,74 @@ async def timer_isr_fires_and_stashes_mcause(dut) -> None:
         await RisingEdge(dut.IO_CLK)
     dut.IO_RST_N.value = 1
 
+    # Optional: capture every icache I/O signal per cycle to a CSV
+    # for replay debugging. Set TRACE_ICACHE=path to enable.
+    trace_path = os.environ.get("TRACE_ICACHE")
+    trace_fh = None
+    ic = None
+    if trace_path:
+        ic = dut.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache
+        trace_fh = open(trace_path, "w")
+        trace_fh.write(
+            "cycle,rst_ni,req_i,branch_i,addr_i,ready_i,"
+            "instr_gnt_i,instr_rvalid_i,instr_rdata_i,instr_err_i,"
+            "ic_tag_rdata_w0,ic_tag_rdata_w1,"
+            "ic_data_rdata_w0,ic_data_rdata_w1,"
+            "ic_scr_key_valid_i,icache_enable_i,icache_inval_i,"
+            "valid_o,rdata_o,addr_o,err_o,err_plus2_o,"
+            "instr_req_o,instr_addr_o,"
+            "ic_tag_req_o,ic_tag_write_o,ic_tag_addr_o,ic_tag_wdata_o,"
+            "ic_data_req_o,ic_data_write_o,ic_data_addr_o,ic_data_wdata_o,"
+            "ic_scr_key_req_o,busy_o\n"
+        )
+
     # Ibex's program runs to completion in well under 500 cycles on a
     # warm RAM; 5000 is a wide margin that still keeps the sim fast.
-    for _ in range(5000):
+    for cy in range(5000):
         await RisingEdge(dut.IO_CLK)
+        if trace_fh is not None:
+            try:
+                row = [str(cy)]
+                row.append(str(int(ic.rst_ni.value)))
+                row.append(str(int(ic.req_i.value)))
+                row.append(str(int(ic.branch_i.value)))
+                row.append(f"{int(ic.addr_i.value):#x}")
+                row.append(str(int(ic.ready_i.value)))
+                row.append(str(int(ic.instr_gnt_i.value)))
+                row.append(str(int(ic.instr_rvalid_i.value)))
+                row.append(f"{int(ic.instr_rdata_i.value):#x}")
+                row.append(str(int(ic.instr_err_i.value)))
+                row.append(f"{int(ic.ic_tag_rdata_i[0].value):#x}")
+                row.append(f"{int(ic.ic_tag_rdata_i[1].value):#x}")
+                row.append(f"{int(ic.ic_data_rdata_i[0].value):#x}")
+                row.append(f"{int(ic.ic_data_rdata_i[1].value):#x}")
+                row.append(str(int(ic.ic_scr_key_valid_i.value)))
+                row.append(str(int(ic.icache_enable_i.value)))
+                row.append(str(int(ic.icache_inval_i.value)))
+                row.append(str(int(ic.valid_o.value)))
+                row.append(f"{int(ic.rdata_o.value):#x}")
+                row.append(f"{int(ic.addr_o.value):#x}")
+                row.append(str(int(ic.err_o.value)))
+                row.append(str(int(ic.err_plus2_o.value)))
+                row.append(str(int(ic.instr_req_o.value)))
+                row.append(f"{int(ic.instr_addr_o.value):#x}")
+                row.append(f"{int(ic.ic_tag_req_o.value):#x}")
+                row.append(str(int(ic.ic_tag_write_o.value)))
+                row.append(f"{int(ic.ic_tag_addr_o.value):#x}")
+                row.append(f"{int(ic.ic_tag_wdata_o.value):#x}")
+                row.append(f"{int(ic.ic_data_req_o.value):#x}")
+                row.append(str(int(ic.ic_data_write_o.value)))
+                row.append(f"{int(ic.ic_data_addr_o.value):#x}")
+                row.append(f"{int(ic.ic_data_wdata_o.value):#x}")
+                row.append(str(int(ic.ic_scr_key_req_o.value)))
+                row.append(str(int(ic.busy_o.value)))
+                trace_fh.write(",".join(row) + "\n")
+            except Exception:
+                pass
         if _mem_word(dut, DONE_MARKER) == 0xFEEDFACE:
             break
+    if trace_fh is not None:
+        trace_fh.close()
     else:
         # Test failed — pull the interesting state out of RAM + Ibex for
         # diagnosis and include it in the assertion message.
