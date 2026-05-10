@@ -82,6 +82,14 @@ module IbexIcacheOutputStage
   reg skid_valid_q: Bool reset rst_ni => false;
   reg skid_err_q:   Bool guard skid_valid_q reset none;
 
+  // A cache hit is only visible at the IC1 lookup output for one cycle,
+  // but the IF stream may need both 32-bit words from that 64-bit line.
+  // Keep the most recent hit line as an output-source candidate until
+  // addr_out_q advances beyond it or a branch redirects the stream.
+  reg ic1_hold_valid_q: Bool reset rst_ni => false;
+  reg ic1_hold_addr_q:  UInt<29> guard ic1_hold_valid_q reset none;
+  reg ic1_hold_line_q:  UInt<64> guard ic1_hold_valid_q reset none;
+
   let out_line_addr: UInt<29> = addr_out_q[31:3];
   let out_beat1: Bool = addr_out_q[2];
   let out_half1: Bool = addr_out_q[1];
@@ -96,6 +104,9 @@ module IbexIcacheOutputStage
   let ic1_covers: Bool =
     lookup_valid_ic1_q and any_hit_ic1
     and (lookup_addr_ic1_q[31:3] == source_line_addr);
+  let ic1_hold_covers: Bool =
+    ic1_hold_valid_q and (ic1_hold_addr_q == source_line_addr);
+  let ic1_any_covers: Bool = ic1_covers or ic1_hold_covers;
 
   let fb0_beat_ready: Bool =
     source_beat1 ? (fb0_beats_live == 2'd2) : (fb0_beats_live != 2'd0);
@@ -151,8 +162,10 @@ module IbexIcacheOutputStage
   // IC1 has data priority, but a same-line FB remains associated for
   // lifecycle completion when the accepted output consumes the FB's
   // last beat.
-  let raw_valid: Bool = ic1_covers or fb_any;
-  let raw_line: UInt<64> = ic1_covers ? hit_data_ic1 : fb_sel_line;
+  let raw_valid: Bool = ic1_any_covers or fb_any;
+  let raw_line: UInt<64> =
+    ic1_covers ? hit_data_ic1 :
+    (ic1_hold_covers ? ic1_hold_line_q : fb_sel_line);
   let raw_is_fb: Bool = fb_any;
   let raw_fb_idx: UInt<2> = fb_sel_idx;
   let raw_fb_addr: UInt<32> = fb_sel_addr;
@@ -241,6 +254,10 @@ module IbexIcacheOutputStage
     or ((not hold_valid_q) and nonheld_valid and source_done_on_accept);
   let accept_done_idx: UInt<2> =
     hold_valid_q ? hold_done_idx_q : raw_fb_idx;
+  let accepted_next_addr: UInt<32> =
+    ((out_rdata_comb[1:0] != 2'd3) or out_err_comb)
+      ? (addr_out_q +% 32'd2)
+      : (addr_out_q +% 32'd4);
 
   comb
     valid_o     = out_valid_comb;
@@ -271,10 +288,20 @@ module IbexIcacheOutputStage
     if branch_i
       addr_out_q <= addr_i;
     elsif accept_output
-      if out_rdata_comb[1:0] != 2'd3 or out_err_comb
-        addr_out_q <= addr_out_q +% 32'd2;
-      else
-        addr_out_q <= addr_out_q +% 32'd4;
+      addr_out_q <= accepted_next_addr;
+    end if
+  end seq
+
+  seq on clk_i rising
+    if branch_i
+      ic1_hold_valid_q <= false;
+    elsif ic1_covers
+      ic1_hold_valid_q <= true;
+      ic1_hold_addr_q  <= lookup_addr_ic1_q[31:3];
+      ic1_hold_line_q  <= hit_data_ic1;
+    elsif accept_output and ic1_hold_valid_q
+      if accepted_next_addr[31:3] != ic1_hold_addr_q
+        ic1_hold_valid_q <= false;
       end if
     end if
   end seq

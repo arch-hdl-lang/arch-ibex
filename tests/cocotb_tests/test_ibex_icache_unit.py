@@ -753,7 +753,6 @@ async def test_r_lk_4_branch_into_in_flight_line_no_redundant_req(dut):
     served = await _bus_grant_and_beat(dut, rdata=0xAAAA1111, max_wait=8)
     assert served
     # Now branch back to the same line before the second beat lands.
-    seen_req_addrs_before = set()
     # Re-branch immediately
     dut.branch_i.value = 1
     dut.addr_i.value   = addr + 4  # different offset, same line
@@ -761,7 +760,14 @@ async def test_r_lk_4_branch_into_in_flight_line_no_redundant_req(dut):
     await RisingEdge(dut.clk_i)
     dut.branch_i.value = 0
     await _settle(dut)
-    # Sample several cycles; collect any new instr_req_o addresses.
+    # The original FB may still need its second beat. Grant that
+    # legitimate request, then check that no extra same-line request
+    # appears after the line has been served.
+    served_second = await _bus_grant_and_beat(
+        dut, rdata=0xBBBB2222, max_wait=8
+    )
+    assert served_second
+
     new_req_for_same_line = 0
     line_aligned = addr & ~(IC_LINE_BYTES - 1)
     for _ in range(4):
@@ -769,15 +775,63 @@ async def test_r_lk_4_branch_into_in_flight_line_no_redundant_req(dut):
         if int(dut.instr_req_o.value) == 1:
             ra = int(dut.instr_addr_o.value) & MASK32
             if (ra & ~(IC_LINE_BYTES - 1)) == line_aligned:
-                # Allow at most one — the original FB's outstanding 2nd beat.
                 new_req_for_same_line += 1
         await RisingEdge(dut.clk_i)
         await _settle(dut)
-    # We already serviced beat 0; at most 1 more bus request (for beat 1)
-    # may exist. Anything beyond that is a redundant request.
-    assert new_req_for_same_line <= 1, (
+    assert new_req_for_same_line == 0, (
         f"saw {new_req_for_same_line} redundant requests for the same line "
         f"after branch-into-FB"
+    )
+
+
+@cocotb.test()
+async def test_r_lk_4_branch_keeps_target_fill_buffer_for_second_word(dut):
+    """A branch to a line already owned by a live FB must not stale that FB.
+
+    Regression for the CoreMark stall where the branch target's first
+    word leaked through on the live rvalid overlay, then the stale FB
+    stopped serving the second word at PC+4.
+    """
+    await _start_clock(dut)
+    await _reset(dut)
+    await _wait_until_idle(dut)
+
+    addr = 0x0030_0180
+    word0 = 0x1111_0003
+    word1 = 0x2222_0003
+
+    dut.req_i.value = 1
+    dut.ready_i.value = 0
+    await _branch(dut, addr)
+    await _ram_serve_lookup(dut, way0_tag_word=0, way1_tag_word=0)
+
+    assert await _bus_grant_and_beat(dut, rdata=word0, max_wait=8)
+    assert await _bus_grant_and_beat(dut, rdata=word1, max_wait=8)
+
+    # Redirect to the same line after both beats are live, while the
+    # output side has not accepted the held word yet.
+    await _branch(dut, addr)
+    dut.ready_i.value = 1
+    await _settle(dut)
+
+    delivered = []
+    for _ in range(12):
+        await ReadOnly()
+        if int(dut.valid_o.value) == 1 and int(dut.ready_i.value) == 1:
+            delivered.append((
+                int(dut.addr_o.value) & MASK32,
+                int(dut.rdata_o.value) & MASK32,
+            ))
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+
+    assert (addr, word0) in delivered, (
+        f"branch target first word was not delivered: "
+        f"{[(hex(a), hex(d)) for a, d in delivered]}"
+    )
+    assert (addr + 4, word1) in delivered, (
+        f"branch target second word was lost after same-line branch: "
+        f"{[(hex(a), hex(d)) for a, d in delivered]}"
     )
 
 
