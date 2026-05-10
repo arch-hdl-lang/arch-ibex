@@ -944,7 +944,11 @@ module ibex_icache
 
       // Phase 3: Running
       if phase_q[fb] == 2'd3
-        if branch_i
+        if branch_i and (
+          (addr_q[fb][31:3] != addr_i[31:3])
+          or (not icache_enable_i)
+          or (not alloc_q[fb])
+        )
           stale_q[fb] <= true;
           // Only clear alloc_q for FBs that haven't fully sent their
           // bus reqs — those won't complete a writeback. FBs with

@@ -97,6 +97,7 @@ def _build_model(filelist: dict, sim_build: Path) -> Path:
         str(COREMARK_TB),
         "--unroll-count", "72",
         "--public-flat-rw",
+        "--trace",
         "-CFLAGS", "-O3",
         "-LDFLAGS", "-O3",
         "-Wno-IMPORTSTAR",
