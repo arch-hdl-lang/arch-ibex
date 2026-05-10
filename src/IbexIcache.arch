@@ -287,9 +287,12 @@ module ibex_icache
   end seq
 
   // R-REQ-3: lookup issue conditions.
+  // Lookups are allowed even when the FB pool is busy: a cache hit can
+  // be served directly from the IC1 candidate without allocating a new
+  // FB. Actual FB allocation remains gated by `fb_full` below.
   // For ICacheECC=0, ecc_write_req is dead-code (always false).
   let lookup_req_ic0: Bool =
-    req_i and (not fb_full) and (branch_i or (had_branch_q and (not lookup_throttle)));
+    req_i and (branch_i or had_branch_q);
 
   // R-REQ-5: lookup address mux. Branch ⇒ addr_i, else prefetch_addr_q.
   let lookup_addr_ic0: UInt<32> =
@@ -330,7 +333,7 @@ module ibex_icache
   // (fill_grant = fill_write_req ∧ ¬lookup_req_ic0) starves the
   // writeback indefinitely — the FB can never release.
   let lookup_grant: Bool =
-    lookup_req_ic0 and (not (coalesce_ic0 and fill_write_req));
+    lookup_req_ic0 and (not ((coalesce_ic0 or fb_full) and fill_write_req));
   let inval_grant:  Bool = inval_write_req;
   let fill_grant:   Bool =
     fill_write_req and (not lookup_grant) and (not inval_write_req);
@@ -399,7 +402,7 @@ module ibex_icache
   // pull addr_i this cycle, and the granted-line advance pulls the
   // post-line addr from the same source).
   seq on clk_i rising
-    if lookup_grant and (not coalesce_ic0)
+    if lookup_grant and (not coalesce_ic0) and (not fb_full)
       // Advance by line stride from the address that was actually
       // looked up (handles branch-with-grant case correctly per
       // R-REQ-2 second clause). Suppress on coalesced lookups: those
@@ -409,9 +412,24 @@ module ibex_icache
       // (root cause of the cold-boot SoC hang: aggressive coalesce
       // grants pushed prefetch many lines beyond the controller's
       // consumed PC, so beats from far-future lines arrived before
-      // the controller's next sequential PC was satisfied).
+      // the controller's next sequential PC was satisfied). Also
+      // suppress while the FB pool is full: a full-pool lookup can
+      // still discover an IC1 hit, but a miss cannot allocate a
+      // covering FB. Advancing prefetch in that case would skip the
+      // not-yet-requested line.
       prefetch_addr_q <=
         (lookup_addr_ic0 +% 32'h0000_0008) & 32'hFFFF_FFF8;
+    elsif (not branch_i)
+          and valid_o and ready_i
+          and fb_full
+          and (prefetch_addr_q[31:3] == addr_o[31:3])
+      // Full-pool output-coupled advance: when the stream actually
+      // accepts the line that prefetch is pinned on, the current line
+      // has a real source (IC1 or FB). Move to the next line even if
+      // the FB pool is full, but keep full-pool misses pinned because
+      // no output can be accepted for an unavailable line.
+      prefetch_addr_q <=
+        (addr_o +% 32'h0000_0008) & 32'hFFFF_FFF8;
     elsif branch_i
       // Branch with no grant: capture addr_i with the full word offset
       // preserved (NOT line-aligned). The next sequential lookup feeds
@@ -436,7 +454,7 @@ module ibex_icache
     // update on every grant (legacy path) — coalesced lookups happen
     // to overwrite with same-line values, so FB allocator sees the
     // matching pre-existing line tag.
-    lookup_alloc_ic1_q       <= lookup_grant and (not coalesce_ic0);
+    lookup_alloc_ic1_q       <= lookup_grant and (not coalesce_ic0) and (not fb_full);
     // FB allocation index — pick lowest-index free FB.
     if lookup_grant
       if not fb_busy_mask[0]
@@ -555,20 +573,18 @@ module ibex_icache
     fb_busy_mask | fb_busy_prev1_q | fb_busy_prev2_q
                  | fb_busy_prev3_q | fb_busy_prev4_q;
 
-  // (1) Active-busy page coalesce: while an FB is busy NOW (or was
-  //     busy last cycle), suppress fresh allocates on any address
-  //     in the same 2 KiB page. The 1-cycle `prev1_q` coverage
-  //     mirrors the original `fb_busy_prev_q`-based behavior and
-  //     avoids a 1-cycle alloc-window gap that the icache_bench
-  //     tight kernel loop relies on for steady-state coalescing
-  //     (without it, mid-loop FB releases let a stray page lookup
-  //     escape coalesce and perturb the duplicate-delivery gates).
+  // (1) Active-busy line coalesce: while an FB is busy NOW (or was
+  //     busy last cycle), suppress fresh allocates only when that FB
+  //     covers the exact lookup line. The elastic output resolver can
+  //     tolerate multiple outstanding same-page lines; page-wide
+  //     suppression can strand the stream when a later-line FB is live
+  //     and the core still needs an earlier uncached line.
   let fb_busy_or_prev1: UInt<4> = fb_busy_mask | fb_busy_prev1_q;
   let inflight_page_match_ic0: Bool =
-    (fb_busy_or_prev1[0] and (fb0_addr[31:11] == lookup_page_ic0)) or
-    (fb_busy_or_prev1[1] and (fb1_addr[31:11] == lookup_page_ic0)) or
-    (fb_busy_or_prev1[2] and (fb2_addr[31:11] == lookup_page_ic0)) or
-    (fb_busy_or_prev1[3] and (fb3_addr[31:11] == lookup_page_ic0));
+    (fb_busy_or_prev1[0] and (fb0_addr[31:3] == lookup_line_ic0)) or
+    (fb_busy_or_prev1[1] and (fb1_addr[31:3] == lookup_line_ic0)) or
+    (fb_busy_or_prev1[2] and (fb2_addr[31:3] == lookup_line_ic0)) or
+    (fb_busy_or_prev1[3] and (fb3_addr[31:3] == lookup_line_ic0));
 
   // (2) Recently-busy LINE coalesce: extends suppression for ≥4
   //     cycles after release, but ONLY for the exact same cache
@@ -583,7 +599,7 @@ module ibex_icache
 
   let pending_alloc_match_ic0: Bool =
     lookup_alloc_ic1_q and
-    (lookup_addr_ic1_q[31:11] == lookup_page_ic0);
+    (lookup_addr_ic1_q[31:3] == lookup_line_ic0);
 
   let coalesce_ic0: Bool =
     inflight_page_match_ic0 or inflight_line_match_ic0
@@ -592,10 +608,10 @@ module ibex_icache
   // Per-FB IC0 allocate pulses. R-LK-4 (strengthened): suppress when
   // the lookup line is already covered by an in-flight FB. The lookup
   // STILL grants (RAM is read, prefetch advances) but no new FB alloc.
-  let fb0_allocate: Bool = lookup_grant and (alloc_idx_ic0 == 2'd0) and (not coalesce_ic0);
-  let fb1_allocate: Bool = lookup_grant and (alloc_idx_ic0 == 2'd1) and (not coalesce_ic0);
-  let fb2_allocate: Bool = lookup_grant and (alloc_idx_ic0 == 2'd2) and (not coalesce_ic0);
-  let fb3_allocate: Bool = lookup_grant and (alloc_idx_ic0 == 2'd3) and (not coalesce_ic0);
+  let fb0_allocate: Bool = lookup_grant and (alloc_idx_ic0 == 2'd0) and (not coalesce_ic0) and (not fb_full);
+  let fb1_allocate: Bool = lookup_grant and (alloc_idx_ic0 == 2'd1) and (not coalesce_ic0) and (not fb_full);
+  let fb2_allocate: Bool = lookup_grant and (alloc_idx_ic0 == 2'd2) and (not coalesce_ic0) and (not fb_full);
+  let fb3_allocate: Bool = lookup_grant and (alloc_idx_ic0 == 2'd3) and (not coalesce_ic0) and (not fb_full);
 
   // =================================================================
   // R-LK-2: tag-match in IC1 (hit detection).
@@ -1007,6 +1023,46 @@ module ibex_icache
   let fb2_data_we_beat1:   Bool = data_we_beat1_v[2];
   let fb3_data_we_beat1:   Bool = data_we_beat1_v[3];
 
+  // Live per-FB output candidates for the elastic output resolver.
+  // These overlay same-cycle IC1-hit and bus-rvalid data on top of the
+  // registered fill_data_q image so the output stage can bypass without
+  // waiting an extra clock for fill_data_q / beats_rcvd_q to update.
+  let fb0_line_live: UInt<64> =
+    fb0_data_we_ic1_hit ? ic1_hit_data_combo :
+    (fb0_data_we_beat0 ? {fill_data_q[0][63:32], instr_rdata_i} :
+    (fb0_data_we_beat1 ? {instr_rdata_i, fill_data_q[0][31:0]} : fill_data_q[0]));
+  let fb1_line_live: UInt<64> =
+    fb1_data_we_ic1_hit ? ic1_hit_data_combo :
+    (fb1_data_we_beat0 ? {fill_data_q[1][63:32], instr_rdata_i} :
+    (fb1_data_we_beat1 ? {instr_rdata_i, fill_data_q[1][31:0]} : fill_data_q[1]));
+  let fb2_line_live: UInt<64> =
+    fb2_data_we_ic1_hit ? ic1_hit_data_combo :
+    (fb2_data_we_beat0 ? {fill_data_q[2][63:32], instr_rdata_i} :
+    (fb2_data_we_beat1 ? {instr_rdata_i, fill_data_q[2][31:0]} : fill_data_q[2]));
+  let fb3_line_live: UInt<64> =
+    fb3_data_we_ic1_hit ? ic1_hit_data_combo :
+    (fb3_data_we_beat0 ? {fill_data_q[3][63:32], instr_rdata_i} :
+    (fb3_data_we_beat1 ? {instr_rdata_i, fill_data_q[3][31:0]} : fill_data_q[3]));
+
+  let fb0_beats_live: UInt<2> = fb0_data_we_ic1_hit ? beats_total : (rvalid_v[0] ? ((fb0_beats_rcvd + 2'd1).trunc<2>()) : fb0_beats_rcvd);
+  let fb1_beats_live: UInt<2> = fb1_data_we_ic1_hit ? beats_total : (rvalid_v[1] ? ((fb1_beats_rcvd + 2'd1).trunc<2>()) : fb1_beats_rcvd);
+  let fb2_beats_live: UInt<2> = fb2_data_we_ic1_hit ? beats_total : (rvalid_v[2] ? ((fb2_beats_rcvd + 2'd1).trunc<2>()) : fb2_beats_rcvd);
+  let fb3_beats_live: UInt<2> = fb3_data_we_ic1_hit ? beats_total : (rvalid_v[3] ? ((fb3_beats_rcvd + 2'd1).trunc<2>()) : fb3_beats_rcvd);
+
+  let fb0_err_beat0_live: Bool = fb0_data_we_beat0 ? instr_err_i : fb0_err_beat0;
+  let fb1_err_beat0_live: Bool = fb1_data_we_beat0 ? instr_err_i : fb1_err_beat0;
+  let fb2_err_beat0_live: Bool = fb2_data_we_beat0 ? instr_err_i : fb2_err_beat0;
+  let fb3_err_beat0_live: Bool = fb3_data_we_beat0 ? instr_err_i : fb3_err_beat0;
+  let fb0_err_beat1_live: Bool = fb0_data_we_beat1 ? instr_err_i : fb0_err_beat1;
+  let fb1_err_beat1_live: Bool = fb1_data_we_beat1 ? instr_err_i : fb1_err_beat1;
+  let fb2_err_beat1_live: Bool = fb2_data_we_beat1 ? instr_err_i : fb2_err_beat1;
+  let fb3_err_beat1_live: Bool = fb3_data_we_beat1 ? instr_err_i : fb3_err_beat1;
+
+  let fb0_wants_out_live: Bool = fb0_wants_out or rvalid_v[0] or fb0_data_we_ic1_hit;
+  let fb1_wants_out_live: Bool = fb1_wants_out or rvalid_v[1] or fb1_data_we_ic1_hit;
+  let fb2_wants_out_live: Bool = fb2_wants_out or rvalid_v[2] or fb2_data_we_ic1_hit;
+  let fb3_wants_out_live: Bool = fb3_wants_out or rvalid_v[3] or fb3_data_we_ic1_hit;
+
   // ── Centralized fill_data_q updates (proposal 2026-05-07) ──────────
   // Each FB emits three thin strobes (1 bit each) and the outer
   // module owns the 64-bit storage + write-back. Beat-wise writes
@@ -1111,45 +1167,57 @@ module ibex_icache
 
   // ── R-OUT: output stream — extracted to src/IbexIcacheOutputStage.arch
   // ─────────────────────────────────────────────────────────────────
-  // The output stage owns:
-  //   - per-FB beat-pointer (out_beat_q Vec)
-  //   - output skid valid/data/addr/err regs
-  //   - cross-beat misaligned-32 reassembly skid
-  //   - R-OUT-7 IC1-hit fast-path comb-bypass capture regs
-  //   - within-line beat-1 pending tracker (out_beat_pending_q)
-  // The parent pre-muxes the FB-arb winner data via the
-  // `fb_*_out_sel` lets above and passes scalars in.
+  // The output stage is an elastic resolver: it sees all live FB
+  // candidates plus the IC1-hit candidate and picks the source that
+  // covers its own `addr_out_q`. The parent overlays same-cycle
+  // rvalid data into the `*_live` ports above.
   inst output_stage: IbexIcacheOutputStage
-    clk_i               <- clk_i;
-    rst_ni              <- rst_ni;
-    branch_i            <- branch_i;
-    addr_i              <- addr_i;
-    ready_i             <- ready_i;
-    lookup_addr_ic0     <- lookup_addr_ic0;
-    lookup_addr_ic1_q   <- lookup_addr_ic1_q;
-    lookup_alloc_ic1_q  <- lookup_alloc_ic1_q;
-    any_hit_ic1         <- any_hit_ic1;
-    hit_data_ic1        <- hit_data_ic1;
-    out_grant_valid     <- out_grant_valid;
-    out_grant_requester <- out_grant_requester;
-    out_line            <- fb_data_out_sel;
-    out_fb_addr         <- fb_addr_out_sel;
-    out_err_beat0       <- fb_err_beat0_out_sel;
-    out_err_beat1       <- fb_err_beat1_out_sel;
-    out_beats_rcvd      <- fb_beats_rcvd_out_sel;
-    fb0_allocate        <- fb0_allocate;
-    fb1_allocate        <- fb1_allocate;
-    fb2_allocate        <- fb2_allocate;
-    fb3_allocate        <- fb3_allocate;
-    valid_o             -> valid_o;
-    rdata_o             -> rdata_o;
-    addr_o              -> addr_o;
-    err_o               -> err_o;
-    err_plus2_o         -> err_plus2_o;
-    fb0_out_done_pulse  -> fb0_out_done_pulse;
-    fb1_out_done_pulse  -> fb1_out_done_pulse;
-    fb2_out_done_pulse  -> fb2_out_done_pulse;
-    fb3_out_done_pulse  -> fb3_out_done_pulse;
+    clk_i              <- clk_i;
+    rst_ni             <- rst_ni;
+    branch_i           <- branch_i;
+    addr_i             <- addr_i;
+    ready_i            <- ready_i;
+    lookup_addr_ic1_q  <- lookup_addr_ic1_q;
+    lookup_valid_ic1_q <- lookup_valid_ic1_q;
+    any_hit_ic1        <- any_hit_ic1;
+    hit_data_ic1       <- hit_data_ic1;
+    fb0_wants_out      <- fb0_wants_out_live;
+    fb1_wants_out      <- fb1_wants_out_live;
+    fb2_wants_out      <- fb2_wants_out_live;
+    fb3_wants_out      <- fb3_wants_out_live;
+    fb0_addr           <- fb0_addr;
+    fb1_addr           <- fb1_addr;
+    fb2_addr           <- fb2_addr;
+    fb3_addr           <- fb3_addr;
+    fb0_line           <- fb0_line_live;
+    fb1_line           <- fb1_line_live;
+    fb2_line           <- fb2_line_live;
+    fb3_line           <- fb3_line_live;
+    fb0_err_beat0      <- fb0_err_beat0_live;
+    fb1_err_beat0      <- fb1_err_beat0_live;
+    fb2_err_beat0      <- fb2_err_beat0_live;
+    fb3_err_beat0      <- fb3_err_beat0_live;
+    fb0_err_beat1      <- fb0_err_beat1_live;
+    fb1_err_beat1      <- fb1_err_beat1_live;
+    fb2_err_beat1      <- fb2_err_beat1_live;
+    fb3_err_beat1      <- fb3_err_beat1_live;
+    fb0_beats_live     <- fb0_beats_live;
+    fb1_beats_live     <- fb1_beats_live;
+    fb2_beats_live     <- fb2_beats_live;
+    fb3_beats_live     <- fb3_beats_live;
+    fb0_age            <- fb_age_q[0];
+    fb1_age            <- fb_age_q[1];
+    fb2_age            <- fb_age_q[2];
+    fb3_age            <- fb_age_q[3];
+    valid_o            -> valid_o;
+    rdata_o            -> rdata_o;
+    addr_o             -> addr_o;
+    err_o              -> err_o;
+    err_plus2_o        -> err_plus2_o;
+    fb0_out_done_pulse -> fb0_out_done_pulse;
+    fb1_out_done_pulse -> fb1_out_done_pulse;
+    fb2_out_done_pulse -> fb2_out_done_pulse;
+    fb3_out_done_pulse -> fb3_out_done_pulse;
   end inst output_stage
 
   // =================================================================

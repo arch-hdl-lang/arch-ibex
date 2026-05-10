@@ -2179,7 +2179,7 @@ def _snapshot(dut) -> dict:
         "branch_i":          int(dut.branch_i.value),
         "req_i":             int(dut.req_i.value),
         "addr_out_q":        int(out.addr_out_q.value) & MASK32,
-        "valid_q":           int(out.valid_q.value),
+        "hold_valid_q":      int(out.hold_valid_q.value),
         "prefetch_addr_q":   int(dut.prefetch_addr_q.value) & MASK32,
         "lookup_addr_ic1_q": int(dut.lookup_addr_ic1_q.value) & MASK32,
         "coalesce_ic0":      int(dut.coalesce_ic0.value),
@@ -2193,7 +2193,7 @@ def _fmt_row(cy: int, snap: dict) -> str:
         f"cy{cy:3d}  "
         f"valid_o={snap['valid_o']} addr_o={snap['addr_o']:#010x} "
         f"rdata_o={snap['rdata_o']:#010x}  |  "
-        f"addr_out_q={snap['addr_out_q']:#010x} valid_q={snap['valid_q']}  "
+        f"addr_out_q={snap['addr_out_q']:#010x} hold={snap['hold_valid_q']}  "
         f"pf_q={snap['prefetch_addr_q']:#010x} "
         f"lk_ic1_q={snap['lookup_addr_ic1_q']:#010x} "
         f"coal={snap['coalesce_ic0']} "
@@ -2203,31 +2203,13 @@ def _fmt_row(cy: int, snap: dict) -> str:
 
 
 @cocotb.test()
-async def test_open_thread_1_coalesce_freezes_prefetch_addr(dut):
-    """Thread 1: confirm `prefetch_addr_q` and `lookup_addr_ic1_q`
-    freeze at the same address under sustained `coalesce_ic0=1`.
+async def test_open_thread_1_exact_line_coalesce_allows_next_line_prefetch(dut):
+    """Thread 1: exact-line coalesce must not freeze next-line prefetch.
 
-    Setup:
-      - Branch to addr A = 0x0010_0100 (line base of a 2 KiB page).
-      - Drive a tag MISS so FB[0] allocates. Stall the bus (no gnt)
-        so FB[0] stays in flight.
-      - Hold req_i=1 with ready_i arbitrary; each cycle the prefetcher
-        re-issues a lookup that should coalesce against FB[0]'s line
-        (same addr[31:11]).
-      - Sample prefetch_addr_q / lookup_addr_ic1_q each cycle.
-
-    Expected (current behaviour, hypothesis from end of session 5fd3cb52):
-      Once FB[0] allocates and bus stalls, every subsequent cycle has
-      coalesce_ic0=1, prefetch_addr_q stays at A+8 (the post-grant
-      advance from the *first* non-coalesced grant), and
-      lookup_addr_ic1_q tracks lookup_addr_ic0 = prefetch_addr_q so it
-      also freezes at A+8.
-
-    A regression test for the proposed fast-path gate would compare
-    `addr_out_q` (advancing) against this frozen `lookup_addr_ic1_q`
-    and observe that the gate condition (`addr_out_q ==
-    lookup_addr_ic1_q`) is FALSE for every within-line cycle — which
-    is exactly why the gate breaks soak-loop delivery.
+    A live FB for line A should suppress duplicate allocation of line A,
+    but it must not coalesce line A+8 merely because both addresses are
+    in the same 2 KiB page. Page-wide coalesce can strand the elastic
+    output stream behind a later outstanding line.
     """
     await _start_clock(dut)
     await _reset(dut)
@@ -2249,9 +2231,8 @@ async def test_open_thread_1_coalesce_freezes_prefetch_addr(dut):
     await _branch(dut, addr_a)
     # branch_i pulse done; FB[0] should allocate this IC0 edge.
 
-    # Walk a window of cycles, each one should see coalesce_ic0=1
-    # against FB[0]'s in-flight line. Bus stays starved so FB[0] never
-    # advances out of PhAlloc.
+    # Walk a window of cycles. Bus stays starved, so FB[0] remains live,
+    # but later-line lookups must not coalesce against it.
     rows = []
     pf_history = []
     lk_history = []
@@ -2278,35 +2259,27 @@ async def test_open_thread_1_coalesce_freezes_prefetch_addr(dut):
         f"a different addr or check the inval walk timing."
     )
 
-    # After the FIRST grant cycle, every subsequent cycle should be
-    # coalesced (FB[0] is in flight on the same 2 KiB page). The first
-    # grant itself is non-coalesced — that's the cycle where
-    # prefetch_addr_q advances from A → A+8.
+    # After the first grant, prefetch moves to A+8. That is a different
+    # cache line, so exact-line coalesce should stay low.
     coal_after_first = coal_history[2:]   # skip warm-up cycles
-    assert all(c == 1 for c in coal_after_first), (
-        f"expected sustained coalesce after FB[0] alloc; "
+    assert all(c == 0 for c in coal_after_first), (
+        f"expected no same-page coalesce for next-line prefetch; "
         f"coal_history={coal_history}"
     )
 
-    # The hypothesis: prefetch_addr_q freezes after its single advance,
-    # and lookup_addr_ic1_q tracks it so it freezes too.
-    pf_steady = pf_history[5:]
-    lk_steady = lk_history[5:]
-    assert len(set(pf_steady)) == 1, (
-        f"prefetch_addr_q is NOT frozen under sustained coalesce: "
+    # The prefetch stream should run past A+8 until normal FB-pool
+    # pressure stops further miss allocation.
+    assert max(pf_history) >= addr_a + 0x20, (
+        f"prefetch_addr_q did not advance through multiple later lines: "
         f"history={[hex(p) for p in pf_history]}"
     )
-    assert len(set(lk_steady)) == 1, (
-        f"lookup_addr_ic1_q is NOT frozen under sustained coalesce: "
+    assert max(lk_history) >= addr_a + 0x20, (
+        f"lookup_addr_ic1_q did not advance through multiple later lines: "
         f"history={[hex(l) for l in lk_history]}"
     )
     cocotb.log.info(
-        f"Thread 1 confirmed: under sustained coalesce, "
-        f"prefetch_addr_q frozen at {pf_steady[0]:#010x}, "
-        f"lookup_addr_ic1_q frozen at {lk_steady[0]:#010x}. "
-        f"A proposed `addr_out_q == lookup_addr_ic1_q` gate would "
-        f"fail to re-arm the fast-path for any within-line second "
-        f"instr because lookup_addr_ic1_q never advances."
+        "Thread 1 confirmed: same-page next-line prefetch is not "
+        "coalesced against the first live FB."
     )
 
 
@@ -2344,42 +2317,10 @@ async def test_open_thread_2_within_line_second_instr_cache_hit(dut):
     await _wait_until_idle(dut)
 
     addr_a       = 0x0020_0080
-    pat_lo       = 0xCAFE0001     # bytes 0-3 of line A
-    pat_hi       = 0xBEEF0002     # bytes 4-7 of line A
+    pat_lo       = 0xCAFE0003     # 32-bit instruction at PC=A
+    pat_hi       = 0xBEEF0003     # 32-bit instruction at PC=A+4
 
-    # ── Phase 1: branch + miss + bus serves both beats. FB lives until
-    #            writeback. Hold ready_i=0 so output stays sticky. ────
-    dut.req_i.value   = 1
-    dut.ready_i.value = 0
-    _set_unpacked_vec(dut.ic_tag_rdata_i, 0, 0)
-    _set_unpacked_vec(dut.ic_tag_rdata_i, 1, 0)
-    _set_unpacked_vec(dut.ic_data_rdata_i, 0, 0)
-    _set_unpacked_vec(dut.ic_data_rdata_i, 1, 0)
-    await _branch(dut, addr_a)
-    for beat in range(IC_LINE_BEATS):
-        served = await _bus_grant_and_beat(
-            dut,
-            rdata=(pat_lo if beat == 0 else pat_hi),
-            max_wait=16,
-        )
-        assert served, f"phase-1 bus stall for beat {beat}"
-
-    # Drain whatever valid_o the FB path produces, until valid_o falls
-    # and FB clears (writeback can take a couple cycles after PhRunning).
-    dut.req_i.value   = 0
-    dut.ready_i.value = 1
-    drained = False
-    for _ in range(40):
-        await RisingEdge(dut.clk_i)
-        await _settle(dut)
-        if (int(dut.fb_busy_mask.value) == 0 and
-                int(dut.valid_o.value) == 0):
-            drained = True
-            break
-    assert drained, "phase-1 FB never released"
-
-    # ── Phase 2: re-branch to line base of the (now warm) line A.
-    #    Drive a way-0 tag HIT so IC1 sees ic1_hit_now. ──────────────
+    # Drive a way-0 tag HIT so IC1 sees ic1_hit_now.
     pat_64 = (pat_hi << 32) | pat_lo
     _set_unpacked_vec(dut.ic_tag_rdata_i, 0, _tag_word(addr_a, valid=1))
     _set_unpacked_vec(dut.ic_tag_rdata_i, 1, 0)

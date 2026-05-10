@@ -86,6 +86,7 @@ async def icache_bench(dut):
     ]
     bin_cycles  = {n: 0 for n, _, _ in BINS}
     bin_commits = {n: 0 for n, _, _ in BINS}
+    last_pcs: list[tuple[int, int, int]] = []
 
     completed = False
     for cy in range(100_000):
@@ -96,6 +97,9 @@ async def icache_bench(dut):
             done = int(instr_done_path.value)
         except Exception:
             pc, iv, done = 0, 0, 0
+        last_pcs.append((pc, iv, done))
+        if len(last_pcs) > 16:
+            last_pcs.pop(0)
         for n, lo, hi in BINS:
             if lo <= pc < hi:
                 bin_cycles[n] += 1
@@ -106,7 +110,20 @@ async def icache_bench(dut):
             completed = True
             break
     if not completed:
-        raise AssertionError("icache_bench never wrote done_marker")
+        loop_counts = ", ".join(
+            f"{n}:cy={bin_cycles[n]} commit={bin_commits[n]}"
+            for n, _, _ in BINS
+        )
+        tail = ", ".join(
+            f"{pc:#x}/iv{iv}/done{done}" for pc, iv, done in last_pcs
+        )
+        raise AssertionError(
+            "icache_bench never wrote done_marker; "
+            f"saw_trap={_mem_word(dut, SAW_TRAP):#x} "
+            f"done_marker={_mem_word(dut, DONE_MARKER):#x} "
+            f"result_cycles={_mem_word(dut, RESULT_CYCLES):#x}; "
+            f"loop_counts=[{loop_counts}]; tail_pc=[{tail}]"
+        )
 
     dut._log.info("─── per-loop-instr cycles / commits ───")
     for n, _, _ in BINS:
@@ -126,4 +143,8 @@ async def icache_bench(dut):
     assert result_cycles > 1_000, (
         f"result_cycles={result_cycles} suspiciously low; "
         f"kernel didn't run or mcycle isn't ticking"
+    )
+    assert result_cycles <= 19_000, (
+        f"icache_bench result_cycles={result_cycles} exceeds "
+        "ARCH-native icache output target of 19000"
     )
