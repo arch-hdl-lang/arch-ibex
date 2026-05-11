@@ -205,7 +205,13 @@ async def s4_branch_into_inflight_line_cam_target(dut):
     await RisingEdge(dut.clk_i)
     dut.branch_i.value = 0
     await _settle(dut)
-    # Continue servicing remaining beats.
+    # Continue servicing the one legitimate remaining beat, then check
+    # that no extra same-line request appears. Without this grant, the
+    # stable instr_req_o for beat 1 is counted once per observation
+    # cycle even though it is a single unaccepted request.
+    served1 = await _bus_grant_and_beat(dut, rdata=0xBEAD0001, max_wait=8)
+    assert served1
+
     line = addr & ~(IC_LINE_BYTES - 1)
     new_line_reqs = 0
     for _ in range(8):
@@ -216,9 +222,8 @@ async def s4_branch_into_inflight_line_cam_target(dut):
                 new_line_reqs += 1
         await RisingEdge(dut.clk_i)
         await _settle(dut)
-    # Expect at most 1 (the second beat of the original FB).
-    assert new_line_reqs <= 1, (
-        f"saw {new_line_reqs} requests for inflight line; expected <=1"
+    assert new_line_reqs == 0, (
+        f"saw {new_line_reqs} redundant requests for inflight line"
     )
 
 

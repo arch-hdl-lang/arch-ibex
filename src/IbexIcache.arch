@@ -1181,6 +1181,8 @@ module ibex_icache
     branch_i           <- branch_i;
     addr_i             <- addr_i;
     ready_i            <- ready_i;
+    icache_enable_i    <- icache_enable_i;
+    icache_inval_i     <- icache_inval_i;
     lookup_addr_ic1_q  <- lookup_addr_ic1_q;
     lookup_valid_ic1_q <- lookup_valid_ic1_q;
     any_hit_ic1        <- any_hit_ic1;
