@@ -94,9 +94,9 @@ module IbexIcacheOutputStage
   // the cache is disabled or invalidated. It removes the single-cycle
   // IC1 lookup bubble in small hot loops that branch to the upper word
   // of one line and immediately fall through into the next line.
-  reg recent_valid_q: Vec<Bool, 16> reset rst_ni => false;
-  reg recent_addr_q:  Vec<UInt<29>, 16> reset none;
-  reg recent_line_q:  Vec<UInt<64>, 16> reset none;
+  reg recent_valid_q: Vec<Bool, 8> reset rst_ni => false;
+  reg recent_addr_q:  Vec<UInt<29>, 8> reset none;
+  reg recent_line_q:  Vec<UInt<64>, 8> reset none;
 
   let out_line_addr: UInt<29> = addr_out_q[31:3];
   let out_beat1: Bool = addr_out_q[2];
@@ -116,8 +116,8 @@ module IbexIcacheOutputStage
     ic1_hold_valid_q and (ic1_hold_addr_q == source_line_addr);
   let ic1_any_covers: Bool = ic1_covers or ic1_hold_covers;
 
-  let recent_idx: UInt<4> = source_line_addr[3:0];
-  let lookup_recent_idx: UInt<4> = lookup_addr_ic1_q[6:3];
+  let recent_idx: UInt<3> = source_line_addr[2:0];
+  let lookup_recent_idx: UInt<3> = lookup_addr_ic1_q[5:3];
   let recent_covers: Bool =
     recent_valid_q[recent_idx]
     and (recent_addr_q[recent_idx] == source_line_addr);
@@ -325,7 +325,7 @@ module IbexIcacheOutputStage
 
   seq on clk_i rising
     if icache_inval_i or (not icache_enable_i)
-      for i in 0..15
+      for i in 0..7
         recent_valid_q[i] <= false;
       end for
     elsif lookup_valid_ic1_q and any_hit_ic1
