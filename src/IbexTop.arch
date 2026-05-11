@@ -27,10 +27,6 @@
 //! by `build/ibex_core.sv:129,134` (`logic [W-1:0] x [N-1:0]`); the
 //! IbexTop-internal feedback wires therefore use `unpacked Vec`.
 
-domain SysDomain
-  freq_mhz: 100
-end domain SysDomain
-
 module ibex_top
   // ── Pinned parameters (mirrors upstream `ibex_top.sv:16-:60`) ──────
   /// Per spec §"Pinned parameter values".

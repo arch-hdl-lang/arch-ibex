@@ -15,10 +15,6 @@
 /// Spec: changes/2026-05-05-port-ibex_icache/specs/icache/spec.md
 ///   §Requirement 1..7 (R-INV).
 
-domain SysDomain
-  freq_mhz: 100
-end domain SysDomain
-
 fsm InvalCtrl
   // ── Clock + reset ─────────────────────────────────────────────────
   port clk: in Clock<SysDomain>;

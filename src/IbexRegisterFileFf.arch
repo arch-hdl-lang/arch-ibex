@@ -24,10 +24,6 @@
 //! without ripple. The DummyInstructions=1 and RV32E=1 paths are
 //! deferred — see the proposal for the carry-at-boundary rationale.
 
-domain SysDomain
-  freq_mhz: 100
-end domain SysDomain
-
 module ibex_register_file_ff
   param RV32E:             const = 0;
   param DataWidth:         const = 32;

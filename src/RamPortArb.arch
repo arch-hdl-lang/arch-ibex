@@ -5,10 +5,6 @@
 ///   request[1] = fill-write
 ///   request[2] = lookup-read
 
-domain SysDomain
-  freq_mhz: 100
-end domain SysDomain
-
 arbiter RamPortArb
   policy priority;
   param NUM_REQ: const = 3;

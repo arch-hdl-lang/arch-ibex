@@ -25,10 +25,6 @@
 /// module-scope `let` continuous-assigns mirroring upstream's block
 /// boundaries (Spec note N-5).
 
-domain SysDomain
-  freq_mhz: 100
-end domain SysDomain
-
 /// `ExcCause` / `Irqs` types come from `IbexPkg`. Sharing via package
 /// avoids the duplicate-typedef-at-file-scope issue Verilator flags
 /// when multiple consumer SVs (controller, if_stage, id_stage) get
