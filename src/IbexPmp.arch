@@ -54,14 +54,14 @@ module ibex_pmp
   port pmp_req_err_o:  out unpacked Vec<Bool, PMPNumChan>;
 
   // ── Type encodings (spec §Type definitions) ──────────────────────
-  let PRIV_LVL_M:     UInt<2> = 2'd3;
-  let PMP_ACC_EXEC:   UInt<2> = 2'd0;
-  let PMP_ACC_WRITE:  UInt<2> = 2'd1;
-  let PMP_ACC_READ:   UInt<2> = 2'd2;
-  let PMP_MODE_OFF:   UInt<2> = 2'd0;
-  let PMP_MODE_TOR:   UInt<2> = 2'd1;
-  let PMP_MODE_NA4:   UInt<2> = 2'd2;
-  let PMP_MODE_NAPOT: UInt<2> = 2'd3;
+  local param PRIV_LVL_M[1:0]: const = 2'd3;
+  local param PMP_ACC_EXEC[1:0]: const = 2'd0;
+  local param PMP_ACC_WRITE[1:0]: const = 2'd1;
+  local param PMP_ACC_READ[1:0]: const = 2'd2;
+  local param PMP_MODE_OFF[1:0]: const = 2'd0;
+  local param PMP_MODE_TOR[1:0]: const = 2'd1;
+  local param PMP_MODE_NA4[1:0]: const = 2'd2;
+  local param PMP_MODE_NAPOT[1:0]: const = 2'd3;
 
   // ── mseccfg field unpack ─────────────────────────────────────────
   let mml:  Bool = csr_pmp_mseccfg_i[0];

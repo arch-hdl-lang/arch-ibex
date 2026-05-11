@@ -90,9 +90,12 @@ module ibex_multdiv_fast
   port valid_o:            out Bool;
 
   // ── Operator-encoding constants (§"Enum encodings") ─────────────────
-  /// Declared as `let UInt<2>` rather than `local param const` to keep
-  /// Verilator WIDTHEXPAND quiet on every comparison (project memory
-  /// rule §6).
+  /// Kept as `let` (not `local param`) because this module uses `thread`,
+  /// and arch-com's archsim emits thread bodies into a separate
+  /// `_<mod>_threads.cpp` compilation unit that does not currently inherit
+  /// parent-module params — `MD_OP_*` would resolve to undeclared
+  /// identifiers in the threads helper. Revisit once arch-com propagates
+  /// parent params into thread helpers.
   let MD_OP_MULL: UInt<2> = 2'd0;
   let MD_OP_MULH: UInt<2> = 2'd1;
   let MD_OP_DIV:  UInt<2> = 2'd2;
