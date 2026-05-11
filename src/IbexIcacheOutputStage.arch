@@ -17,6 +17,8 @@ module IbexIcacheOutputStage
   port branch_i: in Bool;
   port addr_i:   in UInt<32>;
   port ready_i:  in Bool;
+  port icache_enable_i: in Bool;
+  port icache_inval_i:  in Bool;
 
   // IC1 hit candidate. This is a behavior-level hit/data candidate,
   // not a structural copy of any upstream path.
@@ -90,6 +92,16 @@ module IbexIcacheOutputStage
   reg ic1_hold_addr_q:  UInt<29> guard ic1_hold_valid_q reset none;
   reg ic1_hold_line_q:  UInt<64> guard ic1_hold_valid_q reset none;
 
+  // Tiny output replay buffer for recently delivered cache lines. This
+  // is not a second cache: it only mirrors complete, error-free lines
+  // already observed by the output resolver, and it is cleared whenever
+  // the cache is disabled or invalidated. It removes the single-cycle
+  // IC1 lookup bubble in small hot loops that branch to the upper word
+  // of one line and immediately fall through into the next line.
+  reg recent_valid_q: Vec<Bool, 16> reset rst_ni => false;
+  reg recent_addr_q:  Vec<UInt<29>, 16> reset none;
+  reg recent_line_q:  Vec<UInt<64>, 16> reset none;
+
   let out_line_addr: UInt<29> = addr_out_q[31:3];
   let out_beat1: Bool = addr_out_q[2];
   let out_half1: Bool = addr_out_q[1];
@@ -107,6 +119,12 @@ module IbexIcacheOutputStage
   let ic1_hold_covers: Bool =
     ic1_hold_valid_q and (ic1_hold_addr_q == source_line_addr);
   let ic1_any_covers: Bool = ic1_covers or ic1_hold_covers;
+
+  let recent_idx: UInt<4> = source_line_addr[3:0];
+  let lookup_recent_idx: UInt<4> = lookup_addr_ic1_q[6:3];
+  let recent_covers: Bool =
+    recent_valid_q[recent_idx]
+    and (recent_addr_q[recent_idx] == source_line_addr);
 
   let fb0_beat_ready: Bool =
     source_beat1 ? (fb0_beats_live == 2'd2) : (fb0_beats_live != 2'd0);
@@ -162,16 +180,19 @@ module IbexIcacheOutputStage
   // IC1 has data priority, but a same-line FB remains associated for
   // lifecycle completion when the accepted output consumes the FB's
   // last beat.
-  let raw_valid: Bool = ic1_any_covers or fb_any;
+  let raw_valid: Bool = ic1_any_covers or fb_any or recent_covers;
   let raw_line: UInt<64> =
     ic1_covers ? hit_data_ic1 :
-    (ic1_hold_covers ? ic1_hold_line_q : fb_sel_line);
+    (ic1_hold_covers ? ic1_hold_line_q :
+    (fb_any ? fb_sel_line : recent_line_q[recent_idx]));
   let raw_is_fb: Bool = fb_any;
   let raw_fb_idx: UInt<2> = fb_sel_idx;
   let raw_fb_addr: UInt<32> = fb_sel_addr;
   let raw_beats: UInt<2> = fb_any ? fb_sel_beats : 2'd2;
   let raw_err0: Bool = fb_any ? fb_sel_err0 : false;
   let raw_err1: Bool = fb_any ? fb_sel_err1 : false;
+  let raw_complete_noerr: Bool =
+    raw_valid and (raw_beats == 2'd2) and (not raw_err0) and (not raw_err1);
 
   let raw_word: UInt<32> = source_beat1 ? raw_line[63:32] : raw_line[31:0];
   let next_word: UInt<32> = source_beat1 ? 32'd0 : raw_line[63:32];
@@ -303,6 +324,22 @@ module IbexIcacheOutputStage
       if accepted_next_addr[31:3] != ic1_hold_addr_q
         ic1_hold_valid_q <= false;
       end if
+    end if
+  end seq
+
+  seq on clk_i rising
+    if icache_inval_i or (not icache_enable_i)
+      for i in 0..15
+        recent_valid_q[i] <= false;
+      end for
+    elsif lookup_valid_ic1_q and any_hit_ic1
+      recent_valid_q[lookup_recent_idx] <= true;
+      recent_addr_q[lookup_recent_idx]  <= lookup_addr_ic1_q[31:3];
+      recent_line_q[lookup_recent_idx]  <= hit_data_ic1;
+    elsif raw_complete_noerr and fb_any
+      recent_valid_q[recent_idx] <= true;
+      recent_addr_q[recent_idx]  <= source_line_addr;
+      recent_line_q[recent_idx]  <= raw_line;
     end if
   end seq
 
