@@ -53,25 +53,25 @@ module ibex_alu
   port is_equal_result_o:   out Bool;
 
   // ── Operator encoding (see spec §"ALU operator encoding") ───────────
-  // Declared as `let` constants of UInt<7> so comparisons against
-  // `operator_i` are width-clean and do not trigger Verilator
-  // WIDTHEXPAND.
-  let ALU_ADD:  UInt<7> = 7'd0;
-  let ALU_SUB:  UInt<7> = 7'd1;
-  let ALU_XOR:  UInt<7> = 7'd2;
-  let ALU_OR:   UInt<7> = 7'd3;
-  let ALU_AND:  UInt<7> = 7'd4;
-  let ALU_SRA:  UInt<7> = 7'd8;
-  let ALU_SRL:  UInt<7> = 7'd9;
-  let ALU_SLL:  UInt<7> = 7'd10;
-  let ALU_LT:   UInt<7> = 7'd25;
-  let ALU_LTU:  UInt<7> = 7'd26;
-  let ALU_GE:   UInt<7> = 7'd27;
-  let ALU_GEU:  UInt<7> = 7'd28;
-  let ALU_EQ:   UInt<7> = 7'd29;
-  let ALU_NE:   UInt<7> = 7'd30;
-  let ALU_SLT:  UInt<7> = 7'd43;
-  let ALU_SLTU: UInt<7> = 7'd44;
+  // Declared as `local param` (emits SV `localparam [6:0]`) so callers
+  // can't override the encoding at instantiation time, while still
+  // being width-clean against `operator_i: UInt<7>` (no WIDTHEXPAND).
+  local param ALU_ADD[6:0]:  const = 7'd0;
+  local param ALU_SUB[6:0]:  const = 7'd1;
+  local param ALU_XOR[6:0]:  const = 7'd2;
+  local param ALU_OR[6:0]:   const = 7'd3;
+  local param ALU_AND[6:0]:  const = 7'd4;
+  local param ALU_SRA[6:0]:  const = 7'd8;
+  local param ALU_SRL[6:0]:  const = 7'd9;
+  local param ALU_SLL[6:0]:  const = 7'd10;
+  local param ALU_LT[6:0]:   const = 7'd25;
+  local param ALU_LTU[6:0]:  const = 7'd26;
+  local param ALU_GE[6:0]:   const = 7'd27;
+  local param ALU_GEU[6:0]:  const = 7'd28;
+  local param ALU_EQ[6:0]:   const = 7'd29;
+  local param ALU_NE[6:0]:   const = 7'd30;
+  local param ALU_SLT[6:0]:  const = 7'd43;
+  local param ALU_SLTU[6:0]: const = 7'd44;
 
   // ── Adder (spec §"Adder produces unconditional sum...",
   //          §"Subtraction and comparison operators drive the adder...",
