@@ -193,51 +193,51 @@ module ibex_id_stage
   // ====================================================================
 
   /// `id_fsm_e`: FIRST_CYCLE=0, MULTI_CYCLE=1 (Spec §Latched state regs).
-  let FIRST_CYCLE: UInt<1> = 1'd0;
-  let MULTI_CYCLE: UInt<1> = 1'd1;
+  local param FIRST_CYCLE[0:0]: const = 1'd0;
+  local param MULTI_CYCLE[0:0]: const = 1'd1;
 
   /// `op_a_sel_e` (decoder).
-  let OP_A_REG_A:  UInt<2> = 2'd0;
-  let OP_A_FWD:    UInt<2> = 2'd1;
-  let OP_A_CURRPC: UInt<2> = 2'd2;
-  let OP_A_IMM:    UInt<2> = 2'd3;
+  local param OP_A_REG_A[1:0]: const = 2'd0;
+  local param OP_A_FWD[1:0]: const = 2'd1;
+  local param OP_A_CURRPC[1:0]: const = 2'd2;
+  local param OP_A_IMM[1:0]: const = 2'd3;
 
   /// `op_b_sel_e`.
-  let OP_B_REG_B: UInt<1> = 1'd0;
-  let OP_B_IMM:   UInt<1> = 1'd1;
+  local param OP_B_REG_B[0:0]: const = 1'd0;
+  local param OP_B_IMM[0:0]: const = 1'd1;
 
   /// `imm_a_sel_e`.
-  let IMM_A_Z:    UInt<1> = 1'd0;
-  let IMM_A_ZERO: UInt<1> = 1'd1;
+  local param IMM_A_Z[0:0]: const = 1'd0;
+  local param IMM_A_ZERO[0:0]: const = 1'd1;
 
   /// `imm_b_sel_e` — full 7-arm under `g_no_btalu_muxes`.
-  let IMM_B_I:         UInt<3> = 3'd0;
-  let IMM_B_S:         UInt<3> = 3'd1;
-  let IMM_B_B:         UInt<3> = 3'd2;
-  let IMM_B_U:         UInt<3> = 3'd3;
-  let IMM_B_J:         UInt<3> = 3'd4;
-  let IMM_B_INCR_PC:   UInt<3> = 3'd5;
-  let IMM_B_INCR_ADDR: UInt<3> = 3'd6;
+  local param IMM_B_I[2:0]: const = 3'd0;
+  local param IMM_B_S[2:0]: const = 3'd1;
+  local param IMM_B_B[2:0]: const = 3'd2;
+  local param IMM_B_U[2:0]: const = 3'd3;
+  local param IMM_B_J[2:0]: const = 3'd4;
+  local param IMM_B_INCR_PC[2:0]: const = 3'd5;
+  local param IMM_B_INCR_ADDR[2:0]: const = 3'd6;
 
   /// `rf_wd_sel_e`.
-  let RF_WD_EX:  UInt<1> = 1'd0;
-  let RF_WD_CSR: UInt<1> = 1'd1;
+  local param RF_WD_EX[0:0]: const = 1'd0;
+  local param RF_WD_CSR[0:0]: const = 1'd1;
 
   /// `csr_op_e`.
-  let CSR_OP_READ:  UInt<2> = 2'd0;
-  let CSR_OP_WRITE: UInt<2> = 2'd1;
-  let CSR_OP_SET:   UInt<2> = 2'd2;
-  let CSR_OP_CLEAR: UInt<2> = 2'd3;
+  local param CSR_OP_READ[1:0]: const = 2'd0;
+  local param CSR_OP_WRITE[1:0]: const = 2'd1;
+  local param CSR_OP_SET[1:0]: const = 2'd2;
+  local param CSR_OP_CLEAR[1:0]: const = 2'd3;
 
   /// `csr_num_e` subset (only the flush-skip targets matter here).
-  let CSR_MSCRATCH: UInt<12> = 12'h340;
-  let CSR_MEPC:     UInt<12> = 12'h341;
+  local param CSR_MSCRATCH[11:0]: const = 12'h340;
+  local param CSR_MEPC[11:0]: const = 12'h341;
 
   /// `wb_instr_type_e`: WB_INSTR_LOAD=0, WB_INSTR_STORE=1, WB_INSTR_OTHER=2.
-  let WB_INSTR_OTHER: UInt<2> = 2'd2;
+  local param WB_INSTR_OTHER[1:0]: const = 2'd2;
 
   /// Privilege-level encoding (spec §"Requirement 3").
-  let PRIV_LVL_M: UInt<2> = 2'd3;
+  local param PRIV_LVL_M[1:0]: const = 2'd3;
 
   // ====================================================================
   // Internal wires (decoder + controller cross-coupling + comb intermediates)

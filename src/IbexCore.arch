@@ -308,11 +308,11 @@ module ibex_core
   // ── Constants (let bindings) ────────────────────────────────────────
   /// Multi-bit mubi encoding (spec note N-7).
   /// `IbexMuBiOn = 4'b0101` (= 5), `IbexMuBiOff = 4'b1010` (= 10).
-  let IBEX_MU_BI_ON:  UInt<4> = 4'd5;
-  let IBEX_MU_BI_OFF: UInt<4> = 4'd10;
+  local param IBEX_MU_BI_ON[3:0]: const = 4'd5;
+  local param IBEX_MU_BI_OFF[3:0]: const = 4'd10;
 
   /// `wb_instr_type_e::WB_INSTR_OTHER` = 2 (spec R15 binding).
-  let WB_INSTR_OTHER: UInt<2> = 2'd2;
+  local param WB_INSTR_OTHER[1:0]: const = 2'd2;
 
   // ── Internal wires: IF→ID register pair ──────────────────────────────
   /// `instr_valid_id`, `instr_rdata_id`, `instr_rdata_alu_id`,

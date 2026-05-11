@@ -74,32 +74,32 @@ module ibex_compressed_decoder
 
   /// `instr_exp_e` integer values (ref: ibex_pkg::instr_exp_e). Plain
   /// UInt<2> constants per project memory rule 6.
-  let INSTR_NOT_EXPANDED:  UInt<2> = 2'd0;
-  let INSTR_EXPANDED:      UInt<2> = 2'd1;
-  let INSTR_EXPANDED_LAST: UInt<2> = 2'd2;
+  local param INSTR_NOT_EXPANDED[1:0]: const = 2'd0;
+  local param INSTR_EXPANDED[1:0]: const = 2'd1;
+  local param INSTR_EXPANDED_LAST[1:0]: const = 2'd2;
 
   /// `opcode_e` values used inside expanded instructions (ref: ibex_pkg).
-  let OPCODE_LOAD:   UInt<7> = 7'h03;
-  let OPCODE_OP_IMM: UInt<7> = 7'h13;
-  let OPCODE_STORE:  UInt<7> = 7'h23;
-  let OPCODE_OP:     UInt<7> = 7'h33;
-  let OPCODE_LUI:    UInt<7> = 7'h37;
-  let OPCODE_BRANCH: UInt<7> = 7'h63;
-  let OPCODE_JALR:   UInt<7> = 7'h67;
-  let OPCODE_JAL:    UInt<7> = 7'h6f;
+  local param OPCODE_LOAD[6:0]: const = 7'h03;
+  local param OPCODE_OP_IMM[6:0]: const = 7'h13;
+  local param OPCODE_STORE[6:0]: const = 7'h23;
+  local param OPCODE_OP[6:0]: const = 7'h33;
+  local param OPCODE_LUI[6:0]: const = 7'h37;
+  local param OPCODE_BRANCH[6:0]: const = 7'h63;
+  local param OPCODE_JALR[6:0]: const = 7'h67;
+  local param OPCODE_JAL[6:0]: const = 7'h6f;
 
   /// Zcmp FSM state encoding (ref: spec §"Internal `cm_state_e`"). 8
   /// states fit in 3 bits. We use UInt<3> rather than an enum so the
   /// constants and the register share an integer type and so reset values
   /// stay sized literals (project memory rule 5).
-  let CM_IDLE:           UInt<3> = 3'd0;
-  let CM_PUSH_STORE_REG: UInt<3> = 3'd1;
-  let CM_PUSH_DECR_SP:   UInt<3> = 3'd2;
-  let CM_POP_LOAD_REG:   UInt<3> = 3'd3;
-  let CM_POP_INCR_SP:    UInt<3> = 3'd4;
-  let CM_POP_ZERO_A0:    UInt<3> = 3'd5;
-  let CM_POP_RET_RA:     UInt<3> = 3'd6;
-  let CM_MV_SECOND_REG:  UInt<3> = 3'd7;
+  local param CM_IDLE[2:0]: const = 3'd0;
+  local param CM_PUSH_STORE_REG[2:0]: const = 3'd1;
+  local param CM_PUSH_DECR_SP[2:0]: const = 3'd2;
+  local param CM_POP_LOAD_REG[2:0]: const = 3'd3;
+  local param CM_POP_INCR_SP[2:0]: const = 3'd4;
+  local param CM_POP_ZERO_A0[2:0]: const = 3'd5;
+  local param CM_POP_RET_RA[2:0]: const = 3'd6;
+  local param CM_MV_SECOND_REG[2:0]: const = 3'd7;
 
   // ----------------------------------------------------------------------
   // Helper: cm_rlist_top_reg

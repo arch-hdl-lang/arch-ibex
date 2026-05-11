@@ -110,74 +110,74 @@ module ibex_decoder
   // ============================================================================
 
   /// `opcode_e` encodings — instr_rdata_i[6:0].
-  let OPCODE_LOAD:     UInt<7> = 7'h03;
-  let OPCODE_MISC_MEM: UInt<7> = 7'h0F;
-  let OPCODE_OP_IMM:   UInt<7> = 7'h13;
-  let OPCODE_AUIPC:    UInt<7> = 7'h17;
-  let OPCODE_STORE:    UInt<7> = 7'h23;
-  let OPCODE_OP:       UInt<7> = 7'h33;
-  let OPCODE_LUI:      UInt<7> = 7'h37;
-  let OPCODE_BRANCH:   UInt<7> = 7'h63;
-  let OPCODE_JALR:     UInt<7> = 7'h67;
-  let OPCODE_JAL:      UInt<7> = 7'h6F;
-  let OPCODE_SYSTEM:   UInt<7> = 7'h73;
+  local param OPCODE_LOAD[6:0]: const = 7'h03;
+  local param OPCODE_MISC_MEM[6:0]: const = 7'h0F;
+  local param OPCODE_OP_IMM[6:0]: const = 7'h13;
+  local param OPCODE_AUIPC[6:0]: const = 7'h17;
+  local param OPCODE_STORE[6:0]: const = 7'h23;
+  local param OPCODE_OP[6:0]: const = 7'h33;
+  local param OPCODE_LUI[6:0]: const = 7'h37;
+  local param OPCODE_BRANCH[6:0]: const = 7'h63;
+  local param OPCODE_JALR[6:0]: const = 7'h67;
+  local param OPCODE_JAL[6:0]: const = 7'h6F;
+  local param OPCODE_SYSTEM[6:0]: const = 7'h73;
 
   /// `alu_op_e` encodings — declaration-order integers from ibex_pkg.
   /// Only the in-scope reachable subset is needed but a few extras are
   /// listed for completeness of the operator-decoder arms.
-  let ALU_ADD:  UInt<7> = 7'd0;
-  let ALU_SUB:  UInt<7> = 7'd1;
-  let ALU_XOR:  UInt<7> = 7'd2;
-  let ALU_OR:   UInt<7> = 7'd3;
-  let ALU_AND:  UInt<7> = 7'd4;
-  let ALU_SRA:  UInt<7> = 7'd8;
-  let ALU_SRL:  UInt<7> = 7'd9;
-  let ALU_SLL:  UInt<7> = 7'd10;
-  let ALU_LT:   UInt<7> = 7'd25;
-  let ALU_LTU:  UInt<7> = 7'd26;
-  let ALU_GE:   UInt<7> = 7'd27;
-  let ALU_GEU:  UInt<7> = 7'd28;
-  let ALU_EQ:   UInt<7> = 7'd29;
-  let ALU_NE:   UInt<7> = 7'd30;
-  let ALU_SLT:  UInt<7> = 7'd43;
-  let ALU_SLTU: UInt<7> = 7'd44;
+  local param ALU_ADD[6:0]: const = 7'd0;
+  local param ALU_SUB[6:0]: const = 7'd1;
+  local param ALU_XOR[6:0]: const = 7'd2;
+  local param ALU_OR[6:0]: const = 7'd3;
+  local param ALU_AND[6:0]: const = 7'd4;
+  local param ALU_SRA[6:0]: const = 7'd8;
+  local param ALU_SRL[6:0]: const = 7'd9;
+  local param ALU_SLL[6:0]: const = 7'd10;
+  local param ALU_LT[6:0]: const = 7'd25;
+  local param ALU_LTU[6:0]: const = 7'd26;
+  local param ALU_GE[6:0]: const = 7'd27;
+  local param ALU_GEU[6:0]: const = 7'd28;
+  local param ALU_EQ[6:0]: const = 7'd29;
+  local param ALU_NE[6:0]: const = 7'd30;
+  local param ALU_SLT[6:0]: const = 7'd43;
+  local param ALU_SLTU[6:0]: const = 7'd44;
 
   /// `op_a_sel_e` encodings.
-  let OP_A_REG_A:  UInt<2> = 2'd0;
-  let OP_A_CURRPC: UInt<2> = 2'd2;
-  let OP_A_IMM:    UInt<2> = 2'd3;
+  local param OP_A_REG_A[1:0]: const = 2'd0;
+  local param OP_A_CURRPC[1:0]: const = 2'd2;
+  local param OP_A_IMM[1:0]: const = 2'd3;
 
   /// `op_b_sel_e` encodings.
-  let OP_B_REG_B: UInt<1> = 1'd0;
-  let OP_B_IMM:   UInt<1> = 1'd1;
+  local param OP_B_REG_B[0:0]: const = 1'd0;
+  local param OP_B_IMM[0:0]: const = 1'd1;
 
   /// `imm_a_sel_e` encodings.
-  let IMM_A_Z:    UInt<1> = 1'd0;
-  let IMM_A_ZERO: UInt<1> = 1'd1;
+  local param IMM_A_Z[0:0]: const = 1'd0;
+  local param IMM_A_ZERO[0:0]: const = 1'd1;
 
   /// `imm_b_sel_e` encodings.
-  let IMM_B_I:       UInt<3> = 3'd0;
-  let IMM_B_S:       UInt<3> = 3'd1;
-  let IMM_B_B:       UInt<3> = 3'd2;
-  let IMM_B_U:       UInt<3> = 3'd3;
-  let IMM_B_J:       UInt<3> = 3'd4;
-  let IMM_B_INCR_PC: UInt<3> = 3'd5;
+  local param IMM_B_I[2:0]: const = 3'd0;
+  local param IMM_B_S[2:0]: const = 3'd1;
+  local param IMM_B_B[2:0]: const = 3'd2;
+  local param IMM_B_U[2:0]: const = 3'd3;
+  local param IMM_B_J[2:0]: const = 3'd4;
+  local param IMM_B_INCR_PC[2:0]: const = 3'd5;
 
   /// `rf_wd_sel_e` encodings.
-  let RF_WD_EX:  UInt<1> = 1'd0;
-  let RF_WD_CSR: UInt<1> = 1'd1;
+  local param RF_WD_EX[0:0]: const = 1'd0;
+  local param RF_WD_CSR[0:0]: const = 1'd1;
 
   /// `csr_op_e` encodings.
-  let CSR_OP_READ:  UInt<2> = 2'd0;
-  let CSR_OP_WRITE: UInt<2> = 2'd1;
-  let CSR_OP_SET:   UInt<2> = 2'd2;
-  let CSR_OP_CLEAR: UInt<2> = 2'd3;
+  local param CSR_OP_READ[1:0]: const = 2'd0;
+  local param CSR_OP_WRITE[1:0]: const = 2'd1;
+  local param CSR_OP_SET[1:0]: const = 2'd2;
+  local param CSR_OP_CLEAR[1:0]: const = 2'd3;
 
   /// `md_op_e` encodings.
-  let MD_OP_MULL: UInt<2> = 2'd0;
-  let MD_OP_MULH: UInt<2> = 2'd1;
-  let MD_OP_DIV:  UInt<2> = 2'd2;
-  let MD_OP_REM:  UInt<2> = 2'd3;
+  local param MD_OP_MULL[1:0]: const = 2'd0;
+  local param MD_OP_MULH[1:0]: const = 2'd1;
+  local param MD_OP_DIV[1:0]: const = 2'd2;
+  local param MD_OP_REM[1:0]: const = 2'd3;
 
   // ============================================================================
   // Instruction field extraction
