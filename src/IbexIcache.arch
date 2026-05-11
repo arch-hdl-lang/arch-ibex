@@ -12,8 +12,8 @@
 ///                               INVAL_CACHE / IDLE  (R-INV-1..7)
 ///   - arbiter RamPortArb        policy priority, NUM_REQ=3 — R-ARB-1..4.
 ///   - function AgeOrderedGrant + arbiter FbAgeArb (policy custom),
-///                               three inst sites: bus-master, RAM
-///                               write-back, IF-output mux — R-FB-4.
+///                               two inst sites: bus-master and RAM
+///                               write-back — R-FB-4.
 ///
 /// Removed (now inline in this module):
 ///   - cam FillBufferCam         R-LK-4 in-flight-line search now done
@@ -514,14 +514,6 @@ module ibex_icache
   // (≤30 cycles after both bus beats served) holds.
   // Two-granularity coalesce key:
   //
-  //   - lookup_page_ic0  = addr[31:11]: the 2 KiB page (== upstream
-  //     Ibex's tag granularity at IC_INDEX_W=8). Used while an FB is
-  //     ACTIVELY busy: any in-flight FB whose address shares this
-  //     page suppresses a fresh allocate. This matches the
-  //     `test_open_thread_1` assumption that prefetch lookups
-  //     advancing within the same 2 KiB page (e.g. line+0 → line+8)
-  //     coalesce against the still-busy FB.
-  //
   //   - lookup_line_ic0  = addr[31:3]: the actual cache line (line
   //     stride is IC_LINE_BYTES=8). Used for the EXTENDED post-
   //     release window (4-cycle shift register below). After an
@@ -540,7 +532,6 @@ module ibex_icache
   // Per spec ambiguity 3 ("same-line second allocation is
   // permitted"), the suppression is best-effort; this widens the
   // suppression to match BOTH test stimulus assumptions.
-  let lookup_page_ic0: UInt<21> = lookup_addr_ic0[31:11];
   let lookup_line_ic0: UInt<29> = lookup_addr_ic0[31:3];
 
   // 4-stage shift register: tracks "FB[fb] was busy within the last
@@ -569,24 +560,10 @@ module ibex_icache
     fb_busy_mask | fb_busy_prev1_q | fb_busy_prev2_q
                  | fb_busy_prev3_q | fb_busy_prev4_q;
 
-  // (1) Active-busy line coalesce: while an FB is busy NOW (or was
-  //     busy last cycle), suppress fresh allocates only when that FB
-  //     covers the exact lookup line. The elastic output resolver can
-  //     tolerate multiple outstanding same-page lines; page-wide
-  //     suppression can strand the stream when a later-line FB is live
-  //     and the core still needs an earlier uncached line.
-  let fb_busy_or_prev1: UInt<4> = fb_busy_mask | fb_busy_prev1_q;
-  let inflight_page_match_ic0: Bool =
-    (fb_busy_or_prev1[0] and (fb0_addr[31:3] == lookup_line_ic0)) or
-    (fb_busy_or_prev1[1] and (fb1_addr[31:3] == lookup_line_ic0)) or
-    (fb_busy_or_prev1[2] and (fb2_addr[31:3] == lookup_line_ic0)) or
-    (fb_busy_or_prev1[3] and (fb3_addr[31:3] == lookup_line_ic0));
-
-  // (2) Recently-busy LINE coalesce: extends suppression for ≥4
-  //     cycles after release, but ONLY for the exact same cache
-  //     line. Different lines in the same page release the
-  //     coalesce immediately so a tag-HIT on a freshly-branched
-  //     different line can drive its R-OUT-7 fast path.
+  // Recently-busy LINE coalesce: extends suppression for >=4 cycles after
+  // release, but ONLY for the exact same cache line. Different lines in
+  // the same page release the coalesce immediately so a tag-HIT on a
+  // freshly-branched different line can drive its R-OUT-7 fast path.
   let inflight_line_match_ic0: Bool =
     (fb_busy_recent_mask[0] and (fb0_addr[31:3] == lookup_line_ic0)) or
     (fb_busy_recent_mask[1] and (fb1_addr[31:3] == lookup_line_ic0)) or
@@ -598,8 +575,7 @@ module ibex_icache
     (lookup_addr_ic1_q[31:3] == lookup_line_ic0);
 
   let coalesce_ic0: Bool =
-    inflight_page_match_ic0 or inflight_line_match_ic0
-                            or pending_alloc_match_ic0;
+    inflight_line_match_ic0 or pending_alloc_match_ic0;
 
   // Per-FB IC0 allocate pulses. R-LK-4 (strengthened): suppress when
   // the lookup line is already covered by an in-flight FB. The lookup
@@ -715,20 +691,16 @@ module ibex_icache
   let fb_wants_out: UInt<4> =
     {fb3_wants_out, fb2_wants_out, fb1_wants_out, fb0_wants_out};
 
-  // ── Three FbAgeArb call sites (R-FB-4) ───────────────────────────
+  // ── Two FbAgeArb call sites (R-FB-4) ─────────────────────────────
   wire bus_age_grant_valid:     Bool;
   wire bus_age_grant_requester: UInt<2>;
   wire wb_grant_valid:      Bool;
   wire wb_grant_requester:  UInt<2>;
-  wire out_grant_valid:     Bool;
-  wire out_grant_requester: UInt<2>;
 
   wire bus_ready_0: Bool; wire bus_ready_1: Bool;
   wire bus_ready_2: Bool; wire bus_ready_3: Bool;
   wire wb_ready_0:  Bool; wire wb_ready_1:  Bool;
   wire wb_ready_2:  Bool; wire wb_ready_3:  Bool;
-  wire out_ready_0: Bool; wire out_ready_1: Bool;
-  wire out_ready_2: Bool; wire out_ready_3: Bool;
 
   inst bus_arb: FbAgeArb
     clk <- clk_i;
@@ -784,22 +756,6 @@ module ibex_icache
     grant_valid      -> wb_grant_valid;
     grant_requester  -> wb_grant_requester;
   end inst wb_arb
-
-  inst out_arb: FbAgeArb
-    clk <- clk_i;
-    rst <- rst_ni;
-    request[0].valid <- fb_wants_out[0];
-    request[1].valid <- fb_wants_out[1];
-    request[2].valid <- fb_wants_out[2];
-    request[3].valid <- fb_wants_out[3];
-    request[0].ready -> out_ready_0;
-    request[1].ready -> out_ready_1;
-    request[2].ready -> out_ready_2;
-    request[3].ready -> out_ready_3;
-    age              <- fb_ages_packed;
-    grant_valid      -> out_grant_valid;
-    grant_requester  -> out_grant_requester;
-  end inst out_arb
 
   // ── Per-FB rvalid routing + out_done pulse (R-EXT-4, R-OUT-4) ────
   // rvalid arrives 1+ cycles after the bus grant (instr_gnt). By then
@@ -1136,32 +1092,6 @@ module ibex_icache
     (wb_grant_requester == 2'd0) ? fb0_hit_way :
     ((wb_grant_requester == 2'd1) ? fb1_hit_way :
     ((wb_grant_requester == 2'd2) ? fb2_hit_way : fb3_hit_way));
-
-  let fb_addr_out_sel: UInt<32> =
-    (out_grant_requester == 2'd0) ? fb0_addr :
-    ((out_grant_requester == 2'd1) ? fb1_addr :
-    ((out_grant_requester == 2'd2) ? fb2_addr : fb3_addr));
-  let fb_data_out_sel: UInt<64> = fill_data_q[out_grant_requester];
-  // 4:1 ternary chains (NOT Vec reads — see comment on fb_addr_bus_sel).
-  let fb_err_out_sel: Bool =
-    (out_grant_requester == 2'd0) ? fb0_err :
-    ((out_grant_requester == 2'd1) ? fb1_err :
-    ((out_grant_requester == 2'd2) ? fb2_err : fb3_err));
-  let fb_err_beat0_out_sel: Bool =
-    (out_grant_requester == 2'd0) ? fb0_err_beat0 :
-    ((out_grant_requester == 2'd1) ? fb1_err_beat0 :
-    ((out_grant_requester == 2'd2) ? fb2_err_beat0 : fb3_err_beat0));
-  let fb_err_beat1_out_sel: Bool =
-    (out_grant_requester == 2'd0) ? fb0_err_beat1 :
-    ((out_grant_requester == 2'd1) ? fb1_err_beat1 :
-    ((out_grant_requester == 2'd2) ? fb2_err_beat1 : fb3_err_beat1));
-  // beats_rcvd-from-winner: gates the OUTPUT-stage `beat_data_ready`.
-  // Lives at outer scope so the IbexIcacheOutputStage sub-block sees a
-  // pre-muxed scalar input rather than 4× per-FB Vec reads.
-  let fb_beats_rcvd_out_sel: UInt<2> =
-    (out_grant_requester == 2'd0) ? fb0_beats_rcvd :
-    ((out_grant_requester == 2'd1) ? fb1_beats_rcvd :
-    ((out_grant_requester == 2'd2) ? fb2_beats_rcvd : fb3_beats_rcvd));
 
   // ── R-EXT-1..5: bus master ───────────────────────────────────────
   // Drive instr_req_o/instr_addr_o from the bus-arb winner. R-EXT-2
