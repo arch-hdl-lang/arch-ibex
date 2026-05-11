@@ -90,16 +90,10 @@ module ibex_multdiv_fast
   port valid_o:            out Bool;
 
   // ── Operator-encoding constants (§"Enum encodings") ─────────────────
-  /// Kept as `let` (not `local param`) because this module uses `thread`,
-  /// and arch-com's archsim emits thread bodies into a separate
-  /// `_<mod>_threads.cpp` compilation unit that does not currently inherit
-  /// parent-module params — `MD_OP_*` would resolve to undeclared
-  /// identifiers in the threads helper. Revisit once arch-com propagates
-  /// parent params into thread helpers.
-  let MD_OP_MULL: UInt<2> = 2'd0;
-  let MD_OP_MULH: UInt<2> = 2'd1;
-  let MD_OP_DIV:  UInt<2> = 2'd2;
-  let MD_OP_REM:  UInt<2> = 2'd3;
+  local param MD_OP_MULL[1:0]: const = 2'd0;
+  local param MD_OP_MULH[1:0]: const = 2'd1;
+  local param MD_OP_DIV[1:0]:  const = 2'd2;
+  local param MD_OP_REM[1:0]:  const = 2'd3;
 
   // ── Internal divider registers ─────────────────────────────────────
   /// `op_numerator_q` and `op_quotient_q` are dedicated 32-b registers
