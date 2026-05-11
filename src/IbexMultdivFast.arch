@@ -193,19 +193,22 @@ module ibex_multdiv_fast
       end if
       imd_val_we_o = 2'b01;
     end if
-    wait until mult_en_i or div_en_i;
-
-    if mult_en_i and (operator_i == MD_OP_MULL)
-      // ── 3-cycle MUL walk (ALBL → ALBH → AHBL terminal) ──────────────
-      /// Cycle 1 — ALBL: `(0, op_a[15:0]) × (0, op_b[15:0])`. accum = 0.
-      /// `mac_res_d = mac_res` (raw kernel output, zero-extended into
-      /// the full 34-b lane). Lane-0 we = 1 every advancement cycle.
+    if mult_en_i and ((operator_i == MD_OP_MULL) or (operator_i == MD_OP_MULH))
+      /// MUL/MULH first partial product (ALBL) is a wait-exit output:
+      /// when ID presents a multiply request, EX latches this lane on the
+      /// same edge that releases the head wait. The post-wait branch then
+      /// continues at ALBH, matching the fast multdiv two/three-stall
+      /// schedule without relying on the compiler to move observable comb
+      /// work across the wait boundary.
       imd_val_d_o[0] = MacRes(false, op_a_i[15:0],
                               false, op_b_i[15:0],
                               34'h0_0000_0000);
       imd_val_we_o = 2'b01;
-      wait 1 cycle;
+    end if
+    wait until mult_en_i or div_en_i;
 
+    if mult_en_i and (operator_i == MD_OP_MULL)
+      // ── 3-cycle MUL walk (ALBL → ALBH → AHBL terminal) ──────────────
       /// Cycle 2 — ALBH: shift-and-concat trick for the low half of
       /// the running product. `mac_res_d = {2'b0, mac_res[15:0],
       /// imd_val_q_i[0][15:0]}`.
@@ -237,13 +240,6 @@ module ibex_multdiv_fast
 
     elsif mult_en_i and (operator_i == MD_OP_MULH)
       // ── 4-cycle MULH walk (ALBL → ALBH → AHBL → AHBH terminal) ──────
-      /// Cycle 1 — ALBL.
-      imd_val_d_o[0] = MacRes(false, op_a_i[15:0],
-                              false, op_b_i[15:0],
-                              34'h0_0000_0000);
-      imd_val_we_o = 2'b01;
-      wait 1 cycle;
-
       /// Cycle 2 — ALBH (MULH variant): full 34-b accum, no concat.
       imd_val_d_o[0] = MacRes(false,                          op_a_i[15:0],
                               signed_mode_i[1] and op_b_i[31], op_b_i[31:16],
