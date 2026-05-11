@@ -720,8 +720,8 @@ module ibex_icache
     {fb3_wants_out, fb2_wants_out, fb1_wants_out, fb0_wants_out};
 
   // ── Three FbAgeArb call sites (R-FB-4) ───────────────────────────
-  wire bus_grant_valid:     Bool;
-  wire bus_grant_requester: UInt<2>;
+  wire bus_age_grant_valid:     Bool;
+  wire bus_age_grant_requester: UInt<2>;
   wire wb_grant_valid:      Bool;
   wire wb_grant_requester:  UInt<2>;
   wire out_grant_valid:     Bool;
@@ -746,9 +746,32 @@ module ibex_icache
     request[2].ready -> bus_ready_2;
     request[3].ready -> bus_ready_3;
     age              <- fb_ages_packed;
-    grant_valid      -> bus_grant_valid;
-    grant_requester  -> bus_grant_requester;
+    grant_valid      -> bus_age_grant_valid;
+    grant_requester  -> bus_age_grant_requester;
   end inst bus_arb
+
+  // Demand-biased bus scheduling: age ordering is still the default, but
+  // when a fill buffer for the current IF output line is waiting on bus
+  // beats, service that FB first. This keeps branch-target demand fills
+  // from sitting behind older linear-prefetch fills.
+  let bus_demand_line: UInt<29> = addr_o[31:3];
+  let fb0_bus_demand: Bool =
+    fb0_wants_bus and (fb0_addr[31:3] == bus_demand_line);
+  let fb1_bus_demand: Bool =
+    fb1_wants_bus and (fb1_addr[31:3] == bus_demand_line);
+  let fb2_bus_demand: Bool =
+    fb2_wants_bus and (fb2_addr[31:3] == bus_demand_line);
+  let fb3_bus_demand: Bool =
+    fb3_wants_bus and (fb3_addr[31:3] == bus_demand_line);
+  let bus_demand_any: Bool =
+    fb0_bus_demand or fb1_bus_demand or fb2_bus_demand or fb3_bus_demand;
+  let bus_demand_requester: UInt<2> =
+    fb0_bus_demand ? 2'd0 :
+    (fb1_bus_demand ? 2'd1 :
+    (fb2_bus_demand ? 2'd2 : 2'd3));
+  let bus_grant_valid: Bool = bus_demand_any or bus_age_grant_valid;
+  let bus_grant_requester: UInt<2> =
+    bus_demand_any ? bus_demand_requester : bus_age_grant_requester;
 
   inst wb_arb: FbAgeArb
     clk <- clk_i;
