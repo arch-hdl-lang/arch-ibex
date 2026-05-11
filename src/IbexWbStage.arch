@@ -18,10 +18,6 @@
 //!   - "changes/port-wb_stage/specs/wb_stage/spec.md §REQ-8: Dummy-instruction flag passthrough"
 //!   - "changes/port-wb_stage/specs/wb_stage/spec.md §REQ-9: WS=1-only outputs tied zero"
 
-domain SysDomain
-  freq_mhz: 100
-end domain SysDomain
-
 module ibex_wb_stage
   // ── Parameters ────────────────────────────────────────────────────────
   // All three parameters are declared for port-boundary compatibility with

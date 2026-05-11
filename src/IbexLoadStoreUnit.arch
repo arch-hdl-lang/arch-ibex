@@ -17,10 +17,6 @@
 //!   §"Requirement: lsu_resp_valid_o"
 //!   §"Requirement: Error Reporting"
 
-domain SysDomain
-  freq_mhz: 100
-end domain SysDomain
-
 /// OBI (Open Bus Interface) data-memory interface type.
 /// Defines the protocol grouping for documentation and future bus-port use.
 /// Field names carry _o/_i suffixes so the flattened names match the upstream

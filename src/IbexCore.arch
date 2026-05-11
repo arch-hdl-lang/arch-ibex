@@ -53,10 +53,6 @@ end extern package ibex_pkg
 
 use ibex_pkg;
 
-domain SysDomain
-  freq_mhz: 100
-end domain SysDomain
-
 module ibex_core
   // ── Const params (snapped to SoC pin values) ─────────────────────────
   /// `RV32E`: 1-bit.  Pinned to 0 (full 32-entry RF).  See spec §pin.

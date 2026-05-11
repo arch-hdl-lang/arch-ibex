@@ -7,10 +7,6 @@
 /// because the arbiter's `policy AgeOrderedGrant;` clause references
 /// the function name and the two must elaborate together.
 
-domain SysDomain
-  freq_mhz: 100
-end domain SysDomain
-
 // ─── Custom-policy hook for inter-FB age-ordered arbitration ──────────
 // R-FB-4: "oldest eligible wins" across NUM_FB=4 live FBs. Each FB's
 // age is 0..3 (0=oldest), packed into one UInt<8> port (4×2 bits).

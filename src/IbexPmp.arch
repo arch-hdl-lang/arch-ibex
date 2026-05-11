@@ -26,10 +26,6 @@
 ///   A4 mseccfg.rlb: declared in port width but unused; sunk via let.
 ///   A5 pmp_req_e == 2'b11 reserved: yields denied (basic_perm = 0).
 
-domain SysDomain
-  freq_mhz: 100
-end domain SysDomain
-
 module ibex_pmp
   // ── Parameters ───────────────────────────────────────────────────
   param DmBaseAddr: UInt<32> = 32'h0000_0000;

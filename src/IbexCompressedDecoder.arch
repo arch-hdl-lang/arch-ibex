@@ -43,10 +43,6 @@
 //!   - spec §"Port contract"
 //!   - spec-notes item 1: non-idle FSM advance gates on `id_in_ready_i` alone
 
-domain SysDomain
-  freq_mhz: 100
-end domain SysDomain
-
 module ibex_compressed_decoder
   /// `RV32ZC` selects the Zc subset. Per `proposal.md` the ARCH port locks
   /// this to RV32ZcaZcbZcmp = 3 (full Zca + Zcb + Zcmp). Lower values are

@@ -6,10 +6,6 @@
 /// is combinational from either the held entry or the currently available
 /// IC1/FB candidate that covers `addr_out_q`.
 
-domain SysDomain
-  freq_mhz: 100
-end domain SysDomain
-
 module IbexIcacheOutputStage
   port clk_i:  in Clock<SysDomain>;
   port rst_ni: in Reset<Async, Low>;

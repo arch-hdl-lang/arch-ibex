@@ -33,10 +33,6 @@
 //!   §"Requirement: Reset behaviour"
 //!   §"Requirement: `valid_o` is the OR of mult_valid and div_valid"
 
-domain SysDomain
-  freq_mhz: 100
-end domain SysDomain
-
 module ibex_multdiv_fast
   /// `RV32M` is integer-encoded `rv32m_e` from `ibex_pkg.sv`. This
   /// implementation always emits the multi-cycle (fast) kernel; the

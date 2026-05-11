@@ -24,10 +24,6 @@
 /// before the package extraction).
 use IbexCoreSharedPkg;
 
-domain SysDomain
-  freq_mhz: 100
-end domain SysDomain
-
 /// Debug-cause register (3-bit upstream `dbg_cause_e`).
 /// Constants used:
 ///   DBG_CAUSE_NONE    = 3'b000

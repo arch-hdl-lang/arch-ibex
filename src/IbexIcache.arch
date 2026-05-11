@@ -36,10 +36,6 @@
 /// preprocessor directive by the lint tool (project memory feedback
 /// `feedback_avoid_verilator_in_comments`).
 
-domain SysDomain
-  freq_mhz: 100
-end domain SysDomain
-
 // ─── Top-level icache module ──────────────────────────────────────────
 // Function `AgeOrderedGrant` + `arbiter FbAgeArb`  → src/FbAgeArb.arch
 // `arbiter RamPortArb`                              → src/RamPortArb.arch

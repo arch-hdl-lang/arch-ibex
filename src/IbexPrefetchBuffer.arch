@@ -4,10 +4,6 @@
 /// on branch, and drives the IbexFetchFifo submodule.
 /// ref: specs/prefetch_buffer/spec.md
 
-domain SysDomain
-  freq_mhz: 100
-end domain SysDomain
-
 module ibex_prefetch_buffer
   /// ResetAll=0 in scope: only control registers are async-reset;
   /// address registers are not reset (CPU resets with a branch first).

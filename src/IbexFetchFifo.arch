@@ -4,10 +4,6 @@
 /// instruction window per cycle to the compressed decoder.
 /// Spec: changes/port-fetch_fifo/specs/fetch_fifo/spec.md
 
-domain SysDomain
-  freq_mhz: 100
-end domain SysDomain
-
 module ibex_fetch_fifo
   // NUM_REQS = number of in-flight bus requests; FIFO depth = NUM_REQS + 1.
   param NUM_REQS: const = 2;

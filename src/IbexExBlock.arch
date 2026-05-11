@@ -25,10 +25,6 @@
 //!   §"Requirement: ex_valid_o combinational validity signal"
 //!   §"Requirement: Combinational cross-coupling loop between ALU and multdiv"
 
-domain SysDomain
-  freq_mhz: 100
-end domain SysDomain
-
 module ibex_ex_block
   /// `RV32M`: multiplier variant. Fixed to 2 (RV32MFast) for the SoC.
   param RV32M: const = 2;
