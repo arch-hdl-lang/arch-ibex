@@ -28,6 +28,13 @@
 //! IbexTop-internal feedback wires therefore use `unpacked Vec`.
 
 module ibex_top
+  /// arch-com issue #246 MVP over-approximation: ibex_top wires
+  /// `ibex_core` (an opaque interface stub at this level) to the icache
+  /// tag/data RAMs plus prim_clock_gating; the analyzer conservatively
+  /// closes a 24-node cycle through those RAM ports. The real RAM<->core
+  /// path is always registered. Bless until issue #246 Phase 2.
+  pragma comb_loops_allowed;
+
   // ── Pinned parameters (mirrors upstream `ibex_top.sv:16-:60`) ──────
   /// Per spec §"Pinned parameter values".
   /// Bit-typed params use the `[0:0]: const = 1'd0` form (per

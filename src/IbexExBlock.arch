@@ -26,6 +26,14 @@
 //!   §"Requirement: Combinational cross-coupling loop between ALU and multdiv"
 
 module ibex_ex_block
+  /// Bless the intentional combinational cross-coupling loop between
+  /// `alu_i` and `multdiv_i`. The multdiv FSM drives ALU operand inputs
+  /// in the same cycle the ALU adder result returns to the multdiv input
+  /// path — see §"Combinational cross-coupling loop between ALU and
+  /// multdiv". arch-com issue #246: whole-design comb-loop analysis
+  /// surfaces this SCC as a warning otherwise.
+  pragma comb_loops_allowed;
+
   /// `RV32M`: multiplier variant. Fixed to 2 (RV32MFast) for the SoC.
   param RV32M: const = 2;
   /// `RV32B`: bitmanip. Fixed to 0 (RV32BNone) for the SoC.
