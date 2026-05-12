@@ -54,6 +54,16 @@ end extern package ibex_pkg
 use ibex_pkg;
 
 module ibex_core
+  /// arch-com issue #246 MVP over-approximation: ibex_core instantiates
+  /// many sub-modules from `.archi` interface stubs (opaque to the
+  /// whole-design comb-loop analyzer — every output is conservatively
+  /// assumed to depend on every input). That collapses the IF/ID/EX/LSU/
+  /// WB stage interface boundaries into a 100+-node spurious SCC. The
+  /// real per-leaf-module CombInfo would shrink this to whatever genuine
+  /// pipeline-loop signals remain. Bless until issue #246 Phase 2 adds
+  /// proper extern-signature support.
+  pragma comb_loops_allowed;
+
   // ── Const params (snapped to SoC pin values) ─────────────────────────
   /// `RV32E`: 1-bit.  Pinned to 0 (full 32-entry RF).  See spec §pin.
   param RV32E[0:0]: const = 1'd0;
