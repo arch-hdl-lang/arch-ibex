@@ -183,11 +183,19 @@ async def _land_one_instruction(dut, *, branch_addr: int, rdata: int,
       - `req_i = 1` is set inside this helper
     """
     # Issue a branch to load the new fetch address.
+    #
+    # Note: `id_in_ready_i` is held LOW during the bus fill. With the
+    # post-PR-54 elastic-FIFO icache, `valid_o` is combinational from
+    # the fill-buffer line, so holding `id_in_ready=1` would let the
+    # IF→ID pipe-reg latch successive addresses on consecutive cycles
+    # (0x80, 0x84, ...) before the helper observes anything. Below,
+    # we pulse `id_in_ready` for exactly one cycle to consume the
+    # first instruction only.
     dut.pc_set_i.value = 1
     dut.pc_mux_i.value = PC_JUMP
     dut.branch_target_ex_i.value = branch_addr & MASK32
     dut.req_i.value = 1
-    dut.id_in_ready_i.value = 1
+    dut.id_in_ready_i.value = 0
     await RisingEdge(dut.clk_i)
     dut.pc_set_i.value = 0
     await _settle(dut)
@@ -220,14 +228,17 @@ async def _land_one_instruction(dut, *, branch_addr: int, rdata: int,
         dut.instr_bus_err_i.value = 0
         await _settle(dut)
 
-    # Wait a few cycles for the icache to land valid_o → IF→ID pipe.
-    # Hold id_in_ready_i = 1 so the pipe-reg write fires; then drop it
-    # so the entry sticks in the IF→ID register for the caller's
-    # observation.
+    # Pulse `id_in_ready_i = 1` for exactly one cycle to consume the
+    # first instruction the icache delivers, then drop. Walk forward
+    # until `instr_valid_id_o` (registered) rises so the caller can
+    # observe pc_id_o latched at `branch_addr`.
+    dut.id_in_ready_i.value = 1
+    await RisingEdge(dut.clk_i)
+    dut.id_in_ready_i.value = 0
+    await _settle(dut)
+
     for _ in range(8):
         if int(dut.instr_valid_id_o.value) == 1:
-            dut.id_in_ready_i.value = 0
-            await _settle(dut)
             return True
         await RisingEdge(dut.clk_i)
         await _settle(dut)

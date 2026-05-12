@@ -904,35 +904,41 @@ async def req19_perf_counter_passthrough(dut):
     """
     await _start_clock(dut)
     await _reset(dut)
-    await _serve_instr(dut, instr=INSTR_BEQ_TAKEN)
-    # `perf_branch_o` from the ID stage pulses for one cycle: the
-    # FIRST_CYCLE of the BEQ in ID (combinationally driven from
-    # `branch_in_dec` while id_fsm_q==FIRST_CYCLE). That cycle aligns
-    # with the rvalid pulse of _serve_instr, so we sample immediately
-    # after the rvalid handshake before the FSM clocks into MULTI_CYCLE.
-    saw_pulse = False
-    try:
-        if int(dut.id_stage_i.perf_branch_o.value) == 1:
-            saw_pulse = True
-    except AttributeError:
-        # Hierarchical probe not exposed — fall back to skipping the
-        # detailed check (the pulse is internal-only).
-        saw_pulse = True
-    if not saw_pulse:
-        # If we missed the immediate pulse, walk a few cycles in case
-        # the IF→ID register hadn't updated yet (e.g. BEQ took an
-        # extra cycle to land).
-        for _ in range(8):
+
+    # `perf_branch_o` from the ID stage pulses for one cycle when the
+    # BEQ is in FIRST_CYCLE and `instr_executing_spec=1`. With the
+    # post-PR-54 elastic-FIFO icache the BEQ can land in ID DURING
+    # `_serve_instr`'s rvalid sequence, so the pulse fires before the
+    # test regains control. Capture it via a background sampler.
+    saw_pulse = {"v": False}
+
+    async def _sample_perf_branch():
+        while True:
             await RisingEdge(dut.clk_i)
             await _settle(dut)
             try:
                 if int(dut.id_stage_i.perf_branch_o.value) == 1:
-                    saw_pulse = True
-                    break
+                    saw_pulse["v"] = True
+                    return
             except AttributeError:
-                saw_pulse = True
-                break
-    assert saw_pulse, "perf_branch pulse not observed on a BEQ"
+                # Hierarchical probe not exposed — treat as observed.
+                saw_pulse["v"] = True
+                return
+
+    sampler = cocotb.start_soon(_sample_perf_branch())
+
+    await _serve_instr(dut, instr=INSTR_BEQ_TAKEN)
+
+    # Walk a few extra cycles to give the BEQ time to reach ID and
+    # the pulse to fire if it hasn't yet.
+    for _ in range(16):
+        if saw_pulse["v"]:
+            break
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+
+    sampler.kill()
+    assert saw_pulse["v"], "perf_branch pulse not observed on a BEQ"
 
 
 # ─────────────────────────────────────────────────────────────────────────
