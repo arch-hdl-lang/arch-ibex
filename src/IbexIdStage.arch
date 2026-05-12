@@ -822,6 +822,12 @@ module ibex_id_stage
   end comb
 
   // ── Multdiv interface (Spec §"Requirement 13") ──────────────────────
+  /// Activity gate for the multdiv datapath: when the current ID-stage
+  /// instruction is not an executing M/D operation, drive stable defaults
+  /// into the EX multdiv instance so RF operand changes from ALU/LSU/branch
+  /// instructions do not toggle the multiplier/divider cones.
+  let multdiv_live: Bool = instr_executing and multdiv_en_dec;
+
   /// `mult_en_id` / `div_en_id` are wires declared above; assign them
   /// here. (Drop the `let ... : Bool = ...` form — that re-declares
   /// the name and clashes with the wire decl in emitted SV.)
@@ -833,10 +839,10 @@ module ibex_id_stage
   let div_en_ex_o             = div_en_id;
   let mult_sel_ex_o           = mult_sel_dec;          // raw
   let div_sel_ex_o            = div_sel_dec;           // raw
-  let multdiv_operator_ex_o   = multdiv_operator;      // raw
-  let multdiv_signed_mode_ex_o = multdiv_signed_mode;  // raw
-  let multdiv_operand_a_ex_o  = rf_rdata_a_fwd;
-  let multdiv_operand_b_ex_o  = rf_rdata_b_fwd;
+  let multdiv_operator_ex_o   = multdiv_live ? multdiv_operator : 2'd0;
+  let multdiv_signed_mode_ex_o = multdiv_live ? multdiv_signed_mode : 2'b00;
+  let multdiv_operand_a_ex_o  = multdiv_live ? rf_rdata_a_fwd : 32'h0;
+  let multdiv_operand_b_ex_o  = multdiv_live ? rf_rdata_b_fwd : 32'h0;
   let multdiv_ready_id_o      = ready_wb_i;            // pinned 1 under WB=0
 
   // ── CSR interface ───────────────────────────────────────────────────
