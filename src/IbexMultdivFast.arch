@@ -11,8 +11,9 @@
 //! Mutual exclusion across the four sequences is now structural (one
 //! thread can be in at most one branch at a time), so no `shared(or)`
 //! merging or quiescent-zero coordination is needed — every output is a
-//! single-driver. The IDLE-state ALU operand drive is held continuously
-//! at the head wait via the comb assigns ahead of `wait until`, so the
+//! single-driver. The thread's `default comb` block makes quiescent
+//! output values source-visible in every lowered state. The IDLE-state
+//! ALU operand drive remains explicit ahead of `wait until`, so the
 //! `equal_to_zero_i` capture on the wait-exit edge sees the spec's
 //! `0 - op_b_i` adder result (post arch-com PR #234, which fixed the
 //! wait-exit comb-assign edge). The short-path predicate stays
@@ -154,13 +155,24 @@ module ibex_multdiv_fast
   // ────────────────────────────────────────────────────────────────────
   // MultdivThread — single thread, dispatch-and-rejoin
   //
-  // Head wait holds the IDLE-pattern ALU drives continuously; the
-  // wait-exit edge captures `equal_to_zero_i` for the divide-by-zero
-  // suppression flag. After the head wait, an if/elsif/else routes
-  // into one of four straight-line bodies; each body's terminal
-  // `do … until multdiv_ready_id_i` honours ID-stage back-pressure.
+  // `default comb` owns the quiescent output defaults. The head wait
+  // still drives the IDLE-pattern ALU operands explicitly; the wait-exit
+  // edge captures `equal_to_zero_i` for the divide-by-zero suppression
+  // flag. After the head wait, an if/elsif/else routes into one of four
+  // straight-line bodies; each body's terminal `do … until
+  // multdiv_ready_id_i` honours ID-stage back-pressure.
   // ────────────────────────────────────────────────────────────────────
   thread MultdivThread on clk_i rising, rst_ni low
+    default comb
+      alu_operand_a_o  = 33'h0_0000_0000;
+      alu_operand_b_o  = 33'h0_0000_0000;
+      imd_val_d_o[0]   = 34'h0_0000_0000;
+      imd_val_d_o[1]   = 34'h0_0000_0000;
+      imd_val_we_o     = 2'b00;
+      multdiv_result_o = 32'h0000_0000;
+      valid_o          = false;
+    end default
+
     /// IDLE: drive the spec-prescribed `0 - op_b_i` ALU pattern so
     /// `equal_to_zero_i` is meaningful at the wait-exit edge.
     /// `div_by_zero_q ← equal_to_zero_i` is captured under the long-
@@ -374,11 +386,8 @@ module ibex_multdiv_fast
       wait 1 cycle;
 
       /// MD_FINISH: assert `valid_o`, expose `imd_val_q_i[0][31:0]`
-      /// through the result mux, hold until ID-stage ack. Idle ALU
-      /// operand drives are re-emitted (matching the spec's MD_FINISH
-      /// behaviour: drive {0,1} and {~op_b, 1}) — values do not affect
-      /// the result and they keep the ALU operands quiet at the IDLE
-      /// pattern across the FINISH→IDLE edge.
+      /// through the result mux, hold until ID-stage ack. Re-emit the
+      /// IDLE ALU operand pattern across the FINISH→IDLE edge.
       do
         alu_operand_a_o = {32'h0000_0000, 1'b1};
         alu_operand_b_o = {~op_b_i, 1'b1};
