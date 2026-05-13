@@ -48,10 +48,8 @@ arbiter FbAgeArb
   param NUM_REQ: const = 4;
   port clk: in Clock<SysDomain>;
   port rst: in Reset<Async, Low>;
-  ports[NUM_REQ] request
-    valid: in Bool;
-    ready: out Bool;
-  end ports request
+  handshake_channel request[NUM_REQ]: receive kind: valid_ready
+  end handshake_channel request
   port age: in UInt<8>;
   port grant_valid: out Bool;
   port grant_requester: out UInt<2>;
