@@ -546,19 +546,10 @@ module ibex_icache
   // effective behavior. After the window expires the alloc DOES
   // fire (the line really isn't in cache, so a re-fetch is needed
   // for forward progress).
-  reg fb_busy_prev1_q: UInt<4> reset rst_ni => 4'd0;
-  reg fb_busy_prev2_q: UInt<4> reset rst_ni => 4'd0;
-  reg fb_busy_prev3_q: UInt<4> reset rst_ni => 4'd0;
-  reg fb_busy_prev4_q: UInt<4> reset rst_ni => 4'd0;
-  seq on clk_i rising
-    fb_busy_prev1_q <= fb_busy_mask;
-    fb_busy_prev2_q <= fb_busy_prev1_q;
-    fb_busy_prev3_q <= fb_busy_prev2_q;
-    fb_busy_prev4_q <= fb_busy_prev3_q;
-  end seq
+  pipe_reg fb_busy_prev: fb_busy_mask stages 4;
   let fb_busy_recent_mask: UInt<4> =
-    fb_busy_mask | fb_busy_prev1_q | fb_busy_prev2_q
-                 | fb_busy_prev3_q | fb_busy_prev4_q;
+    fb_busy_mask | fb_busy_prev@1 | fb_busy_prev@2
+                 | fb_busy_prev@3 | fb_busy_prev@4;
 
   // Recently-busy LINE coalesce: extends suppression for >=4 cycles after
   // release, but ONLY for the exact same cache line. Different lines in
