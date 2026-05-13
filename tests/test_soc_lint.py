@@ -36,14 +36,22 @@ def test_ibex_mini_soc_lints(
         "-Wno-WIDTHEXPAND",    # $readmemh vs. sized vectors — benign
         "-Wno-IMPORTSTAR",     # arch-com emits `import Pkg::*;` at $unit
         "-Wno-DECLFILENAME",   # our in-tree Ibex forks keep upstream module names
-        "-Wno-UNOPTFLAT",      # upstream ibex_ex_block.sv has an intended ALU↔multdiv
-                               # combinational loop on alu_adder_result_ext (the
-                               # multdiv shares the ALU's adder/comparator). With
-                               # the FSM-based multdiv Verilator's analysis
-                               # resolved it; the thread-based multdiv's nested
-                               # `_threads` submodule boundary makes Verilator
-                               # more conservative. The loop is functionally
-                               # identical and safe in practice.
+        "-Wno-UNOPTFLAT",      # Verilator-perceived (not actual) comb cycle on
+                               # `alu_adder_result_ext` between ibex_alu and
+                               # ibex_multdiv_fast. arch-com PR #338 (issue #246
+                               # Phase 2) per-port comb-dep analysis confirms
+                               # NO real same-cycle cycle exists: multdiv's
+                               # `alu_operand_*_o` outputs are driven by
+                               # registered / thread-stated logic, not by a
+                               # combinational function of `alu_adder_ext_i`.
+                               # Verilator can't see across the `_threads`
+                               # submodule boundary, so it conservatively
+                               # flags UNOPTFLAT. The blanket suppression
+                               # stays until either (a) Verilator gains
+                               # cross-submodule analysis, or (b) arch-com
+                               # emits targeted `/* verilator lint_off
+                               # UNOPTFLAT */` annotations around the inst
+                               # boundary.
         "--unroll-count", "72",  # required by prim_secded per Verilator#1266
         "-f", str(vc_path),
         "--top-module", "ibex_mini_soc",
