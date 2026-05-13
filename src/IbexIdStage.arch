@@ -32,14 +32,6 @@
 use IbexCoreSharedPkg;
 
 module ibex_id_stage
-  /// arch-com issue #246 MVP over-approximation: ibex_id_stage has dense
-  /// comb fan-out (controller decode → stall/jump/flush → instr_executing
-  /// → wb-bypass) that the per-output-precision analyzer would resolve
-  /// into a small intentional SCC at worst. The current any-out-depends-
-  /// any-in over-approximation produces an 18-node spurious cycle.
-  /// Bless until issue #246 Phase 2 adds per-output dep precision.
-  pragma comb_loops_allowed;
-
   // ── SoC parameter pinning (Spec §"Pinned parameter values") ─────────
   param RV32E[0:0]: const = 1'd0;
   param RV32M: const = 2;                           // RV32MFast
