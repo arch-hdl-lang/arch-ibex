@@ -1,0 +1,340 @@
+// Concrete HARC canary suite for `ibex_register_file_ff`.
+//
+// This reuses the intent from specs/register_file_ff/spec.md and the current
+// cocotb unit test. The active scenarios target the present in-scope
+// configuration: RV32E=0, DummyInstructions=0, DataWidth=32, WordZeroVal=0.
+
+domain SysDomain
+  freq_mhz: 100
+end domain SysDomain
+
+testbench IbexRegisterFileFfTb
+    dut : ibex_register_file_ff
+    drv : RfDriver active
+    mon : RfMonitor passive
+    sb  : RfScoreboard
+    write_cov : RfWriteCov
+    read_cov  : RfReadCov
+    collision_cov : RfCollisionCov
+
+    function bind_components()
+        drv.dut = dut
+        mon.dut = dut
+    end function bind_components
+
+    function model_reset()
+        for i in 0 .. 31
+            sb.regs[i] = sb.word_zero
+        end for
+        sb.dummy_x0 = sb.word_zero
+    end function model_reset
+
+    function configure_default()
+        sb.word_zero = 0
+        sb.rv32e = false
+        sb.dummy_enabled = false
+        model_reset()
+    end function configure_default
+
+    function implemented_write_addr(addr: uint<5>) -> bool
+        if sb.rv32e && addr >= 16
+            return false
+        end if
+        return true
+    end function implemented_write_addr
+
+    function model_read(addr: uint<5>, dummy_id: bool) -> uint<32>
+        if addr == 0
+            if sb.dummy_enabled && dummy_id
+                return sb.dummy_x0
+            end if
+            return sb.word_zero
+        end if
+        return sb.regs[addr]
+    end function model_read
+
+    function model_write(t: RfAccessTxn)
+        if t.we
+            if t.waddr == 0
+                if sb.dummy_enabled && t.dummy_wb
+                    sb.dummy_x0 = t.wdata
+                    sb.writes = sb.writes + 1
+                else
+                    sb.dropped = sb.dropped + 1
+                end if
+            elsif implemented_write_addr(t.waddr)
+                sb.regs[t.waddr] = t.wdata
+                sb.writes = sb.writes + 1
+            else
+                sb.dropped = sb.dropped + 1
+            end if
+        else
+            sb.dropped = sb.dropped + 1
+        end if
+    end function model_write
+
+    function reset_model_and_dut()
+        drv.reset()
+        model_reset()
+    end function reset_model_and_dut
+
+    function apply_write(t: RfAccessTxn)
+        drv.write_edge(t)
+        model_write(t)
+        drv.idle()
+    end function apply_write
+
+    function read_pair(label: uint<8>, t: RfAccessTxn)
+        drv.drive_read(t)
+        if t.read_kind == HARC_RF_READ_A
+            sb.reads_a = sb.reads_a + 1
+            mon.observe_a(label, model_read(t.raddr_a, t.dummy_id))
+        end if
+        if t.read_kind == HARC_RF_READ_B
+            sb.reads_b = sb.reads_b + 1
+            mon.observe_b(label, model_read(t.raddr_b, t.dummy_id))
+        end if
+        if t.read_kind == HARC_RF_READ_BOTH
+            sb.reads_a = sb.reads_a + 1
+            sb.reads_b = sb.reads_b + 1
+            mon.observe_pair(label, model_read(t.raddr_a, t.dummy_id), model_read(t.raddr_b, t.dummy_id))
+        end if
+    end function read_pair
+
+    function read_pair_now(label: uint<8>, t: RfAccessTxn)
+        drv.drive_read_now(t)
+        if t.read_kind == HARC_RF_READ_BOTH
+            sb.reads_a = sb.reads_a + 1
+            sb.reads_b = sb.reads_b + 1
+            mon.observe_pair(label, model_read(t.raddr_a, t.dummy_id), model_read(t.raddr_b, t.dummy_id))
+        end if
+    end function read_pair_now
+
+    function read_during_write(label: uint<8>, t: RfAccessTxn)
+        drv.drive_read_write_now(t)
+        sb.collisions = sb.collisions + 1
+        drv.tick()
+        model_write(t)
+        mon.observe_pair(label, model_read(t.raddr_a, t.dummy_id), model_read(t.raddr_b, t.dummy_id))
+        drv.idle()
+    end function read_during_write
+
+    check
+        write_cov.report()
+        read_cov.report()
+        collision_cov.report()
+
+        assert write_cov.cp_we.disabled > 0 else fail("write-enable disabled coverage hole")
+        assert write_cov.cp_we.enabled > 0 else fail("write-enable enabled coverage hole")
+        assert write_cov.cp_waddr.x0 > 0 else fail("x0 write-address coverage hole")
+        assert write_cov.cp_waddr.low > 0 else fail("low write-address coverage hole")
+        assert write_cov.cp_waddr.mid > 0 else fail("mid write-address coverage hole")
+        assert write_cov.cp_waddr.rv32e_high > 0 else fail("high/RV32E write-address coverage hole")
+        assert write_cov.cp_wdata.zero > 0 else fail("zero write-data coverage hole")
+        assert write_cov.cp_wdata.walking > 0 else fail("walking write-data coverage hole")
+        assert write_cov.cp_wdata.patterned > 0 else fail("patterned write-data coverage hole")
+        assert write_cov.cp_wdata.all_ones > 0 else fail("all-ones write-data coverage hole")
+        assert write_cov.cp_test_en.deasserted > 0 else fail("test_en=0 write coverage hole")
+        assert write_cov.cp_test_en.asserted > 0 else fail("test_en=1 write coverage hole")
+        assert write_cov.cp_dummy_wb.deasserted > 0 else fail("dummy_wb=0 write coverage hole")
+        assert write_cov.cp_dummy_wb.asserted > 0 else fail("dummy_wb=1 write coverage hole")
+
+        assert read_cov.cp_raddr_a.x0 > 0 else fail("port A x0 read coverage hole")
+        assert read_cov.cp_raddr_a.low > 0 else fail("port A low read coverage hole")
+        assert read_cov.cp_raddr_a.mid > 0 else fail("port A mid read coverage hole")
+        assert read_cov.cp_raddr_a.high > 0 else fail("port A high read coverage hole")
+        assert read_cov.cp_raddr_b.x0 > 0 else fail("port B x0 read coverage hole")
+        assert read_cov.cp_raddr_b.low > 0 else fail("port B low read coverage hole")
+        assert read_cov.cp_raddr_b.mid > 0 else fail("port B mid read coverage hole")
+        assert read_cov.cp_raddr_b.high > 0 else fail("port B high read coverage hole")
+        assert read_cov.cp_same_addr.distinct > 0 else fail("distinct dual-read coverage hole")
+        assert read_cov.cp_same_addr.same > 0 else fail("same-address dual-read coverage hole")
+        assert read_cov.cp_dummy_id.deasserted > 0 else fail("dummy_id=0 read coverage hole")
+        assert read_cov.cp_dummy_id.asserted > 0 else fail("dummy_id=1 read coverage hole")
+        assert read_cov.cp_test_en.deasserted > 0 else fail("test_en=0 read coverage hole")
+        assert read_cov.cp_test_en.asserted > 0 else fail("test_en=1 read coverage hole")
+
+        assert collision_cov.cp_collision_a.no > 0 else fail("port A non-collision coverage hole")
+        assert collision_cov.cp_collision_a.yes > 0 else fail("port A read/write collision coverage hole")
+        assert collision_cov.cp_collision_b.no > 0 else fail("port B non-collision coverage hole")
+        assert collision_cov.cp_collision_b.yes > 0 else fail("port B read/write collision coverage hole")
+        assert collision_cov.cp_addr.nonzero > 0 else fail("nonzero collision address coverage hole")
+        assert mon.errors == 0 else fail("register-file monitor recorded ${mon.errors} error(s)")
+        assert sb.errors == 0 else fail("register-file scoreboard recorded ${sb.errors} error(s)")
+    end check
+end testbench IbexRegisterFileFfTb
+
+impl IbexRegisterFileFfCanary for IbexRegisterFileFfTb
+    clock clk_i = SysDomain
+
+    run
+        bind_components()
+        configure_default()
+
+        let t : RfAccessTxn
+
+        reset_model_and_dut()
+
+        t.we = true
+        t.waddr = 1
+        t.wdata = 0x11111111
+        apply_write(t)
+        t.waddr = 15
+        t.wdata = 0xa5a5a5a5
+        apply_write(t)
+        t.waddr = 31
+        t.wdata = 0x31313131
+        apply_write(t)
+        t.waddr = 2
+        t.wdata = 0
+        apply_write(t)
+
+        drv.set_reset_low()
+        model_reset()
+        t.read_kind = HARC_RF_READ_BOTH
+        t.raddr_a = 1
+        t.raddr_b = 31
+        t.dummy_id = false
+        t.test_en = false
+        read_pair(1, t)
+        drv.release_reset()
+
+        t.we = true
+        t.waddr = 7
+        t.wdata = 0xcafef00d
+        t.dummy_wb = false
+        t.test_en = false
+        apply_write(t)
+        t.read_kind = HARC_RF_READ_BOTH
+        t.raddr_a = 7
+        t.raddr_b = 7
+        read_pair(2, t)
+
+        t.we = true
+        t.waddr = 12
+        t.wdata = 0x11112222
+        apply_write(t)
+        t.we = false
+        t.waddr = 12
+        t.wdata = 0xffffffff
+        apply_write(t)
+        t.read_kind = HARC_RF_READ_A
+        t.raddr_a = 12
+        read_pair(3, t)
+
+        t.we = true
+        t.waddr = 3
+        t.wdata = 0xaaaaaaaa
+        apply_write(t)
+        t.waddr = 4
+        t.wdata = 0xbbbbbbbb
+        apply_write(t)
+        t.waddr = 3
+        t.wdata = 0x12345678
+        apply_write(t)
+        t.read_kind = HARC_RF_READ_BOTH
+        t.raddr_a = 3
+        t.raddr_b = 4
+        read_pair(4, t)
+
+        t.we = true
+        t.waddr = 5
+        t.wdata = 0x00000005
+        apply_write(t)
+        t.waddr = 9
+        t.wdata = 0x00000009
+        apply_write(t)
+        t.read_kind = HARC_RF_READ_BOTH
+        t.raddr_a = 5
+        t.raddr_b = 9
+        read_pair(5, t)
+
+        t.we = true
+        t.waddr = 10
+        t.wdata = 0xa5a5a5a5
+        apply_write(t)
+        t.read_kind = HARC_RF_READ_BOTH
+        t.raddr_a = 10
+        t.raddr_b = 10
+        read_pair(6, t)
+
+        t.we = true
+        t.waddr = 6
+        t.wdata = 0x00000006
+        apply_write(t)
+        t.waddr = 6
+        t.wdata = 0xdeadbeef
+        t.raddr_a = 6
+        t.raddr_b = 9
+        t.read_kind = HARC_RF_READ_BOTH
+        read_during_write(7, t)
+
+        t.we = true
+        t.waddr = 0
+        t.wdata = 0xffffffff
+        t.raddr_a = 0
+        t.raddr_b = 1
+        t.read_kind = HARC_RF_READ_BOTH
+        read_during_write(9, t)
+
+        t.we = true
+        t.waddr = 1
+        t.wdata = 0x22222222
+        t.raddr_a = 2
+        t.raddr_b = 1
+        t.read_kind = HARC_RF_READ_BOTH
+        t.dummy_id = false
+        t.dummy_wb = false
+        t.test_en = false
+        read_during_write(10, t)
+
+        t.read_kind = HARC_RF_READ_BOTH
+        t.raddr_a = 0
+        t.raddr_b = 1
+        read_pair(11, t)
+
+        t.we = true
+        t.waddr = 0
+        t.wdata = 0x12345678
+        t.dummy_wb = true
+        t.test_en = true
+        apply_write(t)
+        t.dummy_wb = false
+        t.read_kind = HARC_RF_READ_BOTH
+        t.raddr_a = 0
+        t.raddr_b = 0
+        t.dummy_id = true
+        t.test_en = true
+        read_pair(12, t)
+        t.dummy_id = false
+        t.test_en = false
+        read_pair(13, t)
+
+        t.we = true
+        t.waddr = 16
+        t.wdata = 0x80000000
+        t.test_en = false
+        apply_write(t)
+        t.waddr = 31
+        t.wdata = 0x00000001
+        apply_write(t)
+        t.read_kind = HARC_RF_READ_BOTH
+        t.raddr_a = 16
+        t.raddr_b = 31
+        read_pair(14, t)
+
+        for addr in 1 .. 7
+            t.we = true
+            t.waddr = addr
+            t.wdata = 0x01010100 + addr
+            apply_write(t)
+        end for
+        for addr in 1 .. 7
+            t.read_kind = HARC_RF_READ_A
+            t.raddr_a = addr
+            t.dummy_id = false
+            t.test_en = false
+            read_pair(20 + addr, t)
+        end for
+    end run
+end impl IbexRegisterFileFfCanary

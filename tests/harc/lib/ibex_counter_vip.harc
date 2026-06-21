@@ -1,0 +1,179 @@
+// Reusable HARC verification IP for the `ibex_counter` unit.
+//
+// The transaction is a semantic counter operation with expected sampled
+// outputs. `CounterSequencer` records generated operations, `CounterDriver`
+// owns raw DUT pin driving, `CounterMonitor` passively samples DUT state, and
+// `CounterScoreboard` centralizes data checks. The covergroup samples after
+// each driver operation.
+
+const COUNTER_OP_RESET          : uint<4> = 0
+const COUNTER_OP_IDLE           : uint<4> = 1
+const COUNTER_OP_INCREMENT      : uint<4> = 2
+const COUNTER_OP_LOW_WRITE      : uint<4> = 3
+const COUNTER_OP_HIGH_WRITE     : uint<4> = 4
+const COUNTER_OP_DUAL_WRITE     : uint<4> = 5
+const COUNTER_OP_WRITE_PLUS_INC : uint<4> = 6
+const COUNTER_OP_WRAP           : uint<4> = 7
+const COUNTER_OP_UPD_SAMPLE     : uint<4> = 8
+
+transaction CounterOpTxn
+    op_class       : uint<4>
+    width          : uint<8> default 32
+    provide_upd    : bool default true
+    rst_n          : bool default true
+    inc            : bool default false
+    low_write      : bool default false
+    high_write     : bool default false
+    data           : uint<32> default 0
+    expect_val     : uint<64>
+    expect_upd     : uint<64>
+end transaction CounterOpTxn
+
+sequencer CounterSequencer
+    dispatched : out event<CounterOpTxn>
+    generated  : uint<32> default 0
+
+    hookable dispatch(t: CounterOpTxn)
+        generated = generated + 1
+        emit dispatched(t)
+    end dispatch
+end sequencer CounterSequencer
+
+transactor CounterDriver
+    dut : ibex_counter
+
+    when active
+        hookable drive(t: CounterOpTxn)
+            dut.rst_ni = t.rst_n
+            dut.counter_inc_i = t.inc
+            dut.counter_we_i = t.low_write
+            dut.counterh_we_i = t.high_write
+            dut.counter_val_i = t.data
+
+            wait 1 cycle
+
+            dut.counter_inc_i = 0
+            dut.counter_we_i = 0
+            dut.counterh_we_i = 0
+            dut.counter_val_i = 0
+            if t.rst_n == false
+                dut.rst_ni = 1
+            end if
+
+            wait 1 cycle
+        end drive
+    end when
+end transactor CounterDriver
+
+transactor CounterMonitor
+    dut : ibex_counter
+    samples  : uint<32> default 0
+    errors   : uint<32> default 0
+    last_val : uint<64> default 0
+    last_upd : uint<64> default 0
+
+    hookable observe(t: CounterOpTxn)
+        samples = samples + 1
+        last_val = dut.counter_val_o
+        last_upd = dut.counter_val_upd_o
+
+        if t.width == 32
+            if dut.counter_val_o[63:32] != 0
+                errors = errors + 1
+                fail("CounterWidth=32: counter_val_o high half is 0x${dut.counter_val_o[63:32]:08x}, expected 0")
+            end if
+            if dut.counter_val_upd_o[63:32] != 0
+                errors = errors + 1
+                fail("CounterWidth=32: counter_val_upd_o high half is 0x${dut.counter_val_upd_o[63:32]:08x}, expected 0")
+            end if
+        end if
+    end observe
+end transactor CounterMonitor
+
+scoreboard CounterScoreboard
+    planned : uint<32> default 0
+    checked : uint<32> default 0
+    errors  : uint<32> default 0
+
+    hookable record_expected(t: CounterOpTxn)
+        planned = planned + 1
+    end record_expected
+
+    hookable check_sample(t: CounterOpTxn, got_val: uint<64>, got_upd: uint<64>)
+        checked = checked + 1
+        if got_val != t.expect_val
+            errors = errors + 1
+            fail("counter op ${t.op_class}: counter_val_o=0x${got_val:016x}, expected 0x${t.expect_val:016x}")
+        end if
+        if got_upd != t.expect_upd
+            errors = errors + 1
+            fail("counter op ${t.op_class}: counter_val_upd_o=0x${got_upd:016x}, expected 0x${t.expect_upd:016x}")
+        end if
+    end check_sample
+end scoreboard CounterScoreboard
+
+covergroup CounterCov @(drv.drive(t) post)
+    cp_width : cover t.width
+        bins
+            w1 = {1}
+            w32 = {32}
+            w64 = {64}
+        end bins
+    cp_provide_upd : cover t.provide_upd
+        bins
+            disabled = {0}
+            enabled = {1}
+        end bins
+    cp_op : cover t.op_class
+        bins
+            reset = {0}
+            idle = {1}
+            increment = {2}
+            low_write = {3}
+            high_write = {4}
+            dual_write = {5}
+            write_plus_inc = {6}
+            wraparound = {7}
+            upd_sample = {8}
+        end bins
+    cp_low_data : cover t.data
+        bins
+            zero = {0}
+            one = {1}
+            all_ones = {0xffffffff}
+            even = {0x12345678, 0xfffffffe}
+            odd = {0xbbbbbbbb, 0xdeadbeef}
+            mixed = {0x55556666, 0xcafebabe}
+        end bins
+    cp_inc : cover t.inc
+        bins
+            off = {0}
+            asserted = {1}
+        end bins
+    cp_low_write_strobe : cover t.low_write
+        bins
+            off = {0}
+            asserted = {1}
+        end bins
+    cp_high_write_strobe : cover t.high_write
+        bins
+            off = {0}
+            asserted = {1}
+        end bins
+    cp_value_boundary : cover dut.counter_val_o
+        bins
+            zero = {0}
+            one = {1}
+            near_wrap = {0xffffffff}
+            mixed = {0x12345678, 0xbbbbbbbb}
+        end bins
+    cp_upd_boundary : cover dut.counter_val_upd_o
+        bins
+            zero = {0}
+            one = {1}
+            normal = {0x0000002b, 0x12345679}
+            mixed = {0xbbbbbbbc}
+        end bins
+    cross cp_op, cp_width
+    cross cp_op, cp_provide_upd
+end covergroup CounterCov

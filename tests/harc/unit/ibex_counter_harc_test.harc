@@ -1,0 +1,176 @@
+// Concrete counter canary suite using the reusable VIP in
+// tests/harc/lib/ibex_counter_vip.harc.
+//
+// Phase 1 targets the default generated `ibex_counter` configuration:
+// CounterWidth=32, ProvideValUpd=1. The VIP carries width/update metadata so
+// the later parameter sweep can reuse the same transaction and coverage shape.
+
+domain CounterDomain
+  freq_mhz: 100
+end domain CounterDomain
+
+testbench IbexCounterTb
+    dut : ibex_counter
+    sqr : CounterSequencer
+    drv : CounterDriver active
+    mon : CounterMonitor passive
+    sb  : CounterScoreboard
+    cov : CounterCov
+
+    function bind_components()
+        drv.dut = dut
+        mon.dut = dut
+    end function bind_components
+
+    function apply_and_check(t: CounterOpTxn)
+        sqr.dispatch(t)
+        sb.record_expected(t)
+        drv.drive(t)
+        mon.observe(t)
+        sb.check_sample(t, mon.last_val, mon.last_upd)
+    end function apply_and_check
+end testbench IbexCounterTb
+
+impl IbexCounterCanary for IbexCounterTb
+    clock clk_i = CounterDomain
+
+    run
+        bind_components()
+
+        let t : CounterOpTxn
+
+        t.op_class = COUNTER_OP_RESET
+        t.rst_n = false
+        t.inc = true
+        t.low_write = true
+        t.high_write = false
+        t.data = 0xffffffff
+        t.expect_val = 0
+        t.expect_upd = 1
+        apply_and_check(t)
+
+        t.op_class = COUNTER_OP_IDLE
+        t.rst_n = true
+        t.inc = false
+        t.low_write = false
+        t.high_write = false
+        t.data = 0
+        t.expect_val = 0
+        t.expect_upd = 1
+        apply_and_check(t)
+
+        t.op_class = COUNTER_OP_LOW_WRITE
+        t.data = 1
+        t.low_write = true
+        t.expect_val = 1
+        t.expect_upd = 2
+        apply_and_check(t)
+
+        t.op_class = COUNTER_OP_LOW_WRITE
+        t.data = 0x0000002a
+        t.expect_val = 0x0000002a
+        t.expect_upd = 0x0000002b
+        apply_and_check(t)
+
+        t.op_class = COUNTER_OP_INCREMENT
+        t.data = 0
+        t.low_write = false
+        t.inc = true
+        t.expect_val = 0x0000002b
+        t.expect_upd = 0x0000002c
+        apply_and_check(t)
+
+        t.op_class = COUNTER_OP_HIGH_WRITE
+        t.inc = false
+        t.high_write = true
+        t.data = 0xcafebabe
+        t.expect_val = 0x0000002b
+        t.expect_upd = 0x0000002c
+        apply_and_check(t)
+
+        t.op_class = COUNTER_OP_WRITE_PLUS_INC
+        t.high_write = false
+        t.low_write = true
+        t.inc = true
+        t.data = 0x12345678
+        t.expect_val = 0x12345678
+        t.expect_upd = 0x12345679
+        apply_and_check(t)
+
+        t.op_class = COUNTER_OP_LOW_WRITE
+        t.inc = false
+        t.data = 0xbbbbbbbb
+        t.expect_val = 0xbbbbbbbb
+        t.expect_upd = 0xbbbbbbbc
+        apply_and_check(t)
+
+        t.op_class = COUNTER_OP_DUAL_WRITE
+        t.low_write = true
+        t.high_write = true
+        t.data = 0x55556666
+        t.expect_val = 0xbbbbbbbb
+        t.expect_upd = 0xbbbbbbbc
+        apply_and_check(t)
+
+        t.op_class = COUNTER_OP_UPD_SAMPLE
+        t.low_write = true
+        t.high_write = false
+        t.data = 0xdeadbeef
+        t.expect_val = 0xdeadbeef
+        t.expect_upd = 0xdeadbef0
+        apply_and_check(t)
+
+        t.op_class = COUNTER_OP_LOW_WRITE
+        t.data = 0xffffffff
+        t.expect_val = 0xffffffff
+        t.expect_upd = 0
+        apply_and_check(t)
+
+        t.op_class = COUNTER_OP_WRAP
+        t.low_write = false
+        t.inc = true
+        t.data = 0
+        t.expect_val = 0
+        t.expect_upd = 1
+        apply_and_check(t)
+    end run
+
+    check
+        cov.report()
+        assert cov.cp_width.w32 > 0 else fail("CounterWidth=32 coverage hole")
+        assert cov.cp_provide_upd.enabled > 0 else fail("ProvideValUpd=1 coverage hole")
+        assert cov.cp_op.reset > 0 else fail("reset operation coverage hole")
+        assert cov.cp_op.idle > 0 else fail("idle operation coverage hole")
+        assert cov.cp_op.increment > 0 else fail("increment operation coverage hole")
+        assert cov.cp_op.low_write > 0 else fail("low write operation coverage hole")
+        assert cov.cp_op.high_write > 0 else fail("high write operation coverage hole")
+        assert cov.cp_op.dual_write > 0 else fail("dual write priority coverage hole")
+        assert cov.cp_op.write_plus_inc > 0 else fail("write plus increment coverage hole")
+        assert cov.cp_op.wraparound > 0 else fail("wraparound coverage hole")
+        assert cov.cp_op.upd_sample > 0 else fail("update sample coverage hole")
+        assert cov.cp_low_data.zero > 0 else fail("low data zero coverage hole")
+        assert cov.cp_low_data.one > 0 else fail("low data one coverage hole")
+        assert cov.cp_low_data.all_ones > 0 else fail("low data all-ones coverage hole")
+        assert cov.cp_low_data.even > 0 else fail("low data even coverage hole")
+        assert cov.cp_low_data.odd > 0 else fail("low data odd coverage hole")
+        assert cov.cp_low_data.mixed > 0 else fail("low data mixed coverage hole")
+        assert cov.cp_inc.off > 0 else fail("counter_inc_i=0 coverage hole")
+        assert cov.cp_inc.asserted > 0 else fail("counter_inc_i=1 coverage hole")
+        assert cov.cp_low_write_strobe.off > 0 else fail("counter_we_i=0 coverage hole")
+        assert cov.cp_low_write_strobe.asserted > 0 else fail("counter_we_i=1 coverage hole")
+        assert cov.cp_high_write_strobe.off > 0 else fail("counterh_we_i=0 coverage hole")
+        assert cov.cp_high_write_strobe.asserted > 0 else fail("counterh_we_i=1 coverage hole")
+        assert cov.cp_value_boundary.zero > 0 else fail("counter value zero coverage hole")
+        assert cov.cp_value_boundary.one > 0 else fail("counter value one coverage hole")
+        assert cov.cp_value_boundary.near_wrap > 0 else fail("counter near-wrap coverage hole")
+        assert cov.cp_value_boundary.mixed > 0 else fail("counter mixed value coverage hole")
+        assert cov.cp_upd_boundary.zero > 0 else fail("update zero coverage hole")
+        assert cov.cp_upd_boundary.one > 0 else fail("update one coverage hole")
+        assert cov.cp_upd_boundary.normal > 0 else fail("normal update coverage hole")
+        assert cov.cp_upd_boundary.mixed > 0 else fail("mixed update coverage hole")
+        assert sqr.generated == sb.planned else fail("sequencer generated ${sqr.generated}, scoreboard planned ${sb.planned}")
+        assert sb.planned == sb.checked else fail("scoreboard planned ${sb.planned}, checked ${sb.checked}")
+        assert sb.errors == 0 else fail("counter scoreboard recorded ${sb.errors} error(s)")
+        assert mon.errors == 0 else fail("counter monitor recorded ${mon.errors} error(s)")
+    end check
+end impl IbexCounterCanary

@@ -1,0 +1,225 @@
+// Reusable HARC verification IP for `ibex_register_file_ff`.
+//
+// The driver owns raw port sequencing, the monitor passively checks observed
+// read data against expectations, and the scoreboard is a compact architectural
+// reference model for default RV32I register-file behavior. The model carries
+// RV32E and dummy-x0 configuration fields so later parameterized runs can reuse
+// the same API once those RTL configurations are in scope.
+
+const HARC_RF_READ_NONE : uint<2> = 0
+const HARC_RF_READ_A    : uint<2> = 1
+const HARC_RF_READ_B    : uint<2> = 2
+const HARC_RF_READ_BOTH : uint<2> = 3
+
+transaction RfAccessTxn
+    raddr_a      : uint<5>  default 0
+    raddr_b      : uint<5>  default 0
+    read_kind    : uint<2>  default 0
+    waddr        : uint<5>  default 0
+    wdata        : uint<32> default 0
+    we           : bool     default false
+    dummy_id     : bool     default false
+    dummy_wb     : bool     default false
+    test_en      : bool     default false
+end transaction RfAccessTxn
+
+scoreboard RfScoreboard
+    regs          : Vec<uint<32>, 32>
+    dummy_x0      : uint<32> default 0
+    word_zero     : uint<32> default 0
+    rv32e         : bool default false
+    dummy_enabled : bool default false
+    writes        : uint<32> default 0
+    dropped       : uint<32> default 0
+    reads_a       : uint<32> default 0
+    reads_b       : uint<32> default 0
+    collisions    : uint<32> default 0
+    errors        : uint<32> default 0
+end scoreboard RfScoreboard
+
+transactor RfDriver
+    dut : ibex_register_file_ff
+
+    when active
+        hookable idle()
+            dut.we_a_i = 0
+            dut.waddr_a_i = 0
+            dut.wdata_a_i = 0
+            dut.dummy_instr_wb_i = 0
+        end idle
+
+        hookable init_inputs()
+            dut.rst_ni = 0
+            dut.test_en_i = 0
+            dut.dummy_instr_id_i = 0
+            dut.dummy_instr_wb_i = 0
+            dut.raddr_a_i = 0
+            dut.raddr_b_i = 0
+            dut.waddr_a_i = 0
+            dut.wdata_a_i = 0
+            dut.we_a_i = 0
+        end init_inputs
+
+        hookable reset()
+            init_inputs()
+            wait 2 cycles
+            dut.rst_ni = 1
+            wait 1 cycle
+        end reset
+
+        hookable set_reset_low()
+            dut.rst_ni = 0
+        end set_reset_low
+
+        hookable release_reset()
+            dut.rst_ni = 1
+            wait 1 cycle
+        end release_reset
+
+        hookable write_edge(t: RfAccessTxn)
+            dut.test_en_i = t.test_en
+            dut.dummy_instr_wb_i = t.dummy_wb
+            dut.we_a_i = t.we
+            dut.waddr_a_i = t.waddr
+            dut.wdata_a_i = t.wdata
+            wait 1 cycle
+        end write_edge
+
+        hookable drive_read(t: RfAccessTxn)
+            dut.test_en_i = t.test_en
+            dut.dummy_instr_id_i = t.dummy_id
+            dut.raddr_a_i = t.raddr_a
+            dut.raddr_b_i = t.raddr_b
+            wait 1 cycle
+        end drive_read
+
+        hookable drive_read_now(t: RfAccessTxn)
+            dut.test_en_i = t.test_en
+            dut.dummy_instr_id_i = t.dummy_id
+            dut.raddr_a_i = t.raddr_a
+            dut.raddr_b_i = t.raddr_b
+        end drive_read_now
+
+        hookable drive_read_write_now(t: RfAccessTxn)
+            dut.test_en_i = t.test_en
+            dut.dummy_instr_id_i = t.dummy_id
+            dut.dummy_instr_wb_i = t.dummy_wb
+            dut.raddr_a_i = t.raddr_a
+            dut.raddr_b_i = t.raddr_b
+            dut.we_a_i = t.we
+            dut.waddr_a_i = t.waddr
+            dut.wdata_a_i = t.wdata
+        end drive_read_write_now
+
+        hookable tick()
+            wait 1 cycle
+        end tick
+    end when
+end transactor RfDriver
+
+transactor RfMonitor
+    dut : ibex_register_file_ff
+    errors : uint<32> default 0
+
+    hookable observe_a(label: uint<8>, expected: uint<32>)
+        if dut.rdata_a_o != expected
+            errors = errors + 1
+            fail("rf check ${label}: port A addr ${dut.raddr_a_i} got 0x${dut.rdata_a_o:08x}, expected 0x${expected:08x}")
+        end if
+    end observe_a
+
+    hookable observe_b(label: uint<8>, expected: uint<32>)
+        if dut.rdata_b_o != expected
+            errors = errors + 1
+            fail("rf check ${label}: port B addr ${dut.raddr_b_i} got 0x${dut.rdata_b_o:08x}, expected 0x${expected:08x}")
+        end if
+    end observe_b
+
+    hookable observe_pair(label: uint<8>, expected_a: uint<32>, expected_b: uint<32>)
+        observe_a(label, expected_a)
+        observe_b(label, expected_b)
+    end observe_pair
+end transactor RfMonitor
+
+covergroup RfWriteCov @(drv.write_edge(t) post)
+    cp_we : cover dut.we_a_i
+        bins
+            disabled = {0}
+            enabled = {1}
+        end bins
+    cp_waddr : cover dut.waddr_a_i
+        bins
+            x0 = {0}
+            low = [1..7]
+            mid = [8..15]
+            rv32e_high = [16..31]
+        end bins
+    cp_wdata : cover dut.wdata_a_i
+        bins
+            zero = {0}
+            walking = {1, 0x80000000}
+            patterned = {0x11112222, 0xa5a5a5a5, 0xcafef00d, 0xdeadbeef}
+            all_ones = {0xffffffff}
+        end bins
+    cp_test_en : cover dut.test_en_i
+        bins
+            deasserted = {0}
+            asserted = {1}
+        end bins
+    cp_dummy_wb : cover dut.dummy_instr_wb_i
+        bins
+            deasserted = {0}
+            asserted = {1}
+        end bins
+end covergroup RfWriteCov
+
+covergroup RfReadCov @(drv.drive_read(t) post)
+    cp_raddr_a : cover dut.raddr_a_i
+        bins
+            x0 = {0}
+            low = [1..7]
+            mid = [8..15]
+            high = [16..31]
+        end bins
+    cp_raddr_b : cover dut.raddr_b_i
+        bins
+            x0 = {0}
+            low = [1..7]
+            mid = [8..15]
+            high = [16..31]
+        end bins
+    cp_same_addr : cover dut.raddr_a_i == dut.raddr_b_i
+        bins
+            distinct = {0}
+            same = {1}
+        end bins
+    cp_dummy_id : cover dut.dummy_instr_id_i
+        bins
+            deasserted = {0}
+            asserted = {1}
+        end bins
+    cp_test_en : cover dut.test_en_i
+        bins
+            deasserted = {0}
+            asserted = {1}
+        end bins
+    cross cp_raddr_a, cp_raddr_b
+end covergroup RfReadCov
+
+covergroup RfCollisionCov @(drv.drive_read_write_now(t) post)
+    cp_collision_a : cover dut.we_a_i && (dut.waddr_a_i == dut.raddr_a_i)
+        bins
+            no = {0}
+            yes = {1}
+        end bins
+    cp_collision_b : cover dut.we_a_i && (dut.waddr_a_i == dut.raddr_b_i)
+        bins
+            no = {0}
+            yes = {1}
+        end bins
+    cp_addr : cover dut.waddr_a_i
+        bins
+            x0 = {0}
+            nonzero = [1..31]
+        end bins
+end covergroup RfCollisionCov

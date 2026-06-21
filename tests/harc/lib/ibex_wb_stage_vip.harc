@@ -1,0 +1,294 @@
+// Reusable HARC verification IP for the `ibex_wb_stage` unit.
+//
+// Phase 1 scope is the WritebackStage=0, DummyInstructions=0,
+// ResetAll=0 combinational passthrough. `WbDriver` owns raw DUT pin
+// driving and the settle boundary, `WbMonitor` is passive and records
+// the integration onehot0 condition, `WbScoreboard` computes reference
+// expectations, and `WbCov` samples functional coverage after every
+// driven transaction.
+
+const HARC_WB_SRC_NONE : uint<2> = 0
+const HARC_WB_SRC_ID   : uint<2> = 1
+const HARC_WB_SRC_LSU  : uint<2> = 2
+
+transaction WbTxn
+    en_wb               : bool default false
+    instr_type          : uint<2> default 0
+    pc_id               : uint<32> default 0
+    instr_is_compressed : bool default false
+    instr_perf_count    : bool default false
+    rf_waddr            : uint<5> default 0
+    rf_wdata_id         : uint<32> default 0
+    rf_we_id            : bool default false
+    dummy_instr         : bool default false
+    rf_wdata_lsu        : uint<32> default 0
+    rf_we_lsu           : bool default false
+    lsu_resp_valid      : bool default false
+    lsu_resp_err        : bool default false
+    write_class         : uint<2> default 0
+    retire_combo        : uint<4> default 0
+    tieoff_activity     : bool default false
+    rapid_toggle        : bool default false
+end transaction WbTxn
+
+sequencer WbSequencer
+    issued : uint<32> default 0
+
+    hookable issue(t: WbTxn)
+        issued = issued + 1
+    end issue
+end sequencer WbSequencer
+
+transactor WbDriver
+    dut : ibex_wb_stage
+
+    when active
+        hookable drive(t: WbTxn)
+            dut.en_wb_i = t.en_wb
+            dut.instr_type_wb_i = t.instr_type
+            dut.pc_id_i = t.pc_id
+            dut.instr_is_compressed_id_i = t.instr_is_compressed
+            dut.instr_perf_count_id_i = t.instr_perf_count
+            dut.rf_waddr_id_i = t.rf_waddr
+            dut.rf_wdata_id_i = t.rf_wdata_id
+            dut.rf_we_id_i = t.rf_we_id
+            dut.dummy_instr_id_i = t.dummy_instr
+            dut.rf_wdata_lsu_i = t.rf_wdata_lsu
+            dut.rf_we_lsu_i = t.rf_we_lsu
+            dut.lsu_resp_valid_i = t.lsu_resp_valid
+            dut.lsu_resp_err_i = t.lsu_resp_err
+            wait 1 cycle
+        end drive
+    end when
+end transactor WbDriver
+
+transactor WbMonitor
+    dut : ibex_wb_stage
+    samples : uint<32> default 0
+    constraint_violations : uint<32> default 0
+
+    hookable observe(t: WbTxn)
+        samples = samples + 1
+        if t.rf_we_id && t.rf_we_lsu
+            constraint_violations = constraint_violations + 1
+            fail("WB source onehot0 violation: rf_we_id_i and rf_we_lsu_i both asserted")
+        end if
+    end observe
+end transactor WbMonitor
+
+transactor WbScoreboard
+    dut : ibex_wb_stage
+    errors : uint<32> default 0
+
+    hookable compare(t: WbTxn)
+        let expect_we : bool = t.rf_we_id || t.rf_we_lsu
+        let expect_wdata : uint<32> = 0
+        if t.rf_we_id
+            expect_wdata = expect_wdata | t.rf_wdata_id
+        end if
+        if t.rf_we_lsu
+            expect_wdata = expect_wdata | t.rf_wdata_lsu
+        end if
+        let expect_ret : bool = t.instr_perf_count && t.en_wb && !(t.lsu_resp_valid && t.lsu_resp_err)
+        let expect_ret_compressed : bool = expect_ret && t.instr_is_compressed
+
+        if dut.rf_waddr_wb_o != t.rf_waddr
+            errors = errors + 1
+            fail("rf_waddr_wb_o=${dut.rf_waddr_wb_o}, expected ${t.rf_waddr}")
+        end if
+        if dut.rf_we_wb_o != expect_we
+            errors = errors + 1
+            fail("rf_we_wb_o=${dut.rf_we_wb_o}, expected ${expect_we}")
+        end if
+        if dut.rf_wdata_wb_o != expect_wdata
+            errors = errors + 1
+            fail("rf_wdata_wb_o=0x${dut.rf_wdata_wb_o:08x}, expected 0x${expect_wdata:08x}")
+        end if
+        if dut.ready_wb_o != true
+            errors = errors + 1
+            fail("ready_wb_o=${dut.ready_wb_o}, expected true")
+        end if
+        if dut.perf_instr_ret_wb_o != expect_ret
+            errors = errors + 1
+            fail("perf_instr_ret_wb_o=${dut.perf_instr_ret_wb_o}, expected ${expect_ret}")
+        end if
+        if dut.perf_instr_ret_compressed_wb_o != expect_ret_compressed
+            errors = errors + 1
+            fail("perf_instr_ret_compressed_wb_o=${dut.perf_instr_ret_compressed_wb_o}, expected ${expect_ret_compressed}")
+        end if
+        if dut.perf_instr_ret_wb_spec_o != false
+            errors = errors + 1
+            fail("perf_instr_ret_wb_spec_o=${dut.perf_instr_ret_wb_spec_o}, expected false")
+        end if
+        if dut.perf_instr_ret_compressed_wb_spec_o != false
+            errors = errors + 1
+            fail("perf_instr_ret_compressed_wb_spec_o=${dut.perf_instr_ret_compressed_wb_spec_o}, expected false")
+        end if
+        if dut.dummy_instr_wb_o != t.dummy_instr
+            errors = errors + 1
+            fail("dummy_instr_wb_o=${dut.dummy_instr_wb_o}, expected ${t.dummy_instr}")
+        end if
+        if dut.outstanding_load_wb_o != false
+            errors = errors + 1
+            fail("outstanding_load_wb_o=${dut.outstanding_load_wb_o}, expected false")
+        end if
+        if dut.outstanding_store_wb_o != false
+            errors = errors + 1
+            fail("outstanding_store_wb_o=${dut.outstanding_store_wb_o}, expected false")
+        end if
+        if dut.pc_wb_o != 0
+            errors = errors + 1
+            fail("pc_wb_o=0x${dut.pc_wb_o:08x}, expected 0")
+        end if
+        if dut.rf_write_wb_o != false
+            errors = errors + 1
+            fail("rf_write_wb_o=${dut.rf_write_wb_o}, expected false")
+        end if
+        if dut.rf_wdata_fwd_wb_o != 0
+            errors = errors + 1
+            fail("rf_wdata_fwd_wb_o=0x${dut.rf_wdata_fwd_wb_o:08x}, expected 0")
+        end if
+        if dut.instr_done_wb_o != false
+            errors = errors + 1
+            fail("instr_done_wb_o=${dut.instr_done_wb_o}, expected false")
+        end if
+    end compare
+end transactor WbScoreboard
+
+covergroup WbCov @(drv.drive(t) post)
+    cp_write_class : cover t.write_class
+        bins
+            no_write = {0}
+            id_write = {1}
+            lsu_write = {2}
+        end bins
+    cp_addr : cover dut.rf_waddr_id_i
+        bins
+            x0 = {0}
+            x1 = {1}
+            x2 = {2}
+            x3 = {3}
+            x4 = {4}
+            x5 = {5}
+            x6 = {6}
+            x7 = {7}
+            x8 = {8}
+            x9 = {9}
+            x10 = {10}
+            x11 = {11}
+            x12 = {12}
+            x13 = {13}
+            x14 = {14}
+            x15 = {15}
+            x16 = {16}
+            x17 = {17}
+            x18 = {18}
+            x19 = {19}
+            x20 = {20}
+            x21 = {21}
+            x22 = {22}
+            x23 = {23}
+            x24 = {24}
+            x25 = {25}
+            x26 = {26}
+            x27 = {27}
+            x28 = {28}
+            x29 = {29}
+            x30 = {30}
+            x31 = {31}
+        end bins
+    cp_id_data : cover dut.rf_wdata_id_i
+        bins
+            zero = {0}
+            ones = {0xffffffff}
+            alt_a = {0xaaaaaaaa}
+            alt_5 = {0x55555555}
+            sign = {0x80000000}
+            mixed = {0x12345678, 0xdeadbeef}
+        end bins
+    cp_lsu_data : cover dut.rf_wdata_lsu_i
+        bins
+            zero = {0}
+            ones = {0xffffffff}
+            alt_a = {0xaaaaaaaa}
+            alt_5 = {0x55555555}
+            sign = {0x80000000}
+            mixed = {0xc0decafe, 0x00000001}
+        end bins
+    cp_retire_combo : cover t.retire_combo
+        bins
+            c0 = {0}
+            c1 = {1}
+            c2 = {2}
+            c3 = {3}
+            c4 = {4}
+            c5 = {5}
+            c6 = {6}
+            c7 = {7}
+            c8 = {8}
+            c9 = {9}
+            c10 = {10}
+            c11 = {11}
+            c12 = {12}
+            c13 = {13}
+            c14 = {14}
+            c15 = {15}
+        end bins
+    cp_retired : cover dut.perf_instr_ret_wb_o
+        bins
+            no = {0}
+            yes = {1}
+        end bins
+    cp_compressed : cover dut.instr_is_compressed_id_i
+        bins
+            no = {0}
+            yes = {1}
+        end bins
+    cp_compressed_retired : cover dut.perf_instr_ret_compressed_wb_o
+        bins
+            no = {0}
+            yes = {1}
+        end bins
+    cp_lsu_error : cover dut.lsu_resp_valid_i
+        bins
+            invalid_or_absent = {0}
+            valid = {1}
+        end bins
+    cp_dummy : cover dut.dummy_instr_id_i
+        bins
+            no = {0}
+            yes = {1}
+        end bins
+    cp_onehot0 : cover t.rf_we_id
+        bins
+            id_low = {0}
+            id_high = {1}
+        end bins
+    cp_lsu_onehot0 : cover t.rf_we_lsu
+        bins
+            lsu_low = {0}
+            lsu_high = {1}
+        end bins
+    cp_ready : cover dut.ready_wb_o
+        bins
+            always_ready = {1}
+        end bins
+    cp_spec_tieoff : cover dut.perf_instr_ret_wb_spec_o
+        bins
+            tied_zero = {0}
+        end bins
+    cp_spec_compressed_tieoff : cover dut.perf_instr_ret_compressed_wb_spec_o
+        bins
+            tied_zero = {0}
+        end bins
+    cp_ws1_tieoff_activity : cover t.tieoff_activity
+        bins
+            idle = {0}
+            busy = {1}
+        end bins
+    cp_rapid_toggle : cover t.rapid_toggle
+        bins
+            normal = {0}
+            rapid = {1}
+        end bins
+end covergroup WbCov

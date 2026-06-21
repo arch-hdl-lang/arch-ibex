@@ -1,0 +1,276 @@
+// Concrete `ibex_wb_stage` Phase 1 canary using the reusable VIP in
+// tests/harc/lib/ibex_wb_stage_vip.harc.
+
+testbench IbexWbStageTb
+    dut : ibex_wb_stage
+    sqr : WbSequencer
+    drv : WbDriver active
+    mon : WbMonitor passive
+    sb  : WbScoreboard passive
+    cov : WbCov
+
+    function bind_components()
+        drv.dut = dut
+        mon.dut = dut
+        sb.dut = dut
+    end function bind_components
+
+    function apply_and_check(t: WbTxn)
+        sqr.issue(t)
+        drv.drive(t)
+        mon.observe(t)
+        sb.compare(t)
+    end function apply_and_check
+end testbench IbexWbStageTb
+
+impl IbexWbStagePhase1Canary for IbexWbStageTb
+    run
+        bind_components()
+
+        let t : WbTxn
+
+        t.write_class = HARC_WB_SRC_NONE
+        t.rf_waddr = 0
+        t.rf_wdata_id = 0xffffffff
+        t.rf_wdata_lsu = 0xffffffff
+        t.tieoff_activity = false
+        t.rapid_toggle = false
+        apply_and_check(t)
+
+        for addr in 0 .. 31
+            t.rf_waddr = addr
+            t.rf_we_id = false
+            t.rf_we_lsu = false
+            t.rf_wdata_id = 0
+            t.rf_wdata_lsu = 0
+            t.write_class = HARC_WB_SRC_NONE
+            apply_and_check(t)
+        end for
+
+        t.rf_we_id = true
+        t.rf_we_lsu = false
+        t.write_class = HARC_WB_SRC_ID
+        t.rf_waddr = 5
+        t.rf_wdata_id = 0
+        apply_and_check(t)
+        t.rf_wdata_id = 0xffffffff
+        apply_and_check(t)
+        t.rf_wdata_id = 0xaaaaaaaa
+        apply_and_check(t)
+        t.rf_wdata_id = 0x55555555
+        apply_and_check(t)
+        t.rf_wdata_id = 0x80000000
+        apply_and_check(t)
+        t.rf_wdata_id = 0x12345678
+        apply_and_check(t)
+        t.rf_wdata_id = 0xdeadbeef
+        apply_and_check(t)
+
+        t.rf_we_id = false
+        t.rf_we_lsu = true
+        t.write_class = HARC_WB_SRC_LSU
+        t.rf_waddr = 18
+        t.rf_wdata_lsu = 0
+        apply_and_check(t)
+        t.rf_wdata_lsu = 0xffffffff
+        apply_and_check(t)
+        t.rf_wdata_lsu = 0xaaaaaaaa
+        apply_and_check(t)
+        t.rf_wdata_lsu = 0x55555555
+        apply_and_check(t)
+        t.rf_wdata_lsu = 0x80000000
+        apply_and_check(t)
+        t.rf_wdata_lsu = 0xc0decafe
+        apply_and_check(t)
+        t.rf_wdata_lsu = 0x00000001
+        apply_and_check(t)
+
+        t.rf_we_id = false
+        t.rf_we_lsu = false
+        t.write_class = HARC_WB_SRC_NONE
+        t.rf_wdata_id = 0xaaaaaaaa
+        t.rf_wdata_lsu = 0x55555555
+        apply_and_check(t)
+
+        t.rf_wdata_id = 0
+        t.rf_wdata_lsu = 0
+        t.instr_is_compressed = false
+        t.dummy_instr = false
+        for combo in 0 .. 15
+            t.retire_combo = combo
+            t.instr_perf_count = (combo & 0x8) != 0
+            t.en_wb = (combo & 0x4) != 0
+            t.lsu_resp_valid = (combo & 0x2) != 0
+            t.lsu_resp_err = (combo & 0x1) != 0
+            t.instr_is_compressed = false
+            apply_and_check(t)
+            t.instr_is_compressed = true
+            apply_and_check(t)
+        end for
+
+        t.instr_perf_count = false
+        t.en_wb = false
+        t.lsu_resp_valid = false
+        t.lsu_resp_err = false
+        t.instr_is_compressed = false
+        t.dummy_instr = false
+        apply_and_check(t)
+        t.dummy_instr = true
+        apply_and_check(t)
+
+        t.dummy_instr = false
+        t.tieoff_activity = true
+        t.en_wb = true
+        t.instr_perf_count = true
+        t.instr_is_compressed = true
+        t.lsu_resp_valid = true
+        t.lsu_resp_err = false
+        t.rf_waddr = 15
+        t.rf_we_id = true
+        t.rf_we_lsu = false
+        t.write_class = HARC_WB_SRC_ID
+        t.rf_wdata_id = 0xaaaaaaaa
+        t.rf_wdata_lsu = 0
+        t.instr_type = 2
+        t.pc_id = 0x80000080
+        apply_and_check(t)
+
+        t.rf_we_id = false
+        t.rf_we_lsu = true
+        t.write_class = HARC_WB_SRC_LSU
+        t.rf_waddr = 22
+        t.rf_wdata_lsu = 0xffffffff
+        t.lsu_resp_err = true
+        apply_and_check(t)
+
+        t.tieoff_activity = false
+        t.rapid_toggle = true
+        t.rf_we_id = false
+        t.rf_we_lsu = false
+        t.write_class = HARC_WB_SRC_NONE
+        t.instr_perf_count = false
+        t.en_wb = false
+        t.lsu_resp_valid = false
+        t.lsu_resp_err = false
+        t.instr_is_compressed = false
+        for addr in 0 .. 31
+            t.rf_waddr = addr
+            apply_and_check(t)
+        end for
+
+        t.rf_we_id = true
+        t.rf_we_lsu = false
+        t.write_class = HARC_WB_SRC_ID
+        t.rf_waddr = 3
+        t.rf_wdata_id = 0
+        apply_and_check(t)
+        t.rf_wdata_id = 0xffffffff
+        apply_and_check(t)
+        t.rf_wdata_id = 0xa5a5a5a5
+        apply_and_check(t)
+        t.rf_wdata_id = 0x5a5a5a5a
+        apply_and_check(t)
+        t.rf_wdata_id = 0x12345678
+        apply_and_check(t)
+    end run
+
+    check
+        cov.report()
+
+        assert cov.cp_write_class.no_write > 0 else fail("no-write source coverage hole")
+        assert cov.cp_write_class.id_write > 0 else fail("ID write source coverage hole")
+        assert cov.cp_write_class.lsu_write > 0 else fail("LSU write source coverage hole")
+
+        assert cov.cp_addr.x0 > 0 else fail("x0 address coverage hole")
+        assert cov.cp_addr.x1 > 0 else fail("x1 address coverage hole")
+        assert cov.cp_addr.x2 > 0 else fail("x2 address coverage hole")
+        assert cov.cp_addr.x3 > 0 else fail("x3 address coverage hole")
+        assert cov.cp_addr.x4 > 0 else fail("x4 address coverage hole")
+        assert cov.cp_addr.x5 > 0 else fail("x5 address coverage hole")
+        assert cov.cp_addr.x6 > 0 else fail("x6 address coverage hole")
+        assert cov.cp_addr.x7 > 0 else fail("x7 address coverage hole")
+        assert cov.cp_addr.x8 > 0 else fail("x8 address coverage hole")
+        assert cov.cp_addr.x9 > 0 else fail("x9 address coverage hole")
+        assert cov.cp_addr.x10 > 0 else fail("x10 address coverage hole")
+        assert cov.cp_addr.x11 > 0 else fail("x11 address coverage hole")
+        assert cov.cp_addr.x12 > 0 else fail("x12 address coverage hole")
+        assert cov.cp_addr.x13 > 0 else fail("x13 address coverage hole")
+        assert cov.cp_addr.x14 > 0 else fail("x14 address coverage hole")
+        assert cov.cp_addr.x15 > 0 else fail("x15 address coverage hole")
+        assert cov.cp_addr.x16 > 0 else fail("x16 address coverage hole")
+        assert cov.cp_addr.x17 > 0 else fail("x17 address coverage hole")
+        assert cov.cp_addr.x18 > 0 else fail("x18 address coverage hole")
+        assert cov.cp_addr.x19 > 0 else fail("x19 address coverage hole")
+        assert cov.cp_addr.x20 > 0 else fail("x20 address coverage hole")
+        assert cov.cp_addr.x21 > 0 else fail("x21 address coverage hole")
+        assert cov.cp_addr.x22 > 0 else fail("x22 address coverage hole")
+        assert cov.cp_addr.x23 > 0 else fail("x23 address coverage hole")
+        assert cov.cp_addr.x24 > 0 else fail("x24 address coverage hole")
+        assert cov.cp_addr.x25 > 0 else fail("x25 address coverage hole")
+        assert cov.cp_addr.x26 > 0 else fail("x26 address coverage hole")
+        assert cov.cp_addr.x27 > 0 else fail("x27 address coverage hole")
+        assert cov.cp_addr.x28 > 0 else fail("x28 address coverage hole")
+        assert cov.cp_addr.x29 > 0 else fail("x29 address coverage hole")
+        assert cov.cp_addr.x30 > 0 else fail("x30 address coverage hole")
+        assert cov.cp_addr.x31 > 0 else fail("x31 address coverage hole")
+
+        assert cov.cp_id_data.zero > 0 else fail("ID zero data coverage hole")
+        assert cov.cp_id_data.ones > 0 else fail("ID all-ones data coverage hole")
+        assert cov.cp_id_data.alt_a > 0 else fail("ID alternating-A data coverage hole")
+        assert cov.cp_id_data.alt_5 > 0 else fail("ID alternating-5 data coverage hole")
+        assert cov.cp_id_data.sign > 0 else fail("ID sign-bit data coverage hole")
+        assert cov.cp_id_data.mixed > 0 else fail("ID mixed data coverage hole")
+        assert cov.cp_lsu_data.zero > 0 else fail("LSU zero data coverage hole")
+        assert cov.cp_lsu_data.ones > 0 else fail("LSU all-ones data coverage hole")
+        assert cov.cp_lsu_data.alt_a > 0 else fail("LSU alternating-A data coverage hole")
+        assert cov.cp_lsu_data.alt_5 > 0 else fail("LSU alternating-5 data coverage hole")
+        assert cov.cp_lsu_data.sign > 0 else fail("LSU sign-bit data coverage hole")
+        assert cov.cp_lsu_data.mixed > 0 else fail("LSU mixed data coverage hole")
+
+        assert cov.cp_retire_combo.c0 > 0 else fail("retire combo 0 coverage hole")
+        assert cov.cp_retire_combo.c1 > 0 else fail("retire combo 1 coverage hole")
+        assert cov.cp_retire_combo.c2 > 0 else fail("retire combo 2 coverage hole")
+        assert cov.cp_retire_combo.c3 > 0 else fail("retire combo 3 coverage hole")
+        assert cov.cp_retire_combo.c4 > 0 else fail("retire combo 4 coverage hole")
+        assert cov.cp_retire_combo.c5 > 0 else fail("retire combo 5 coverage hole")
+        assert cov.cp_retire_combo.c6 > 0 else fail("retire combo 6 coverage hole")
+        assert cov.cp_retire_combo.c7 > 0 else fail("retire combo 7 coverage hole")
+        assert cov.cp_retire_combo.c8 > 0 else fail("retire combo 8 coverage hole")
+        assert cov.cp_retire_combo.c9 > 0 else fail("retire combo 9 coverage hole")
+        assert cov.cp_retire_combo.c10 > 0 else fail("retire combo 10 coverage hole")
+        assert cov.cp_retire_combo.c11 > 0 else fail("retire combo 11 coverage hole")
+        assert cov.cp_retire_combo.c12 > 0 else fail("retire combo 12 coverage hole")
+        assert cov.cp_retire_combo.c13 > 0 else fail("retire combo 13 coverage hole")
+        assert cov.cp_retire_combo.c14 > 0 else fail("retire combo 14 coverage hole")
+        assert cov.cp_retire_combo.c15 > 0 else fail("retire combo 15 coverage hole")
+
+        assert cov.cp_retired.no > 0 else fail("non-retire output coverage hole")
+        assert cov.cp_retired.yes > 0 else fail("retire output coverage hole")
+        assert cov.cp_compressed.no > 0 else fail("uncompressed coverage hole")
+        assert cov.cp_compressed.yes > 0 else fail("compressed coverage hole")
+        assert cov.cp_compressed_retired.no > 0 else fail("compressed-retire false coverage hole")
+        assert cov.cp_compressed_retired.yes > 0 else fail("compressed-retire true coverage hole")
+        assert cov.cp_lsu_error.invalid_or_absent > 0 else fail("LSU non-valid coverage hole")
+        assert cov.cp_lsu_error.valid > 0 else fail("LSU valid coverage hole")
+        assert cov.cp_dummy.no > 0 else fail("dummy false coverage hole")
+        assert cov.cp_dummy.yes > 0 else fail("dummy true coverage hole")
+        assert cov.cp_onehot0.id_low > 0 else fail("ID WE low coverage hole")
+        assert cov.cp_onehot0.id_high > 0 else fail("ID WE high coverage hole")
+        assert cov.cp_lsu_onehot0.lsu_low > 0 else fail("LSU WE low coverage hole")
+        assert cov.cp_lsu_onehot0.lsu_high > 0 else fail("LSU WE high coverage hole")
+        assert cov.cp_ready.always_ready > 0 else fail("ready tie-one coverage hole")
+        assert cov.cp_spec_tieoff.tied_zero > 0 else fail("spec retire tie-zero coverage hole")
+        assert cov.cp_spec_compressed_tieoff.tied_zero > 0 else fail("spec compressed tie-zero coverage hole")
+        assert cov.cp_ws1_tieoff_activity.idle > 0 else fail("WS1 tieoff idle coverage hole")
+        assert cov.cp_ws1_tieoff_activity.busy > 0 else fail("WS1 tieoff activity coverage hole")
+        assert cov.cp_rapid_toggle.normal > 0 else fail("normal combinational coverage hole")
+        assert cov.cp_rapid_toggle.rapid > 0 else fail("rapid toggle coverage hole")
+
+        assert sqr.issued == mon.samples
+            else fail("sequencer issued ${sqr.issued}, monitor observed ${mon.samples}")
+        assert mon.constraint_violations == 0
+            else fail("monitor saw ${mon.constraint_violations} onehot0 violation(s)")
+        assert sb.errors == 0
+            else fail("WB scoreboard recorded ${sb.errors} error(s)")
+    end check
+end impl IbexWbStagePhase1Canary

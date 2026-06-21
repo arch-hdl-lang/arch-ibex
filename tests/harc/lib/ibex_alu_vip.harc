@@ -1,0 +1,157 @@
+// Reusable HARC verification IP for the `ibex_alu` unit.
+//
+// The transaction captures semantic ALU operations. `AluDriver` owns raw
+// DUT pin driving and a settle boundary; `AluMonitor` is passive and
+// checks sampled outputs against the transaction expectation. The
+// covergroup samples after every driver call.
+
+const HARC_ALU_ADD  : uint<7> = 0
+const HARC_ALU_SUB  : uint<7> = 1
+const HARC_ALU_XOR  : uint<7> = 2
+const HARC_ALU_OR   : uint<7> = 3
+const HARC_ALU_AND  : uint<7> = 4
+const HARC_ALU_SRA  : uint<7> = 8
+const HARC_ALU_SRL  : uint<7> = 9
+const HARC_ALU_SLL  : uint<7> = 10
+const HARC_ALU_SH1ADD_RV32B_ONLY : uint<7> = 22
+const HARC_ALU_LT   : uint<7> = 25
+const HARC_ALU_LTU  : uint<7> = 26
+const HARC_ALU_GE   : uint<7> = 27
+const HARC_ALU_GEU  : uint<7> = 28
+const HARC_ALU_EQ   : uint<7> = 29
+const HARC_ALU_NE   : uint<7> = 30
+const HARC_ALU_MIN_RV32B_ONLY : uint<7> = 31
+const HARC_ALU_CLZ_RV32B_ONLY : uint<7> = 40
+const HARC_ALU_SLT  : uint<7> = 43
+const HARC_ALU_SLTU : uint<7> = 44
+
+transaction AluCase
+    op              : uint<7>
+    a               : uint<32>
+    b               : uint<32>
+    first_cycle     : bool default true
+    multdiv_sel     : bool default false
+    multdiv_a       : uint<33> default 0
+    multdiv_b       : uint<33> default 0
+    imd_q0          : uint<32> default 0
+    imd_q1          : uint<32> default 0
+    expect_result   : uint<32>
+    expect_adder    : uint<32>
+    expect_ext      : uint<34>
+    expect_cmp      : bool
+    expect_equal    : bool
+end transaction AluCase
+
+transactor AluDriver
+    dut : ibex_alu
+
+    when active
+        hookable drive(t: AluCase)
+            dut.operator_i = t.op
+            dut.operand_a_i = t.a
+            dut.operand_b_i = t.b
+            dut.instr_first_cycle_i = t.first_cycle
+            dut.multdiv_operand_a_i = t.multdiv_a
+            dut.multdiv_operand_b_i = t.multdiv_b
+            dut.multdiv_sel_i = t.multdiv_sel
+            dut.imd_val_q_i[0] = t.imd_q0
+            dut.imd_val_q_i[1] = t.imd_q1
+            wait 1 cycle
+        end drive
+    end when
+end transactor AluDriver
+
+transactor AluMonitor
+    dut : ibex_alu
+    errors : uint<32> default 0
+
+    hookable observe(t: AluCase)
+        if dut.result_o != t.expect_result
+            errors = errors + 1
+            fail("op ${t.op}: result_o=0x${dut.result_o:08x}, expected 0x${t.expect_result:08x}")
+        end if
+        if dut.adder_result_o != t.expect_adder
+            errors = errors + 1
+            fail("op ${t.op}: adder_result_o=0x${dut.adder_result_o:08x}, expected 0x${t.expect_adder:08x}")
+        end if
+        if dut.adder_result_ext_o != t.expect_ext
+            errors = errors + 1
+            fail("op ${t.op}: adder_result_ext_o=0x${dut.adder_result_ext_o:09x}, expected 0x${t.expect_ext:09x}")
+        end if
+        if dut.comparison_result_o != t.expect_cmp
+            errors = errors + 1
+            fail("op ${t.op}: comparison_result_o=${dut.comparison_result_o}, expected ${t.expect_cmp}")
+        end if
+        if dut.is_equal_result_o != t.expect_equal
+            errors = errors + 1
+            fail("op ${t.op}: is_equal_result_o=${dut.is_equal_result_o}, expected ${t.expect_equal}")
+        end if
+        if dut.imd_val_we_o != 0
+            errors = errors + 1
+            fail("op ${t.op}: imd_val_we_o=${dut.imd_val_we_o}, expected 0")
+        end if
+        if dut.imd_val_d_o[0] != 0
+            errors = errors + 1
+            fail("op ${t.op}: imd_val_d_o[0]=0x${dut.imd_val_d_o[0]:08x}, expected 0")
+        end if
+        if dut.imd_val_d_o[1] != 0
+            errors = errors + 1
+            fail("op ${t.op}: imd_val_d_o[1]=0x${dut.imd_val_d_o[1]:08x}, expected 0")
+        end if
+    end observe
+end transactor AluMonitor
+
+covergroup AluCov @(drv.drive(t) post)
+    cp_op : cover dut.operator_i
+        bins
+            add = {0}
+            sub = {1}
+            logic = {2, 3, 4}
+            shift = {8, 9, 10}
+            cmp = {25, 26, 27, 28, 29, 30, 43, 44}
+        end bins
+    cp_compare_op : cover dut.operator_i
+        bins
+            lt = {25}
+            ltu = {26}
+            ge = {27}
+            geu = {28}
+            eq = {29}
+            ne = {30}
+            slt = {43}
+            sltu = {44}
+        end bins
+    cp_rv32b_disabled : cover dut.operator_i
+        bins
+            sh1add = {22}
+            min = {31}
+            clz = {40}
+        end bins
+    cp_result_bool : cover dut.result_o
+        bins
+            result_zero = {0}
+            result_one = {1}
+        end bins
+    cp_equal : cover dut.is_equal_result_o
+        bins
+            no = {0}
+            yes = {1}
+        end bins
+    cp_multdiv : cover dut.multdiv_sel_i
+        bins
+            normal = {0}
+            selected = {1}
+        end bins
+    cp_shift_amount : cover dut.operand_b_i[4:0]
+        bins
+            zero = {0}
+            one = {1}
+            typical = [2..30]
+            max = {31}
+        end bins
+    cp_operand_a_top : cover dut.operand_a_i
+        bins
+            positive = [0..0x7fffffff]
+            negative = [0x80000000..0xffffffff]
+        end bins
+end covergroup AluCov

@@ -70,6 +70,7 @@ module ibex_alu
   local param ALU_GEU[6:0]:  const = 7'd28;
   local param ALU_EQ[6:0]:   const = 7'd29;
   local param ALU_NE[6:0]:   const = 7'd30;
+  local param ALU_MIN[6:0]:  const = 7'd31;
   local param ALU_SLT[6:0]:  const = 7'd43;
   local param ALU_SLTU[6:0]: const = 7'd44;
 
@@ -84,11 +85,13 @@ module ibex_alu
         (operator_i == ALU_EQ)   or (operator_i == ALU_NE)  or
         (operator_i == ALU_GE)   or (operator_i == ALU_GEU) or
         (operator_i == ALU_LT)   or (operator_i == ALU_LTU) or
+        (operator_i == ALU_MIN)  or
         (operator_i == ALU_SLT)  or (operator_i == ALU_SLTU);
 
   let adder_in_a_int: UInt<33> = {operand_a_i, 1'b1};
   let adder_in_b_pad: UInt<33> = {operand_b_i, 1'b0};
-  let adder_in_b_int: UInt<33> = op_b_negate ? ~adder_in_b_pad : adder_in_b_pad;
+  let adder_in_b_inv: UInt<33> = adder_in_b_pad ^ 33'h1_ffff_ffff;
+  let adder_in_b_int: UInt<33> = op_b_negate ? adder_in_b_inv : adder_in_b_pad;
 
   /// When `multdiv_sel_i` is high the multdiv unit drives both adder
   /// inputs directly (it has already pre-shifted them by 1 if it
@@ -113,6 +116,7 @@ module ibex_alu
   let cmp_signed: Bool =
         (operator_i == ALU_GE)  or
         (operator_i == ALU_LT)  or
+        (operator_i == ALU_MIN) or
         (operator_i == ALU_SLT);
 
   let a_msb: Bool = operand_a_i[31];
@@ -142,6 +146,7 @@ module ibex_alu
       ALU_GEU  => cmp_result = is_greater_equal;
       ALU_LT   => cmp_result = not is_greater_equal;
       ALU_LTU  => cmp_result = not is_greater_equal;
+      ALU_MIN  => cmp_result = not is_greater_equal;
       ALU_SLT  => cmp_result = not is_greater_equal;
       ALU_SLTU => cmp_result = not is_greater_equal;
       ALU_NE   => cmp_result = not is_equal_result_o;

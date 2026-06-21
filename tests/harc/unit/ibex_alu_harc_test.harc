@@ -1,0 +1,308 @@
+// Concrete ALU canary suite using the reusable VIP in
+// tests/harc/lib/ibex_alu_vip.harc.
+
+testbench IbexAluTb
+    dut : ibex_alu
+    drv : AluDriver active
+    mon : AluMonitor passive
+    cov : AluCov
+
+    function bind_components()
+        drv.dut = dut
+        mon.dut = dut
+    end function bind_components
+
+    function apply_and_check(c: AluCase)
+        drv.drive(c)
+        mon.observe(c)
+    end function apply_and_check
+end testbench IbexAluTb
+
+impl IbexAluFullVerification for IbexAluTb
+    run
+        bind_components()
+
+        let c : AluCase
+
+        c.op = HARC_ALU_ADD
+        c.a = 1
+        c.b = 2
+        c.expect_result = 3
+        c.expect_adder = 3
+        c.expect_ext = 0x000000007
+        c.expect_cmp = false
+        c.expect_equal = false
+        apply_and_check(c)
+
+        c.op = HARC_ALU_OR
+        c.a = 0x10000000
+        c.b = 0x10
+        c.expect_result = 0x10000010
+        c.expect_adder = 0x10000010
+        c.expect_ext = 0x020000021
+        c.expect_cmp = false
+        c.expect_equal = false
+        apply_and_check(c)
+
+        c.op = HARC_ALU_SUB
+        c.a = 5
+        c.b = 3
+        c.expect_result = 2
+        c.expect_adder = 2
+        c.expect_ext = 0x200000004
+        c.expect_cmp = false
+        c.expect_equal = false
+        apply_and_check(c)
+
+        c.op = HARC_ALU_SUB
+        c.a = 0
+        c.b = 1
+        c.expect_result = 0xffffffff
+        c.expect_adder = 0xffffffff
+        c.expect_ext = 0x1fffffffe
+        c.expect_cmp = false
+        c.expect_equal = false
+        apply_and_check(c)
+
+        c.op = HARC_ALU_ADD
+        c.a = 0xffffffff
+        c.b = 1
+        c.expect_result = 0
+        c.expect_adder = 0
+        c.expect_ext = 0x200000001
+        c.expect_cmp = true
+        c.expect_equal = true
+        apply_and_check(c)
+
+        c.op = HARC_ALU_ADD
+        c.a = 0xdeadbeef
+        c.b = 0xcafebabe
+        c.multdiv_sel = true
+        c.multdiv_a = 0x0a
+        c.multdiv_b = 0x14
+        c.expect_result = 0x0000000f
+        c.expect_adder = 0x0000000f
+        c.expect_ext = 0x00000001e
+        c.expect_cmp = false
+        c.expect_equal = false
+        apply_and_check(c)
+
+        c.multdiv_a = 0x1ffffffff
+        c.multdiv_b = 0x1ffffffff
+        c.expect_result = 0xffffffff
+        c.expect_adder = 0xffffffff
+        c.expect_ext = 0x3fffffffe
+        c.expect_cmp = false
+        c.expect_equal = false
+        apply_and_check(c)
+        c.multdiv_sel = false
+        c.multdiv_a = 0
+        c.multdiv_b = 0
+
+        c.op = HARC_ALU_XOR
+        c.a = 0xffffffff
+        c.b = 0xaaaa5555
+        c.expect_result = 0x5555aaaa
+        c.expect_adder = 0xaaaa5554
+        c.expect_ext = 0x35554aaa9
+        c.expect_cmp = false
+        c.expect_equal = false
+        apply_and_check(c)
+
+        c.op = HARC_ALU_AND
+        c.a = 0xff0fffff
+        c.b = 0x0fffff0f
+        c.expect_result = 0x0f0fff0f
+        c.expect_adder = 0x0f0fff0e
+        c.expect_ext = 0x21e1ffe1d
+        c.expect_cmp = false
+        c.expect_equal = false
+        apply_and_check(c)
+
+        c.op = HARC_ALU_EQ
+        c.a = 0xdeadbeef
+        c.b = 0xdeadbeef
+        c.expect_result = 1
+        c.expect_adder = 0
+        c.expect_ext = 0x200000000
+        c.expect_cmp = true
+        c.expect_equal = true
+        apply_and_check(c)
+
+        c.op = HARC_ALU_NE
+        c.a = 7
+        c.b = 7
+        c.expect_result = 0
+        c.expect_adder = 0
+        c.expect_ext = 0x200000000
+        c.expect_cmp = false
+        c.expect_equal = true
+        apply_and_check(c)
+
+        c.op = HARC_ALU_LT
+        c.a = 0xffffffff
+        c.b = 1
+        c.expect_result = 1
+        c.expect_adder = 0xfffffffe
+        c.expect_ext = 0x3fffffffc
+        c.expect_cmp = true
+        c.expect_equal = false
+        apply_and_check(c)
+
+        c.op = HARC_ALU_LTU
+        c.a = 0xffffffff
+        c.b = 1
+        c.expect_result = 0
+        c.expect_adder = 0xfffffffe
+        c.expect_ext = 0x3fffffffc
+        c.expect_cmp = false
+        c.expect_equal = false
+        apply_and_check(c)
+
+        c.op = HARC_ALU_GE
+        c.a = 7
+        c.b = 7
+        c.expect_result = 1
+        c.expect_adder = 0
+        c.expect_ext = 0x200000000
+        c.expect_cmp = true
+        c.expect_equal = true
+        apply_and_check(c)
+
+        c.op = HARC_ALU_GEU
+        c.a = 0
+        c.b = 1
+        c.expect_result = 0
+        c.expect_adder = 0xffffffff
+        c.expect_ext = 0x1fffffffe
+        c.expect_cmp = false
+        c.expect_equal = false
+        apply_and_check(c)
+
+        c.op = HARC_ALU_SLT
+        c.a = 0xfffffffe
+        c.b = 0
+        c.expect_result = 1
+        c.expect_adder = 0xfffffffe
+        c.expect_ext = 0x3fffffffc
+        c.expect_cmp = true
+        c.expect_equal = false
+        apply_and_check(c)
+
+        c.op = HARC_ALU_SLTU
+        c.a = 0x10
+        c.b = 0x10
+        c.expect_result = 0
+        c.expect_adder = 0
+        c.expect_ext = 0x200000000
+        c.expect_cmp = false
+        c.expect_equal = true
+        apply_and_check(c)
+
+        c.op = HARC_ALU_SLL
+        c.a = 0x12345678
+        c.b = 0
+        c.expect_result = 0x12345678
+        c.expect_adder = 0x12345678
+        c.expect_ext = 0x02468acf1
+        c.expect_cmp = false
+        c.expect_equal = false
+        apply_and_check(c)
+
+        c.op = HARC_ALU_SLL
+        c.a = 1
+        c.b = 0xffffffe1
+        c.expect_result = 2
+        c.expect_adder = 0xffffffe2
+        c.expect_ext = 0x1ffffffc5
+        c.expect_cmp = false
+        c.expect_equal = false
+        apply_and_check(c)
+
+        c.op = HARC_ALU_SRL
+        c.a = 0x12345678
+        c.b = 8
+        c.expect_result = 0x00123456
+        c.expect_adder = 0x12345680
+        c.expect_ext = 0x02468ad01
+        c.expect_cmp = false
+        c.expect_equal = false
+        apply_and_check(c)
+
+        c.op = HARC_ALU_SRA
+        c.a = 0x80000000
+        c.b = 31
+        c.expect_result = 0xffffffff
+        c.expect_adder = 0x8000001f
+        c.expect_ext = 0x10000003f
+        c.expect_cmp = false
+        c.expect_equal = false
+        apply_and_check(c)
+
+        c.op = HARC_ALU_CLZ_RV32B_ONLY
+        c.a = 0x0000ffff
+        c.b = 0
+        c.imd_q0 = 0xdeadbeef
+        c.imd_q1 = 0xcafebabe
+        c.expect_result = 0
+        c.expect_adder = 0x0000ffff
+        c.expect_ext = 0x00001ffff
+        c.expect_cmp = false
+        c.expect_equal = false
+        apply_and_check(c)
+
+        c.op = HARC_ALU_MIN_RV32B_ONLY
+        c.a = 0x0000000a
+        c.b = 0x00000003
+        c.expect_result = 0
+        c.expect_adder = 0x00000007
+        c.expect_ext = 0x20000000e
+        c.expect_cmp = false
+        c.expect_equal = false
+        apply_and_check(c)
+
+        c.op = HARC_ALU_SH1ADD_RV32B_ONLY
+        c.a = 0x00000001
+        c.b = 0x00000002
+        c.expect_result = 0
+        c.expect_adder = 0x00000003
+        c.expect_ext = 0x000000007
+        c.expect_cmp = false
+        c.expect_equal = false
+        apply_and_check(c)
+    end run
+
+    check
+        cov.report()
+        assert cov.cp_op.add > 0 else fail("ADD operator coverage hole")
+        assert cov.cp_op.sub > 0 else fail("SUB operator coverage hole")
+        assert cov.cp_op.logic > 0 else fail("logic operator coverage hole")
+        assert cov.cp_op.shift > 0 else fail("shift operator coverage hole")
+        assert cov.cp_op.cmp > 0 else fail("comparison operator coverage hole")
+        assert cov.cp_compare_op.lt > 0 else fail("LT coverage hole")
+        assert cov.cp_compare_op.ltu > 0 else fail("LTU coverage hole")
+        assert cov.cp_compare_op.ge > 0 else fail("GE coverage hole")
+        assert cov.cp_compare_op.geu > 0 else fail("GEU coverage hole")
+        assert cov.cp_compare_op.eq > 0 else fail("EQ coverage hole")
+        assert cov.cp_compare_op.ne > 0 else fail("NE coverage hole")
+        assert cov.cp_compare_op.slt > 0 else fail("SLT coverage hole")
+        assert cov.cp_compare_op.sltu > 0 else fail("SLTU coverage hole")
+        assert cov.cp_rv32b_disabled.sh1add > 0 else fail("SH1ADD inert coverage hole")
+        assert cov.cp_rv32b_disabled.min > 0 else fail("MIN inert coverage hole")
+        assert cov.cp_rv32b_disabled.clz > 0 else fail("CLZ inert coverage hole")
+        assert cov.cp_result_bool.result_zero > 0 else fail("result zero coverage hole")
+        assert cov.cp_result_bool.result_one > 0 else fail("result one coverage hole")
+        assert cov.cp_equal.no > 0 else fail("equality false coverage hole")
+        assert cov.cp_equal.yes > 0 else fail("equality true coverage hole")
+        assert cov.cp_multdiv.normal > 0 else fail("normal adder path coverage hole")
+        assert cov.cp_multdiv.selected > 0 else fail("multdiv path coverage hole")
+        assert cov.cp_shift_amount.zero > 0 else fail("shift amount zero coverage hole")
+        assert cov.cp_shift_amount.one > 0 else fail("shift amount one coverage hole")
+        assert cov.cp_shift_amount.typical > 0 else fail("typical shift amount coverage hole")
+        assert cov.cp_shift_amount.max > 0 else fail("max shift amount coverage hole")
+        assert cov.cp_operand_a_top.positive > 0 else fail("positive operand coverage hole")
+        assert cov.cp_operand_a_top.negative > 0 else fail("negative operand coverage hole")
+        assert mon.errors == 0
+            else fail("ALU monitor recorded ${mon.errors} error(s)")
+    end check
+end impl IbexAluFullVerification
