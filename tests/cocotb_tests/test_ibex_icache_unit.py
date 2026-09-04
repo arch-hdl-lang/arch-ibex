@@ -190,6 +190,43 @@ async def _bus_grant_and_beat(dut, *, rdata: int, err: int = 0,
     return False
 
 
+async def _bus_serve_line(dut, *, line: int, rdata: int, err: int = 0,
+                          filler: int = 0x0000_0013, max_wait: int = 32,
+                          exact: bool = False) -> bool:
+    """Serve requests on the bus until one for `line` has been granted and
+    its beat returned with `rdata`. Requests for other lines (e.g. a
+    beat that was already presented, and must be held until granted per
+    R-EXT-2) are granted and answered with `filler`. Returns True when
+    the target line was served.
+    """
+    for _ in range(max_wait):
+        await ReadOnly()
+        if int(dut.instr_req_o.value) == 1:
+            ra = int(dut.instr_addr_o.value) & MASK32
+            hit = (ra == (line & MASK32)) if exact else (
+                (ra & ~(IC_LINE_BYTES - 1)) == (line & ~(IC_LINE_BYTES - 1)))
+            await RisingEdge(dut.clk_i)
+            await _settle(dut)
+            dut.instr_gnt_i.value = 1
+            await RisingEdge(dut.clk_i)
+            dut.instr_gnt_i.value = 0
+            await _settle(dut)
+            dut.instr_rvalid_i.value = 1
+            dut.instr_rdata_i.value  = (rdata if hit else filler) & MASK32
+            dut.instr_err_i.value    = (err if hit else 0) & 1
+            await RisingEdge(dut.clk_i)
+            dut.instr_rvalid_i.value = 0
+            dut.instr_rdata_i.value  = 0
+            dut.instr_err_i.value    = 0
+            await _settle(dut)
+            if hit:
+                return True
+            continue
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+    return False
+
+
 async def _ram_serve_lookup(dut, *, way0_tag_word: int, way1_tag_word: int,
                             way0_data: int = 0, way1_data: int = 0):
     """Drive a single-cycle RAM read response for the next IC1 stage.
@@ -1249,6 +1286,11 @@ async def test_r_ext_5_no_further_req_after_recorded_bus_error(dut):
     # the next several cycles, instr_req_o should NOT pulse for the same
     # line (the FB has cancelled). Other FBs (none here) might. Since no
     # other FB is allocated, instr_req_o should stay low.
+    # Beat 1 was already presented on the bus (pipelined request) when
+    # the error came back; R-EXT-2 says a presented request must be held
+    # until granted, so grant it once. Only THEN must no further request
+    # appear for this FB.
+    await _bus_grant_and_beat(dut, rdata=0x0000_0013, max_wait=2)
     saw_more = False
     for _ in range(8):
         await ReadOnly()
@@ -2526,7 +2568,7 @@ async def test_e2e_branch_during_ready_stall_passthrough(dut):
 
     # Bus serves B's beat. ready_i still 0 — the icache should hold
     # B's data sticky once available.
-    served = await _bus_grant_and_beat(dut, rdata=pat_b, max_wait=16)
+    served = await _bus_serve_line(dut, line=addr_b, rdata=pat_b, max_wait=32)
     assert served, "no instr_req_o for branch to B under enable=0"
 
     # Now raise ready_i and verify next delivery is at B with B's data.
@@ -2700,7 +2742,7 @@ async def test_e2e_repeated_branch_during_long_stall(dut):
         # Hold ready_i=0 across the branch so valid_o stays sticky at addr.
         dut.ready_i.value = 0
         await _branch(dut, addr)
-        served = await _bus_grant_and_beat(dut, rdata=pat, max_wait=16)
+        served = await _bus_serve_line(dut, line=addr, rdata=pat, max_wait=32)
         assert served, f"branch #{i} no bus grant"
 
         # Wait for valid_o at this addr (sticky under ready_i=0).
@@ -2789,7 +2831,7 @@ async def test_e2e_branch_to_same_addr_during_stall(dut):
     # Bus must serve again (the branch invalidates the prior fetch in
     # the disabled-cache path). Drive a NEW pattern to detect stale
     # leakage.
-    served = await _bus_grant_and_beat(dut, rdata=pat_a2, max_wait=16)
+    served = await _bus_serve_line(dut, line=addr_a, rdata=pat_a2, max_wait=32, exact=True)
     assert served, "after re-branch, no bus grant for re-fetch"
 
     dut.ready_i.value = 1
@@ -2810,3 +2852,131 @@ async def test_e2e_branch_to_same_addr_during_stall(dut):
                 break
         await RisingEdge(dut.clk_i)
         await _settle(dut)
+
+
+# ──────────────────────────────────────────────────────────────────────
+# TASK2 Phase 2 follow-ups (12-icache-handshake.md §5)
+# ──────────────────────────────────────────────────────────────────────
+
+@cocotb.test()
+async def test_r_fb_6b_stale_allocating_fb_completes_fill(dut):
+    """A stale FB that is still allocating (cache enabled, not
+    invalidated) MUST finish fetching its line and write it back, so a
+    branch does not discard the prefetch. Upstream cancels remaining
+    beats only for non-cacheable stale lines (ibex_icache.sv:766-774);
+    spec R-FB-6 permits early cancel only for "stale and non-allocating".
+    """
+    await _start_clock(dut)
+    await _reset(dut)
+    await _wait_until_idle(dut)
+    dut.req_i.value = 1
+    dut.ready_i.value = 1
+    dut.icache_enable_i.value = 1
+    line1 = 0x0030_0000
+    line2 = 0x0040_0000
+    await _branch(dut, line1)
+    await _ram_serve_lookup(dut, way0_tag_word=0, way1_tag_word=0)
+    served = await _bus_grant_and_beat(dut, rdata=0x1111_0001, max_wait=8)
+    assert served, "first beat of line1 never requested"
+    # Branch away before beat 1 of line1 has been requested.
+    await _branch(dut, line2)
+    await _ram_serve_lookup(dut, way0_tag_word=0, way1_tag_word=0)
+    line1_beat1_seen = False
+    tag_write_line1 = False
+    idx1 = _index_of(line1)
+    for _ in range(40):
+        await ReadOnly()
+        if int(dut.ic_tag_write_o.value) == 1 and int(dut.ic_tag_addr_o.value) == idx1:
+            tag_write_line1 = True
+        if int(dut.instr_req_o.value) == 1:
+            ra = int(dut.instr_addr_o.value) & MASK32
+            if (ra & ~(IC_LINE_BYTES - 1)) == line1 and (ra & 4):
+                line1_beat1_seen = True
+            await RisingEdge(dut.clk_i)
+            await _settle(dut)
+            # grant + beat for whatever was requested
+            dut.instr_gnt_i.value = 1
+            await RisingEdge(dut.clk_i)
+            dut.instr_gnt_i.value = 0
+            await _settle(dut)
+            dut.instr_rvalid_i.value = 1
+            dut.instr_rdata_i.value = 0x2222_0002
+            await RisingEdge(dut.clk_i)
+            dut.instr_rvalid_i.value = 0
+            await _settle(dut)
+            continue
+        if tag_write_line1:
+            break
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+    assert line1_beat1_seen, "stale allocating FB did not request its second beat"
+    assert tag_write_line1, "stale allocating FB never wrote line1 back to the tag RAM"
+
+
+@cocotb.test()
+async def test_r_ext_2b_req_held_across_branch_until_gnt(dut):
+    """R-EXT-2 under a branch: once instr_req_o is presented and
+    instr_gnt_i is withheld, a branch that makes the requesting FB stale
+    MUST NOT drop instr_req_o or change instr_addr_o before the grant
+    (upstream fill_ext_hold_q, ibex_icache.sv:763-774). After the grant
+    the design must move on to the new target.
+    """
+    await _start_clock(dut)
+    await _reset(dut)
+    await _wait_until_idle(dut)
+    dut.req_i.value = 1
+    dut.ready_i.value = 1
+    # Non-allocating (cache disabled) so the stale FB has every reason to cancel.
+    dut.icache_enable_i.value = 0
+    line1 = 0x0050_0000
+    line2 = 0x0060_0000
+    await _branch(dut, line1)
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 0, 0)
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 1, 0)
+    first_addr = None
+    for _ in range(8):
+        await ReadOnly()
+        if int(dut.instr_req_o.value) == 1:
+            first_addr = int(dut.instr_addr_o.value) & MASK32
+            break
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+    assert first_addr is not None and (first_addr & ~(IC_LINE_BYTES - 1)) == line1
+    # gnt stays low; branch away while the request is pending.
+    await RisingEdge(dut.clk_i)
+    dut.branch_i.value = 1
+    dut.addr_i.value = line2
+    await _settle(dut)
+    await RisingEdge(dut.clk_i)
+    dut.branch_i.value = 0
+    await _settle(dut)
+    for _ in range(3):
+        await ReadOnly()
+        assert int(dut.instr_req_o.value) == 1, "instr_req_o dropped before gnt"
+        assert (int(dut.instr_addr_o.value) & MASK32) == first_addr, "instr_addr_o changed before gnt"
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+    # Grant, return the beat.
+    dut.instr_gnt_i.value = 1
+    await RisingEdge(dut.clk_i)
+    dut.instr_gnt_i.value = 0
+    await _settle(dut)
+    dut.instr_rvalid_i.value = 1
+    dut.instr_rdata_i.value = 0x3333_0003
+    await RisingEdge(dut.clk_i)
+    dut.instr_rvalid_i.value = 0
+    await _settle(dut)
+    # The new target must get the bus next (the stale FB's remaining beat is cancelled).
+    saw_line2 = False
+    for _ in range(12):
+        await ReadOnly()
+        if int(dut.instr_req_o.value) == 1:
+            ra = int(dut.instr_addr_o.value) & MASK32
+            assert (ra & ~(IC_LINE_BYTES - 1)) != line1, "stale non-allocating FB re-requested after gnt"
+            if (ra & ~(IC_LINE_BYTES - 1)) == line2:
+                saw_line2 = True
+                break
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+    assert saw_line2, "branch target never requested after the held grant"
+

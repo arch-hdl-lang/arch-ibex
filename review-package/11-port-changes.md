@@ -135,6 +135,32 @@ Recommendation: A (correct fix, filed upstream) with B as the stopgap
 so the package is not blocked on an arch-com release; C only if a
 patched compiler is unacceptable for the pin.
 
+## Phase 2 changes (icache handshake and its follow-ups) — see `12-icache-handshake.md` §7
+
+**Status: PROPOSED, validated on a scratch copy; awaiting approval to
+apply.** Full diffs: `reports/phase2_port_changes.diff` (source, 180
+lines) and `reports/phase2_test_changes.diff` (unit tests, 233 lines).
+One-line rationale per hunk:
+
+| # | File / hunk | Rationale |
+|---|---|---|
+| 3 | `src/FbAgeArb.arch`: `handshake_channel request[NUM_REQ]: receive kind: valid_ready` → `valid_only` (+ comment) | The request lanes are a level-sensitive mask that may be withdrawn (upstream `fill_ext_req`, `ibex_icache.sv:755`); `valid_only` is the matching contract and emits no Tier-2 `valid_stable` property. |
+| 3 | `src/IbexIcache.arch`: delete the eight `bus_ready_*` / `wb_ready_*` wires and the eight `request[i].ready -> …` connections | `valid_only` has no ready signal; nothing read those wires. |
+| 4 | `src/IbexIcache.arch`: `wants_bus_v[fb]` — `not stale_q` → `not (stale_q and not alloc_q)` | §5(1): remaining beats are cancelled only for stale **non-allocating** lines (upstream `~fill_cache_q & (branch_i \| fill_stale_q)`, lines 766-774; spec R-FB-6); an allocating line is fetched to completion and written back. |
+| 4 | `src/IbexIcache.arch`: `releasing_v[fb]` early-release alternative — `stale_q` → `stale_q and not alloc_q` | Same rule on the release side: an allocating stale FB waits for all beats and the write-back. |
+| 4 | `src/IbexIcache.arch`: branch handler — remove `if beats_sent != beats_total: alloc_q <= false` | `alloc_q` is kept across a branch exactly as upstream keeps `fill_cache_q`; only inval / disable clear it. |
+| 5 | `src/IbexIcache.arch`: new `bus_hold_valid_q` / `bus_hold_fb_q`, `bus_pick_*` renamed, `bus_grant_*` = hold override | §5(2), R-EXT-2: a presented request is held (same FB, same address) until `instr_gnt_i`, overriding age order and demand bias (upstream `fill_ext_hold_q`, lines 763-774). |
+| 5 | `src/IbexIcache.arch`: `bus_inflight_fb_q` gains `guard bus_inflight_valid_q` | Annotation only (the comment already stated the gating); required by the compiler's reset-domain check once the hold register feeds this capture. |
+| 5a | `src/IbexIcache.arch`: `releasing_v[fb]` gains `and (not bus_grant_v[fb])` | Consequential: never release the FB that owns the bus pick — its held request may be granted this cycle and the beat must return to it (upstream `fill_rvd_done` counts granted beats, lines 782-783). |
+| 5b | `src/IbexIcache.arch`: `fb*_wants_out_live` — the rvalid / IC1-hit overlay term gated on `not fb*_stale` | Consequential: a beat returning to a stale FB must not make its abandoned line an output candidate (stale-data leak with the cache disabled). Pre-existing hole, reachable before whenever a beat was in flight across a branch. |
+| 5c | `src/IbexIcache.arch`: `inflight_line_match_ic0` — each FB term gated on `not stale_q[fb]` | Consequential, found by the full gate (`test_ibex_core_unit_full::req3`): a branch whose target line a now-stale prefetch FB was fetching coalesced the lookup onto that FB, which can never deliver, so no re-fetch appeared. Upstream never coalesces (`ibex_icache.sv:701-702`); a stale FB now finishes or drains while a fresh FB re-fetches the target. |
+| T | `tests/cocotb_tests/test_ibex_icache_unit.py`: new helper `_bus_serve_line`; five tests re-stimulated (grant the already-presented request before expecting the next one); two new tests `test_r_fb_6b_stale_allocating_fb_completes_fill`, `test_r_ext_2b_req_held_across_branch_until_gnt` | The old stimulus assumed a presented request can vanish; under R-EXT-2 it must be granted first. Assertions are unchanged. |
+| T | `tests/cocotb_tests/test_ibex_icache_unit_full.py`: `s9_bus_error_on_fill_beat` grants the presented beat-1 request before asserting no further request | Same reason. |
+
+Validation on the scratch copy with the pinned compiler (assertions on):
+icache basic + full suites all pass; `tests/test_cpu_programs.py` 10/10;
+`tests/test_arch_tests.py` 74/74 (84 passed, 74 skipped in 26 s).
+
 ## Compiler-side codegen differences, v0.71.0 vs the 2026-05-14 compiler (no source change involved)
 
 From `diff <scratch>/build-B/*.sv <scratch>/trial/build/*.sv` with

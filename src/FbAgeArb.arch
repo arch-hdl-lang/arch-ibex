@@ -48,7 +48,11 @@ arbiter FbAgeArb
   param NUM_REQ: const = 4;
   port clk: in Clock<SysDomain>;
   port rst: in Reset<Async, Low>;
-  handshake_channel request[NUM_REQ]: receive kind: valid_ready
+  // `valid_only`: a requester's `valid` is a level that may be withdrawn
+  // before it is picked (stale line, IC1 hit, bus error — mirrors upstream
+  // `fill_ext_req`, ibex_icache.sv:755). There is no back-pressure
+  // signal; the winner is announced on grant_valid / grant_requester.
+  handshake_channel request[NUM_REQ]: receive kind: valid_only
   end handshake_channel request
   port age: in UInt<8>;
   port grant_valid: out Bool;
