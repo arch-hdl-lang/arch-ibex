@@ -1,0 +1,1302 @@
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_icache_0.1/rtl/ibex_icache.sv:557:10: Instance pin connected by name with empty reference: 'data_o'
+  557 |         .data_o     (),
+      |          ^~~~~~
+                          ... For warning description see https://verilator.org/warn/PINCONNECTEMPTY?v=5.048
+                          ... Use "/* verilator lint_off PINCONNECTEMPTY */" and lint_on around source to disable this message.
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_icache_0.1/rtl/ibex_icache.sv:558:10: Instance pin connected by name with empty reference: 'syndrome_o'
+  558 |         .syndrome_o (),
+      |          ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_icache_0.1/rtl/ibex_icache.sv:569:10: Instance pin connected by name with empty reference: 'data_o'
+  569 |         .data_o     (),
+      |          ^~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_icache_0.1/rtl/ibex_icache.sv:570:10: Instance pin connected by name with empty reference: 'syndrome_o'
+  570 |         .syndrome_o (),
+      |          ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_prim_ram_1p_adv_0.1/rtl/prim_ram_1p_adv.sv:249:12: Instance pin connected by name with empty reference: 'syndrome_o'
+  249 |           .syndrome_o ( ),
+      |            ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_prim_ram_1p_adv_0.1/rtl/prim_ram_1p_adv.sv:260:12: Instance pin connected by name with empty reference: 'syndrome_o'
+  260 |           .syndrome_o ( ),
+      |            ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_prim_ram_1p_adv_0.1/rtl/prim_ram_1p_adv.sv:273:12: Instance pin connected by name with empty reference: 'syndrome_o'
+  273 |           .syndrome_o ( ),
+      |            ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_prim_ram_1p_adv_0.1/rtl/prim_ram_1p_adv.sv:284:12: Instance pin connected by name with empty reference: 'syndrome_o'
+  284 |           .syndrome_o ( ),
+      |            ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_cs_registers.sv:894:6: Instance pin connected by name with empty reference: 'rd_error_o'
+  894 |     .rd_error_o()
+      |      ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_cs_registers.sv:912:6: Instance pin connected by name with empty reference: 'rd_error_o'
+  912 |     .rd_error_o()
+      |      ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_cs_registers.sv:926:6: Instance pin connected by name with empty reference: 'rd_error_o'
+  926 |     .rd_error_o()
+      |      ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_cs_registers.sv:940:6: Instance pin connected by name with empty reference: 'rd_error_o'
+  940 |     .rd_error_o()
+      |      ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_cs_registers.sv:954:6: Instance pin connected by name with empty reference: 'rd_error_o'
+  954 |     .rd_error_o()
+      |      ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_cs_registers.sv:988:6: Instance pin connected by name with empty reference: 'rd_error_o'
+  988 |     .rd_error_o()
+      |      ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_cs_registers.sv:1002:6: Instance pin connected by name with empty reference: 'rd_error_o'
+ 1002 |     .rd_error_o()
+      |      ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_cs_registers.sv:1016:6: Instance pin connected by name with empty reference: 'rd_error_o'
+ 1016 |     .rd_error_o()
+      |      ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_cs_registers.sv:1030:6: Instance pin connected by name with empty reference: 'rd_error_o'
+ 1030 |     .rd_error_o()
+      |      ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_cs_registers.sv:1045:6: Instance pin connected by name with empty reference: 'rd_error_o'
+ 1045 |     .rd_error_o()
+      |      ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_cs_registers.sv:1059:6: Instance pin connected by name with empty reference: 'rd_error_o'
+ 1059 |     .rd_error_o()
+      |      ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_cs_registers.sv:1073:6: Instance pin connected by name with empty reference: 'rd_error_o'
+ 1073 |     .rd_error_o()
+      |      ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_cs_registers.sv:1338:6: Instance pin connected by name with empty reference: 'counter_val_upd_o'
+ 1338 |     .counter_val_upd_o()
+      |      ^~~~~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_cs_registers.sv:1490:8: Instance pin connected by name with empty reference: 'rd_error_o'
+ 1490 |       .rd_error_o()
+      |        ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_cs_registers.sv:1504:10: Instance pin connected by name with empty reference: 'rd_error_o'
+ 1504 |         .rd_error_o()
+      |          ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_cs_registers.sv:1517:10: Instance pin connected by name with empty reference: 'rd_error_o'
+ 1517 |         .rd_error_o()
+      |          ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_if_stage.sv:245:8: Instance pin connected by name with empty reference: 'data_o'
+  245 |       .data_o     (),
+      |        ^~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_if_stage.sv:246:8: Instance pin connected by name with empty reference: 'syndrome_o'
+  246 |       .syndrome_o (),
+      |        ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_load_store_unit.sv:346:8: Instance pin connected by name with empty reference: 'data_o'
+  346 |       .data_o     (),
+      |        ^~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_load_store_unit.sv:347:8: Instance pin connected by name with empty reference: 'syndrome_o'
+  347 |       .syndrome_o (),
+      |        ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_core.sv:920:8: Instance pin connected by name with empty reference: 'data_o'
+  920 |       .data_o    (),
+      |        ^~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_core.sv:921:8: Instance pin connected by name with empty reference: 'syndrome_o'
+  921 |       .syndrome_o(),
+      |        ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_core.sv:926:8: Instance pin connected by name with empty reference: 'data_o'
+  926 |       .data_o    (),
+      |        ^~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_core.sv:927:8: Instance pin connected by name with empty reference: 'syndrome_o'
+  927 |       .syndrome_o(),
+      |        ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_prim_ram_1p_scr_0.1/rtl/prim_ram_1p_scr.sv:272:8: Instance pin connected by name with empty reference: 'valid_o'
+  272 |       .valid_o ( )
+      |        ^~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_prim_ram_1p_scr_0.1/rtl/prim_ram_1p_scr.sv:505:6: Instance pin connected by name with empty reference: 'rvalid_o'
+  505 |     .rvalid_o ( ),
+      |      ^~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:162:8: Instance pin connected by name with empty reference: 'cnt_after_commit_o'
+  162 |       .cnt_after_commit_o (                       ),
+      |        ^~~~~~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:516:6: Instance pin connected by name with empty reference: 'rvfi_valid'
+  516 |     .rvfi_valid                   (),
+      |      ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:517:6: Instance pin connected by name with empty reference: 'rvfi_order'
+  517 |     .rvfi_order                   (),
+      |      ^~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:518:6: Instance pin connected by name with empty reference: 'rvfi_insn'
+  518 |     .rvfi_insn                    (),
+      |      ^~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:519:6: Instance pin connected by name with empty reference: 'rvfi_trap'
+  519 |     .rvfi_trap                    (),
+      |      ^~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:520:6: Instance pin connected by name with empty reference: 'rvfi_halt'
+  520 |     .rvfi_halt                    (),
+      |      ^~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:521:6: Instance pin connected by name with empty reference: 'rvfi_intr'
+  521 |     .rvfi_intr                    (),
+      |      ^~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:522:6: Instance pin connected by name with empty reference: 'rvfi_mode'
+  522 |     .rvfi_mode                    (),
+      |      ^~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:523:6: Instance pin connected by name with empty reference: 'rvfi_ixl'
+  523 |     .rvfi_ixl                     (),
+      |      ^~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:524:6: Instance pin connected by name with empty reference: 'rvfi_rs1_addr'
+  524 |     .rvfi_rs1_addr                (),
+      |      ^~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:525:6: Instance pin connected by name with empty reference: 'rvfi_rs2_addr'
+  525 |     .rvfi_rs2_addr                (),
+      |      ^~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:526:6: Instance pin connected by name with empty reference: 'rvfi_rs3_addr'
+  526 |     .rvfi_rs3_addr                (),
+      |      ^~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:527:6: Instance pin connected by name with empty reference: 'rvfi_rs1_rdata'
+  527 |     .rvfi_rs1_rdata               (),
+      |      ^~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:528:6: Instance pin connected by name with empty reference: 'rvfi_rs2_rdata'
+  528 |     .rvfi_rs2_rdata               (),
+      |      ^~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:529:6: Instance pin connected by name with empty reference: 'rvfi_rs3_rdata'
+  529 |     .rvfi_rs3_rdata               (),
+      |      ^~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:530:6: Instance pin connected by name with empty reference: 'rvfi_rd_addr'
+  530 |     .rvfi_rd_addr                 (),
+      |      ^~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:531:6: Instance pin connected by name with empty reference: 'rvfi_rd_wdata'
+  531 |     .rvfi_rd_wdata                (),
+      |      ^~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:532:6: Instance pin connected by name with empty reference: 'rvfi_pc_rdata'
+  532 |     .rvfi_pc_rdata                (),
+      |      ^~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:533:6: Instance pin connected by name with empty reference: 'rvfi_pc_wdata'
+  533 |     .rvfi_pc_wdata                (),
+      |      ^~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:534:6: Instance pin connected by name with empty reference: 'rvfi_mem_addr'
+  534 |     .rvfi_mem_addr                (),
+      |      ^~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:535:6: Instance pin connected by name with empty reference: 'rvfi_mem_rmask'
+  535 |     .rvfi_mem_rmask               (),
+      |      ^~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:536:6: Instance pin connected by name with empty reference: 'rvfi_mem_wmask'
+  536 |     .rvfi_mem_wmask               (),
+      |      ^~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:537:6: Instance pin connected by name with empty reference: 'rvfi_mem_rdata'
+  537 |     .rvfi_mem_rdata               (),
+      |      ^~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:538:6: Instance pin connected by name with empty reference: 'rvfi_mem_wdata'
+  538 |     .rvfi_mem_wdata               (),
+      |      ^~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:539:6: Instance pin connected by name with empty reference: 'rvfi_ext_pre_mip'
+  539 |     .rvfi_ext_pre_mip             (),
+      |      ^~~~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:540:6: Instance pin connected by name with empty reference: 'rvfi_ext_post_mip'
+  540 |     .rvfi_ext_post_mip            (),
+      |      ^~~~~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:541:6: Instance pin connected by name with empty reference: 'rvfi_ext_nmi'
+  541 |     .rvfi_ext_nmi                 (),
+      |      ^~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:542:6: Instance pin connected by name with empty reference: 'rvfi_ext_nmi_int'
+  542 |     .rvfi_ext_nmi_int             (),
+      |      ^~~~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:543:6: Instance pin connected by name with empty reference: 'rvfi_ext_debug_req'
+  543 |     .rvfi_ext_debug_req           (),
+      |      ^~~~~~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:544:6: Instance pin connected by name with empty reference: 'rvfi_ext_debug_mode'
+  544 |     .rvfi_ext_debug_mode          (),
+      |      ^~~~~~~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:545:6: Instance pin connected by name with empty reference: 'rvfi_ext_rf_wr_suppress'
+  545 |     .rvfi_ext_rf_wr_suppress      (),
+      |      ^~~~~~~~~~~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:546:6: Instance pin connected by name with empty reference: 'rvfi_ext_mcycle'
+  546 |     .rvfi_ext_mcycle              (),
+      |      ^~~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:547:6: Instance pin connected by name with empty reference: 'rvfi_ext_mhpmcounters'
+  547 |     .rvfi_ext_mhpmcounters        (),
+      |      ^~~~~~~~~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:548:6: Instance pin connected by name with empty reference: 'rvfi_ext_mhpmcountersh'
+  548 |     .rvfi_ext_mhpmcountersh       (),
+      |      ^~~~~~~~~~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:549:6: Instance pin connected by name with empty reference: 'rvfi_ext_ic_scr_key_valid'
+  549 |     .rvfi_ext_ic_scr_key_valid    (),
+      |      ^~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:550:6: Instance pin connected by name with empty reference: 'rvfi_ext_irq_valid'
+  550 |     .rvfi_ext_irq_valid           (),
+      |      ^~~~~~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:551:6: Instance pin connected by name with empty reference: 'rvfi_ext_expanded_insn_valid'
+  551 |     .rvfi_ext_expanded_insn_valid (),
+      |      ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:552:6: Instance pin connected by name with empty reference: 'rvfi_ext_expanded_insn'
+  552 |     .rvfi_ext_expanded_insn       (),
+      |      ^~~~~~~~~~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv:553:6: Instance pin connected by name with empty reference: 'rvfi_ext_expanded_insn_last'
+  553 |     .rvfi_ext_expanded_insn_last  (),
+      |      ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_top.sv:617:12: Instance pin connected by name with empty reference: 'gnt_o'
+  617 |           .gnt_o            (),
+      |            ^~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_top.sv:625:12: Instance pin connected by name with empty reference: 'rvalid_o'
+  625 |           .rvalid_o         (),
+      |            ^~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_top.sv:626:12: Instance pin connected by name with empty reference: 'raddr_o'
+  626 |           .raddr_o          (),
+      |            ^~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_top.sv:627:12: Instance pin connected by name with empty reference: 'rerror_o'
+  627 |           .rerror_o         (),
+      |            ^~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_top.sv:630:12: Instance pin connected by name with empty reference: 'wr_collision_o'
+  630 |           .wr_collision_o   (),
+      |            ^~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_top.sv:631:12: Instance pin connected by name with empty reference: 'write_pending_o'
+  631 |           .write_pending_o  (),
+      |            ^~~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_top.sv:655:12: Instance pin connected by name with empty reference: 'gnt_o'
+  655 |           .gnt_o            (),
+      |            ^~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_top.sv:663:12: Instance pin connected by name with empty reference: 'rvalid_o'
+  663 |           .rvalid_o         (),
+      |            ^~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_top.sv:664:12: Instance pin connected by name with empty reference: 'raddr_o'
+  664 |           .raddr_o          (),
+      |            ^~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_top.sv:665:12: Instance pin connected by name with empty reference: 'rerror_o'
+  665 |           .rerror_o         (),
+      |            ^~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_top.sv:668:12: Instance pin connected by name with empty reference: 'wr_collision_o'
+  668 |           .wr_collision_o   (),
+      |            ^~~~~~~~~~~~~~
+%Warning-PINCONNECTEMPTY: src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_top.sv:669:12: Instance pin connected by name with empty reference: 'write_pending_o'
+  669 |           .write_pending_o  (),
+      |            ^~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_cipher_pkg_0.1/rtl/prim_cipher_pkg.sv:153:31: Parameter is not used: 'PRESENT_PERM32'
+                                                                                   : ... note: In instance 'ibex_top'
+  153 |   parameter logic [31:0][4:0] PRESENT_PERM32 = {5'd31, 5'd23, 5'd15, 5'd07,
+      |                               ^~~~~~~~~~~~~~
+                      ... For warning description see https://verilator.org/warn/UNUSEDPARAM?v=5.048
+                      ... Use "/* verilator lint_off UNUSEDPARAM */" and lint_on around source to disable this message.
+%Warning-UNUSEDPARAM: src/lowrisc_prim_cipher_pkg_0.1/rtl/prim_cipher_pkg.sv:162:31: Parameter is not used: 'PRESENT_PERM32_INV'
+                                                                                   : ... note: In instance 'ibex_top'
+  162 |   parameter logic [31:0][4:0] PRESENT_PERM32_INV = {5'd31, 5'd27, 5'd23, 5'd19,
+      |                               ^~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_cipher_pkg_0.1/rtl/prim_cipher_pkg.sv:172:31: Parameter is not used: 'PRESENT_PERM64'
+                                                                                   : ... note: In instance 'ibex_top'
+  172 |   parameter logic [63:0][5:0] PRESENT_PERM64 = {6'd63, 6'd47, 6'd31, 6'd15,
+      |                               ^~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_cipher_pkg_0.1/rtl/prim_cipher_pkg.sv:189:31: Parameter is not used: 'PRESENT_PERM64_INV'
+                                                                                   : ... note: In instance 'ibex_top'
+  189 |   parameter logic [63:0][5:0] PRESENT_PERM64_INV = {6'd63, 6'd59, 6'd55, 6'd51,
+      |                               ^~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_generic_prim_pkg_0/rtl/prim_pkg.sv:8:13: Parameter is not used: 'PrimTechName'
+                                                                              : ... note: In instance 'ibex_top'
+    8 |   parameter PrimTechName = "Generic";
+      |             ^~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_generic_ram_2p_pkg_0/rtl/prim_ram_2p_pkg.sv:21:26: Parameter is not used: 'RAM_2P_CFG_DEFAULT'
+                                                                                        : ... note: In instance 'ibex_top'
+   21 |   parameter ram_2p_cfg_t RAM_2P_CFG_DEFAULT = '0;
+      |                          ^~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_generic_rom_pkg_0/rtl/prim_rom_pkg.sv:14:23: Parameter is not used: 'ROM_CFG_DEFAULT'
+                                                                                  : ... note: In instance 'ibex_top'
+   14 |   parameter rom_cfg_t ROM_CFG_DEFAULT = '0;
+      |                       ^~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_pad_wrapper_pkg_0/rtl/prim_pad_wrapper_pkg.sv:41:17: Parameter is not used: 'AttrDw'
+                                                                                          : ... note: In instance 'ibex_top'
+   41 |   parameter int AttrDw = $bits(pad_attr_t);
+      |                 ^~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:175:25: Parameter is not used: 'Secded2216ZeroEcc'
+                                                                               : ... note: In instance 'ibex_top'
+  175 |   parameter logic [5:0] Secded2216ZeroEcc = 6'h0;
+      |                         ^~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:176:26: Parameter is not used: 'Secded2216ZeroWord'
+                                                                               : ... note: In instance 'ibex_top'
+  176 |   parameter logic [21:0] Secded2216ZeroWord = 22'h0;
+      |                          ^~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:184:25: Parameter is not used: 'Secded2822ZeroEcc'
+                                                                               : ... note: In instance 'ibex_top'
+  184 |   parameter logic [5:0] Secded2822ZeroEcc = 6'h0;
+      |                         ^~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:185:26: Parameter is not used: 'Secded2822ZeroWord'
+                                                                               : ... note: In instance 'ibex_top'
+  185 |   parameter logic [27:0] Secded2822ZeroWord = 28'h0;
+      |                          ^~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:193:25: Parameter is not used: 'Secded3932ZeroEcc'
+                                                                               : ... note: In instance 'ibex_top'
+  193 |   parameter logic [6:0] Secded3932ZeroEcc = 7'h0;
+      |                         ^~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:194:26: Parameter is not used: 'Secded3932ZeroWord'
+                                                                               : ... note: In instance 'ibex_top'
+  194 |   parameter logic [38:0] Secded3932ZeroWord = 39'h0;
+      |                          ^~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:202:25: Parameter is not used: 'Secded6457ZeroEcc'
+                                                                               : ... note: In instance 'ibex_top'
+  202 |   parameter logic [6:0] Secded6457ZeroEcc = 7'h0;
+      |                         ^~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:203:26: Parameter is not used: 'Secded6457ZeroWord'
+                                                                               : ... note: In instance 'ibex_top'
+  203 |   parameter logic [63:0] Secded6457ZeroWord = 64'h0;
+      |                          ^~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:211:25: Parameter is not used: 'Secded7264ZeroEcc'
+                                                                               : ... note: In instance 'ibex_top'
+  211 |   parameter logic [7:0] Secded7264ZeroEcc = 8'h0;
+      |                         ^~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:212:26: Parameter is not used: 'Secded7264ZeroWord'
+                                                                               : ... note: In instance 'ibex_top'
+  212 |   parameter logic [71:0] Secded7264ZeroWord = 72'h0;
+      |                          ^~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:220:25: Parameter is not used: 'SecdedHamming2216ZeroEcc'
+                                                                               : ... note: In instance 'ibex_top'
+  220 |   parameter logic [5:0] SecdedHamming2216ZeroEcc = 6'h0;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:221:26: Parameter is not used: 'SecdedHamming2216ZeroWord'
+                                                                               : ... note: In instance 'ibex_top'
+  221 |   parameter logic [21:0] SecdedHamming2216ZeroWord = 22'h0;
+      |                          ^~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:229:25: Parameter is not used: 'SecdedHamming3932ZeroEcc'
+                                                                               : ... note: In instance 'ibex_top'
+  229 |   parameter logic [6:0] SecdedHamming3932ZeroEcc = 7'h0;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:230:26: Parameter is not used: 'SecdedHamming3932ZeroWord'
+                                                                               : ... note: In instance 'ibex_top'
+  230 |   parameter logic [38:0] SecdedHamming3932ZeroWord = 39'h0;
+      |                          ^~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:238:25: Parameter is not used: 'SecdedHamming7264ZeroEcc'
+                                                                               : ... note: In instance 'ibex_top'
+  238 |   parameter logic [7:0] SecdedHamming7264ZeroEcc = 8'h0;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:239:26: Parameter is not used: 'SecdedHamming7264ZeroWord'
+                                                                               : ... note: In instance 'ibex_top'
+  239 |   parameter logic [71:0] SecdedHamming7264ZeroWord = 72'h0;
+      |                          ^~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:247:25: Parameter is not used: 'SecdedHamming7668ZeroEcc'
+                                                                               : ... note: In instance 'ibex_top'
+  247 |   parameter logic [7:0] SecdedHamming7668ZeroEcc = 8'h0;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:248:26: Parameter is not used: 'SecdedHamming7668ZeroWord'
+                                                                               : ... note: In instance 'ibex_top'
+  248 |   parameter logic [75:0] SecdedHamming7668ZeroWord = 76'h0;
+      |                          ^~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:256:25: Parameter is not used: 'SecdedInv2216ZeroEcc'
+                                                                               : ... note: In instance 'ibex_top'
+  256 |   parameter logic [5:0] SecdedInv2216ZeroEcc = 6'h2A;
+      |                         ^~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:257:26: Parameter is not used: 'SecdedInv2216ZeroWord'
+                                                                               : ... note: In instance 'ibex_top'
+  257 |   parameter logic [21:0] SecdedInv2216ZeroWord = 22'h2A0000;
+      |                          ^~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:265:25: Parameter is not used: 'SecdedInv2822ZeroEcc'
+                                                                               : ... note: In instance 'ibex_top'
+  265 |   parameter logic [5:0] SecdedInv2822ZeroEcc = 6'h2A;
+      |                         ^~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:266:26: Parameter is not used: 'SecdedInv2822ZeroWord'
+                                                                               : ... note: In instance 'ibex_top'
+  266 |   parameter logic [27:0] SecdedInv2822ZeroWord = 28'hA800000;
+      |                          ^~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:274:25: Parameter is not used: 'SecdedInv3932ZeroEcc'
+                                                                               : ... note: In instance 'ibex_top'
+  274 |   parameter logic [6:0] SecdedInv3932ZeroEcc = 7'h2A;
+      |                         ^~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:283:25: Parameter is not used: 'SecdedInv6457ZeroEcc'
+                                                                               : ... note: In instance 'ibex_top'
+  283 |   parameter logic [6:0] SecdedInv6457ZeroEcc = 7'h2A;
+      |                         ^~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:284:26: Parameter is not used: 'SecdedInv6457ZeroWord'
+                                                                               : ... note: In instance 'ibex_top'
+  284 |   parameter logic [63:0] SecdedInv6457ZeroWord = 64'h5400000000000000;
+      |                          ^~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:292:25: Parameter is not used: 'SecdedInv7264ZeroEcc'
+                                                                               : ... note: In instance 'ibex_top'
+  292 |   parameter logic [7:0] SecdedInv7264ZeroEcc = 8'hAA;
+      |                         ^~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:293:26: Parameter is not used: 'SecdedInv7264ZeroWord'
+                                                                               : ... note: In instance 'ibex_top'
+  293 |   parameter logic [71:0] SecdedInv7264ZeroWord = 72'hAA0000000000000000;
+      |                          ^~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:301:25: Parameter is not used: 'SecdedInvHamming2216ZeroEcc'
+                                                                               : ... note: In instance 'ibex_top'
+  301 |   parameter logic [5:0] SecdedInvHamming2216ZeroEcc = 6'h2A;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:302:26: Parameter is not used: 'SecdedInvHamming2216ZeroWord'
+                                                                               : ... note: In instance 'ibex_top'
+  302 |   parameter logic [21:0] SecdedInvHamming2216ZeroWord = 22'h2A0000;
+      |                          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:310:25: Parameter is not used: 'SecdedInvHamming3932ZeroEcc'
+                                                                               : ... note: In instance 'ibex_top'
+  310 |   parameter logic [6:0] SecdedInvHamming3932ZeroEcc = 7'h2A;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:311:26: Parameter is not used: 'SecdedInvHamming3932ZeroWord'
+                                                                               : ... note: In instance 'ibex_top'
+  311 |   parameter logic [38:0] SecdedInvHamming3932ZeroWord = 39'h2A00000000;
+      |                          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:319:25: Parameter is not used: 'SecdedInvHamming7264ZeroEcc'
+                                                                               : ... note: In instance 'ibex_top'
+  319 |   parameter logic [7:0] SecdedInvHamming7264ZeroEcc = 8'hAA;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:320:26: Parameter is not used: 'SecdedInvHamming7264ZeroWord'
+                                                                               : ... note: In instance 'ibex_top'
+  320 |   parameter logic [71:0] SecdedInvHamming7264ZeroWord = 72'hAA0000000000000000;
+      |                          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:328:25: Parameter is not used: 'SecdedInvHamming7668ZeroEcc'
+                                                                               : ... note: In instance 'ibex_top'
+  328 |   parameter logic [7:0] SecdedInvHamming7668ZeroEcc = 8'hAA;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv:329:26: Parameter is not used: 'SecdedInvHamming7668ZeroWord'
+                                                                               : ... note: In instance 'ibex_top'
+  329 |   parameter logic [75:0] SecdedInvHamming7668ZeroWord = 76'hAA00000000000000000;
+      |                          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_generic_clock_gating_0/rtl/prim_clock_gating.sv:11:17: Parameter is not used: 'NoFpgaGate'
+                                                                                            : ... note: In instance 'ibex_top.core_clock_gate_i'
+   11 |   parameter bit NoFpgaGate = 1'b0,  
+      |                 ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_generic_clock_gating_0/rtl/prim_clock_gating.sv:12:17: Parameter is not used: 'FpgaBufGlobal'
+                                                                                            : ... note: In instance 'ibex_top.core_clock_gate_i'
+   12 |   parameter bit FpgaBufGlobal = 1'b1  
+      |                 ^~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:14:26: Parameter is not used: 'INSN_LUI'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   14 |   parameter logic [31:0] INSN_LUI     = { 25'h?,                           {OPCODE_LUI  } };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:15:26: Parameter is not used: 'INSN_AUIPC'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   15 |   parameter logic [31:0] INSN_AUIPC   = { 25'h?,                           {OPCODE_AUIPC} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:16:26: Parameter is not used: 'INSN_JAL'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   16 |   parameter logic [31:0] INSN_JAL     = { 25'h?,                           {OPCODE_JAL  } };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:17:26: Parameter is not used: 'INSN_JALR'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   17 |   parameter logic [31:0] INSN_JALR    = { 17'h?,             3'b000, 5'h?, {OPCODE_JALR } };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:20:26: Parameter is not used: 'INSN_BEQ'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   20 |   parameter logic [31:0] INSN_BEQ     = { 17'h?,             3'b000, 5'h?, {OPCODE_BRANCH} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:21:26: Parameter is not used: 'INSN_BNE'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   21 |   parameter logic [31:0] INSN_BNE     = { 17'h?,             3'b001, 5'h?, {OPCODE_BRANCH} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:22:26: Parameter is not used: 'INSN_BLT'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   22 |   parameter logic [31:0] INSN_BLT     = { 17'h?,             3'b100, 5'h?, {OPCODE_BRANCH} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:23:26: Parameter is not used: 'INSN_BGE'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   23 |   parameter logic [31:0] INSN_BGE     = { 17'h?,             3'b101, 5'h?, {OPCODE_BRANCH} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:24:26: Parameter is not used: 'INSN_BLTU'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   24 |   parameter logic [31:0] INSN_BLTU    = { 17'h?,             3'b110, 5'h?, {OPCODE_BRANCH} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:25:26: Parameter is not used: 'INSN_BGEU'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   25 |   parameter logic [31:0] INSN_BGEU    = { 17'h?,             3'b111, 5'h?, {OPCODE_BRANCH} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:28:26: Parameter is not used: 'INSN_ADDI'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   28 |   parameter logic [31:0] INSN_ADDI    = { 17'h?,             3'b000, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:29:26: Parameter is not used: 'INSN_SLTI'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   29 |   parameter logic [31:0] INSN_SLTI    = { 17'h?,             3'b010, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:30:26: Parameter is not used: 'INSN_SLTIU'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   30 |   parameter logic [31:0] INSN_SLTIU   = { 17'h?,             3'b011, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:31:26: Parameter is not used: 'INSN_XORI'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   31 |   parameter logic [31:0] INSN_XORI    = { 17'h?,             3'b100, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:32:26: Parameter is not used: 'INSN_ORI'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   32 |   parameter logic [31:0] INSN_ORI     = { 17'h?,             3'b110, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:33:26: Parameter is not used: 'INSN_ANDI'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   33 |   parameter logic [31:0] INSN_ANDI    = { 17'h?,             3'b111, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:34:26: Parameter is not used: 'INSN_SLLI'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   34 |   parameter logic [31:0] INSN_SLLI    = { 7'b0000000, 10'h?, 3'b001, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:35:26: Parameter is not used: 'INSN_SRLI'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   35 |   parameter logic [31:0] INSN_SRLI    = { 7'b0000000, 10'h?, 3'b101, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:36:26: Parameter is not used: 'INSN_SRAI'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   36 |   parameter logic [31:0] INSN_SRAI    = { 7'b0100000, 10'h?, 3'b101, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:39:26: Parameter is not used: 'INSN_ADD'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   39 |   parameter logic [31:0] INSN_ADD     = { 7'b0000000, 10'h?, 3'b000, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:40:26: Parameter is not used: 'INSN_SUB'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   40 |   parameter logic [31:0] INSN_SUB     = { 7'b0100000, 10'h?, 3'b000, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:41:26: Parameter is not used: 'INSN_SLL'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   41 |   parameter logic [31:0] INSN_SLL     = { 7'b0000000, 10'h?, 3'b001, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:42:26: Parameter is not used: 'INSN_SLT'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   42 |   parameter logic [31:0] INSN_SLT     = { 7'b0000000, 10'h?, 3'b010, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:43:26: Parameter is not used: 'INSN_SLTU'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   43 |   parameter logic [31:0] INSN_SLTU    = { 7'b0000000, 10'h?, 3'b011, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:44:26: Parameter is not used: 'INSN_XOR'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   44 |   parameter logic [31:0] INSN_XOR     = { 7'b0000000, 10'h?, 3'b100, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:45:26: Parameter is not used: 'INSN_SRL'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   45 |   parameter logic [31:0] INSN_SRL     = { 7'b0000000, 10'h?, 3'b101, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:46:26: Parameter is not used: 'INSN_SRA'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   46 |   parameter logic [31:0] INSN_SRA     = { 7'b0100000, 10'h?, 3'b101, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:47:26: Parameter is not used: 'INSN_OR'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   47 |   parameter logic [31:0] INSN_OR      = { 7'b0000000, 10'h?, 3'b110, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:48:26: Parameter is not used: 'INSN_AND'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   48 |   parameter logic [31:0] INSN_AND     = { 7'b0000000, 10'h?, 3'b111, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:51:26: Parameter is not used: 'INSN_CSRRW'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   51 |   parameter logic [31:0] INSN_CSRRW   = { 17'h?,             3'b001, 5'h?, {OPCODE_SYSTEM} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:52:26: Parameter is not used: 'INSN_CSRRS'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   52 |   parameter logic [31:0] INSN_CSRRS   = { 17'h?,             3'b010, 5'h?, {OPCODE_SYSTEM} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:53:26: Parameter is not used: 'INSN_CSRRC'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   53 |   parameter logic [31:0] INSN_CSRRC   = { 17'h?,             3'b011, 5'h?, {OPCODE_SYSTEM} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:54:26: Parameter is not used: 'INSN_CSRRWI'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   54 |   parameter logic [31:0] INSN_CSRRWI  = { 17'h?,             3'b101, 5'h?, {OPCODE_SYSTEM} };
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:55:26: Parameter is not used: 'INSN_CSRRSI'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   55 |   parameter logic [31:0] INSN_CSRRSI  = { 17'h?,             3'b110, 5'h?, {OPCODE_SYSTEM} };
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:56:26: Parameter is not used: 'INSN_CSRRCI'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   56 |   parameter logic [31:0] INSN_CSRRCI  = { 17'h?,             3'b111, 5'h?, {OPCODE_SYSTEM} };
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:57:26: Parameter is not used: 'INSN_ECALL'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   57 |   parameter logic [31:0] INSN_ECALL   = { 12'b000000000000,         13'b0, {OPCODE_SYSTEM} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:58:26: Parameter is not used: 'INSN_EBREAK'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   58 |   parameter logic [31:0] INSN_EBREAK  = { 12'b000000000001,         13'b0, {OPCODE_SYSTEM} };
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:59:26: Parameter is not used: 'INSN_MRET'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   59 |   parameter logic [31:0] INSN_MRET    = { 12'b001100000010,         13'b0, {OPCODE_SYSTEM} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:60:26: Parameter is not used: 'INSN_DRET'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   60 |   parameter logic [31:0] INSN_DRET    = { 12'b011110110010,         13'b0, {OPCODE_SYSTEM} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:61:26: Parameter is not used: 'INSN_WFI'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   61 |   parameter logic [31:0] INSN_WFI     = { 12'b000100000101,         13'b0, {OPCODE_SYSTEM} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:64:26: Parameter is not used: 'INSN_DIV'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   64 |   parameter logic [31:0] INSN_DIV     = { 7'b0000001, 10'h?, 3'b100, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:65:26: Parameter is not used: 'INSN_DIVU'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   65 |   parameter logic [31:0] INSN_DIVU    = { 7'b0000001, 10'h?, 3'b101, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:66:26: Parameter is not used: 'INSN_REM'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   66 |   parameter logic [31:0] INSN_REM     = { 7'b0000001, 10'h?, 3'b110, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:67:26: Parameter is not used: 'INSN_REMU'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   67 |   parameter logic [31:0] INSN_REMU    = { 7'b0000001, 10'h?, 3'b111, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:68:26: Parameter is not used: 'INSN_PMUL'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   68 |   parameter logic [31:0] INSN_PMUL    = { 7'b0000001, 10'h?, 3'b000, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:69:26: Parameter is not used: 'INSN_PMUH'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   69 |   parameter logic [31:0] INSN_PMUH    = { 7'b0000001, 10'h?, 3'b001, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:70:26: Parameter is not used: 'INSN_PMULHSU'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   70 |   parameter logic [31:0] INSN_PMULHSU = { 7'b0000001, 10'h?, 3'b010, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:71:26: Parameter is not used: 'INSN_PMULHU'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   71 |   parameter logic [31:0] INSN_PMULHU  = { 7'b0000001, 10'h?, 3'b011, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:75:26: Parameter is not used: 'INSN_SH1ADD'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   75 |   parameter logic [31:0] INSN_SH1ADD = { 7'b0010000, 10'h?, 3'b010, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:76:26: Parameter is not used: 'INSN_SH2ADD'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   76 |   parameter logic [31:0] INSN_SH2ADD = { 7'b0010000, 10'h?, 3'b100, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:77:26: Parameter is not used: 'INSN_SH3ADD'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   77 |   parameter logic [31:0] INSN_SH3ADD = { 7'b0010000, 10'h?, 3'b110, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:83:26: Parameter is not used: 'INSN_RORI'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   83 |   parameter logic [31:0] INSN_RORI = { 5'b01100  , 1'b0, 11'h?, 3'b101, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:84:26: Parameter is not used: 'INSN_CLZ'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   84 |   parameter logic [31:0] INSN_CLZ  = { 12'b011000000000, 5'h?,  3'b001, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:85:26: Parameter is not used: 'INSN_CTZ'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   85 |   parameter logic [31:0] INSN_CTZ  = { 12'b011000000001, 5'h?,  3'b001, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:86:26: Parameter is not used: 'INSN_CPOP'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   86 |   parameter logic [31:0] INSN_CPOP = { 12'b011000000010, 5'h?,  3'b001, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:87:26: Parameter is not used: 'INSN_SEXTB'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   87 |   parameter logic [31:0] INSN_SEXTB = { 12'b011000000100, 5'h?, 3'b001, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:88:26: Parameter is not used: 'INSN_SEXTH'
+                                                                                   : ... note: In instance 'ibex_top.core_clock_gate_i'
+   88 |   parameter logic [31:0] INSN_SEXTH = { 12'b011000000101, 5'h?, 3'b001, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:100:26: Parameter is not used: 'INSN_ROL'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  100 |   parameter logic [31:0] INSN_ROL   = { 7'b0110000, 10'h?, 3'b001, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:101:26: Parameter is not used: 'INSN_ROR'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  101 |   parameter logic [31:0] INSN_ROR   = { 7'b0110000, 10'h?, 3'b101, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:102:26: Parameter is not used: 'INSN_MIN'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  102 |   parameter logic [31:0] INSN_MIN   = { 7'b0000101, 10'h?, 3'b100, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:103:26: Parameter is not used: 'INSN_MAX'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  103 |   parameter logic [31:0] INSN_MAX   = { 7'b0000101, 10'h?, 3'b110, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:104:26: Parameter is not used: 'INSN_MINU'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  104 |   parameter logic [31:0] INSN_MINU  = { 7'b0000101, 10'h?, 3'b101, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:105:26: Parameter is not used: 'INSN_MAXU'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  105 |   parameter logic [31:0] INSN_MAXU  = { 7'b0000101, 10'h?, 3'b111, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:106:26: Parameter is not used: 'INSN_XNOR'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  106 |   parameter logic [31:0] INSN_XNOR  = { 7'b0100000, 10'h?, 3'b100, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:107:26: Parameter is not used: 'INSN_ORN'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  107 |   parameter logic [31:0] INSN_ORN   = { 7'b0100000, 10'h?, 3'b110, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:108:26: Parameter is not used: 'INSN_ANDN'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  108 |   parameter logic [31:0] INSN_ANDN  = { 7'b0100000, 10'h?, 3'b111, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:109:26: Parameter is not used: 'INSN_PACK'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  109 |   parameter logic [31:0] INSN_PACK  = { 7'b0000100, 10'h?, 3'b100, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:110:26: Parameter is not used: 'INSN_PACKU'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  110 |   parameter logic [31:0] INSN_PACKU = { 7'b0100100, 10'h?, 3'b100, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:111:26: Parameter is not used: 'INSN_PACKH'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  111 |   parameter logic [31:0] INSN_PACKH = { 7'b0000100, 10'h?, 3'b111, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:114:26: Parameter is not used: 'INSN_BCLRI'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  114 |   parameter logic [31:0] INSN_BCLRI = { 5'b01001, 12'h?, 3'b001, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:115:26: Parameter is not used: 'INSN_BSETI'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  115 |   parameter logic [31:0] INSN_BSETI = { 5'b00101, 12'h?, 3'b001, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:116:26: Parameter is not used: 'INSN_BINVI'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  116 |   parameter logic [31:0] INSN_BINVI = { 5'b01101, 12'h?, 3'b001, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:119:26: Parameter is not used: 'INSN_BEXTI'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  119 |   parameter logic [31:0] INSN_BEXTI = { 5'b01001, 1'b0, 11'h?, 3'b101, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:121:26: Parameter is not used: 'INSN_BCLR'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  121 |   parameter logic [31:0] INSN_BCLR = { 7'b0100100, 10'h?, 3'b001, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:122:26: Parameter is not used: 'INSN_BSET'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  122 |   parameter logic [31:0] INSN_BSET = { 7'b0010100, 10'h?, 3'b001, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:123:26: Parameter is not used: 'INSN_BINV'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  123 |   parameter logic [31:0] INSN_BINV = { 7'b0110100, 10'h?, 3'b001, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:124:26: Parameter is not used: 'INSN_BEXT'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  124 |   parameter logic [31:0] INSN_BEXT = { 7'b0100100, 10'h?, 3'b101, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:130:26: Parameter is not used: 'INSN_GREVI'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  130 |   parameter logic [31:0] INSN_GREVI = { 5'b01101, 1'b0, 11'h?, 3'b101, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:132:26: Parameter is not used: 'INSN_REV_P'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  132 |   parameter logic [31:0] INSN_REV_P =
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:134:26: Parameter is not used: 'INSN_REV2_N'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  134 |   parameter logic [31:0] INSN_REV2_N =
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:136:26: Parameter is not used: 'INSN_REV_N'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  136 |   parameter logic [31:0] INSN_REV_N =
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:138:26: Parameter is not used: 'INSN_REV4_B'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  138 |   parameter logic [31:0] INSN_REV4_B =
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:140:26: Parameter is not used: 'INSN_REV2_B'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  140 |   parameter logic [31:0] INSN_REV2_B =
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:142:26: Parameter is not used: 'INSN_REV_B'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  142 |   parameter logic [31:0] INSN_REV_B =
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:144:26: Parameter is not used: 'INSN_REV8_H'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  144 |   parameter logic [31:0] INSN_REV8_H =
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:146:26: Parameter is not used: 'INSN_REV4_H'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  146 |   parameter logic [31:0] INSN_REV4_H =
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:148:26: Parameter is not used: 'INSN_REV2_H'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  148 |   parameter logic [31:0] INSN_REV2_H =
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:150:26: Parameter is not used: 'INSN_REV_H'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  150 |   parameter logic [31:0] INSN_REV_H =
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:152:26: Parameter is not used: 'INSN_REV16'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  152 |   parameter logic [31:0] INSN_REV16 =
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:154:26: Parameter is not used: 'INSN_REV8'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  154 |   parameter logic [31:0] INSN_REV8 =
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:156:26: Parameter is not used: 'INSN_REV4'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  156 |   parameter logic [31:0] INSN_REV4 =
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:158:26: Parameter is not used: 'INSN_REV2'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  158 |   parameter logic [31:0] INSN_REV2 =
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:160:26: Parameter is not used: 'INSN_REV'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  160 |   parameter logic [31:0] INSN_REV =
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:165:26: Parameter is not used: 'INSN_GORCI'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  165 |   parameter logic [31:0] INSN_GORCI = { 5'b00101, 1'b0, 11'h?, 3'b101, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:167:26: Parameter is not used: 'INSN_ORC_P'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  167 |   parameter logic [31:0] INSN_ORC_P =
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:169:26: Parameter is not used: 'INSN_ORC2_N'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  169 |   parameter logic [31:0] INSN_ORC2_N =
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:171:26: Parameter is not used: 'INSN_ORC_N'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  171 |   parameter logic [31:0] INSN_ORC_N =
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:173:26: Parameter is not used: 'INSN_ORC4_B'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  173 |   parameter logic [31:0] INSN_ORC4_B =
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:175:26: Parameter is not used: 'INSN_ORC2_B'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  175 |   parameter logic [31:0] INSN_ORC2_B =
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:177:26: Parameter is not used: 'INSN_ORC_B'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  177 |   parameter logic [31:0] INSN_ORC_B =
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:179:26: Parameter is not used: 'INSN_ORC8_H'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  179 |   parameter logic [31:0] INSN_ORC8_H =
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:181:26: Parameter is not used: 'INSN_ORC4_H'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  181 |   parameter logic [31:0] INSN_ORC4_H =
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:183:26: Parameter is not used: 'INSN_ORC2_H'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  183 |   parameter logic [31:0] INSN_ORC2_H =
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:185:26: Parameter is not used: 'INSN_ORC_H'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  185 |   parameter logic [31:0] INSN_ORC_H =
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:187:26: Parameter is not used: 'INSN_ORC16'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  187 |   parameter logic [31:0] INSN_ORC16 =
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:189:26: Parameter is not used: 'INSN_ORC8'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  189 |   parameter logic [31:0] INSN_ORC8 =
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:191:26: Parameter is not used: 'INSN_ORC4'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  191 |   parameter logic [31:0] INSN_ORC4 =
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:193:26: Parameter is not used: 'INSN_ORC2'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  193 |   parameter logic [31:0] INSN_ORC2 =
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:195:26: Parameter is not used: 'INSN_ORC'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  195 |   parameter logic [31:0] INSN_ORC =
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:198:26: Parameter is not used: 'INSN_SHFLI'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  198 |   parameter logic [31:0] INSN_SHFLI = { 6'b000010, 11'h?, 3'b001, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:200:26: Parameter is not used: 'INSN_ZIP_N'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  200 |   parameter logic [31:0] INSN_ZIP_N =
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:202:26: Parameter is not used: 'INSN_ZIP2_B'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  202 |   parameter logic [31:0] INSN_ZIP2_B =
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:204:26: Parameter is not used: 'INSN_ZIP_B'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  204 |   parameter logic [31:0] INSN_ZIP_B =
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:206:26: Parameter is not used: 'INSN_ZIP4_H'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  206 |   parameter logic [31:0] INSN_ZIP4_H =
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:208:26: Parameter is not used: 'INSN_ZIP2_H'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  208 |   parameter logic [31:0] INSN_ZIP2_H =
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:210:26: Parameter is not used: 'INSN_ZIP_H'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  210 |   parameter logic [31:0] INSN_ZIP_H =
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:212:26: Parameter is not used: 'INSN_ZIP8'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  212 |   parameter logic [31:0] INSN_ZIP8 =
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:214:26: Parameter is not used: 'INSN_ZIP4'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  214 |   parameter logic [31:0] INSN_ZIP4 =
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:216:26: Parameter is not used: 'INSN_ZIP2'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  216 |   parameter logic [31:0] INSN_ZIP2 =
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:218:26: Parameter is not used: 'INSN_ZIP'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  218 |   parameter logic [31:0] INSN_ZIP =
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:221:26: Parameter is not used: 'INSN_UNSHFLI'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  221 |   parameter logic [31:0] INSN_UNSHFLI = { 6'b000010, 11'h?, 3'b101, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:223:26: Parameter is not used: 'INSN_UNZIP_N'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  223 |   parameter logic [31:0] INSN_UNZIP_N =
+      |                          ^~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:225:26: Parameter is not used: 'INSN_UNZIP2_B'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  225 |   parameter logic [31:0] INSN_UNZIP2_B =
+      |                          ^~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:227:26: Parameter is not used: 'INSN_UNZIP_B'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  227 |   parameter logic [31:0] INSN_UNZIP_B =
+      |                          ^~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:229:26: Parameter is not used: 'INSN_UNZIP4_H'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  229 |   parameter logic [31:0] INSN_UNZIP4_H =
+      |                          ^~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:231:26: Parameter is not used: 'INSN_UNZIP2_H'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  231 |   parameter logic [31:0] INSN_UNZIP2_H =
+      |                          ^~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:233:26: Parameter is not used: 'INSN_UNZIP_H'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  233 |   parameter logic [31:0] INSN_UNZIP_H =
+      |                          ^~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:235:26: Parameter is not used: 'INSN_UNZIP8'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  235 |   parameter logic [31:0] INSN_UNZIP8 =
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:237:26: Parameter is not used: 'INSN_UNZIP4'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  237 |   parameter logic [31:0] INSN_UNZIP4 =
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:239:26: Parameter is not used: 'INSN_UNZIP2'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  239 |   parameter logic [31:0] INSN_UNZIP2 =
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:241:26: Parameter is not used: 'INSN_UNZIP'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  241 |   parameter logic [31:0] INSN_UNZIP =
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:244:26: Parameter is not used: 'INSN_GREV'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  244 |   parameter logic [31:0] INSN_GREV   = { 7'b0110100, 10'h?, 3'b101, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:245:26: Parameter is not used: 'INSN_GORC'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  245 |   parameter logic [31:0] INSN_GORC   = { 7'b0010100, 10'h?, 3'b101, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:246:26: Parameter is not used: 'INSN_SHFL'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  246 |   parameter logic [31:0] INSN_SHFL   = { 7'b0000100, 10'h?, 3'b001, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:247:26: Parameter is not used: 'INSN_UNSHFL'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  247 |   parameter logic [31:0] INSN_UNSHFL = { 7'b0000100, 10'h?, 3'b101, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:249:26: Parameter is not used: 'INSN_XPERM_N'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  249 |   parameter logic [31:0] INSN_XPERM_N = { 7'b0010100, 10'h?, 3'b010, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:250:26: Parameter is not used: 'INSN_XPERM_B'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  250 |   parameter logic [31:0] INSN_XPERM_B = { 7'b0010100, 10'h?, 3'b100, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:251:26: Parameter is not used: 'INSN_XPERM_H'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  251 |   parameter logic [31:0] INSN_XPERM_H = { 7'b0010100, 10'h?, 3'b110, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:253:26: Parameter is not used: 'INSN_SLO'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  253 |   parameter logic [31:0] INSN_SLO    = { 7'b0010000, 10'h?, 3'b001, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:254:26: Parameter is not used: 'INSN_SRO'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  254 |   parameter logic [31:0] INSN_SRO    = { 7'b0010000, 10'h?, 3'b101, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:255:26: Parameter is not used: 'INSN_SLOI'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  255 |   parameter logic [31:0] INSN_SLOI   = { 5'b00100        , 12'h?, 3'b001, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:259:26: Parameter is not used: 'INSN_SROI'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  259 |   parameter logic [31:0] INSN_SROI   = { 5'b00100  , 1'b0, 11'h?, 3'b101, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:262:26: Parameter is not used: 'INSN_BDECOMPRESS'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  262 |   parameter logic [31:0] INSN_BDECOMPRESS = {7'b0100100, 10'h?, 3'b110, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:263:26: Parameter is not used: 'INSN_BCOMPRESS'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  263 |   parameter logic [31:0] INSN_BCOMPRESS   = {7'b0000100, 10'h?, 3'b110, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:266:26: Parameter is not used: 'INSN_FSRI'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  266 |   parameter logic [31:0] INSN_FSRI = { 5'h?, 1'b1, 11'h?, 3'b101, 5'h?, {OPCODE_OP_IMM} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:268:26: Parameter is not used: 'INSN_CMIX'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  268 |   parameter logic [31:0] INSN_CMIX = {5'h?, 2'b11, 10'h?, 3'b001, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:269:26: Parameter is not used: 'INSN_CMOV'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  269 |   parameter logic [31:0] INSN_CMOV = {5'h?, 2'b11, 10'h?, 3'b101, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:270:26: Parameter is not used: 'INSN_FSL'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  270 |   parameter logic [31:0] INSN_FSL  = {5'h?, 2'b10, 10'h?, 3'b001, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:271:26: Parameter is not used: 'INSN_FSR'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  271 |   parameter logic [31:0] INSN_FSR  = {5'h?, 2'b10, 10'h?, 3'b101, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:274:26: Parameter is not used: 'INSN_BFP'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  274 |   parameter logic [31:0] INSN_BFP  = {7'b0100100, 10'h?, 3'b111, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:277:26: Parameter is not used: 'INSN_CLMUL'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  277 |   parameter logic [31:0] INSN_CLMUL  = {7'b0000101, 10'h?, 3'b001, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:278:26: Parameter is not used: 'INSN_CLMULR'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  278 |   parameter logic [31:0] INSN_CLMULR = {7'b0000101, 10'h?, 3'b010, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:279:26: Parameter is not used: 'INSN_CLMULH'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  279 |   parameter logic [31:0] INSN_CLMULH = {7'b0000101, 10'h?, 3'b011, 5'h?, {OPCODE_OP} };
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:282:26: Parameter is not used: 'INSN_CRC32_B'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  282 |   parameter logic [31:0] INSN_CRC32_B  =
+      |                          ^~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:284:26: Parameter is not used: 'INSN_CRC32_H'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  284 |   parameter logic [31:0] INSN_CRC32_H  =
+      |                          ^~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:286:26: Parameter is not used: 'INSN_CRC32_W'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  286 |   parameter logic [31:0] INSN_CRC32_W  =
+      |                          ^~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:288:26: Parameter is not used: 'INSN_CRC32C_B'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  288 |   parameter logic [31:0] INSN_CRC32C_B =
+      |                          ^~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:290:26: Parameter is not used: 'INSN_CRC32C_H'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  290 |   parameter logic [31:0] INSN_CRC32C_H =
+      |                          ^~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:292:26: Parameter is not used: 'INSN_CRC32C_W'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  292 |   parameter logic [31:0] INSN_CRC32C_W =
+      |                          ^~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:296:26: Parameter is not used: 'INSN_LOAD'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  296 |   parameter logic [31:0] INSN_LOAD    = {25'h?,                            {OPCODE_LOAD } };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:297:26: Parameter is not used: 'INSN_STORE'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  297 |   parameter logic [31:0] INSN_STORE   = {25'h?,                            {OPCODE_STORE} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:300:26: Parameter is not used: 'INSN_FENCE'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  300 |   parameter logic [31:0] INSN_FENCE   = { 17'h?,             3'b000, 5'h?, {OPCODE_MISC_MEM} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:301:26: Parameter is not used: 'INSN_FENCEI'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  301 |   parameter logic [31:0] INSN_FENCEI  = { 17'h0,             3'b001, 5'h0, {OPCODE_MISC_MEM} };
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:305:26: Parameter is not used: 'INSN_CADDI4SPN'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  305 |   parameter logic [15:0] INSN_CADDI4SPN  = { 3'b000,       11'h?,                    {OPCODE_C0} };
+      |                          ^~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:306:26: Parameter is not used: 'INSN_CLW'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  306 |   parameter logic [15:0] INSN_CLW        = { 3'b010,       11'h?,                    {OPCODE_C0} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:307:26: Parameter is not used: 'INSN_CSW'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  307 |   parameter logic [15:0] INSN_CSW        = { 3'b110,       11'h?,                    {OPCODE_C0} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:309:26: Parameter is not used: 'INSN_CLBU'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  309 |   parameter logic [15:0] INSN_CLBU       = { 3'b100, 3'b000, 8'h?,                   {OPCODE_C0} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:310:26: Parameter is not used: 'INSN_CLHU'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  310 |   parameter logic [15:0] INSN_CLHU       = { 3'b100, 3'b001, 3'h?, 1'b0, 4'h?,       {OPCODE_C0} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:311:26: Parameter is not used: 'INSN_CLH'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  311 |   parameter logic [15:0] INSN_CLH        = { 3'b100, 3'b001, 3'h?, 1'b1, 4'h?,       {OPCODE_C0} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:312:26: Parameter is not used: 'INSN_CSB'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  312 |   parameter logic [15:0] INSN_CSB        = { 3'b100, 3'b010, 8'h?,                   {OPCODE_C0} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:313:26: Parameter is not used: 'INSN_CSH'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  313 |   parameter logic [15:0] INSN_CSH        = { 3'b100, 3'b011, 3'h?, 1'b0, 4'h?,       {OPCODE_C0} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:316:26: Parameter is not used: 'INSN_CADDI'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  316 |   parameter logic [15:0] INSN_CADDI      = { 3'b000,       11'h?,                    {OPCODE_C1} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:317:26: Parameter is not used: 'INSN_CJAL'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  317 |   parameter logic [15:0] INSN_CJAL       = { 3'b001,       11'h?,                    {OPCODE_C1} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:318:26: Parameter is not used: 'INSN_CJ'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  318 |   parameter logic [15:0] INSN_CJ         = { 3'b101,       11'h?,                    {OPCODE_C1} };
+      |                          ^~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:319:26: Parameter is not used: 'INSN_CLI'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  319 |   parameter logic [15:0] INSN_CLI        = { 3'b010,       11'h?,                    {OPCODE_C1} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:320:26: Parameter is not used: 'INSN_CLUI'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  320 |   parameter logic [15:0] INSN_CLUI       = { 3'b011,       11'h?,                    {OPCODE_C1} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:321:26: Parameter is not used: 'INSN_CBEQZ'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  321 |   parameter logic [15:0] INSN_CBEQZ      = { 3'b110,       11'h?,                    {OPCODE_C1} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:322:26: Parameter is not used: 'INSN_CBNEZ'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  322 |   parameter logic [15:0] INSN_CBNEZ      = { 3'b111,       11'h?,                    {OPCODE_C1} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:323:26: Parameter is not used: 'INSN_CSRLI'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  323 |   parameter logic [15:0] INSN_CSRLI      = { 3'b100, 1'h?, 2'b00, 8'h?,              {OPCODE_C1} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:324:26: Parameter is not used: 'INSN_CSRAI'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  324 |   parameter logic [15:0] INSN_CSRAI      = { 3'b100, 1'h?, 2'b01, 8'h?,              {OPCODE_C1} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:325:26: Parameter is not used: 'INSN_CANDI'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  325 |   parameter logic [15:0] INSN_CANDI      = { 3'b100, 1'h?, 2'b10, 8'h?,              {OPCODE_C1} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:326:26: Parameter is not used: 'INSN_CSUB'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  326 |   parameter logic [15:0] INSN_CSUB       = { 3'b100, 1'b0, 2'b11, 3'h?, 2'b00, 3'h?, {OPCODE_C1} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:327:26: Parameter is not used: 'INSN_CXOR'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  327 |   parameter logic [15:0] INSN_CXOR       = { 3'b100, 1'b0, 2'b11, 3'h?, 2'b01, 3'h?, {OPCODE_C1} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:328:26: Parameter is not used: 'INSN_COR'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  328 |   parameter logic [15:0] INSN_COR        = { 3'b100, 1'b0, 2'b11, 3'h?, 2'b10, 3'h?, {OPCODE_C1} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:329:26: Parameter is not used: 'INSN_CAND'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  329 |   parameter logic [15:0] INSN_CAND       = { 3'b100, 1'b0, 2'b11, 3'h?, 2'b11, 3'h?, {OPCODE_C1} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:331:26: Parameter is not used: 'INSN_CZEXTB'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  331 |   parameter logic [15:0] INSN_CZEXTB     = { 3'b100, 3'b111, 3'h?, 2'b11, 3'b000,    {OPCODE_C1} };
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:332:26: Parameter is not used: 'INSN_CSEXTB'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  332 |   parameter logic [15:0] INSN_CSEXTB     = { 3'b100, 3'b111, 3'h?, 2'b11, 3'b001,    {OPCODE_C1} };
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:333:26: Parameter is not used: 'INSN_CZEXTH'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  333 |   parameter logic [15:0] INSN_CZEXTH     = { 3'b100, 3'b111, 3'h?, 2'b11, 3'b010,    {OPCODE_C1} };
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:334:26: Parameter is not used: 'INSN_CSEXTH'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  334 |   parameter logic [15:0] INSN_CSEXTH     = { 3'b100, 3'b111, 3'h?, 2'b11, 3'b011,    {OPCODE_C1} };
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:335:26: Parameter is not used: 'INSN_CNOT'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  335 |   parameter logic [15:0] INSN_CNOT       = { 3'b100, 3'b111, 3'h?, 2'b11, 3'b101,    {OPCODE_C1} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:336:26: Parameter is not used: 'INSN_CMUL'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  336 |   parameter logic [15:0] INSN_CMUL       = { 3'b100, 3'b111, 3'h?, 2'b10, 3'h?,      {OPCODE_C1} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:339:26: Parameter is not used: 'INSN_CSLLI'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  339 |   parameter logic [15:0] INSN_CSLLI      = { 3'b000,       11'h?,                    {OPCODE_C2} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:340:26: Parameter is not used: 'INSN_CLWSP'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  340 |   parameter logic [15:0] INSN_CLWSP      = { 3'b010,       11'h?,                    {OPCODE_C2} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:341:26: Parameter is not used: 'INSN_SWSP'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  341 |   parameter logic [15:0] INSN_SWSP       = { 3'b110,       11'h?,                    {OPCODE_C2} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:342:26: Parameter is not used: 'INSN_CMV'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  342 |   parameter logic [15:0] INSN_CMV        = { 3'b100, 1'b0, 10'h?,                    {OPCODE_C2} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:343:26: Parameter is not used: 'INSN_CADD'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  343 |   parameter logic [15:0] INSN_CADD       = { 3'b100, 1'b1, 10'h?,                    {OPCODE_C2} };
+      |                          ^~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:344:26: Parameter is not used: 'INSN_CEBREAK'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  344 |   parameter logic [15:0] INSN_CEBREAK    = { 3'b100, 1'b1,        5'h0,  5'h0,       {OPCODE_C2} };
+      |                          ^~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:345:26: Parameter is not used: 'INSN_CJR'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  345 |   parameter logic [15:0] INSN_CJR        = { 3'b100, 1'b0,        5'h0,  5'h0,       {OPCODE_C2} };
+      |                          ^~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:346:26: Parameter is not used: 'INSN_CJALR'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  346 |   parameter logic [15:0] INSN_CJALR      = { 3'b100, 1'b1,        5'h?,  5'h0,       {OPCODE_C2} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:348:26: Parameter is not used: 'INSN_CMPUSH'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  348 |   parameter logic [15:0] INSN_CMPUSH     = { 3'b101, 3'b110, 2'b00, 4'h?, 2'b?,      {OPCODE_C2} };
+      |                          ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:349:26: Parameter is not used: 'INSN_CMPOP'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  349 |   parameter logic [15:0] INSN_CMPOP      = { 3'b101, 3'b110, 2'b10, 4'h?, 2'b?,      {OPCODE_C2} };
+      |                          ^~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:350:26: Parameter is not used: 'INSN_CMPOPRETZ'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  350 |   parameter logic [15:0] INSN_CMPOPRETZ  = { 3'b101, 3'b111, 2'b00, 4'h?, 2'b?,      {OPCODE_C2} };
+      |                          ^~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:351:26: Parameter is not used: 'INSN_CMPOPRET'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  351 |   parameter logic [15:0] INSN_CMPOPRET   = { 3'b101, 3'b111, 2'b10, 4'h?, 2'b?,      {OPCODE_C2} };
+      |                          ^~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:352:26: Parameter is not used: 'INSN_CMMVSA01'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  352 |   parameter logic [15:0] INSN_CMMVSA01   = { 3'b101, 3'b011, 3'h?, 2'b01, 3'h?,      {OPCODE_C2} };
+      |                          ^~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv:353:26: Parameter is not used: 'INSN_CMMVA01S'
+                                                                                    : ... note: In instance 'ibex_top.core_clock_gate_i'
+  353 |   parameter logic [15:0] INSN_CMMVA01S   = { 3'b101, 3'b011, 3'h?, 2'b11, 3'h?,      {OPCODE_C2} };
+      |                          ^~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: src/lowrisc_prim_generic_ram_1p_pkg_0/rtl/prim_ram_1p_pkg.sv:23:26: Parameter is not used: 'RAM_1P_CFG_DEFAULT'
+                                                                                        : ... note: In instance 'ibex_top.u_ibex_core.g_pmp.pmp_i'
+   23 |   parameter ram_1p_cfg_t RAM_1P_CFG_DEFAULT = '0;
+      |                          ^~~~~~~~~~~~~~~~~~
+%Warning-UNOPTFLAT: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:220:16: Signal unoptimizable: Circular combinational logic: 'ibex_top.u_ibex_core.id_stage_i.instr_executing_spec'
+  220 |   logic        instr_executing_spec;
+      |                ^~~~~~~~~~~~~~~~~~~~
+                    ... For warning description see https://verilator.org/warn/UNOPTFLAT?v=5.048
+                    ... Use "/* verilator lint_off UNOPTFLAT */" and lint_on around source to disable this message.
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:220:16:      Example path: ibex_top.u_ibex_core.id_stage_i.instr_executing_spec
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:781:3:      Example path: ALWAYS
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:269:16:      Example path: ibex_top.u_ibex_core.id_stage_i.stall_alu
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:861:16:      Example path: ASSIGNW
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:135:9:      Example path: ibex_top.u_ibex_core.id_stage_i.controller_i.stall
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:453:3:      Example path: ALWAYS
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:136:9:      Example path: ibex_top.u_ibex_core.id_stage_i.controller_i.halt_if
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:864:33:      Example path: ASSIGNW
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:864:33:      Example path: __VdfgRegularize_hebeb780c_0_38
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:453:3:      Example path: ALWAYS
+%Warning-UNOPTFLAT: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:864:33: Signal unoptimizable: Circular combinational logic: '__VdfgRegularize_hebeb780c_0_38'
+  864 |   assign id_in_ready_o = ~stall & ~halt_if & ~retain_id;
+      |                                 ^
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:864:33:      Example path: __VdfgRegularize_hebeb780c_0_38
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:453:3:      Example path: ALWAYS
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:136:9:      Example path: ibex_top.u_ibex_core.id_stage_i.controller_i.halt_if
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:864:33:      Example path: ASSIGNW
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:864:33:      Example path: __VdfgRegularize_hebeb780c_0_38
+%Warning-UNOPTFLAT: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:222:16: Signal unoptimizable: Circular combinational logic: 'ibex_top.u_ibex_core.id_stage_i.instr_done'
+  222 |   logic        instr_done;
+      |                ^~~~~~~~~~
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:222:16:      Example path: ibex_top.u_ibex_core.id_stage_i.instr_done
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:655:34:      Example path: ASSIGNW
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_core.sv:296:16:      Example path: ibex_top.u_ibex_core.csr_op_en
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:234:22:      Example path: ASSIGNW
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:140:9:      Example path: ibex_top.u_ibex_core.id_stage_i.controller_i.special_req
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:453:3:      Example path: ALWAYS
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:136:9:      Example path: ibex_top.u_ibex_core.id_stage_i.controller_i.halt_if
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:864:33:      Example path: ASSIGNW
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:864:33:      Example path: __VdfgRegularize_hebeb780c_0_38
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:453:3:      Example path: ALWAYS
+- V e r i l a t i o n   R e p o r t: Verilator 5.048 2026-04-26 rev vUNKNOWN-built20260426
+- Verilator: Built from 63.255 MB sources in 136 modules, into 2.500 MB in 5 C++ files needing 0.000 MB
+- Verilator: Walltime 0.325 s (elab=0.064, cvt=0.155, bld=0.000); cpu 0.325 s on 1 threads; allocated 88.594 MB

@@ -38,3 +38,6 @@ tests/sw/build/
 # that don't belong in shared history.
 HANDOFF.md
 arch_sim_build/
+
+# Reviewer evidence package: its logs are deliverables, not build noise.
+!review-package/reports/*.log

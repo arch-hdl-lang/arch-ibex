@@ -1,0 +1,25 @@
+  total  blank   cmnt   code  file
+     58      6     18     34  src/FbAgeArb.arch
+    264     28     89    147  src/IbexAlu.arch
+    816     71    277    468  src/IbexCompressedDecoder.arch
+    593     52    140    401  src/IbexController.arch
+   1204     69    282    853  src/IbexCore.arch
+     26      3     10     13  src/IbexCoreSharedPkg.arch
+    100     11     61     28  src/IbexCounter.arch
+    798     63    195    540  src/IbexDecoder.arch
+    227     27     93    107  src/IbexExBlock.arch
+    234     33     78    123  src/IbexFetchFifo.arch
+   1224     95    453    676  src/IbexIcache.arch
+    374     38     27    309  src/IbexIcacheOutputStage.arch
+    954     97    230    627  src/IbexIdStage.arch
+    426     36    132    258  src/IbexIfStage.arch
+    546     42    225    279  src/IbexLoadStoreUnit.arch
+    400     29    151    220  src/IbexMultdivFast.arch
+    601     28    110    463  src/IbexPmp.arch
+    287     37    116    134  src/IbexPrefetchBuffer.arch
+    103     12     51     40  src/IbexRegisterFileFf.arch
+    780     64    241    475  src/IbexTop.arch
+    139     24     59     56  src/IbexWbStage.arch
+    155     15     58     82  src/InvalCtrl.arch
+     17      1      6     10  src/RamPortArb.arch
+  10326    881   3102   6343  TOTAL (23 files)

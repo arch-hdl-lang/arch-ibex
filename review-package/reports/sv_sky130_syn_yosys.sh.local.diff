@@ -1,0 +1,100 @@
+diff --git a/syn/syn_yosys.sh b/syn/syn_yosys.sh
+index 6281dde..395fe0f 100755
+--- a/syn/syn_yosys.sh
++++ b/syn/syn_yosys.sh
+@@ -37,10 +37,15 @@ LR_DEP_SOURCES=(
+     "../vendor/lowrisc_ip/ip/prim/rtl/prim_secded_inv_39_32_dec.sv"
+     "../vendor/lowrisc_ip/ip/prim/rtl/prim_secded_inv_39_32_enc.sv"
+     "../vendor/lowrisc_ip/ip/prim/rtl/prim_lfsr.sv"
+-    "../vendor/lowrisc_ip/ip/prim_generic/rtl/prim_generic_and2.sv"
+-    "../vendor/lowrisc_ip/ip/prim_generic/rtl/prim_generic_buf.sv"
+-    "../vendor/lowrisc_ip/ip/prim_generic/rtl/prim_generic_clock_mux2.sv"
+-    "../vendor/lowrisc_ip/ip/prim_generic/rtl/prim_generic_flop.sv"
++    # lowrisc_ip vendored at this Ibex checkout uses unprefixed file +
++    # module names inside `prim_generic/rtl/` (prim_and2.sv not
++    # prim_generic_and2.sv). Adjust both the source list and the post-
++    # sv2v rename (below) accordingly so references and definitions
++    # agree in the yosys input.
++    "../vendor/lowrisc_ip/ip/prim_generic/rtl/prim_and2.sv"
++    "../vendor/lowrisc_ip/ip/prim_generic/rtl/prim_buf.sv"
++    "../vendor/lowrisc_ip/ip/prim_generic/rtl/prim_clock_mux2.sv"
++    "../vendor/lowrisc_ip/ip/prim_generic/rtl/prim_flop.sv"
+ )
+ 
+ mkdir -p "$LR_SYNTH_OUT_DIR/generated"
+@@ -58,12 +63,11 @@ for file in "${LR_DEP_SOURCES[@]}"; do
+         -I../vendor/lowrisc_ip/ip/prim/rtl \
+         "$file" \
+         > "$LR_SYNTH_OUT_DIR"/generated/"${module}".v
+-    # Make sure auto-generated primitives are resolved to generic primitives
+-    # where available.
+-    sed -i 's/prim_and2/prim_generic_and2/g' "$LR_SYNTH_OUT_DIR"/generated/"${module}".v
+-    sed -i 's/prim_buf/prim_generic_buf/g'  "$LR_SYNTH_OUT_DIR"/generated/"${module}".v
+-    sed -i 's/prim_clock_mux2/prim_generic_clock_mux2/g'  "$LR_SYNTH_OUT_DIR"/generated/"${module}".v
+-    sed -i 's/prim_flop/prim_generic_flop/g' "$LR_SYNTH_OUT_DIR"/generated/"${module}".v
++    # The rename `prim_and2 -> prim_generic_and2` etc. was needed when
++    # the vendored `prim_generic/rtl/` file + module names carried the
++    # `_generic_` infix; at this vendor revision they don't, so the
++    # Ibex RTL references (`prim_buf`, `prim_flop`, ...) and the
++    # converted dep modules already agree. No rename needed.
+ done
+ 
+ # Convert core sources
+@@ -75,22 +79,29 @@ for file in ../rtl/*.sv; do
+       continue
+   fi
+ 
++  # Skip tracer / FPGA / reg-based regfile: the original flow converts
++  # them then deletes the .v files later. This sv2v build rejects some
++  # SV in ibex_tracer that we'd otherwise throw away anyway, so skip
++  # up front.
++  case "$module" in
++    ibex_tracer|ibex_register_file_ff|ibex_register_file_fpga)
++      continue ;;
++  esac
++
+   sv2v \
+     --define=SYNTHESIS --define=YOSYS \
+     ../rtl/*_pkg.sv \
+-    ../vendor/lowrisc_ip/ip/prim/rtl/prim_ram_1p_pkg.sv \
++    ../vendor/lowrisc_ip/ip/prim_generic/rtl/prim_ram_1p_pkg.sv \
+     ../vendor/lowrisc_ip/ip/prim/rtl/prim_secded_pkg.sv \
++    ../vendor/lowrisc_ip/ip/prim/rtl/prim_util_pkg.sv \
++    ../vendor/lowrisc_ip/ip/prim/rtl/prim_mubi_pkg.sv \
+     -I../vendor/lowrisc_ip/ip/prim/rtl \
+     -I../vendor/lowrisc_ip/dv/sv/dv_utils \
+     "$file" \
+     > "$LR_SYNTH_OUT_DIR"/generated/"${module}".v
+ 
+-# Make sure auto-generated primitives are resolved to generic primitives
+-# where available.
+-  sed -i 's/prim_and2/prim_generic_and2/g' "$LR_SYNTH_OUT_DIR"/generated/"${module}".v
+-  sed -i 's/prim_buf/prim_generic_buf/g'  "$LR_SYNTH_OUT_DIR"/generated/"${module}".v
+-  sed -i 's/prim_clock_mux2/prim_generic_clock_mux2/g'  "$LR_SYNTH_OUT_DIR"/generated/"${module}".v
+-  sed -i 's/prim_flop/prim_generic_flop/g' "$LR_SYNTH_OUT_DIR"/generated/"${module}".v
++# Rename skipped — vendored prim_generic files use unprefixed module
++# names at this Ibex checkout; see comment in the dep-loop above.
+ done
+ 
+ # remove tracer (not needed for synthesis)
+@@ -105,10 +116,15 @@ yosys -c ./tcl/yosys_run_synth.tcl |& teelog syn || {
+     error "Failed to synthesize RTL with Yosys"
+ }
+ 
+-sta ./tcl/sta_run_reports.tcl |& teelog sta || {
+-    error "Failed to run static timing analysis"
+-}
+-
+-./translate_timing_rpts.sh
++# OpenSTA / timing stages intentionally skipped — OpenSTA isn't
++# available on this box and `LR_SYNTH_TIMING_RUN` is 0 so no SDC is
++# written by the Yosys run either. Area / cell counts come from the
++# `stat` command inside yosys_run_synth.tcl.
++if [ "${LR_SYNTH_TIMING_RUN:-0}" = "1" ]; then
++    sta ./tcl/sta_run_reports.tcl |& teelog sta || {
++        error "Failed to run static timing analysis"
++    }
++    ./translate_timing_rpts.sh
++fi
+ 
+ python/get_kge.py "$LR_SYNTH_CELL_LIBRARY_PATH" "$LR_SYNTH_OUT_DIR"/reports/area.rpt

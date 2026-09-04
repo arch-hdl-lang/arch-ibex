@@ -1,0 +1,39 @@
+%Warning-UNOPTFLAT: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:220:16: Signal unoptimizable: Circular combinational logic: 'ibex_top.u_ibex_core.id_stage_i.instr_executing_spec'
+  220 |   logic        instr_executing_spec;
+      |                ^~~~~~~~~~~~~~~~~~~~
+                    ... For warning description see https://verilator.org/warn/UNOPTFLAT?v=5.048
+                    ... Use "/* verilator lint_off UNOPTFLAT */" and lint_on around source to disable this message.
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:220:16:      Example path: ibex_top.u_ibex_core.id_stage_i.instr_executing_spec
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:781:3:      Example path: ALWAYS
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:269:16:      Example path: ibex_top.u_ibex_core.id_stage_i.stall_alu
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:861:16:      Example path: ASSIGNW
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:135:9:      Example path: ibex_top.u_ibex_core.id_stage_i.controller_i.stall
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:453:3:      Example path: ALWAYS
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:136:9:      Example path: ibex_top.u_ibex_core.id_stage_i.controller_i.halt_if
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:864:33:      Example path: ASSIGNW
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:864:33:      Example path: __VdfgRegularize_hebeb780c_0_38
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:453:3:      Example path: ALWAYS
+%Warning-UNOPTFLAT: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:864:33: Signal unoptimizable: Circular combinational logic: '__VdfgRegularize_hebeb780c_0_38'
+  864 |   assign id_in_ready_o = ~stall & ~halt_if & ~retain_id;
+      |                                 ^
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:864:33:      Example path: __VdfgRegularize_hebeb780c_0_38
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:453:3:      Example path: ALWAYS
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:136:9:      Example path: ibex_top.u_ibex_core.id_stage_i.controller_i.halt_if
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:864:33:      Example path: ASSIGNW
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:864:33:      Example path: __VdfgRegularize_hebeb780c_0_38
+%Warning-UNOPTFLAT: src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:222:16: Signal unoptimizable: Circular combinational logic: 'ibex_top.u_ibex_core.id_stage_i.instr_done'
+  222 |   logic        instr_done;
+      |                ^~~~~~~~~~
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:222:16:      Example path: ibex_top.u_ibex_core.id_stage_i.instr_done
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:655:34:      Example path: ASSIGNW
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_core.sv:296:16:      Example path: ibex_top.u_ibex_core.csr_op_en
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:234:22:      Example path: ASSIGNW
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:140:9:      Example path: ibex_top.u_ibex_core.id_stage_i.controller_i.special_req
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:453:3:      Example path: ALWAYS
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:136:9:      Example path: ibex_top.u_ibex_core.id_stage_i.controller_i.halt_if
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:864:33:      Example path: ASSIGNW
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:864:33:      Example path: __VdfgRegularize_hebeb780c_0_38
+                    src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:453:3:      Example path: ALWAYS
+- V e r i l a t i o n   R e p o r t: Verilator 5.048 2026-04-26 rev vUNKNOWN-built20260426
+- Verilator: Built from 65.128 MB sources in 136 modules, into 2.500 MB in 5 C++ files needing 0.000 MB
+- Verilator: Walltime 0.323 s (elab=0.064, cvt=0.149, bld=0.000); cpu 0.320 s on 1 threads; allocated 85.328 MB
