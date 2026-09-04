@@ -547,9 +547,19 @@ module ibex_icache
   // fire (the line really isn't in cache, so a re-fetch is needed
   // for forward progress).
   pipe_reg fb_busy_prev: fb_busy_mask stages 4;
+  // Each tap is bound to its own `let` before being combined: arch-com
+  // >= 0.70.8 rejects mixing `@N` taps of different N in one expression
+  // ("operands at cycle 0 and cycle N"). The bound names are plain
+  // cycle-0 signals, so the OR below is unchanged in meaning and lowers
+  // to the same SV (`assign` aliases of `fb_busy_prev_stg{1,2,3}` /
+  // `fb_busy_prev`).
+  let fb_busy_prev1: UInt<4> = fb_busy_prev@1;
+  let fb_busy_prev2: UInt<4> = fb_busy_prev@2;
+  let fb_busy_prev3: UInt<4> = fb_busy_prev@3;
+  let fb_busy_prev4: UInt<4> = fb_busy_prev@4;
   let fb_busy_recent_mask: UInt<4> =
-    fb_busy_mask | fb_busy_prev@1 | fb_busy_prev@2
-                 | fb_busy_prev@3 | fb_busy_prev@4;
+    fb_busy_mask | fb_busy_prev1 | fb_busy_prev2
+                 | fb_busy_prev3 | fb_busy_prev4;
 
   // Recently-busy LINE coalesce: extends suppression for >=4 cycles after
   // release, but ONLY for the exact same cache line. Different lines in
