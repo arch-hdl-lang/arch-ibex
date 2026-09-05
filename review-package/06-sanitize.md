@@ -110,3 +110,10 @@ Files added by TASK2 (all scanned as above):
 `flow/` itself (17 files) lives in the repo, not in the package; the
 package cites it by path. `review-package.zip` at the repo root is the
 owner's earlier archive of the first pass and is untracked.
+
+### TASK3 additions (2026-09-05)
+
+`attic/arch_com_pin_000{1,2}-*.patch` (moved out of `reports/`; arch-com compiler
+source, both merged upstream), `reports/gate_v0720_*`, `reports/lint_v0720_*`,
+`reports/arch_check_v0720.log`, `.arch-version` (repo root): scrubbed with the same
+`sed`; no ARCH source; `TASK3.md` is the brief, not for upload.

@@ -1,7 +1,8 @@
 # 00 — Summary: ARCH port of Ibex vs. hand-written SystemVerilog
 
 Evidence package for Reviewer 1, comment 2. **This file is the single
-source of truth as of 2026-09-04**; it supersedes the 2026-09-03 first
+source of truth as of 2026-09-05** (TASK3 Part A: repinned to the released
+arch 0.72.0 and re-gated; every number below was reproduced on it); it supersedes the 2026-09-03 first
 pass (whose numbers are listed at the end under "Superseded"). Every
 number is traceable to a file under `reports/` or a command named in
 the numbered files (`01`–`04` first pass, `10`–`15` this pass); those
@@ -25,11 +26,14 @@ the same hand-written test SoC for simulation and are synthesised as
 arbiter handshake fix and its follow-ups), and the unit tests changed
 with them. No other design source was touched.
 
-**Toolchain (`10-toolchain.md`).** ARCH compiler: arch-com release
-`v0.72.0` (2026-09-05), which contains PR #993 and PR #994; the
-measurements were run on the equivalent local merge `89ec0522` (main
-`f4569890` + those two PRs) and v0.72.0 regenerates byte-identical SV
-for all 23 files. Verilator 5.048
+**Toolchain (`10-toolchain.md`).** ARCH compiler: the published release
+`arch 0.72.0` (asset `arch-aarch64-apple-darwin.tar.xz`, SHA-256
+`a6163bac…1586`), pinned by `.arch-version` and enforced by
+`scripts/build.sh`. The TASK2 measurements were made on the equivalent
+local merge `89ec0522`; the release regenerates byte-identical SV for
+all 23 files and the full gate re-run on it (`10-toolchain.md`, TASK3
+Part A) reproduces every functional, CoreMark and lint number below.
+Verilator 5.048
 (assertions **on** everywhere in this pass), cocotb 2.0.1, Yosys
 0.67+post, sv2v 0.0.13, OpenSTA 3.1.0, OpenROAD 26Q2, nextpnr-ecp5
 `8dbcee5` + prjtrellis 1.4, riscv64-elf-gcc 15.2.0. No Vivado.
@@ -160,6 +164,7 @@ exceed any ECP5 package; no IO buffers, no bitstream). Details
 | Most-revised ARCH file | `IbexIcache.arch`, 35 commits |
 | This pass (branch `review-package`) | 8 commits, 2026-09-03 → 09-05: 2 source files changed (Phase 1–2 hunks), 2 test files, 17 files under `flow/` added, 2 arch-com PRs + 3 issues |
 | Learning-store `arch check` failure records for this repo | 0 — the store only starts 2026-06-24, after the port was written |
+| Benchmark artifacts re-verified on 0.72.0 without any LLM (TASK3 Part C, in the two benchmark repos' `reverify/v0.72.0/`) | VerilogEval: 156/156 build, 154 pass as archived, 0 outcome changes, 155/156 byte-identical SV. CVDP: 50/50 build, 46 pass vs 47 archived, 48/50 byte-identical SV; the one change is a harness that draws unseeded random stimulus (fail/fail/pass on three repeats of identical SV) |
 
 ## Not measured / not available
 
@@ -174,11 +179,11 @@ exceed any ECP5 package; no IO buffers, no bitstream). Details
 
 ## Caveats
 
-1. **Compiler pin.** The repo pins no compiler. The port compiles and
-   links on arch-com `v0.72.0` and later (which carry #993 stub
-   mangling and #994 arbiter `valid_only` lowering); release v0.71.0
-   and earlier do not, and v0.71.0 also emits SV that sv2v/Yosys
-   reject. Rebuild recipe in `10-toolchain.md`.
+1. **Compiler pin.** The repo now pins `arch 0.72.0` (`.arch-version`;
+   `make build` refuses any other version). Releases v0.71.0 and earlier
+   do not build the port (#993 stub mangling, #994 arbiter `valid_only`
+   lowering), and v0.71.0 also emits SV that sv2v/Yosys reject. Install
+   recipe and asset checksum in `10-toolchain.md`.
 2. **Design fix in this pass.** The functional numbers are for the
    Phase 2 icache, which now holds bus requests until grant and
    completes allocating fills like upstream. The pre-fix design fails
@@ -204,7 +209,8 @@ exceed any ECP5 package; no IO buffers, no bitstream). Details
 | First-pass number | Status |
 |---|---|
 | Arch lane 0 / 10 CPU programs as-is, 10 / 10 with `--no-assert` (`02-functional.md`) | superseded by 10 / 10 with assertions on, after the Phase 2 fix |
-| Compiler `arch 0.70.0 @ 2ffcc60b` as the working compiler | superseded by the final pin (`10-toolchain.md`) |
+| Compiler `arch 0.70.0 @ 2ffcc60b` as the working compiler | superseded by the released `arch 0.72.0` pin (`10-toolchain.md`) |
+| TASK2 gate on the local merge `89ec0522` (`12-icache-handshake.md` §8) | reproduced number-for-number on the released 0.72.0 (`10-toolchain.md`, TASK3 Part A; `reports/gate_v0720_*`) |
 | Arch-lane Verilator `-Wall` 150 / 499 warnings (`03-source-metrics.md`) | superseded by 141 / 490 (`13-lint.md`; Phase 2 removed the arbiter ready wires and a `WIDTHEXPAND`) |
 | ARCH LOC 6,343 code lines | superseded by 6,353 (Phase 1–2 edits) |
 | May-2026 sky130 numbers from committed notes (+1.7 % / +5.1 % SoC, +15.2 % icache module, 1.14× power) (`04-synthesis.md`) | superseded by the reproducible `ibex_top` flow in `14-sky130.md`; not directly comparable (different scope, Yosys version, and icache) |
