@@ -1,5 +1,5 @@
-read_liberty -lib /Users/<user>/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
-read_verilog -sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/flow/out/sv/ibex_top.v
+read_liberty -lib ~/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+read_verilog -sv ${REPO_ROOT}/flow/out/sv/ibex_top.v
 hierarchy -check -top ibex_top -chparam ICache 1 -chparam PMPEnable 1 -chparam PMPNumRegions 4 -chparam PMPGranularity 0     -chparam DbgTriggerEn 1 -chparam DbgHwBreakNum 1 -chparam RV32E 0 -chparam RV32M 2 -chparam RV32B 0 -chparam RV32ZC 3     -chparam RegFile 0 -chparam BranchTargetALU 0 -chparam WritebackStage 0 -chparam BranchPredictor 0     -chparam SecureIbex 0 -chparam ICacheECC 0 -chparam ICacheScramble 0 -chparam MHPMCounterNum 0 -chparam MHPMCounterWidth 40     -chparam MemECC 0     -chparam DmBaseAddr 0 -chparam DmAddrMask 3 -chparam DmHaltAddr 0 -chparam DmExceptionAddr 0
 proc
 opt_clean
@@ -9,9 +9,9 @@ flatten
 memory_map
 opt
 synth -top ibex_top
-dfflibmap -liberty /Users/<user>/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
-techmap -map /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/flow/sky130_latch_map.v
-abc -liberty /Users/<user>/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+dfflibmap -liberty ~/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+techmap -map ${REPO_ROOT}/flow/sky130_latch_map.v
+abc -liberty ~/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
 # Undefined bits ('x, e.g. unused multiplier intermediate bits) become 0, and
 # constant drivers become conb_1 tie cells (one HI, one LO); OpenROAD's reader
 # otherwise turns them into unroutable zero_/one_ power nets (TritonRoute
@@ -19,5 +19,5 @@ abc -liberty /Users/<user>/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_f
 setundef -zero
 hilomap -singleton -hicell sky130_fd_sc_hd__conb_1 HI -locell sky130_fd_sc_hd__conb_1 LO
 opt_clean -purge
-tee -o /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/flow/out/sv/sky130/synth.stat stat -liberty /Users/<user>/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
-write_verilog -noattr -noexpr -nohex -nodec /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/flow/out/sv/sky130/netlist.v
+tee -o ${REPO_ROOT}/flow/out/sv/sky130/synth.stat stat -liberty ~/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+write_verilog -noattr -noexpr -nohex -nodec ${REPO_ROOT}/flow/out/sv/sky130/netlist.v

@@ -5,7 +5,7 @@
 pytest tests/ -n auto --dist=loadfile
 ============================= test session starts ==============================
 platform darwin -- Python 3.13.9, pytest-8.4.2, pluggy-1.5.0
-rootdir: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027
+rootdir: ${REPO_ROOT}
 plugins: cocotb-test-0.2.6, xdist-3.8.0, anyio-4.10.0
 created: 10/10 workers
 10 workers [249 items]
@@ -59,7 +59,7 @@ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
             "HARC binary not found; set HARC_BIN or build "
             f"{DEFAULT_HARC_BIN}"
         )
-E       AssertionError: HARC binary not found; set HARC_BIN or build /Users/<user>/github/arch-ibex/.claude/worktrees/harc-com/target/release/harc
+E       AssertionError: HARC binary not found; set HARC_BIN or build ~/github/arch-ibex/.claude/worktrees/harc-com/target/release/harc
 
 tests/harc_runner.py:383: AssertionError
 ____________________ test_harc_phase1_canary[ibex_counter] _____________________
@@ -106,7 +106,7 @@ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
             "HARC binary not found; set HARC_BIN or build "
             f"{DEFAULT_HARC_BIN}"
         )
-E       AssertionError: HARC binary not found; set HARC_BIN or build /Users/<user>/github/arch-ibex/.claude/worktrees/harc-com/target/release/harc
+E       AssertionError: HARC binary not found; set HARC_BIN or build ~/github/arch-ibex/.claude/worktrees/harc-com/target/release/harc
 
 tests/harc_runner.py:383: AssertionError
 ________________ test_harc_phase1_canary[ibex_register_file_ff] ________________
@@ -153,7 +153,7 @@ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
             "HARC binary not found; set HARC_BIN or build "
             f"{DEFAULT_HARC_BIN}"
         )
-E       AssertionError: HARC binary not found; set HARC_BIN or build /Users/<user>/github/arch-ibex/.claude/worktrees/harc-com/target/release/harc
+E       AssertionError: HARC binary not found; set HARC_BIN or build ~/github/arch-ibex/.claude/worktrees/harc-com/target/release/harc
 
 tests/harc_runner.py:383: AssertionError
 ____________________ test_harc_phase1_canary[ibex_wb_stage] ____________________
@@ -200,7 +200,7 @@ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
             "HARC binary not found; set HARC_BIN or build "
             f"{DEFAULT_HARC_BIN}"
         )
-E       AssertionError: HARC binary not found; set HARC_BIN or build /Users/<user>/github/arch-ibex/.claude/worktrees/harc-com/target/release/harc
+E       AssertionError: HARC binary not found; set HARC_BIN or build ~/github/arch-ibex/.claude/worktrees/harc-com/target/release/harc
 
 tests/harc_runner.py:383: AssertionError
 ________ test_checked_in_compressed_decoder_coverage_status_is_complete ________
@@ -231,7 +231,7 @@ tests/harc_runner.py:924: in compressed_decoder_coverage_inventory
          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-self = PosixPath('/Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/tests/harc/plans/ibex_compressed_decoder_full_bins.md')
+self = PosixPath('${REPO_ROOT}/tests/harc/plans/ibex_compressed_decoder_full_bins.md')
 mode = 'r', buffering = -1, encoding = 'locale', errors = None, newline = None
 
     def open(self, mode='r', buffering=-1, encoding=None,
@@ -244,13 +244,13 @@ mode = 'r', buffering = -1, encoding = 'locale', errors = None, newline = None
             encoding = io.text_encoding(encoding)
 >       return io.open(self, mode, buffering, encoding, errors, newline)
                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E       FileNotFoundError: [Errno 2] No such file or directory: '/Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/tests/harc/plans/ibex_compressed_decoder_full_bins.md'
+E       FileNotFoundError: [Errno 2] No such file or directory: '${REPO_ROOT}/tests/harc/plans/ibex_compressed_decoder_full_bins.md'
 
 /opt/homebrew/anaconda3/lib/python3.13/pathlib/_local.py:537: FileNotFoundError
 __________________________ test_archsim_unit[IbexAlu] __________________________
 [gw3] darwin -- Python 3.13.9 /opt/homebrew/anaconda3/bin/python
 
-arch_bin = '/private/tmp/claude-501/-Users-<user>-github-arch-ibex--claude-worktrees-code-arch-instructions-7b4027/89328fb6-f0ff-478b-a84c-e6cb98907ec3/scratchpad/arch-com-pin-main/target/release/arch'
+arch_bin = '<scratch>/arch-com-pin-main/target/release/arch'
 arch_stem = 'IbexAlu', cocotb_test = 'test_ibex_alu_unit.py'
 tmp_path_factory = TempPathFactory(_given_basetemp=PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>...5k29j301gs_lsdrnlvdjw0000gn/T/pytest-of-<user>/pytest-45/popen-gw3'), _retention_count=3, _retention_policy='all')
 record_property = <function record_property.<locals>.append_property at 0x110da8220>
@@ -336,7 +336,7 @@ tests/test_archsim_units.py:102: Failed
 ____________________ test_archsim_unit[IbexRegisterFileFf] _____________________
 [gw3] darwin -- Python 3.13.9 /opt/homebrew/anaconda3/bin/python
 
-arch_bin = '/private/tmp/claude-501/-Users-<user>-github-arch-ibex--claude-worktrees-code-arch-instructions-7b4027/89328fb6-f0ff-478b-a84c-e6cb98907ec3/scratchpad/arch-com-pin-main/target/release/arch'
+arch_bin = '<scratch>/arch-com-pin-main/target/release/arch'
 arch_stem = 'IbexRegisterFileFf'
 cocotb_test = 'test_ibex_register_file_ff_unit.py'
 tmp_path_factory = TempPathFactory(_given_basetemp=PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>...5k29j301gs_lsdrnlvdjw0000gn/T/pytest-of-<user>/pytest-45/popen-gw3'), _retention_count=3, _retention_policy='all')
@@ -424,13 +424,13 @@ E           Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/po
 E           Generated pybind11 wrapper: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw3/archsim_ibex_register_file_ff0/Vibex_register_file_ff_pybind.cpp
 E           Compiling pybind11 module...
 E           Built: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw3/archsim_ibex_register_file_ff0/Vibex_register_file_ff_pybind.cpython-313-darwin.so
-E           Running test: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/tests/cocotb_tests/test_ibex_register_file_ff_unit.py
+E           Running test: ${REPO_ROOT}/tests/cocotb_tests/test_ibex_register_file_ff_unit.py
 
 tests/test_archsim_units.py:102: Failed
 ________________________ test_archsim_unit[IbexCounter] ________________________
 [gw3] darwin -- Python 3.13.9 /opt/homebrew/anaconda3/bin/python
 
-arch_bin = '/private/tmp/claude-501/-Users-<user>-github-arch-ibex--claude-worktrees-code-arch-instructions-7b4027/89328fb6-f0ff-478b-a84c-e6cb98907ec3/scratchpad/arch-com-pin-main/target/release/arch'
+arch_bin = '<scratch>/arch-com-pin-main/target/release/arch'
 arch_stem = 'IbexCounter', cocotb_test = 'test_ibex_counter_unit.py'
 tmp_path_factory = TempPathFactory(_given_basetemp=PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>...5k29j301gs_lsdrnlvdjw0000gn/T/pytest-of-<user>/pytest-45/popen-gw3'), _retention_count=3, _retention_policy='all')
 record_property = <function record_property.<locals>.append_property at 0x110da9d00>
@@ -513,7 +513,7 @@ E           Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/po
 E           Generated pybind11 wrapper: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw3/archsim_ibex_counter0/Vibex_counter_pybind.cpp
 E           Compiling pybind11 module...
 E           Built: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw3/archsim_ibex_counter0/Vibex_counter_pybind.cpython-313-darwin.so
-E           Running test: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/tests/cocotb_tests/test_ibex_counter_unit.py
+E           Running test: ${REPO_ROOT}/tests/cocotb_tests/test_ibex_counter_unit.py
 
 tests/test_archsim_units.py:102: Failed
 ___________________________ test_ibex_mini_soc_lints ___________________________
@@ -567,33 +567,33 @@ ibex_soc_filelist = {'build_dir': PosixPath('/private/var/folders/<tmp>/T/pytest
             )
 E           Failed: verilator --lint-only failed:
 E           CMD:
-E             verilator --lint-only -Wall -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM -Wno-PINMISSING -Wno-WIDTHEXPAND -Wno-IMPORTSTAR -Wno-DECLFILENAME -Wno-UNOPTFLAT --unroll-count 72 -f /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw7/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/lowrisc_ibex_ibex_top_tracing_0.1.stripped.vc --top-module ibex_mini_soc /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw7/ibex_soc_build0/generated/clint_basic/ClintPkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw7/ibex_soc_build0/generated/clint_basic/Clint.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw7/ibex_soc_build0/generated/clint_basic/ClintLogic.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw7/ibex_soc_build0/generated/plic_multictx/PlicMultictxPkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw7/ibex_soc_build0/generated/plic_multictx/PlicMultictx.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw7/ibex_soc_build0/generated/plic_multictx/PlicMultictxLogic.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw7/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrFilePkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw7/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrAccess.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw7/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrFile.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw7/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrTrapCoord.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/soc/obi_to_axi_lite.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/soc/ibex_mini_soc.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/soc/ibex_cs_registers_hybrid.sv /Users/<user>/github/ibex/shared/rtl/ram_2p.sv /Users/<user>/github/ibex/shared/rtl/sim/simulator_ctrl.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_core_shared_pkg.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/fb_age_arb.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_alu.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_compressed_decoder.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_controller.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_core.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_counter.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_decoder.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_ex_block.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_fetch_fifo.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache_output_stage.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_id_stage.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_if_stage.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_load_store_unit.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_pmp.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_prefetch_buffer.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_register_file_ff.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_top.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_wb_stage.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/inval_ctrl.sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ram_port_arb.sv
+E             verilator --lint-only -Wall -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM -Wno-PINMISSING -Wno-WIDTHEXPAND -Wno-IMPORTSTAR -Wno-DECLFILENAME -Wno-UNOPTFLAT --unroll-count 72 -f /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw7/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/lowrisc_ibex_ibex_top_tracing_0.1.stripped.vc --top-module ibex_mini_soc /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw7/ibex_soc_build0/generated/clint_basic/ClintPkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw7/ibex_soc_build0/generated/clint_basic/Clint.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw7/ibex_soc_build0/generated/clint_basic/ClintLogic.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw7/ibex_soc_build0/generated/plic_multictx/PlicMultictxPkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw7/ibex_soc_build0/generated/plic_multictx/PlicMultictx.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw7/ibex_soc_build0/generated/plic_multictx/PlicMultictxLogic.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw7/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrFilePkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw7/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrAccess.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw7/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrFile.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw7/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrTrapCoord.sv ${REPO_ROOT}/soc/obi_to_axi_lite.sv ${REPO_ROOT}/soc/ibex_mini_soc.sv ${REPO_ROOT}/soc/ibex_cs_registers_hybrid.sv ~/github/ibex/shared/rtl/ram_2p.sv ~/github/ibex/shared/rtl/sim/simulator_ctrl.sv ${REPO_ROOT}/build/ibex_core_shared_pkg.sv ${REPO_ROOT}/build/fb_age_arb.sv ${REPO_ROOT}/build/ibex_alu.sv ${REPO_ROOT}/build/ibex_compressed_decoder.sv ${REPO_ROOT}/build/ibex_controller.sv ${REPO_ROOT}/build/ibex_core.sv ${REPO_ROOT}/build/ibex_counter.sv ${REPO_ROOT}/build/ibex_decoder.sv ${REPO_ROOT}/build/ibex_ex_block.sv ${REPO_ROOT}/build/ibex_fetch_fifo.sv ${REPO_ROOT}/build/ibex_icache.sv ${REPO_ROOT}/build/ibex_icache_output_stage.sv ${REPO_ROOT}/build/ibex_id_stage.sv ${REPO_ROOT}/build/ibex_if_stage.sv ${REPO_ROOT}/build/ibex_load_store_unit.sv ${REPO_ROOT}/build/ibex_multdiv_fast.sv ${REPO_ROOT}/build/ibex_pmp.sv ${REPO_ROOT}/build/ibex_prefetch_buffer.sv ${REPO_ROOT}/build/ibex_register_file_ff.sv ${REPO_ROOT}/build/ibex_top.sv ${REPO_ROOT}/build/ibex_wb_stage.sv ${REPO_ROOT}/build/inval_ctrl.sv ${REPO_ROOT}/build/ram_port_arb.sv
 E           STDERR:
-E           %Warning-PROCASSINIT: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:107:27: Procedural assignment to declaration with initial value: '_t0_state'
+E           %Warning-PROCASSINIT: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:107:27: Procedural assignment to declaration with initial value: '_t0_state'
 E                                                                                                                                                      : ... note: In instance 'ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
 E                                                                                                                                                      : ... Location of variable initialization
 E             107 |   logic [3:0] _t0_state = 0;
 E                 |                           ^
-E                                 /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:371:7: ... Location of variable process write
+E                                 ${REPO_ROOT}/build/ibex_multdiv_fast.sv:371:7: ... Location of variable process write
 E                                                                                                                                                     : ... Perhaps should initialize instead using a reset in this process
 E             371 |       _t0_state <= 0;
 E                 |       ^~~~~~~~~
 E                                 ... For warning description see https://verilator.org/warn/PROCASSINIT?v=5.048
 E                                 ... Use "/* verilator lint_off PROCASSINIT */" and lint_on around source to disable this message.
-E           %Warning-PROCASSINIT: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:109:32: Procedural assignment to declaration with initial value: '_t0_loop_cnt_0'
+E           %Warning-PROCASSINIT: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:109:32: Procedural assignment to declaration with initial value: '_t0_loop_cnt_0'
 E                                                                                                                                                      : ... note: In instance 'ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
 E                                                                                                                                                      : ... Location of variable initialization
 E             109 |   logic [4:0] _t0_loop_cnt_0 = 0;
 E                 |                                ^
-E                                 /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:453:7: ... Location of variable process write
+E                                 ${REPO_ROOT}/build/ibex_multdiv_fast.sv:453:7: ... Location of variable process write
 E                                                                                                                                                     : ... Perhaps should initialize instead using a reset in this process
 E             453 |       _t0_loop_cnt_0 <= 0;
 E                 |       ^~~~~~~~~~~~~~
-E           %Warning-SYNCASYNCNET: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/soc/ibex_mini_soc.sv:67:16: Signal flopped as both synchronous and async: 'IO_RST_N'
-E                                  /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/soc/ibex_mini_soc.sv:67:16: ... Location of async usage
+E           %Warning-SYNCASYNCNET: ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: Signal flopped as both synchronous and async: 'IO_RST_N'
+E                                  ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: ... Location of async usage
 E              67 |   input  logic IO_RST_N,
 E                 |                ^~~~~~~~
-E                                  /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/soc/ibex_mini_soc.sv:67:16: ... Location of sync usage
+E                                  ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: ... Location of sync usage
 E              67 |   input  logic IO_RST_N,
 E                 |                ^~~~~~~~
 E                                  ... For warning description see https://verilator.org/warn/SYNCASYNCNET?v=5.048
@@ -606,7 +606,7 @@ tests/test_soc_lint.py:59: Failed
 ________________________ test_archsim_unit[IbexDecoder] ________________________
 [gw3] darwin -- Python 3.13.9 /opt/homebrew/anaconda3/bin/python
 
-arch_bin = '/private/tmp/claude-501/-Users-<user>-github-arch-ibex--claude-worktrees-code-arch-instructions-7b4027/89328fb6-f0ff-478b-a84c-e6cb98907ec3/scratchpad/arch-com-pin-main/target/release/arch'
+arch_bin = '<scratch>/arch-com-pin-main/target/release/arch'
 arch_stem = 'IbexDecoder', cocotb_test = 'test_ibex_decoder_unit.py'
 tmp_path_factory = TempPathFactory(_given_basetemp=PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>...5k29j301gs_lsdrnlvdjw0000gn/T/pytest-of-<user>/pytest-45/popen-gw3'), _retention_count=3, _retention_policy='all')
 record_property = <function record_property.<locals>.append_property at 0x110da9f80>
@@ -701,13 +701,13 @@ E           Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/po
 E           Generated pybind11 wrapper: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw3/archsim_ibex_decoder0/Vibex_decoder_pybind.cpp
 E           Compiling pybind11 module...
 E           Built: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw3/archsim_ibex_decoder0/Vibex_decoder_pybind.cpython-313-darwin.so
-E           Running test: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/tests/cocotb_tests/test_ibex_decoder_unit.py
+E           Running test: ${REPO_ROOT}/tests/cocotb_tests/test_ibex_decoder_unit.py
 
 tests/test_archsim_units.py:102: Failed
 ___________________ test_archsim_unit[IbexCompressedDecoder] ___________________
 [gw3] darwin -- Python 3.13.9 /opt/homebrew/anaconda3/bin/python
 
-arch_bin = '/private/tmp/claude-501/-Users-<user>-github-arch-ibex--claude-worktrees-code-arch-instructions-7b4027/89328fb6-f0ff-478b-a84c-e6cb98907ec3/scratchpad/arch-com-pin-main/target/release/arch'
+arch_bin = '<scratch>/arch-com-pin-main/target/release/arch'
 arch_stem = 'IbexCompressedDecoder'
 cocotb_test = 'test_ibex_compressed_decoder_unit.py'
 tmp_path_factory = TempPathFactory(_given_basetemp=PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>...5k29j301gs_lsdrnlvdjw0000gn/T/pytest-of-<user>/pytest-45/popen-gw3'), _retention_count=3, _retention_policy='all')
@@ -827,7 +827,7 @@ E                 |           ^~
 E                 |           =
 E           14 warnings generated.
 E           Built: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw3/archsim_ibex_compressed_decoder0/Vibex_compressed_decoder_pybind.cpython-313-darwin.so
-E           Running test: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/tests/cocotb_tests/test_ibex_compressed_decoder_unit.py
+E           Running test: ${REPO_ROOT}/tests/cocotb_tests/test_ibex_compressed_decoder_unit.py
 E           Traceback (most recent call last):
 E             File "/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw3/archsim_ibex_compressed_decoder0/_arch_python/0.71.0/arch_cocotb/runner.py", line 62, in run_registered_tests
 E               asyncio.run(simulator.run_test(invoke, dut))
@@ -846,7 +846,7 @@ E               raise exception
 E             File "/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-45/popen-gw3/archsim_ibex_compressed_decoder0/_arch_python/0.71.0/arch_cocotb/runner.py", line 58, in invoke
 E               return await coroutine
 E                      ^^^^^^^^^^^^^^^
-E             File "/Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/tests/cocotb_tests/test_ibex_compressed_decoder_unit.py", line 353, in zcmp_cm_push_full_walk
+E             File "${REPO_ROOT}/tests/cocotb_tests/test_ibex_compressed_decoder_unit.py", line 353, in zcmp_cm_push_full_walk
 E               assert int(dut.instr_o.value) == 0xFF010113
 E                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 E           AssertionError
@@ -855,7 +855,7 @@ tests/test_archsim_units.py:102: Failed
 ______________________ test_archsim_unit[IbexMultdivFast] ______________________
 [gw3] darwin -- Python 3.13.9 /opt/homebrew/anaconda3/bin/python
 
-arch_bin = '/private/tmp/claude-501/-Users-<user>-github-arch-ibex--claude-worktrees-code-arch-instructions-7b4027/89328fb6-f0ff-478b-a84c-e6cb98907ec3/scratchpad/arch-com-pin-main/target/release/arch'
+arch_bin = '<scratch>/arch-com-pin-main/target/release/arch'
 arch_stem = 'IbexMultdivFast', cocotb_test = 'test_ibex_multdiv_fast_unit.py'
 tmp_path_factory = TempPathFactory(_given_basetemp=PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>...5k29j301gs_lsdrnlvdjw0000gn/T/pytest-of-<user>/pytest-45/popen-gw3'), _retention_count=3, _retention_policy='all')
 record_property = <function record_property.<locals>.append_property at 0x110daa5c0>
@@ -960,7 +960,7 @@ E           1 warning and 4 errors generated.
 E           Pybind11 link failed for V_ibex_multdiv_fast_threads_pybind
 
 tests/test_archsim_units.py:102: Failed
-- generated xml file: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/review-package/reports/gate_make_test.junit.xml -
+- generated xml file: ${REPO_ROOT}/review-package/reports/gate_make_test.junit.xml -
 =========================== short test summary info ============================
 FAILED tests/test_harc_phase1_canaries.py::test_harc_phase1_canary[ibex_alu]
 FAILED tests/test_harc_phase1_canaries.py::test_harc_phase1_canary[ibex_counter]

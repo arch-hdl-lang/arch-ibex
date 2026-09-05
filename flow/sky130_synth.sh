@@ -100,7 +100,7 @@ TCL
   cp "$out/synth.stat" "$R/${lane}_sky130_synth_area.rpt"
   cp "$out/sta_checks.rpt" "$R/${lane}_sky130_sta_checks.rpt"
   cp "$out/sta_wns_tns.rpt" "$R/${lane}_sky130_sta_wns_tns.rpt"
-  cp "$out/synth.ys" "$R/${lane}_sky130_synth.ys"
-  cp "$out/sta.tcl" "$R/${lane}_sky130_sta.tcl"
+  sed "s|$REPO_ROOT|\${REPO_ROOT}|g; s|$HOME|~|g" "$out/synth.ys" > "$R/${lane}_sky130_synth.ys"
+  sed "s|$REPO_ROOT|\${REPO_ROOT}|g; s|$HOME|~|g" "$out/sta.tcl" > "$R/${lane}_sky130_sta.tcl"
 done
 exit $rc

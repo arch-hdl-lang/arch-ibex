@@ -29,7 +29,7 @@ tests/harc_runner.py:2980: in harc_sim_emit_only
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-config = HarcSim(harc_files=[PosixPath('/Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/tes...4027/89328fb6-f0ff-478b-a84c-e6cb98907ec3/scratchpad/arch-com-v0.71.0-patched/target/release/arch', '--codegen', 'v1'))
+config = HarcSim(harc_files=[PosixPath('${REPO_ROOT}/tes...4027/89328fb6-f0ff-478b-a84c-e6cb98907ec3/scratchpad/arch-com-v0.71.0-patched/target/release/arch', '--codegen', 'v1'))
 
     def _sim_args(
         config: HarcSim,
@@ -80,7 +80,7 @@ tests/harc_runner.py:2980: in harc_sim_emit_only
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-config = HarcSim(harc_files=[PosixPath('/Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/tes...4027/89328fb6-f0ff-478b-a84c-e6cb98907ec3/scratchpad/arch-com-v0.71.0-patched/target/release/arch', '--codegen', 'v1'))
+config = HarcSim(harc_files=[PosixPath('${REPO_ROOT}/tes...4027/89328fb6-f0ff-478b-a84c-e6cb98907ec3/scratchpad/arch-com-v0.71.0-patched/target/release/arch', '--codegen', 'v1'))
 
     def _sim_args(
         config: HarcSim,
@@ -131,7 +131,7 @@ tests/harc_runner.py:2980: in harc_sim_emit_only
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-config = HarcSim(harc_files=[PosixPath('/Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/tes...4027/89328fb6-f0ff-478b-a84c-e6cb98907ec3/scratchpad/arch-com-v0.71.0-patched/target/release/arch', '--codegen', 'v1'))
+config = HarcSim(harc_files=[PosixPath('${REPO_ROOT}/tes...4027/89328fb6-f0ff-478b-a84c-e6cb98907ec3/scratchpad/arch-com-v0.71.0-patched/target/release/arch', '--codegen', 'v1'))
 
     def _sim_args(
         config: HarcSim,
@@ -182,7 +182,7 @@ tests/harc_runner.py:2980: in harc_sim_emit_only
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-config = HarcSim(harc_files=[PosixPath('/Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/tes...4027/89328fb6-f0ff-478b-a84c-e6cb98907ec3/scratchpad/arch-com-v0.71.0-patched/target/release/arch', '--codegen', 'v1'))
+config = HarcSim(harc_files=[PosixPath('${REPO_ROOT}/tes...4027/89328fb6-f0ff-478b-a84c-e6cb98907ec3/scratchpad/arch-com-v0.71.0-patched/target/release/arch', '--codegen', 'v1'))
 
     def _sim_args(
         config: HarcSim,
@@ -231,7 +231,7 @@ tests/harc_runner.py:924: in compressed_decoder_coverage_inventory
          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-self = PosixPath('/Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/tests/harc/plans/ibex_compressed_decoder_full_bins.md')
+self = PosixPath('${REPO_ROOT}/tests/harc/plans/ibex_compressed_decoder_full_bins.md')
 mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
 
     def open(self, mode='r', buffering=-1, encoding=None,
@@ -244,10 +244,10 @@ mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
             encoding = io.text_encoding(encoding)
 >       return io.open(self, mode, buffering, encoding, errors, newline)
                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E       FileNotFoundError: [Errno 2] No such file or directory: '/Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/tests/harc/plans/ibex_compressed_decoder_full_bins.md'
+E       FileNotFoundError: [Errno 2] No such file or directory: '${REPO_ROOT}/tests/harc/plans/ibex_compressed_decoder_full_bins.md'
 
 /opt/homebrew/anaconda3/lib/python3.13/pathlib/_local.py:537: FileNotFoundError
-- generated xml file: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/review-package/reports/gate_harc_with_harc_bin.junit.xml -
+- generated xml file: ${REPO_ROOT}/review-package/reports/gate_harc_with_harc_bin.junit.xml -
 =========================== short test summary info ============================
 FAILED tests/test_harc_phase1_canaries.py::test_harc_phase1_canary[ibex_alu]
 FAILED tests/test_harc_phase1_canaries.py::test_harc_phase1_canary[ibex_counter]

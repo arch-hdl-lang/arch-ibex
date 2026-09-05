@@ -28,5 +28,5 @@ export LR_SYNTH_FLATTEN=1
 export LR_SYNTH_TIMING_RUN=1
 export PATH="$HOME/OpenSTA/build:$PATH"
 
-export LR_SYNTH_CELL_LIBRARY_PATH=/Users/<user>/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+export LR_SYNTH_CELL_LIBRARY_PATH=~/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
 export LR_SYNTH_CELL_LIBRARY_NAME=sky130

@@ -165,9 +165,11 @@ Error: × 4 errors
   × operands at cycle 0 and cycle 4
 ```
 
-The offending expression is
-`fb_busy_mask | fb_busy_prev@1 | fb_busy_prev@2 | fb_busy_prev@3 | fb_busy_prev@4`
-(`src/IbexIcache.arch:550-552`). Because `scripts/build.sh` runs with
+The offending expression (`src/IbexIcache.arch:550-552`) ORs the
+current fill-buffer busy mask with the same mask as delayed by one,
+two, three and four cycles through the `@N` history-tap operator on a
+pipeline register; the newer compiler rejects mixing taps of different
+depths in one expression (see `11-port-changes.md`, Change 1). Because `scripts/build.sh` runs with
 `set -e`, the four sources that depend on the icache were never
 attempted: `IbexIcache`, `IbexIfStage`, `IbexCore`, `IbexTop`. The
 other 19 `.sv` files are present under `build/`.

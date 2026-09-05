@@ -73,3 +73,40 @@ runbook copy `claude-code-arch-ibex-instructions.md` at the repo root;
 no tracked file modified. `build/` holds the 23 generated `.sv` from
 compiler B and `src/` holds the compiler-emitted `.archi` files; both
 are gitignored.
+
+
+## Update 2026-09-05 (TASK2 Phase 6) — actions taken
+
+Applied, not merely flagged, on branch `review-package`:
+
+- **Deleted**: `reports/sv_sky130_ibex_top_timing_overall.rpt` and
+  `reports/sv_sky130_ibex_top_timing_reg2reg.rpt` (2.5 MB each, no
+  usable number; `04-synthesis.md` §3 notes it).
+- **Redacted**: `reports/arch_check_0.71.0.log` — the three quoted
+  `src/IbexIcache.arch` source lines (four occurrences) replaced by
+  `[ARCH source line redacted]`, diagnostics and line numbers kept.
+- **Paraphrased**: the quoted expression in `01-inventory.md` (formerly
+  line 169) is now described in words.
+- **Username paths**: one `sed` over every file under `review-package/`
+  (`/Users/<user>/…worktree` → `${REPO_ROOT}`, `/Users/<user>` → `~`,
+  `/private/tmp/…scratchpad` → `<scratch>`, `pytest-of-<user>`,
+  `-Users-<user>-…` session ids → `<session>`, any residual `<user>`).
+  Re-scan after: `grep -r <username> review-package` → 0 hits.
+- **Other scans**: `grep -rlE '@privaterelay|token|secret|password'`
+  → only this file (the sentence describing the scan).
+
+Files added by TASK2 (all scanned as above):
+
+| File | (a) ARCH source | (b) flow scripts | (c) username paths | Note |
+|---|---|---|---|---|
+| `10-toolchain.md`, `11-port-changes.md`, `12-icache-handshake.md`, `13-lint.md`, `14-sky130.md`, `15-ecp5.md` | `11-` and `12-` quote the changed ARCH hunks by description and cite `reports/phase2_port_changes.diff`, which **is a unified diff of `src/IbexIcache.arch` and `src/FbAgeArb.arch`** (owner's call whether to ship it; the numbered files stand without it) | no (they name scripts under `flow/`) | no | |
+| `reports/gate_*.log/.junit.xml`, `reports/lint_*`, `reports/arch_check_pinned.log`, `reports/loc_*_phase2/pin.txt` | generated-SV excerpts only (Verilator quotes `build/*.sv` lines) | no | scrubbed | |
+| `reports/arch_com_pin_000{1,2}-*.patch` | no (arch-com compiler Rust source, public repo, PRs #993/#994) | no | no | |
+| `reports/phase2_test_changes.diff` | no (cocotb Python) | no | no | |
+| `reports/{sv,arch}_sky130_synth.ys`, `*_sta.tcl` | no | **yes** — the Yosys / OpenSTA scripts as run (also under `flow/`) | scrubbed | |
+| `reports/{sv,arch}_sky130_synth_area.rpt`, `*_sta_*.rpt`, `*_openroad_final_*`, `*_ecp5_*` | no | no (`*_ecp5_synth.ys`, `*_ecp5_ibex_top.lpf` are scripts as run) | scrubbed | nextpnr logs list every top-level port name of `ibex_top` |
+| `TASK2.md` | no | no | no | brief; not for upload |
+
+`flow/` itself (17 files) lives in the repo, not in the package; the
+package cites it by path. `review-package.zip` at the repo root is the
+owner's earlier archive of the first pass and is untracked.

@@ -38,7 +38,7 @@ YS
     # Memory mapping check: every inferred $mem must have become block RAM
     # (DP16KD / PDPW16KD); anything left as $mem / distributed logic is flagged.
     echo "[$lane] block RAMs: $(grep -cE 'DP16KD|PDPW16KD' "$out/synth.stat" | tr -d ' ') cell rows; $(grep -E '^\s+[0-9]+ +(DP16KD|PDPW16KD)' "$out/synth.stat" | awk '{s+=$1} END{print s+0}') instances; leftover \$mem: $(grep -cE '^\s+[0-9]+ +\$mem' "$out/synth.stat" | tr -d ' ')"
-    cp "$out/synth.stat" "$R/${lane}_ecp5_synth.stat"; cp "$out/synth.ys" "$R/${lane}_ecp5_synth.ys"
+    cp "$out/synth.stat" "$R/${lane}_ecp5_synth.stat"; sed "s|$REPO_ROOT|\${REPO_ROOT}|g; s|$HOME|~|g" "$out/synth.ys" > "$R/${lane}_ecp5_synth.ys"
   fi
   if [ "$stage" = pnr ] || [ "$stage" = all ]; then
     [ -f "$out/ibex_top.json" ] || { echo "[$lane] missing $out/ibex_top.json"; rc=1; continue; }
@@ -55,8 +55,8 @@ YS
       st=$?
       echo "[$lane] nextpnr seed $seed exit=$st in $(( $(date +%s) - start )) s; $(grep -oE 'Max frequency for clock[^:]*: [0-9.]+ MHz \(PASS|FAIL[^)]*\)' "$out/nextpnr_seed${seed}.log" | tail -1)"
       [ $st -eq 0 ] || rc=1
-      cp "$out/report_seed${seed}.json" "$R/${lane}_ecp5_report_seed${seed}.json" 2>/dev/null
-      cp "$out/nextpnr_seed${seed}.log" "$R/${lane}_ecp5_nextpnr_seed${seed}.log" 2>/dev/null
+      [ -f "$out/report_seed${seed}.json" ] && sed "s|$REPO_ROOT|\${REPO_ROOT}|g; s|$HOME|~|g" "$out/report_seed${seed}.json" > "$R/${lane}_ecp5_report_seed${seed}.json"
+      [ -f "$out/nextpnr_seed${seed}.log" ] && sed "s|$REPO_ROOT|\${REPO_ROOT}|g; s|$HOME|~|g" "$out/nextpnr_seed${seed}.log" > "$R/${lane}_ecp5_nextpnr_seed${seed}.log"
     done
     cp "$out/ibex_top.lpf" "$R/${lane}_ecp5_ibex_top.lpf"
   fi

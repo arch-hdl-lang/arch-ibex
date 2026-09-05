@@ -36,41 +36,41 @@ Error:   × 4 errors
 Error: 
   × operands at cycle 0 and cycle 1
      ╭─[src/IbexIcache.arch:551:5]
- 550 │   let fb_busy_recent_mask: UInt<4> =
- 551 │     fb_busy_mask | fb_busy_prev@1 | fb_busy_prev@2
-     ·     ──────────────┬──────────────
-     ·                   ╰── here
- 552 │                  | fb_busy_prev@3 | fb_busy_prev@4;
+ 550 │  [ARCH source line redacted]
+ 551 │  [ARCH source line redacted]
+     ·     [marker redacted]
+     ·                   [marker redacted]
+ 552 │  [ARCH source line redacted]
      ╰────
 
 Error: 
   × operands at cycle 0 and cycle 2
      ╭─[src/IbexIcache.arch:551:5]
- 550 │   let fb_busy_recent_mask: UInt<4> =
- 551 │     fb_busy_mask | fb_busy_prev@1 | fb_busy_prev@2
-     ·     ───────────────────────┬──────────────────────
-     ·                            ╰── here
- 552 │                  | fb_busy_prev@3 | fb_busy_prev@4;
+ 550 │  [ARCH source line redacted]
+ 551 │  [ARCH source line redacted]
+     ·     [marker redacted]
+     ·                            [marker redacted]
+ 552 │  [ARCH source line redacted]
      ╰────
 
 Error: 
   × operands at cycle 0 and cycle 3
      ╭─[src/IbexIcache.arch:551:5]
- 550 │       let fb_busy_recent_mask: UInt<4> =
- 551 │ ╭─▶     fb_busy_mask | fb_busy_prev@1 | fb_busy_prev@2
- 552 │ ├─▶                  | fb_busy_prev@3 | fb_busy_prev@4;
-     · ╰──── here
- 553 │     
+ 550 │  [ARCH source line redacted]
+ 551 │  [ARCH source line redacted]
+ 552 │  [ARCH source line redacted]
+     · [marker redacted]
+ 553 │  [ARCH source line redacted]
      ╰────
 
 Error: 
   × operands at cycle 0 and cycle 4
      ╭─[src/IbexIcache.arch:551:5]
- 550 │       let fb_busy_recent_mask: UInt<4> =
- 551 │ ╭─▶     fb_busy_mask | fb_busy_prev@1 | fb_busy_prev@2
- 552 │ ├─▶                  | fb_busy_prev@3 | fb_busy_prev@4;
-     · ╰──── here
- 553 │     
+ 550 │  [ARCH source line redacted]
+ 551 │  [ARCH source line redacted]
+ 552 │  [ARCH source line redacted]
+     · [marker redacted]
+ 553 │  [ARCH source line redacted]
      ╰────
 
 exit=1
