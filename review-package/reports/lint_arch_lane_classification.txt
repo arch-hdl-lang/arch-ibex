@@ -1,0 +1,147 @@
+# Arch lane, ibex_top, -Wall with upstream .vlt waivers, Phase 2 SV — per-warning classification
+# (i) single-configuration hard-coding  (ii) compiler-emitted pattern  (iii) other / design-level
+# totals: 137 = (i) 80  (ii) 17  (iii) 40
+#   DECLFILENAME: (ii) 6
+#   IMPORTSTAR: (ii) 4
+#   PROCASSINIT: (ii) 2
+#   UNUSEDPARAM: (i) 64, (iii) 9
+#   UNUSEDSIGNAL: (i) 16, (ii) 3, (iii) 31
+#   WIDTHEXPAND: (ii) 2
+
+DECLFILENAME   (ii ) fb_age_arb.sv:19: Filename 'fb_age_arb' does not match MODULE name: 'FbAgeArb'
+DECLFILENAME   (ii ) ibex_core_shared_pkg.sv:7: Filename 'ibex_core_shared_pkg' does not match PACKAGE name: 'IbexCoreSharedPkg'
+DECLFILENAME   (ii ) ibex_icache_output_stage.sv:8: Filename 'ibex_icache_output_stage' does not match MODULE name: 'IbexIcacheOutputStage'
+DECLFILENAME   (ii ) ibex_multdiv_fast.sv:36: Filename 'ibex_multdiv_fast' does not match MODULE name: '_ibex_multdiv_fast_threads'
+DECLFILENAME   (ii ) inval_ctrl.sv:17: Filename 'inval_ctrl' does not match MODULE name: 'InvalCtrl'
+DECLFILENAME   (ii ) ram_port_arb.sv:7: Filename 'ram_port_arb' does not match MODULE name: 'RamPortArb'
+IMPORTSTAR     (ii ) ibex_controller.sv:42: 'import::*' in $unit scope may pollute global namespace
+IMPORTSTAR     (ii ) ibex_core.sv:56: 'import::*' in $unit scope may pollute global namespace
+IMPORTSTAR     (ii ) ibex_id_stage.sv:42: 'import::*' in $unit scope may pollute global namespace
+IMPORTSTAR     (ii ) ibex_if_stage.sv:33: 'import::*' in $unit scope may pollute global namespace
+PROCASSINIT    (ii ) ibex_multdiv_fast.sv:102: Procedural assignment to declaration with initial value: '_t0_state'
+PROCASSINIT    (ii ) ibex_multdiv_fast.sv:104: Procedural assignment to declaration with initial value: '_t0_loop_cnt_0'
+UNUSEDPARAM    (i  ) ibex_alu.sv:22: Parameter is not used: 'RV32B'
+UNUSEDPARAM    (i  ) ibex_compressed_decoder.sv:47: Parameter is not used: 'ResetAll'
+UNUSEDPARAM    (i  ) ibex_controller.sv:44: Parameter is not used: 'WritebackStage'
+UNUSEDPARAM    (i  ) ibex_controller.sv:45: Parameter is not used: 'BranchPredictor'
+UNUSEDPARAM    (i  ) ibex_controller.sv:46: Parameter is not used: 'MemECC'
+UNUSEDPARAM    (i  ) ibex_core.sv:61: Parameter is not used: 'RV32E'
+UNUSEDPARAM    (i  ) ibex_core.sv:64: Parameter is not used: 'BranchTargetALU'
+UNUSEDPARAM    (i  ) ibex_core.sv:65: Parameter is not used: 'WritebackStage'
+UNUSEDPARAM    (i  ) ibex_core.sv:67: Parameter is not used: 'BranchPredictor'
+UNUSEDPARAM    (i  ) ibex_core.sv:69: Parameter is not used: 'MemECC'
+UNUSEDPARAM    (i  ) ibex_core.sv:70: Parameter is not used: 'DataIndTiming'
+UNUSEDPARAM    (i  ) ibex_core.sv:71: Parameter is not used: 'DummyInstructions'
+UNUSEDPARAM    (i  ) ibex_core.sv:73: Parameter is not used: 'SecureIbex'
+UNUSEDPARAM    (i  ) ibex_core.sv:74: Parameter is not used: 'ResetAll'
+UNUSEDPARAM    (i  ) ibex_core.sv:75: Parameter is not used: 'RegFileECC'
+UNUSEDPARAM    (i  ) ibex_core.sv:87: Parameter is not used: 'ICacheECC'
+UNUSEDPARAM    (i  ) ibex_core.sv:89: Parameter is not used: 'PCIncrCheck'
+UNUSEDPARAM    (i  ) ibex_core.sv:95: Parameter is not used: 'RegFileDataWidth'
+UNUSEDPARAM    (i  ) ibex_core.sv:98: Parameter is not used: 'PMPRstCfg'
+UNUSEDPARAM    (i  ) ibex_core.sv:99: Parameter is not used: 'PMPRstAddr'
+UNUSEDPARAM    (i  ) ibex_core.sv:100: Parameter is not used: 'PMPRstMsecCfg'
+UNUSEDPARAM    (i  ) ibex_decoder.sv:25: Parameter is not used: 'RV32E'
+UNUSEDPARAM    (i  ) ibex_decoder.sv:26: Parameter is not used: 'RV32M'
+UNUSEDPARAM    (i  ) ibex_decoder.sv:27: Parameter is not used: 'RV32B'
+UNUSEDPARAM    (i  ) ibex_ex_block.sv:28: Parameter is not used: 'RV32M'
+UNUSEDPARAM    (i  ) ibex_ex_block.sv:29: Parameter is not used: 'RV32B'
+UNUSEDPARAM    (i  ) ibex_ex_block.sv:30: Parameter is not used: 'BranchTargetALU'
+UNUSEDPARAM    (i  ) ibex_icache.sv:91: Parameter is not used: 'ICacheECC'
+UNUSEDPARAM    (i  ) ibex_icache.sv:92: Parameter is not used: 'ResetAll'
+UNUSEDPARAM    (i  ) ibex_icache.sv:93: Parameter is not used: 'BusSizeECC'
+UNUSEDPARAM    (i  ) ibex_icache.sv:94: Parameter is not used: 'TagSizeECC'
+UNUSEDPARAM    (i  ) ibex_icache.sv:95: Parameter is not used: 'LineSizeECC'
+UNUSEDPARAM    (i  ) ibex_icache.sv:97: Parameter is not used: 'TweakInfection'
+UNUSEDPARAM    (i  ) ibex_id_stage.sv:44: Parameter is not used: 'RV32E'
+UNUSEDPARAM    (i  ) ibex_id_stage.sv:45: Parameter is not used: 'RV32M'
+UNUSEDPARAM    (i  ) ibex_id_stage.sv:46: Parameter is not used: 'RV32B'
+UNUSEDPARAM    (i  ) ibex_id_stage.sv:47: Parameter is not used: 'BranchTargetALU'
+UNUSEDPARAM    (i  ) ibex_id_stage.sv:48: Parameter is not used: 'WritebackStage'
+UNUSEDPARAM    (i  ) ibex_id_stage.sv:49: Parameter is not used: 'BranchPredictor'
+UNUSEDPARAM    (i  ) ibex_id_stage.sv:50: Parameter is not used: 'DataIndTiming'
+UNUSEDPARAM    (i  ) ibex_id_stage.sv:51: Parameter is not used: 'MemECC'
+UNUSEDPARAM    (i  ) ibex_if_stage.sv:35: Parameter is not used: 'ICache'
+UNUSEDPARAM    (i  ) ibex_if_stage.sv:36: Parameter is not used: 'BranchPredictor'
+UNUSEDPARAM    (i  ) ibex_if_stage.sv:37: Parameter is not used: 'DummyInstructions'
+UNUSEDPARAM    (i  ) ibex_if_stage.sv:38: Parameter is not used: 'MemECC'
+UNUSEDPARAM    (i  ) ibex_if_stage.sv:39: Parameter is not used: 'PCIncrCheck'
+UNUSEDPARAM    (i  ) ibex_if_stage.sv:51: Parameter is not used: 'MemDataWidth'
+UNUSEDPARAM    (i  ) ibex_if_stage.sv:52: Parameter is not used: 'RndCnstLfsrSeed'
+UNUSEDPARAM    (i  ) ibex_if_stage.sv:53: Parameter is not used: 'RndCnstLfsrPerm'
+UNUSEDPARAM    (i  ) ibex_load_store_unit.sv:24: Parameter is not used: 'MemECC'
+UNUSEDPARAM    (i  ) ibex_load_store_unit.sv:25: Parameter is not used: 'MemDataWidth'
+UNUSEDPARAM    (i  ) ibex_multdiv_fast.sv:37: Parameter is not used: 'RV32M'
+UNUSEDPARAM    (i  ) ibex_pmp.sv:31: Parameter is not used: 'PMPGranularity'
+UNUSEDPARAM    (i  ) ibex_pmp.sv:38: Parameter is not used: 'PMP_MODE_OFF'
+UNUSEDPARAM    (i  ) ibex_register_file_ff.sv:27: Parameter is not used: 'RV32E'
+UNUSEDPARAM    (i  ) ibex_register_file_ff.sv:29: Parameter is not used: 'DummyInstructions'
+UNUSEDPARAM    (i  ) ibex_top.sv:83: Parameter is not used: 'RV32ZC'
+UNUSEDPARAM    (i  ) ibex_top.sv:84: Parameter is not used: 'RegFile'
+UNUSEDPARAM    (i  ) ibex_top.sv:93: Parameter is not used: 'ICacheScramble'
+UNUSEDPARAM    (i  ) ibex_top.sv:94: Parameter is not used: 'LockstepOffset'
+UNUSEDPARAM    (i  ) ibex_top.sv:108: Parameter is not used: 'Lockstep'
+UNUSEDPARAM    (i  ) ibex_wb_stage.sv:21: Parameter is not used: 'ResetAll'
+UNUSEDPARAM    (i  ) ibex_wb_stage.sv:22: Parameter is not used: 'WritebackStage'
+UNUSEDPARAM    (i  ) ibex_wb_stage.sv:23: Parameter is not used: 'DummyInstructions'
+UNUSEDPARAM    (iii) ibex_core.sv:88: Parameter is not used: 'ICacheTweakInfection'
+UNUSEDPARAM    (iii) ibex_icache.sv:96: Parameter is not used: 'BranchCache'
+UNUSEDPARAM    (iii) ibex_id_stage.sv:58: Parameter is not used: 'OP_B_REG_B'
+UNUSEDPARAM    (iii) ibex_id_stage.sv:61: Parameter is not used: 'IMM_A_ZERO'
+UNUSEDPARAM    (iii) ibex_id_stage.sv:71: Parameter is not used: 'CSR_OP_READ'
+UNUSEDPARAM    (iii) ibex_multdiv_fast.sv:450: Parameter is not used: 'MD_OP_MULL'
+UNUSEDPARAM    (iii) ibex_multdiv_fast.sv:451: Parameter is not used: 'MD_OP_MULH'
+UNUSEDPARAM    (iii) ibex_multdiv_fast.sv:452: Parameter is not used: 'MD_OP_DIV'
+UNUSEDPARAM    (iii) ibex_multdiv_fast.sv:453: Parameter is not used: 'MD_OP_REM'
+UNUSEDSIGNAL   (i  ) ibex_controller.sv:61: Signal is not used: 'instr_bp_taken_i'
+UNUSEDSIGNAL   (i  ) ibex_controller.sv:65: Signal is not used: 'instr_exec_i'
+UNUSEDSIGNAL   (i  ) ibex_controller.sv:69: Signal is not used: 'mem_resp_intg_err_i'
+UNUSEDSIGNAL   (i  ) ibex_controller.sv:71: Signal is not used: 'branch_not_set_i'
+UNUSEDSIGNAL   (i  ) ibex_controller.sv:84: Signal is not used: 'stall_wb_i'
+UNUSEDSIGNAL   (i  ) ibex_controller.sv:172: Signal is not used: 'irq_nm_int'
+UNUSEDSIGNAL   (i  ) ibex_controller.sv:174: Signal is not used: 'rvfi_flush_next'
+UNUSEDSIGNAL   (i  ) ibex_core.sv:726: Signal is not used: '_ignore_instr_type_wb'
+UNUSEDSIGNAL   (i  ) ibex_decoder.sv:80: Signal is not used: 'clk_i'
+UNUSEDSIGNAL   (i  ) ibex_decoder.sv:81: Signal is not used: 'rst_ni'
+UNUSEDSIGNAL   (i  ) ibex_id_stage.sv:289: Signal is not used: 'bt_a_mux_sel'
+UNUSEDSIGNAL   (i  ) ibex_id_stage.sv:290: Signal is not used: 'bt_b_mux_sel'
+UNUSEDSIGNAL   (i  ) ibex_multdiv_fast.sv:459: Signal is not used: 'mult_sel_i'
+UNUSEDSIGNAL   (i  ) ibex_top.sv:223: Signal is not used: 'IbexMuBiOn'
+UNUSEDSIGNAL   (i  ) ibex_wb_stage.sv:25: Signal is not used: 'clk_i'
+UNUSEDSIGNAL   (i  ) ibex_wb_stage.sv:26: Signal is not used: 'rst_ni'
+UNUSEDSIGNAL   (ii ) fb_age_arb.sv:52: Signal is not used: 'request_ready'
+UNUSEDSIGNAL   (ii ) fb_age_arb.sv:54: Signal is not used: 'last_grant_r'
+UNUSEDSIGNAL   (ii ) ibex_multdiv_fast.sv:103: Signal is not used: '_t0_cnt'
+UNUSEDSIGNAL   (iii) ibex_alu.sv:78: Bits of signal are not used: 'shift_out_ext'[32]
+UNUSEDSIGNAL   (iii) ibex_controller.sv:75: Bits of signal are not used: 'irqs_i'[16]
+UNUSEDSIGNAL   (iii) ibex_controller.sv:139: Signal is not used: 'load_err_prio_q'
+UNUSEDSIGNAL   (iii) ibex_controller.sv:140: Signal is not used: 'store_err_prio_q'
+UNUSEDSIGNAL   (iii) ibex_decoder.sv:85: Bits of signal are not used: 'instr_rdata_alu_i'[24:15,11:7]
+UNUSEDSIGNAL   (iii) ibex_icache.sv:165: Signal is not used: 'fb0_alloc_flag'
+UNUSEDSIGNAL   (iii) ibex_icache.sv:166: Signal is not used: 'fb1_alloc_flag'
+UNUSEDSIGNAL   (iii) ibex_icache.sv:167: Signal is not used: 'fb2_alloc_flag'
+UNUSEDSIGNAL   (iii) ibex_icache.sv:168: Signal is not used: 'fb3_alloc_flag'
+UNUSEDSIGNAL   (iii) ibex_icache.sv:177: Signal is not used: 'fb0_err'
+UNUSEDSIGNAL   (iii) ibex_icache.sv:178: Signal is not used: 'fb1_err'
+UNUSEDSIGNAL   (iii) ibex_icache.sv:179: Signal is not used: 'fb2_err'
+UNUSEDSIGNAL   (iii) ibex_icache.sv:180: Signal is not used: 'fb3_err'
+UNUSEDSIGNAL   (iii) ibex_icache.sv:199: Signal is not used: 'fb_empty'
+UNUSEDSIGNAL   (iii) ibex_icache.sv:205: Signal is not used: 'lookup_throttle'
+UNUSEDSIGNAL   (iii) ibex_icache.sv:244: Signal is not used: 'fb_wants_out'
+UNUSEDSIGNAL   (iii) ibex_icache.sv:307: Bits of signal are not used: 'fb_addr_wb_sel'[2:0]
+UNUSEDSIGNAL   (iii) ibex_icache.sv:357: Signal is not used: 'lookup_branch_ic1_q'
+UNUSEDSIGNAL   (iii) ibex_icache_output_stage.sv:16: Bits of signal are not used: 'lookup_addr_ic1_q'[2:0]
+UNUSEDSIGNAL   (iii) ibex_icache_output_stage.sv:64: Bits of signal are not used: 'skid_next_addr'[2:0]
+UNUSEDSIGNAL   (iii) ibex_icache_output_stage.sv:100: Bits of signal are not used: 'raw_fb_addr'[31:2,0]
+UNUSEDSIGNAL   (iii) ibex_icache_output_stage.sv:106: Bits of signal are not used: 'next_word'[31:16]
+UNUSEDSIGNAL   (iii) ibex_icache_output_stage.sv:110: Bits of signal are not used: 'lower_half'[15:2]
+UNUSEDSIGNAL   (iii) ibex_if_stage.sv:167: Bits of signal are not used: 'fetch_addr_n'[0]
+UNUSEDSIGNAL   (iii) ibex_if_stage.sv:185: Bits of signal are not used: 'if_instr_addr'[31:2,0]
+UNUSEDSIGNAL   (iii) ibex_multdiv_fast.sv:59: Bits of signal are not used: 'alu_adder_ext_i'[33,0]
+UNUSEDSIGNAL   (iii) ibex_multdiv_fast.sv:90: Bits of function variable are not used: 'sum35'[34]
+UNUSEDSIGNAL   (iii) ibex_multdiv_fast.sv:484: Bits of function variable are not used: 'sum35'[34]
+UNUSEDSIGNAL   (iii) ibex_multdiv_fast.sv:499: Signal is not used: 'op_numerator_q'
+UNUSEDSIGNAL   (iii) ibex_multdiv_fast.sv:500: Signal is not used: 'op_quotient_q'
+UNUSEDSIGNAL   (iii) ibex_multdiv_fast.sv:501: Signal is not used: 'div_by_zero_q'
+WIDTHEXPAND    (ii ) ibex_register_file_ff.sv:27: Operator VAR 'RV32E' expects 32 bits on the Initial value, but Initial value's CONST '1'h0' generates 1 bits.
+WIDTHEXPAND    (ii ) ibex_register_file_ff.sv:29: Operator VAR 'DummyInstructions' expects 32 bits on the Initial value, but Initial value's CONST '1'h0' generates 1 bits.

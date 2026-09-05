@@ -36,4 +36,4 @@
                     src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:453:3:      Example path: ALWAYS
 - V e r i l a t i o n   R e p o r t: Verilator 5.048 2026-04-26 rev vUNKNOWN-built20260426
 - Verilator: Built from 65.128 MB sources in 136 modules, into 2.500 MB in 5 C++ files needing 0.000 MB
-- Verilator: Walltime 0.323 s (elab=0.064, cvt=0.149, bld=0.000); cpu 0.320 s on 1 threads; allocated 85.328 MB
+- Verilator: Walltime 0.426 s (elab=0.084, cvt=0.194, bld=0.000); cpu 0.403 s on 1 threads; allocated 85.859 MB
