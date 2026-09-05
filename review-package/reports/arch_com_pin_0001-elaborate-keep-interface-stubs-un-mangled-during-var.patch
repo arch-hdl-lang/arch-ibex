@@ -1,0 +1,149 @@
+From a814dc62094ddfb8c3cd79594bfc063b3aa6999e Mon Sep 17 00:00:00 2001
+From: arch-ibex review package <redacted>
+Date: Thu, 3 Sep 2026 23:34:04 -0700
+Subject: [PATCH] elaborate: keep interface stubs un-mangled during variant
+ discovery
+
+A body-less interface stub loaded from a .archi file describes a module
+defined elsewhere (typically hand-written SystemVerilog, e.g. a vendor RAM
+cell). Since 9ba64352 variant discovery evaluates inst-site parameter
+expressions against the enclosing module, so a stub instantiated with two
+different parameter sets got two mangled variant names
+(prim_ram_1p__DataBitsPerMask_22_Width_22, ...). No definition is ever
+emitted for a stub, so the emitted SV referenced modules that exist
+nowhere and failed to elaborate ("Can't resolve module reference").
+
+compute_all_variants now gives an interface stub exactly one variant under
+its original name; rewrite_inst therefore leaves every inst name alone
+while each inst still carries its own #(...) overrides.
+
+Regression test: a two-file .archi stub instantiated with Width=16 and
+Width=32; fails before this change, passes after.
+---
+ src/elaborate/params.rs   | 12 ++++++
+ tests/integration_test.rs | 86 +++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 98 insertions(+)
+
+diff --git a/src/elaborate/params.rs b/src/elaborate/params.rs
+index 15e67bb1..592b3659 100644
+--- a/src/elaborate/params.rs
++++ b/src/elaborate/params.rs
+@@ -153,6 +153,18 @@ pub(crate) fn compute_all_variants(
+                 .cloned()
+                 .unwrap_or_default();
+ 
++            // Interface stubs (`.archi`, body-less) describe an externally
++            // defined module — typically hand-written SV such as a vendor RAM
++            // cell. There is nothing to specialise per parameter set and no
++            // definition is ever emitted for them, so a mangled variant name
++            // (`prim_ram_1p__Width_22`) would reference a module that exists
++            // nowhere. Keep a single variant under the original name; each
++            // inst still carries its own `#(...)` overrides to the SV.
++            if m.is_interface {
++                result.insert(m.name.name.clone(), vec![(defaults, m.name.name.clone())]);
++                continue;
++            }
++
+             // Compute effective params for each inst site (deduped)
+             let mut effective_sets: Vec<HashMap<String, i64>> = Vec::new();
+ 
+diff --git a/tests/integration_test.rs b/tests/integration_test.rs
+index c63abd9e..9e8bd8ad 100644
+--- a/tests/integration_test.rs
++++ b/tests/integration_test.rs
+@@ -2760,6 +2760,92 @@ end module Top
+     );
+ }
+ 
++/// An interface stub (`.archi`, body-less — e.g. a hand-written stub for a
++/// vendor SV RAM cell) instantiated with two different parameter sets must
++/// keep its original module name at every inst site. Variant discovery used
++/// to mangle it (`Ext__Width_16` / `Ext__Width_32`) exactly like a real
++/// module, but no definition is ever emitted for a stub, so the mangled
++/// names referenced modules that exist nowhere and the SV failed to
++/// elaborate ("Can't resolve module reference"). Seen on arch-ibex's
++/// `prim_ram_1p` stub (tag banks Width=22, data banks Width=64).
++#[test]
++fn test_interface_stub_not_variant_mangled() {
++    use std::fs;
++    let td = tempfile::tempdir().expect("tempdir");
++    let dir = td.path();
++    let arch_bin = env!("CARGO_BIN_EXE_arch");
++    fs::write(
++        dir.join("Ext.archi"),
++        "\
++module Ext
++  param Width: const = 8;
++  port clk: in Clock<SysDomain>;
++  port d: in UInt<Width>;
++  port q: out UInt<Width>;
++end module Ext
++",
++    )
++    .unwrap();
++    let top_path = dir.join("Top.arch");
++    fs::write(
++        &top_path,
++        "\
++domain SysDomain
++  freq_mhz: 100
++end domain SysDomain
++
++module Top
++  port clk: in Clock<SysDomain>;
++  port a: in UInt<16>;
++  port b: in UInt<32>;
++  port qa: out UInt<16>;
++  port qb: out UInt<32>;
++  inst ea: Ext
++    param Width = 16;
++    clk <- clk;
++    d <- a;
++    q -> qa;
++  end inst ea
++  inst eb: Ext
++    param Width = 32;
++    clk <- clk;
++    d <- b;
++    q -> qb;
++  end inst eb
++end module Top
++",
++    )
++    .unwrap();
++    let sv_out = dir.join("Top.sv");
++    let out = std::process::Command::new(arch_bin)
++        .arg("build")
++        .arg(&top_path)
++        .arg("-o")
++        .arg(&sv_out)
++        .output()
++        .expect("build Top");
++    assert!(
++        out.status.success(),
++        "build failed: {}",
++        String::from_utf8_lossy(&out.stderr)
++    );
++    let sv = fs::read_to_string(&sv_out).unwrap();
++    assert!(
++        !sv.contains("Ext__"),
++        "interface stub must not be variant-mangled:\n{sv}"
++    );
++    assert_eq!(
++        sv.matches("Ext #(").count(),
++        2,
++        "both inst sites must instantiate the stub by its original name with \
++         their own parameter overrides:\n{sv}"
++    );
++    assert!(
++        sv.contains(".Width(16)") && sv.contains(".Width(32)"),
++        "{sv}"
++    );
++}
++
+ /// round-robin (each idx wins exactly 1/3 of cycles).
+ ///
+ /// Pre-fix grant pattern was `0,1,2,0,0,1,2,0,...` (idx 0 at 50%).
+-- 
+2.49.0
+

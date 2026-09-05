@@ -1,0 +1,17 @@
+read_liberty -lib /Users/<user>/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+read_verilog -sv /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/flow/out/arch/ibex_top.v
+hierarchy -check -top ibex_top -chparam ICache 1 -chparam PMPEnable 1 -chparam PMPNumRegions 4 -chparam PMPGranularity 0     -chparam DbgTriggerEn 1 -chparam DbgHwBreakNum 1 -chparam RV32E 0 -chparam RV32M 2 -chparam RV32B 0 -chparam RV32ZC 3     -chparam RegFile 0 -chparam BranchTargetALU 0 -chparam WritebackStage 0 -chparam BranchPredictor 0     -chparam SecureIbex 0 -chparam ICacheECC 0 -chparam ICacheScramble 0 -chparam MHPMCounterNum 0 -chparam MHPMCounterWidth 40     -chparam MemECC 0     -chparam DmBaseAddr 0 -chparam DmAddrMask 3 -chparam DmHaltAddr 0 -chparam DmExceptionAddr 0
+proc
+opt_clean
+# keep inferred RAM write ports intact across flatten (see header)
+memory -nomap
+flatten
+memory_map
+opt
+synth -top ibex_top
+dfflibmap -liberty /Users/<user>/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+techmap -map /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/flow/sky130_latch_map.v
+abc -liberty /Users/<user>/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+opt_clean -purge
+tee -o /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/flow/out/arch/sky130/synth.stat stat -liberty /Users/<user>/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+write_verilog -noattr -noexpr /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/flow/out/arch/sky130/netlist.v

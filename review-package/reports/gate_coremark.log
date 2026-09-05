@@ -1,6 +1,6 @@
 CoreMark compare: dut_ticks=112855 upstream_ticks=111651 ratio=1.0108 dut_cm_mhz=8.860928 upstream_cm_mhz=8.956480 validated=True
 .
 - generated xml file: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/review-package/reports/gate_coremark.junit.xml -
-1 passed in 117.85s (0:01:57)
-RUN_COREMARK_COMPARE=1 pytest tests/test_coremark_compare.py -p  -q -s   64.94s user 7.04s system 60% cpu 1:58.57 total
+1 passed in 49.95s
+RUN_COREMARK_COMPARE=1 pytest tests/test_coremark_compare.py -p  -q -s   45.37s user 3.28s system 96% cpu 50.193 total
 exit=0

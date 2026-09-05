@@ -1,8 +1,8 @@
 # 13 — Lint delta (TASK2 Phase 3)
 
-Re-run 2026-09-04 on the Phase 2 generated SV (branch `review-package`
-at the Phase 2 commit; compiler pin `fa4c864f` = v0.71.0 + 2 patches;
-Verilator 5.048). Same method as `03-source-metrics.md` §2b(ii): core
+Re-run 2026-09-04 on the Phase 2 generated SV (branch `review-package`;
+final compiler pin `89ec0522` = arch-com main `f4569890` + PR #993 + PR #994,
+see `10-toolchain.md`; Verilator 5.048). Same method as `03-source-metrics.md` §2b(ii): core
 only, top = `ibex_top`, identical fusesoc filelist and `-G` parameter
 values on both lanes (ICache=1, PMPEnable=1, PMPNumRegions=4,
 DbgTriggerEn=1, DbgHwBreakNum=1, everything else 0), `-Wall -Wno-fatal`,
@@ -23,7 +23,7 @@ classification: `reports/lint_arch_lane_classification.txt`.
 | Warning class | SV lane, waivers | Arch lane, waivers | SV lane, no waivers | Arch lane, no waivers | Arch lane, waivers, first pass (03-source-metrics) |
 |---|---|---|---|---|---|
 | `UNUSEDPARAM` | 0 | 73 | 251 | 360 | 74 |
-| `UNUSEDSIGNAL` | 0 | 50 | 0 | 50 | 61 |
+| `UNUSEDSIGNAL` | 0 | 54 | 0 | 54 | 61 |
 | `PINCONNECTEMPTY` | 0 | 0 | 85 | 61 | 0 |
 | `UNOPTFLAT` | 3 | 0 | 3 | 0 | 0 |
 | `DECLFILENAME` | 0 | 6 | 0 | 6 | 6 |
@@ -31,14 +31,16 @@ classification: `reports/lint_arch_lane_classification.txt`.
 | `WIDTHEXPAND` | 0 | 2 | 0 | 2 | 3 |
 | `PROCASSINIT` | 0 | 2 | 0 | 2 | 2 |
 | `SYNCASYNCNET` | 0 | 0 | 0 | 1 | 1 (no-waiver) |
-| **Total** | **3** | **137** | **339** | **486** | 150 |
+| **Total** | **3** | **141** | **339** | **490** | 150 |
 | Errors | 0 | 0 | 0 | 0 | 0 |
 
-Change since the first pass (Phase 2 source changes): −11 `UNUSEDSIGNAL`
-(the icache's unused `bus_ready_*`/`wb_ready_*` wires are gone; +1 for
-the arbiter's now-internal `request_ready`), −1 `UNUSEDPARAM`, −1
-`WIDTHEXPAND` (`inval_ctrl.sv` state compare; codegen difference between
-the 2026-05-14 compiler and the pin, not a source change).
+Change since the first pass: −11 `UNUSEDSIGNAL` from the Phase 2 source
+changes (the icache's unused `bus_ready_*`/`wb_ready_*` wires are gone; +1 for
+the arbiter's now-internal `request_ready`), +4 `UNUSEDSIGNAL` from the final
+pin's receiver-hoisting temporaries (`arch_idx_base_0..3` in `ibex_multdiv_fast.sv`,
+upper bits unused), −1 `UNUSEDPARAM`, −1 `WIDTHEXPAND` (`inval_ctrl.sv` state
+compare; codegen differences between the 2026-05-14 compiler and the pin, not
+source changes).
 
 ## 2. Classification of the Arch-lane-only warning classes (with waivers)
 
@@ -49,7 +51,7 @@ in `reports/lint_arch_lane_classification.txt`.
 | Bin | Count | Classes | What it is |
 |---|---|---|---|
 | **(i) single-configuration hard-coding** | **80** | `UNUSEDPARAM` 64, `UNUSEDSIGNAL` 16 | Parameters the port declares to keep upstream's parameter surface but never reads because the configuration is fixed (`MemECC` 5, `WritebackStage` 4, `ResetAll` 4, `RV32M` 4, `RV32E` 4, `RV32B` 4, `DummyInstructions` 4, `BranchPredictor` 4, `BranchTargetALU` 3, `PCIncrCheck`, `ICacheECC`, `DataIndTiming` 2 each, 19 singletons); and input ports of disabled features that are wired but unread (`branch_not_set_i`, `instr_bp_taken_i`, `instr_exec_i`, `mem_resp_intg_err_i`, `stall_wb_i`, `bt_a_mux_sel`, `bt_b_mux_sel`, `mult_sel_i`, …, plus `clk_i`/`rst_ni` on the purely combinational `ibex_decoder` and `ibex_wb_stage` — upstream has the same unused clocks and waives them in its `.vlt`). |
-| **(ii) compiler-emitted pattern** | **17** | `DECLFILENAME` 6, `IMPORTSTAR` 4, `PROCASSINIT` 2, `WIDTHEXPAND` 2, `UNUSEDSIGNAL` 3, (`SYNCASYNCNET` 1, no-waiver run only) | See §3; each has the exact generated-SV pattern recorded for filing. |
+| **(ii) compiler-emitted pattern** | **21** | `DECLFILENAME` 6, `IMPORTSTAR` 4, `PROCASSINIT` 2, `WIDTHEXPAND` 2, `UNUSEDSIGNAL` 7, (`SYNCASYNCNET` 1, no-waiver run only) | See §3; each has the exact generated-SV pattern recorded for filing. |
 | **(iii) other / design-level** | **40** | `UNUSEDPARAM` 9, `UNUSEDSIGNAL` 31 | Unused bit-slices of address / operand signals (`fb_addr_wb_sel[2:0]`, `if_instr_addr[31:2,0]`, `raw_fb_addr[31:2,0]`, `alu_adder_ext_i[33,0]`, `shift_out_ext[32]`, `instr_rdata_alu_i[24:15,11:7]`, …), per-FB alias lets the icache no longer reads (`fb*_alloc_flag`, `fb*_err`, `fb_empty`, `fb_wants_out`, `lookup_throttle`, `lookup_branch_ic1_q`), the multdiv thread's `port reg` outputs that are only written (`op_numerator_q`, `op_quotient_q`, `div_by_zero_q`), and 9 local parameters of the icache/output stage. Upstream hand-written SV avoids the equivalent warnings with its explicit `logic unused_* = …` sink idiom; the port has no such idiom. Candidates for source clean-up; none changes the generated logic. |
 
 The SV lane's 3 `UNOPTFLAT` (upstream `ibex_ex_block` ALU↔multdiv adder
@@ -69,7 +71,7 @@ Not fixed in the generated SV, as instructed.
 | `DECLFILENAME` | 6 | Construct name ≠ file basename: CamelCase `FbAgeArb`, `InvalCtrl`, `RamPortArb`, `IbexIcacheOutputStage`, package `IbexCoreSharedPkg` emitted into the snake_case files chosen by `scripts/build.sh`; and the compiler's own `_ibex_multdiv_fast_threads` helper module co-emitted into `ibex_multdiv_fast.sv`. | `build/{fb_age_arb,inval_ctrl,ram_port_arb,ibex_icache_output_stage,ibex_core_shared_pkg,ibex_multdiv_fast}.sv` | recorded; repo-side naming for five of them (`build.sh` could emit CamelCase files), compiler-side for the `_threads` helper |
 | `IMPORTSTAR` | 4 | `import IbexCoreSharedPkg::*;` emitted at `$unit` scope (before the `module` keyword) instead of inside the module header. | `build/{ibex_controller,ibex_core,ibex_id_stage,ibex_if_stage}.sv` | recorded; to file (emit the import inside the module) |
 | `WIDTHEXPAND` | 2 | A 1-bit ARCH parameter `param RV32E[0:0]: const = 1'd0` is emitted as `parameter int RV32E = 1'h0` (32-bit `int` with a 1-bit literal). | `build/ibex_register_file_ff.sv:27,29` | recorded; to file (emit `parameter logic RV32E = 1'h0` or size the literal) |
-| `UNUSEDSIGNAL` | 3 | `request_ready` (the arbiter's internal ready one-hot after the `valid_only` fix of PR #994 — expected, nothing reads it), `last_grant_r` (arbiter state register emitted for every policy, unused by `policy <custom fn>`), `_t0_cnt` (thread cycle counter emitted but unused by this thread). | `build/fb_age_arb.sv`, `build/ibex_multdiv_fast.sv` | recorded; to file (suppress unused helpers or mark them `/* verilator lint_off UNUSED */`) |
+| `UNUSEDSIGNAL` | 7 | `request_ready` (the arbiter's internal ready one-hot after the `valid_only` fix of PR #994 — expected, nothing reads it), `last_grant_r` (arbiter state register emitted for every policy, unused by `policy <custom fn>`), `_t0_cnt` (thread cycle counter emitted but unused by this thread), `arch_idx_base_0..3` (receiver-hoisting temporaries for `f(x)[15:0]`-style selects, upper bits unused). | `build/fb_age_arb.sv`, `build/ibex_multdiv_fast.sv` | recorded; to file (suppress unused helpers or mark them `/* verilator lint_off UNUSED */`) |
 
 Related compiler issues filed in this task for completeness:
 [arch-com#996](https://github.com/arch-hdl-lang/arch-com/issues/996)

@@ -87,12 +87,13 @@ single variant under its original name (`src/elaborate.rs`, function
 `compute_all_variants`; at arch-com HEAD the same function lives in
 `src/elaborate/params.rs`).
 
-- **Pin actually used from here on:** `arch 0.71.0` @ arch-com
-  `ead3aa8f164cc4a33e87a53f358286237b3bf878` = tag `v0.71.0`
-  (`1a7d9fd7`) + that fix, built in a scratch worktree. The patch is
-  committed here as `reports/arch_com_v0.71.0_stub_variant_fix.patch`
-  (apply with `git -C arch-com checkout v0.71.0 && git am <patch>`;
-  the author line is redacted).
+- **Pin used for Phases 1–3 measurements:** `arch 0.71.0` @ arch-com
+  `ead3aa8f` = tag `v0.71.0` (`1a7d9fd7`) + that fix (later `fa4c864f`
+  with the Phase 2 arbiter fix). **Final pin (Phase 4 on, and all Phase 2/3
+  numbers re-run on it):** arch-com main `f4569890` + PR #993 + PR #994 =
+  `89ec0522`; patches in `reports/arch_com_pin_000{1,2}-*.patch`. See
+  `10-toolchain.md` for the reason (release v0.71.0's emitter still produces
+  Yosys/sv2v-unparsable index shapes that main fixed in August).
 - **Upstream:** the same fix plus a regression test
   (`tests/integration_test.rs::test_interface_stub_not_variant_mangled`,
   a two-file `.archi` stub instantiated with `Width=16` and `Width=32`)
@@ -137,8 +138,8 @@ patched compiler is unacceptable for the pin.
 
 ## Phase 2 changes (icache handshake and its follow-ups) — see `12-icache-handshake.md` §7
 
-**Status: PROPOSED, validated on a scratch copy; awaiting approval to
-apply.** Full diffs: `reports/phase2_port_changes.diff` (source, 180
+**Status: APPROVED and APPLIED (Phase 2 commit `11cd655`), validated on a
+scratch copy first.** Full diffs: `reports/phase2_port_changes.diff` (source, 180
 lines) and `reports/phase2_test_changes.diff` (unit tests, 233 lines).
 One-line rationale per hunk:
 

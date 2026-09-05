@@ -41,3 +41,6 @@ arch_sim_build/
 
 # Reviewer evidence package: its logs are deliverables, not build noise.
 !review-package/reports/*.log
+
+# Synthesis flow outputs (merged Verilog, netlists, logs); reports are copied to review-package/reports/
+flow/out/

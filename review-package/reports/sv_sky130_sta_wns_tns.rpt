@@ -1,0 +1,8 @@
+wns max -804.99
+tns max -28528196.00
+Startpoint                           Endpoint                               Slack
+--------------------------------------------------------------------------------
+rst_ni (input)                       _110278_/SET_B (sky130_fd_sc_hd__dfstp_2)   10.13
+_156768_/Q (sky130_fd_sc_hd__and2_0) _098182_/A (sky130_fd_sc_hd__and2_0)    4.64
+_155841_/Q (sky130_fd_sc_hd__edfxtp_1) _115951_/DE (sky130_fd_sc_hd__edfxtp_1) -804.99
+

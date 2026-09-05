@@ -1,6 +1,6 @@
 # 12 — The icache arbiter handshake violation (TASK2 Phase 2)
 
-**Status: diagnosis complete; no change applied. Waiting for go-ahead.**
+**Status: diagnosis complete (§1–6); fix and follow-ups approved and applied (§7); gate green on the design suites with assertions on (§8).**
 
 ## 1. What fires
 
@@ -241,27 +241,32 @@ pins the hold itself (delayed `gnt`, branch during the hold: `instr_req_o`
 and `instr_addr_o` stable until the grant; the new target is fetched
 afterwards; no re-request by the stale FB).
 
-## 8. Phase 2.4 gate — applied changes, pinned compiler, assertions ON (no `--no-assert` anywhere)
+## 8. Phase 2.4 gate — applied changes, final pinned compiler, assertions ON (no `--no-assert` anywhere)
 
-Run 2026-09-04 on branch `review-package` after applying §7. Logs and
-junit under `reports/gate_*`. `ARCH_BIN` = pin (`fa4c864f`); pytest from
-the anaconda environment; `PYTEST_ADDOPTS` used only to add `--junitxml`.
+Run 2026-09-04 on branch `review-package` after applying §7, **with the
+final pin** (arch-com `89ec0522` = main `f4569890` + PR #993 + PR #994;
+see `10-toolchain.md` for why the earlier v0.71.0-based pin was
+replaced). Logs and junit under `reports/gate_*`. `ARCH_BIN` = pin;
+pytest from the anaconda environment; `PYTEST_ADDOPTS` used only to
+add `--junitxml`. (The same gate on the v0.71.0-based pin gave the same
+design-suite results: 166 passed / 8 failed / 75 skipped, 74/74 arch
+tests, CoreMark 1.0108; only the arch-sim count differs, see below.)
 
 | Suite (command) | Result | Wall time | Lane | Files |
 |---|---|---|---|---|
-| `make lint` | **FAIL** — 3 warnings, all known from the first package: 2 × `PROCASSINIT` (`build/ibex_multdiv_fast.sv:102,104`, thread-state emitter), 1 × `SYNCASYNCNET` (`soc/ibex_mini_soc.sv:67`, SoC wrapper / `build/ibex_top.sv:130`) | 1.4 s | Arch (SoC) | `gate_make_lint.log`, `.junit.xml` |
-| `make test` (`pytest tests/ -n auto --dist=loadfile`, 249 items) | **166 passed, 8 failed, 75 skipped** | 93 s | Arch | `gate_make_test.log`, `.junit.xml` |
+| `make lint` | **FAIL** — 3 warnings, all known from the first package: 2 × `PROCASSINIT` (`build/ibex_multdiv_fast.sv`, thread-state emitter, arch-com#995), 1 × `SYNCASYNCNET` (`soc/ibex_mini_soc.sv:67` / `build/ibex_top.sv`, guard-register tracking flops with a synchronous reset) | 1.4 s | Arch (SoC) | `gate_make_lint.log`, `.junit.xml` |
+| `make test` (`pytest tests/ -n auto --dist=loadfile`, 249 items) | **162 passed, 12 failed, 75 skipped** | 71 s | Arch | `gate_make_test.log`, `.junit.xml` |
 | — of which every per-module unit suite (`test_<m>_unit*.py`, 34 collectors incl. icache/core) | all pass | (in above) | Arch | |
 | — `tests/test_cpu_programs.py` (10) | 10 / 10 | (in above) | Arch | |
-| `tests/test_arch_tests.py` (74 signatures vs upstream references) | **74 / 74 pass**, 74 reference-generation variants skipped by design | 90 s | Arch vs SV references | `gate_arch_tests.log`, `.junit.xml` |
-| `RUN_COREMARK_COMPARE=1 pytest tests/test_coremark_compare.py` | **pass, validated**: Arch 112,855 ticks vs upstream 111,651 (ratio 1.0108; 8.861 vs 8.956 CoreMark/MHz) | 118 s | both lanes | `gate_coremark.log`, `.junit.xml` |
+| `tests/test_arch_tests.py` (74 signatures vs upstream references) | **74 / 74 pass**, 74 reference-generation variants skipped by design | 69 s | Arch vs SV references | `gate_arch_tests.log`, `.junit.xml` |
+| `RUN_COREMARK_COMPARE=1 pytest tests/test_coremark_compare.py` | **pass, validated**: Arch 112,855 ticks vs upstream 111,651 (ratio 1.0108; 8.861 vs 8.956 CoreMark/MHz) | 50 s | both lanes | `gate_coremark.log`, `.junit.xml` |
 
-The 8 `make test` failures, none in the design suites:
+The 12 `make test` failures, none in the design suites:
 
 | Test | Cause | Class |
 |---|---|---|
-| `test_soc_lint.py::test_ibex_mini_soc_lints` | the three `make lint` warnings above | Verilator 5.048 classes vs the harness's waiver list (Phase 3 subject; `PROCASSINIT` is an arch-com emitter pattern to file) |
-| `test_archsim_units.py::test_archsim_unit[IbexAlu]`, `[IbexMultdivFast]` | `arch sim --pybind` generates a pybind11 wrapper that fails to compile: `error: cannot form a pointer-to-member to member 'imd_val_q_i_0' of reference type 'uint32_t &'`. Passes with the 2026-05-14 compiler (`<scratch>/drift-check-B.log`) | arch-com regression in the pinned compiler's simulator backend (to file); unrelated to the port sources |
+| `test_soc_lint.py::test_ibex_mini_soc_lints` | the three `make lint` warnings above | Verilator 5.048 classes vs the harness's waiver list (Phase 3; `PROCASSINIT` filed as arch-com#995) |
+| `test_archsim_units.py` — 6 of 6 modules (`IbexAlu`, `IbexCompressedDecoder`, `IbexCounter`, `IbexDecoder`, `IbexMultdivFast`, `IbexRegisterFileFf`) | `arch sim --pybind` generates a pybind11 wrapper that fails to compile (`cannot form a pointer-to-member to member … of reference type`, filed as arch-com#996). On the v0.71.0-based pin only the two modules with `Vec` ports failed; on main all six do. Passes with the 2026-05-14 compiler (`<scratch>/drift-check-B.log`) | arch-com regression in the simulator backend; unrelated to the port sources |
 | `test_harc_phase1_canaries.py` (4 canaries) | in the gate: "HARC binary not found" (the runner's default path is `<repo parent>/harc-com`, wrong inside a git worktree); with `HARC_BIN` set to the real binary: "HARC runner forbids --codegen; use default TBIR" — HARC 0.2.0 (2026-08-31) rejects a flag the checked-in runner passes (`gate_harc_with_harc_bin.log`) | HARC tool drift; fails identically with the older compiler |
 | `test_harc_runner.py::test_checked_in_compressed_decoder_coverage_status_is_complete` | reads `tests/harc/plans/ibex_compressed_decoder_full_bins.md` / `_coverage_status.md`, which were never committed (`git ls-files tests/harc/plans` lists five other files; test added in `8c4b3ca`) | pre-existing repo defect |
 

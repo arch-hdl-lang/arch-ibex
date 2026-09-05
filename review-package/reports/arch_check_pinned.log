@@ -1,4 +1,4 @@
-# arch check, pinned compiler: arch 0.71.0 @ arch-com ead3aa8f (= v0.71.0 1a7d9fd7 + interface-stub variant fix), 2026-09-04T06:28Z
+# arch check, pinned compiler: arch 0.71.0 @ arch-com 89ec0522 (= main f4569890 + PR #993 a814dc62 + PR #994 7844c021), 2026-09-05T05:36Z
 # run after 'make build' so sibling .archi interface files exist
 === src/FbAgeArb.arch
 OK: no errors

@@ -1,11 +1,11 @@
-# Arch lane, ibex_top, -Wall with upstream .vlt waivers, Phase 2 SV — per-warning classification
+# Arch lane, ibex_top, -Wall with upstream .vlt waivers, Phase 2 SV, pin = arch-com 89ec0522 (main f4569890 + PR #993 + PR #994)
 # (i) single-configuration hard-coding  (ii) compiler-emitted pattern  (iii) other / design-level
-# totals: 137 = (i) 80  (ii) 17  (iii) 40
+# totals: 141 = (i) 80  (ii) 21  (iii) 40
 #   DECLFILENAME: (ii) 6
 #   IMPORTSTAR: (ii) 4
 #   PROCASSINIT: (ii) 2
 #   UNUSEDPARAM: (i) 64, (iii) 9
-#   UNUSEDSIGNAL: (i) 16, (ii) 3, (iii) 31
+#   UNUSEDSIGNAL: (i) 16, (ii) 7, (iii) 31
 #   WIDTHEXPAND: (ii) 2
 
 DECLFILENAME   (ii ) fb_age_arb.sv:19: Filename 'fb_age_arb' does not match MODULE name: 'FbAgeArb'
@@ -18,8 +18,8 @@ IMPORTSTAR     (ii ) ibex_controller.sv:42: 'import::*' in $unit scope may pollu
 IMPORTSTAR     (ii ) ibex_core.sv:56: 'import::*' in $unit scope may pollute global namespace
 IMPORTSTAR     (ii ) ibex_id_stage.sv:42: 'import::*' in $unit scope may pollute global namespace
 IMPORTSTAR     (ii ) ibex_if_stage.sv:33: 'import::*' in $unit scope may pollute global namespace
-PROCASSINIT    (ii ) ibex_multdiv_fast.sv:102: Procedural assignment to declaration with initial value: '_t0_state'
-PROCASSINIT    (ii ) ibex_multdiv_fast.sv:104: Procedural assignment to declaration with initial value: '_t0_loop_cnt_0'
+PROCASSINIT    (ii ) ibex_multdiv_fast.sv:107: Procedural assignment to declaration with initial value: '_t0_state'
+PROCASSINIT    (ii ) ibex_multdiv_fast.sv:109: Procedural assignment to declaration with initial value: '_t0_loop_cnt_0'
 UNUSEDPARAM    (i  ) ibex_alu.sv:22: Parameter is not used: 'RV32B'
 UNUSEDPARAM    (i  ) ibex_compressed_decoder.sv:47: Parameter is not used: 'ResetAll'
 UNUSEDPARAM    (i  ) ibex_controller.sv:44: Parameter is not used: 'WritebackStage'
@@ -89,10 +89,10 @@ UNUSEDPARAM    (iii) ibex_icache.sv:96: Parameter is not used: 'BranchCache'
 UNUSEDPARAM    (iii) ibex_id_stage.sv:58: Parameter is not used: 'OP_B_REG_B'
 UNUSEDPARAM    (iii) ibex_id_stage.sv:61: Parameter is not used: 'IMM_A_ZERO'
 UNUSEDPARAM    (iii) ibex_id_stage.sv:71: Parameter is not used: 'CSR_OP_READ'
-UNUSEDPARAM    (iii) ibex_multdiv_fast.sv:450: Parameter is not used: 'MD_OP_MULL'
-UNUSEDPARAM    (iii) ibex_multdiv_fast.sv:451: Parameter is not used: 'MD_OP_MULH'
-UNUSEDPARAM    (iii) ibex_multdiv_fast.sv:452: Parameter is not used: 'MD_OP_DIV'
-UNUSEDPARAM    (iii) ibex_multdiv_fast.sv:453: Parameter is not used: 'MD_OP_REM'
+UNUSEDPARAM    (iii) ibex_multdiv_fast.sv:463: Parameter is not used: 'MD_OP_MULL'
+UNUSEDPARAM    (iii) ibex_multdiv_fast.sv:464: Parameter is not used: 'MD_OP_MULH'
+UNUSEDPARAM    (iii) ibex_multdiv_fast.sv:465: Parameter is not used: 'MD_OP_DIV'
+UNUSEDPARAM    (iii) ibex_multdiv_fast.sv:466: Parameter is not used: 'MD_OP_REM'
 UNUSEDSIGNAL   (i  ) ibex_controller.sv:61: Signal is not used: 'instr_bp_taken_i'
 UNUSEDSIGNAL   (i  ) ibex_controller.sv:65: Signal is not used: 'instr_exec_i'
 UNUSEDSIGNAL   (i  ) ibex_controller.sv:69: Signal is not used: 'mem_resp_intg_err_i'
@@ -105,31 +105,31 @@ UNUSEDSIGNAL   (i  ) ibex_decoder.sv:80: Signal is not used: 'clk_i'
 UNUSEDSIGNAL   (i  ) ibex_decoder.sv:81: Signal is not used: 'rst_ni'
 UNUSEDSIGNAL   (i  ) ibex_id_stage.sv:289: Signal is not used: 'bt_a_mux_sel'
 UNUSEDSIGNAL   (i  ) ibex_id_stage.sv:290: Signal is not used: 'bt_b_mux_sel'
-UNUSEDSIGNAL   (i  ) ibex_multdiv_fast.sv:459: Signal is not used: 'mult_sel_i'
+UNUSEDSIGNAL   (i  ) ibex_multdiv_fast.sv:472: Signal is not used: 'mult_sel_i'
 UNUSEDSIGNAL   (i  ) ibex_top.sv:223: Signal is not used: 'IbexMuBiOn'
 UNUSEDSIGNAL   (i  ) ibex_wb_stage.sv:25: Signal is not used: 'clk_i'
 UNUSEDSIGNAL   (i  ) ibex_wb_stage.sv:26: Signal is not used: 'rst_ni'
-UNUSEDSIGNAL   (ii ) fb_age_arb.sv:52: Signal is not used: 'request_ready'
-UNUSEDSIGNAL   (ii ) fb_age_arb.sv:54: Signal is not used: 'last_grant_r'
-UNUSEDSIGNAL   (ii ) ibex_multdiv_fast.sv:103: Signal is not used: '_t0_cnt'
+UNUSEDSIGNAL   (ii ) fb_age_arb.sv:70: Signal is not used: 'request_ready'
+UNUSEDSIGNAL   (ii ) fb_age_arb.sv:72: Signal is not used: 'last_grant_r'
+UNUSEDSIGNAL   (ii ) ibex_multdiv_fast.sv:108: Signal is not used: '_t0_cnt'
 UNUSEDSIGNAL   (iii) ibex_alu.sv:78: Bits of signal are not used: 'shift_out_ext'[32]
 UNUSEDSIGNAL   (iii) ibex_controller.sv:75: Bits of signal are not used: 'irqs_i'[16]
 UNUSEDSIGNAL   (iii) ibex_controller.sv:139: Signal is not used: 'load_err_prio_q'
 UNUSEDSIGNAL   (iii) ibex_controller.sv:140: Signal is not used: 'store_err_prio_q'
 UNUSEDSIGNAL   (iii) ibex_decoder.sv:85: Bits of signal are not used: 'instr_rdata_alu_i'[24:15,11:7]
-UNUSEDSIGNAL   (iii) ibex_icache.sv:165: Signal is not used: 'fb0_alloc_flag'
-UNUSEDSIGNAL   (iii) ibex_icache.sv:166: Signal is not used: 'fb1_alloc_flag'
-UNUSEDSIGNAL   (iii) ibex_icache.sv:167: Signal is not used: 'fb2_alloc_flag'
-UNUSEDSIGNAL   (iii) ibex_icache.sv:168: Signal is not used: 'fb3_alloc_flag'
-UNUSEDSIGNAL   (iii) ibex_icache.sv:177: Signal is not used: 'fb0_err'
-UNUSEDSIGNAL   (iii) ibex_icache.sv:178: Signal is not used: 'fb1_err'
-UNUSEDSIGNAL   (iii) ibex_icache.sv:179: Signal is not used: 'fb2_err'
-UNUSEDSIGNAL   (iii) ibex_icache.sv:180: Signal is not used: 'fb3_err'
-UNUSEDSIGNAL   (iii) ibex_icache.sv:199: Signal is not used: 'fb_empty'
-UNUSEDSIGNAL   (iii) ibex_icache.sv:205: Signal is not used: 'lookup_throttle'
-UNUSEDSIGNAL   (iii) ibex_icache.sv:244: Signal is not used: 'fb_wants_out'
-UNUSEDSIGNAL   (iii) ibex_icache.sv:307: Bits of signal are not used: 'fb_addr_wb_sel'[2:0]
-UNUSEDSIGNAL   (iii) ibex_icache.sv:357: Signal is not used: 'lookup_branch_ic1_q'
+UNUSEDSIGNAL   (iii) ibex_icache.sv:183: Signal is not used: 'fb0_alloc_flag'
+UNUSEDSIGNAL   (iii) ibex_icache.sv:184: Signal is not used: 'fb1_alloc_flag'
+UNUSEDSIGNAL   (iii) ibex_icache.sv:185: Signal is not used: 'fb2_alloc_flag'
+UNUSEDSIGNAL   (iii) ibex_icache.sv:186: Signal is not used: 'fb3_alloc_flag'
+UNUSEDSIGNAL   (iii) ibex_icache.sv:195: Signal is not used: 'fb0_err'
+UNUSEDSIGNAL   (iii) ibex_icache.sv:196: Signal is not used: 'fb1_err'
+UNUSEDSIGNAL   (iii) ibex_icache.sv:197: Signal is not used: 'fb2_err'
+UNUSEDSIGNAL   (iii) ibex_icache.sv:198: Signal is not used: 'fb3_err'
+UNUSEDSIGNAL   (iii) ibex_icache.sv:217: Signal is not used: 'fb_empty'
+UNUSEDSIGNAL   (iii) ibex_icache.sv:223: Signal is not used: 'lookup_throttle'
+UNUSEDSIGNAL   (iii) ibex_icache.sv:262: Signal is not used: 'fb_wants_out'
+UNUSEDSIGNAL   (iii) ibex_icache.sv:325: Bits of signal are not used: 'fb_addr_wb_sel'[2:0]
+UNUSEDSIGNAL   (iii) ibex_icache.sv:375: Signal is not used: 'lookup_branch_ic1_q'
 UNUSEDSIGNAL   (iii) ibex_icache_output_stage.sv:16: Bits of signal are not used: 'lookup_addr_ic1_q'[2:0]
 UNUSEDSIGNAL   (iii) ibex_icache_output_stage.sv:64: Bits of signal are not used: 'skid_next_addr'[2:0]
 UNUSEDSIGNAL   (iii) ibex_icache_output_stage.sv:100: Bits of signal are not used: 'raw_fb_addr'[31:2,0]
@@ -139,9 +139,13 @@ UNUSEDSIGNAL   (iii) ibex_if_stage.sv:167: Bits of signal are not used: 'fetch_a
 UNUSEDSIGNAL   (iii) ibex_if_stage.sv:185: Bits of signal are not used: 'if_instr_addr'[31:2,0]
 UNUSEDSIGNAL   (iii) ibex_multdiv_fast.sv:59: Bits of signal are not used: 'alu_adder_ext_i'[33,0]
 UNUSEDSIGNAL   (iii) ibex_multdiv_fast.sv:90: Bits of function variable are not used: 'sum35'[34]
-UNUSEDSIGNAL   (iii) ibex_multdiv_fast.sv:484: Bits of function variable are not used: 'sum35'[34]
-UNUSEDSIGNAL   (iii) ibex_multdiv_fast.sv:499: Signal is not used: 'op_numerator_q'
-UNUSEDSIGNAL   (iii) ibex_multdiv_fast.sv:500: Signal is not used: 'op_quotient_q'
-UNUSEDSIGNAL   (iii) ibex_multdiv_fast.sv:501: Signal is not used: 'div_by_zero_q'
+UNUSEDSIGNAL   (ii ) ibex_multdiv_fast.sv:110: Bits of signal are not used: 'arch_idx_base_0'[33:16]
+UNUSEDSIGNAL   (ii ) ibex_multdiv_fast.sv:112: Bits of signal are not used: 'arch_idx_base_1'[33:16]
+UNUSEDSIGNAL   (ii ) ibex_multdiv_fast.sv:114: Bits of signal are not used: 'arch_idx_base_2'[33:16]
+UNUSEDSIGNAL   (ii ) ibex_multdiv_fast.sv:116: Bits of signal are not used: 'arch_idx_base_3'[33:32]
+UNUSEDSIGNAL   (iii) ibex_multdiv_fast.sv:497: Bits of function variable are not used: 'sum35'[34]
+UNUSEDSIGNAL   (iii) ibex_multdiv_fast.sv:517: Signal is not used: 'op_numerator_q'
+UNUSEDSIGNAL   (iii) ibex_multdiv_fast.sv:518: Signal is not used: 'op_quotient_q'
+UNUSEDSIGNAL   (iii) ibex_multdiv_fast.sv:519: Signal is not used: 'div_by_zero_q'
 WIDTHEXPAND    (ii ) ibex_register_file_ff.sv:27: Operator VAR 'RV32E' expects 32 bits on the Initial value, but Initial value's CONST '1'h0' generates 1 bits.
 WIDTHEXPAND    (ii ) ibex_register_file_ff.sv:29: Operator VAR 'DummyInstructions' expects 32 bits on the Initial value, but Initial value's CONST '1'h0' generates 1 bits.

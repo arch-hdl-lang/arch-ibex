@@ -1737,101 +1737,101 @@
                                                                                                                                     : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
    97 |   parameter [0:0] TweakInfection = 1'd0
       |                   ^~~~~~~~~~~~~~
-%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:165:9: Signal is not used: 'fb0_alloc_flag'
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:183:9: Signal is not used: 'fb0_alloc_flag'
                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
-  165 |   logic fb0_alloc_flag;
+  183 |   logic fb0_alloc_flag;
       |         ^~~~~~~~~~~~~~
-%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:166:9: Signal is not used: 'fb1_alloc_flag'
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:184:9: Signal is not used: 'fb1_alloc_flag'
                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
-  166 |   logic fb1_alloc_flag;
+  184 |   logic fb1_alloc_flag;
       |         ^~~~~~~~~~~~~~
-%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:167:9: Signal is not used: 'fb2_alloc_flag'
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:185:9: Signal is not used: 'fb2_alloc_flag'
                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
-  167 |   logic fb2_alloc_flag;
+  185 |   logic fb2_alloc_flag;
       |         ^~~~~~~~~~~~~~
-%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:168:9: Signal is not used: 'fb3_alloc_flag'
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:186:9: Signal is not used: 'fb3_alloc_flag'
                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
-  168 |   logic fb3_alloc_flag;
+  186 |   logic fb3_alloc_flag;
       |         ^~~~~~~~~~~~~~
-%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:177:9: Signal is not used: 'fb0_err'
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:195:9: Signal is not used: 'fb0_err'
                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
-  177 |   logic fb0_err;
+  195 |   logic fb0_err;
       |         ^~~~~~~
-%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:178:9: Signal is not used: 'fb1_err'
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:196:9: Signal is not used: 'fb1_err'
                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
-  178 |   logic fb1_err;
+  196 |   logic fb1_err;
       |         ^~~~~~~
-%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:179:9: Signal is not used: 'fb2_err'
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:197:9: Signal is not used: 'fb2_err'
                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
-  179 |   logic fb2_err;
+  197 |   logic fb2_err;
       |         ^~~~~~~
-%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:180:9: Signal is not used: 'fb3_err'
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:198:9: Signal is not used: 'fb3_err'
                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
-  180 |   logic fb3_err;
+  198 |   logic fb3_err;
       |         ^~~~~~~
-%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:199:9: Signal is not used: 'fb_empty'
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:217:9: Signal is not used: 'fb_empty'
                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
-  199 |   logic fb_empty;
+  217 |   logic fb_empty;
       |         ^~~~~~~~
-%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:205:9: Signal is not used: 'lookup_throttle'
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:223:9: Signal is not used: 'lookup_throttle'
                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
-  205 |   logic lookup_throttle;
+  223 |   logic lookup_throttle;
       |         ^~~~~~~~~~~~~~~
-%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:244:15: Signal is not used: 'fb_wants_out'
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:262:15: Signal is not used: 'fb_wants_out'
                                                                                                                                       : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
-  244 |   logic [3:0] fb_wants_out;
+  262 |   logic [3:0] fb_wants_out;
       |               ^~~~~~~~~~~~
-%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:307:16: Bits of signal are not used: 'fb_addr_wb_sel'[2:0]
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:325:16: Bits of signal are not used: 'fb_addr_wb_sel'[2:0]
                                                                                                                                       : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
-  307 |   logic [31:0] fb_addr_wb_sel;
+  325 |   logic [31:0] fb_addr_wb_sel;
       |                ^~~~~~~~~~~~~~
-%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:357:9: Signal is not used: 'lookup_branch_ic1_q'
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:375:9: Signal is not used: 'lookup_branch_ic1_q'
                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
-  357 |   logic lookup_branch_ic1_q;
+  375 |   logic lookup_branch_ic1_q;
       |         ^~~~~~~~~~~~~~~~~~~
-%Warning-UNUSEDPARAM: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:450:20: Parameter is not used: 'MD_OP_MULL'
+%Warning-UNUSEDPARAM: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:463:20: Parameter is not used: 'MD_OP_MULL'
                                                                                                                                            : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i'
-  450 |   localparam [1:0] MD_OP_MULL = 2'd0,
+  463 |   localparam [1:0] MD_OP_MULL = 2'd0,
       |                    ^~~~~~~~~~
-%Warning-UNUSEDPARAM: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:451:20: Parameter is not used: 'MD_OP_MULH'
+%Warning-UNUSEDPARAM: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:464:20: Parameter is not used: 'MD_OP_MULH'
                                                                                                                                            : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i'
-  451 |   localparam [1:0] MD_OP_MULH = 2'd1,
+  464 |   localparam [1:0] MD_OP_MULH = 2'd1,
       |                    ^~~~~~~~~~
-%Warning-UNUSEDPARAM: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:452:20: Parameter is not used: 'MD_OP_DIV'
+%Warning-UNUSEDPARAM: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:465:20: Parameter is not used: 'MD_OP_DIV'
                                                                                                                                            : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i'
-  452 |   localparam [1:0] MD_OP_DIV = 2'd2,
+  465 |   localparam [1:0] MD_OP_DIV = 2'd2,
       |                    ^~~~~~~~~
-%Warning-UNUSEDPARAM: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:453:20: Parameter is not used: 'MD_OP_REM'
+%Warning-UNUSEDPARAM: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:466:20: Parameter is not used: 'MD_OP_REM'
                                                                                                                                            : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i'
-  453 |   localparam [1:0] MD_OP_REM = 2'd3
+  466 |   localparam [1:0] MD_OP_REM = 2'd3
       |                    ^~~~~~~~~
-%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:459:15: Signal is not used: 'mult_sel_i'
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:472:15: Signal is not used: 'mult_sel_i'
                                                                                                                                             : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i'
-  459 |   input logic mult_sel_i,
+  472 |   input logic mult_sel_i,
       |               ^~~~~~~~~~
-%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:484:25: Bits of function variable are not used: 'sum35'[34]
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:497:25: Bits of function variable are not used: 'sum35'[34]
                                                                                                                                             : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i'
-  484 |     logic signed [34:0] sum35 = prod + acc_s;
+  497 |     logic signed [34:0] sum35;
       |                         ^~~~~
-%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:499:16: Signal is not used: 'op_numerator_q'
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:517:16: Signal is not used: 'op_numerator_q'
                                                                                                                                             : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i'
-  499 |   logic [31:0] op_numerator_q;
+  517 |   logic [31:0] op_numerator_q;
       |                ^~~~~~~~~~~~~~
-%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:500:16: Signal is not used: 'op_quotient_q'
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:518:16: Signal is not used: 'op_quotient_q'
                                                                                                                                             : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i'
-  500 |   logic [31:0] op_quotient_q;
+  518 |   logic [31:0] op_quotient_q;
       |                ^~~~~~~~~~~~~
-%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:501:9: Signal is not used: 'div_by_zero_q'
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:519:9: Signal is not used: 'div_by_zero_q'
                                                                                                                                            : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i'
-  501 |   logic div_by_zero_q;
+  519 |   logic div_by_zero_q;
       |         ^~~~~~~~~~~~~
-%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/fb_age_arb.sv:52:15: Signal is not used: 'request_ready'
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/fb_age_arb.sv:70:23: Signal is not used: 'request_ready'
                                                                                                                                     : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache.wb_arb'
-   52 |   logic [3:0] request_ready;
-      |               ^~~~~~~~~~~~~
-%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/fb_age_arb.sv:54:15: Signal is not used: 'last_grant_r'
+   70 |   logic [NUM_REQ-1:0] request_ready;
+      |                       ^~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/fb_age_arb.sv:72:15: Signal is not used: 'last_grant_r'
                                                                                                                                     : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache.wb_arb'
-   54 |   logic [3:0] last_grant_r;
+   72 |   logic [3:0] last_grant_r;
       |               ^~~~~~~~~~~~
 %Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache_output_stage.sv:16:22: Bits of signal are not used: 'lookup_addr_ic1_q'[2:0]
                                                                                                                                                   : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache.output_stage'
@@ -1863,41 +1863,57 @@
       |                      ^~~~~~~~~~~~~~~
 %Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:90:25: Bits of function variable are not used: 'sum35'[34]
                                                                                                                                            : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
-   90 |     logic signed [34:0] sum35 = prod + acc_s;
+   90 |     logic signed [34:0] sum35;
       |                         ^~~~~
-%Warning-PROCASSINIT: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:102:27: Procedural assignment to declaration with initial value: '_t0_state'
+%Warning-PROCASSINIT: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:107:27: Procedural assignment to declaration with initial value: '_t0_state'
                                                                                                                                            : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
                                                                                                                                            : ... Location of variable initialization
-  102 |   logic [3:0] _t0_state = 0;
+  107 |   logic [3:0] _t0_state = 0;
       |                           ^
-                      /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:358:7: ... Location of variable process write
+                      /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:371:7: ... Location of variable process write
                                                                                                                                           : ... Perhaps should initialize instead using a reset in this process
-  358 |       _t0_state <= 0;
+  371 |       _t0_state <= 0;
       |       ^~~~~~~~~
                       ... For warning description see https://verilator.org/warn/PROCASSINIT?v=5.048
                       ... Use "/* verilator lint_off PROCASSINIT */" and lint_on around source to disable this message.
-%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:103:16: Signal is not used: '_t0_cnt'
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:108:16: Signal is not used: '_t0_cnt'
                                                                                                                                             : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
-  103 |   logic [31:0] _t0_cnt = 0;
+  108 |   logic [31:0] _t0_cnt = 0;
       |                ^~~~~~~
-%Warning-PROCASSINIT: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:104:32: Procedural assignment to declaration with initial value: '_t0_loop_cnt_0'
+%Warning-PROCASSINIT: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:109:32: Procedural assignment to declaration with initial value: '_t0_loop_cnt_0'
                                                                                                                                            : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
                                                                                                                                            : ... Location of variable initialization
-  104 |   logic [4:0] _t0_loop_cnt_0 = 0;
+  109 |   logic [4:0] _t0_loop_cnt_0 = 0;
       |                                ^
-                      /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:440:7: ... Location of variable process write
+                      /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:453:7: ... Location of variable process write
                                                                                                                                           : ... Perhaps should initialize instead using a reset in this process
-  440 |       _t0_loop_cnt_0 <= 0;
+  453 |       _t0_loop_cnt_0 <= 0;
       |       ^~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:110:141: Bits of signal are not used: 'arch_idx_base_0'[33:16]
+                                                                                                                                             : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
+  110 |   logic [$bits(MacRes_b_16_b_16_34(1'b0, op_a_i[15:0], signed_mode_i[1] && op_b_i[31], op_b_i[31:16], {18'd0, imd_val_q_i[0][31:16]}))-1:0] arch_idx_base_0;
+      |                                                                                                                                             ^~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:112:141: Bits of signal are not used: 'arch_idx_base_1'[33:16]
+                                                                                                                                             : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
+  112 |   logic [$bits(MacRes_b_16_b_16_34(signed_mode_i[0] && op_a_i[31], op_a_i[31:16], 1'b0, op_b_i[15:0], {18'd0, imd_val_q_i[0][31:16]}))-1:0] arch_idx_base_1;
+      |                                                                                                                                             ^~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:114:141: Bits of signal are not used: 'arch_idx_base_2'[33:16]
+                                                                                                                                             : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
+  114 |   logic [$bits(MacRes_b_16_b_16_34(signed_mode_i[0] && op_a_i[31], op_a_i[31:16], 1'b0, op_b_i[15:0], {18'd0, imd_val_q_i[0][31:16]}))-1:0] arch_idx_base_2;
+      |                                                                                                                                             ^~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_multdiv_fast.sv:116:229: Bits of signal are not used: 'arch_idx_base_3'[33:32]
+                                                                                                                                             : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
+  116 |   logic [$bits(MacRes_b_16_b_16_34(signed_mode_i[0] && op_a_i[31], op_a_i[31:16], signed_mode_i[1] && op_b_i[31], op_b_i[31:16], {{16{(signed_mode_i[0] || signed_mode_i[1]) && imd_val_q_i[0][33]}}, imd_val_q_i[0][33:16]}))-1:0] arch_idx_base_3;
+      |                                                                                                                                                                                                                                     ^~~~~~~~~~~~~~~
 %Warning-SYNCASYNCNET: /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_top.sv:130:15: Signal flopped as both synchronous and async: 'rst_ni'
                        /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_top.sv:508:11: ... Location of async usage
   508 |     if ((!rst_ni)) begin
       |           ^~~~~~
-                       /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:642:9: ... Location of sync usage
-  642 |     if (rst_ni) begin
+                       /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/build/ibex_icache.sv:660:9: ... Location of sync usage
+  660 |     if (rst_ni) begin
       |         ^~~~~~
                        ... For warning description see https://verilator.org/warn/SYNCASYNCNET?v=5.048
                        ... Use "/* verilator lint_off SYNCASYNCNET */" and lint_on around source to disable this message.
 - V e r i l a t i o n   R e p o r t: Verilator 5.048 2026-04-26 rev vUNKNOWN-built20260426
-- Verilator: Built from 60.124 MB sources in 143 modules, into 2.140 MB in 6 C++ files needing 0.000 MB
-- Verilator: Walltime 0.300 s (elab=0.053, cvt=0.134, bld=0.000); cpu 0.299 s on 1 threads; allocated 69.953 MB
+- Verilator: Built from 60.142 MB sources in 143 modules, into 2.118 MB in 6 C++ files needing 0.000 MB
+- Verilator: Walltime 2.096 s (elab=0.375, cvt=1.171, bld=0.000); cpu 0.532 s on 1 threads; allocated 72.500 MB
