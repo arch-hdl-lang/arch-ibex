@@ -244,7 +244,7 @@ afterwards; no re-request by the stale FB).
 ## 8. Phase 2.4 gate — applied changes, final pinned compiler, assertions ON (no `--no-assert` anywhere)
 
 Run 2026-09-04 on branch `review-package` after applying §7, **with the
-final pin** (arch-com `89ec0522` = main `f4569890` + PR #993 + PR #994;
+final pin** (arch-com `89ec0522` = main `f4569890` + PR #993 + PR #994, equivalent to release `v0.72.0`;
 see `10-toolchain.md` for why the earlier v0.71.0-based pin was
 replaced). Logs and junit under `reports/gate_*`. `ARCH_BIN` = pin;
 pytest from the anaconda environment; `PYTEST_ADDOPTS` used only to

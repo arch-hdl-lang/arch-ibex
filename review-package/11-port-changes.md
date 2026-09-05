@@ -91,7 +91,8 @@ single variant under its original name (`src/elaborate.rs`, function
   `ead3aa8f` = tag `v0.71.0` (`1a7d9fd7`) + that fix (later `fa4c864f`
   with the Phase 2 arbiter fix). **Final pin (Phase 4 on, and all Phase 2/3
   numbers re-run on it):** arch-com main `f4569890` + PR #993 + PR #994 =
-  `89ec0522`; patches in `reports/arch_com_pin_000{1,2}-*.patch`. See
+  `89ec0522`, released as `v0.72.0` on 2026-09-05 (byte-identical SV);
+  patches in `reports/arch_com_pin_000{1,2}-*.patch`. See
   `10-toolchain.md` for the reason (release v0.71.0's emitter still produces
   Yosys/sv2v-unparsable index shapes that main fixed in August).
 - **Upstream:** the same fix plus a regression test

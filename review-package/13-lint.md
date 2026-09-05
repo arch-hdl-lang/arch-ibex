@@ -1,7 +1,7 @@
 # 13 — Lint delta (TASK2 Phase 3)
 
 Re-run 2026-09-04 on the Phase 2 generated SV (branch `review-package`;
-final compiler pin `89ec0522` = arch-com main `f4569890` + PR #993 + PR #994,
+final compiler pin `89ec0522` = arch-com main `f4569890` + PR #993 + PR #994 (released as `v0.72.0`),
 see `10-toolchain.md`; Verilator 5.048). Same method as `03-source-metrics.md` §2b(ii): core
 only, top = `ibex_top`, identical fusesoc filelist and `-G` parameter
 values on both lanes (ICache=1, PMPEnable=1, PMPNumRegions=4,

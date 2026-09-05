@@ -25,9 +25,11 @@ the same hand-written test SoC for simulation and are synthesised as
 arbiter handshake fix and its follow-ups), and the unit tests changed
 with them. No other design source was touched.
 
-**Toolchain (`10-toolchain.md`).** ARCH compiler: arch-com `main`
-`f4569890` (2026-09-01) + PR #993 + PR #994 (both CI-green, pending
-merge; local merge `89ec0522`, `arch 0.71.0`). Verilator 5.048
+**Toolchain (`10-toolchain.md`).** ARCH compiler: arch-com release
+`v0.72.0` (2026-09-05), which contains PR #993 and PR #994; the
+measurements were run on the equivalent local merge `89ec0522` (main
+`f4569890` + those two PRs) and v0.72.0 regenerates byte-identical SV
+for all 23 files. Verilator 5.048
 (assertions **on** everywhere in this pass), cocotb 2.0.1, Yosys
 0.67+post, sv2v 0.0.13, OpenSTA 3.1.0, OpenROAD 26Q2, nextpnr-ecp5
 `8dbcee5` + prjtrellis 1.4, riscv64-elf-gcc 15.2.0. No Vivado.
@@ -173,9 +175,10 @@ exceed any ECP5 package; no IO buffers, no bitstream). Details
 ## Caveats
 
 1. **Compiler pin.** The repo pins no compiler. The port compiles and
-   links only on arch-com `main` with two pending PRs (#993 stub
-   mangling, #994 arbiter `valid_only` lowering); release v0.71.0 also
-   emits SV that sv2v/Yosys reject. Rebuild recipe in `10-toolchain.md`.
+   links on arch-com `v0.72.0` and later (which carry #993 stub
+   mangling and #994 arbiter `valid_only` lowering); release v0.71.0
+   and earlier do not, and v0.71.0 also emits SV that sv2v/Yosys
+   reject. Rebuild recipe in `10-toolchain.md`.
 2. **Design fix in this pass.** The functional numbers are for the
    Phase 2 icache, which now holds bus requests until grant and
    completes allocating fills like upstream. The pre-fix design fails
@@ -215,7 +218,7 @@ Paths: `<scratch>` is a session temp directory outside the repo;
 
 ```
 # Phase 0-1: pin and compile (10-toolchain.md, 11-port-changes.md)
-git -C ~/github/arch-com worktree add --detach <scratch>/arch-com-pin-main f4569890; git merge a814dc62 7844c021; cargo build --release
+git -C ~/github/arch-com worktree add --detach <scratch>/arch-com-pin-main f4569890; git merge a814dc62 7844c021; cargo build --release   # ≡ v0.72.0 (byte-identical SV)
 git clean -fXq -- src/ build/; ARCH_BIN=<scratch>/arch-com-pin-main/target/release/arch make build      # 23/23
 for f in src/*.arch; do $ARCH_BIN check $f; done                                                          # reports/arch_check_pinned.log
 # Phase 2: gate with assertions on (12-icache-handshake.md §8)
