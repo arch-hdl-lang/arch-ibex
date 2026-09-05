@@ -182,3 +182,30 @@ correctly.
 |---|---|---|---|
 | 1 | `src/IbexIcache.arch` (+12 / −2 lines, one hunk) | applied | Phase 1 commit on `review-package` |
 | 2 | arch-com (compiler), not this repo | applied as patched pin; PR upstream | `reports/arch_com_v0.71.0_stub_variant_fix.patch` |
+
+
+## Phase B (TASK3) — RVFI as conditional ports
+
+**Rationale: match upstream's `ifdef RVFI` boundary for synthesis.** Upstream
+`ibex_top` only has its 38 `rvfi_*` outputs when the simulation harness defines
+`RVFI`; the port exposed them unconditionally, tied to the core's trace outputs,
+so every synthesis lane carried 1,213 extra output bits (`14-sky130.md` §4.4,
+`15-ecp5.md` §5.3). Applied 2026-09-05 with the released arch 0.72.0; approved on the
+shown diff.
+
+| # | File / hunk | Change |
+|---|---|---|
+| B1 | `src/IbexTop.arch` | new `param RVFI[0:0]: const = 1'd0;`; the 38 `port rvfi_*` declarations moved inside `generate_if RVFI … end generate_if` (spec §19.2). The 38 connection lines in `inst u_ibex_core` are unchanged: when the port does not exist the compiler makes the target an internal wire, so at RVFI = 0 the core's trace outputs dangle and synthesis removes them — upstream's shape. |
+| B1 | `src/sim/IbexTopRvfiSim.arch` (new, 106 lines, generated from the port list) | Simulation-only shim: mirrors every port of `ibex_top`, instantiates it with `param RVFI = 1` and `auto;`. Built together with `IbexTop.arch`, the compiler's single-variant rule emits `ibex_top` under its own name with the RVFI ports (`parameter int RVFI = 1`), which is what the harness's upstream `ibex_top_tracing` wrapper connects to. The shim module is stripped from `build/ibex_top.sv`. `arch build` has no `--param` (only `arch sim` does), so this is the in-language way to select the variant; a `build --param` flag would replace it. |
+| B1 | `scripts/build.sh`, `Makefile`, `.gitignore` | `ARCH_BUILD_PROFILE=sim` (default: `make build`, `build/`, RVFI = 1, used by every test) / `synth` (`make build-synth`, `build-synth/`, RVFI = 0). The 22 other generated files are byte-identical between profiles. |
+| B1 | `flow/ibex_top_arch.f`, `flow/make_filelists.py` | The Arch synthesis lane reads `${REPO_ROOT}/build-synth/` — the one `flow/` change that alters what is measured. |
+
+Verification: sim profile `ibex_top` has 92 ports (38 `rvfi_*`); synth profile 54
+ports, 0 `rvfi_*` ports — upstream's count. B3: the RVFI = 0 `build-synth/ibex_top.sv`
+still *mentions* `rvfi_` 76 times (38 internal nets + the 38 core-instance
+connections that drive them), so the brief's whole-file `grep -c rvfi_ → 0` cannot
+hold; the port list is clean, sv2v converts the lane (16,345 lines vs 16,382 with the
+ports) and Yosys `hierarchy -check` accepts it. B2: the full gate on the RVFI = 1
+build (`reports/gate_v0720_rvfi1_*`) is identical to the release gate — 10 / 10 CPU
+programs, 39 / 39 unit cases, 74 / 74 arch tests, CoreMark ratio 1.0108, 162 / 12 / 75
+overall with the same 12 tooling-drift failures; `make lint` the same 3 warnings.

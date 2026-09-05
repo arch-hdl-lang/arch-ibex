@@ -15,7 +15,7 @@ mapped the same way, `-D` verbatim).
 
 Outputs (overwritten):
     flow/ibex_top_sv.f    upstream Ibex only
-    flow/ibex_top_arch.f  upstream minus the 18 ported modules, plus build/*.sv
+    flow/ibex_top_arch.f  upstream minus the 18 ported modules, plus build-synth/*.sv (the RVFI = 0 synthesis profile: `make build-synth`)
                           (package first), written with a ${REPO_ROOT} prefix
 """
 import hashlib, os, sys

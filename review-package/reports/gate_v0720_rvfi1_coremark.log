@@ -1,0 +1,4 @@
+CoreMark compare: dut_ticks=112855 upstream_ticks=111651 ratio=1.0108 dut_cm_mhz=8.860928 upstream_cm_mhz=8.956480 validated=True
+.
+- generated xml file: ${REPO_ROOT}/review-package/reports/gate_v0720_rvfi1_coremark.junit.xml -
+1 passed in 45.47s

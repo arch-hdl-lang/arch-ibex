@@ -147,3 +147,11 @@ TASK2 — 141 with waivers (`UNUSEDPARAM` 73, `UNUSEDSIGNAL` 54, `DECLFILENAME` 
 `PROCASSINIT` thread-state-initializer pattern (arch-com#995) is still emitted
 (`build/ibex_multdiv_fast.sv:107`, `_t0_state`). Logs
 `reports/lint_v0720_arch_lane_ibex_top{,_nowaiver}.log`.
+
+### TASK3 Part B2 — gate on the RVFI = 1 simulation build (2026-09-05)
+
+After Phase B (`11-port-changes.md`), `make build` produces the RVFI = 1 `ibex_top`.
+Same four suites, assertions on, `reports/gate_v0720_rvfi1_*`: `make lint` FAIL with
+the same 3 warnings; `make test` 162 passed / 12 failed / 75 skipped (same 12 drift
+failures; 10 / 10 CPU programs, 39 / 39 unit cases); `test_arch_tests.py` 74 / 74;
+CoreMark ratio 1.0108 validated. Number-for-number identical to the Part A gate.

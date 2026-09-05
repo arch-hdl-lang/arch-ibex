@@ -1,10 +1,12 @@
 # Build outputs
 build/*
+build-synth/*
 !build/.gitkeep
 *.sv.bak
 
 # `arch build` side-effect intermediate-IR files written next to source
 src/*.archi
+src/sim/*.archi
 
 # Python
 __pycache__/
