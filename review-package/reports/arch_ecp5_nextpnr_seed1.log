@@ -195,1219 +195,6 @@ Warning: IO 'scramble_key_i[2]' is unconstrained in LPF and will be automaticall
 Warning: IO 'scramble_key_i[1]' is unconstrained in LPF and will be automatically placed
 Warning: IO 'scramble_key_i[0]' is unconstrained in LPF and will be automatically placed
 Warning: IO 'scan_rst_ni' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_valid' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_trap' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[31]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[30]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[29]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[28]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[27]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[26]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[25]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[24]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[23]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[22]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[21]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[20]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[19]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[18]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[17]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[16]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[15]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[14]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[13]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[12]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[11]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[10]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[9]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[8]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[7]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[6]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[5]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[4]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[3]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[2]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_rdata[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_addr[4]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_addr[3]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_addr[2]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_addr[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs3_addr[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[31]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[30]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[29]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[28]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[27]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[26]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[25]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[24]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[23]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[22]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[21]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[20]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[19]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[18]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[17]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[16]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[15]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[14]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[13]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[12]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[11]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[10]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[9]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[8]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[7]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[6]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[5]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[4]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[3]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[2]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_rdata[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_addr[4]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_addr[3]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_addr[2]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_addr[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs2_addr[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[31]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[30]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[29]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[28]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[27]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[26]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[25]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[24]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[23]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[22]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[21]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[20]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[19]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[18]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[17]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[16]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[15]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[14]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[13]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[12]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[11]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[10]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[9]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[8]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[7]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[6]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[5]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[4]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[3]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[2]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_rdata[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_addr[4]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_addr[3]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_addr[2]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_addr[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rs1_addr[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[31]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[30]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[29]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[28]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[27]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[26]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[25]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[24]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[23]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[22]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[21]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[20]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[19]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[18]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[17]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[16]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[15]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[14]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[13]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[12]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[11]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[10]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[9]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[8]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[7]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[6]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[5]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[4]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[3]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[2]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_wdata[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_addr[4]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_addr[3]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_addr[2]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_addr[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_rd_addr[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[31]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[30]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[29]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[28]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[27]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[26]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[25]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[24]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[23]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[22]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[21]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[20]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[19]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[18]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[17]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[16]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[15]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[14]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[13]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[12]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[11]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[10]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[9]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[8]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[7]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[6]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[5]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[4]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[3]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[2]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_wdata[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[31]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[30]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[29]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[28]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[27]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[26]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[25]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[24]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[23]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[22]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[21]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[20]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[19]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[18]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[17]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[16]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[15]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[14]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[13]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[12]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[11]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[10]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[9]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[8]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[7]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[6]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[5]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[4]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[3]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[2]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_pc_rdata[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[63]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[62]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[61]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[60]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[59]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[58]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[57]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[56]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[55]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[54]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[53]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[52]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[51]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[50]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[49]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[48]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[47]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[46]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[45]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[44]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[43]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[42]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[41]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[40]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[39]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[38]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[37]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[36]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[35]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[34]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[33]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[32]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[31]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[30]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[29]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[28]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[27]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[26]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[25]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[24]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[23]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[22]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[21]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[20]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[19]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[18]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[17]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[16]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[15]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[14]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[13]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[12]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[11]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[10]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[9]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[8]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[7]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[6]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[5]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[4]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[3]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[2]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_order[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mode[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mode[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wmask[3]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wmask[2]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wmask[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wmask[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[31]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[30]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[29]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[28]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[27]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[26]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[25]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[24]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[23]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[22]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[21]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[20]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[19]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[18]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[17]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[16]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[15]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[14]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[13]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[12]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[11]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[10]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[9]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[8]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[7]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[6]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[5]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[4]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[3]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[2]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_wdata[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rmask[3]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rmask[2]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rmask[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rmask[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[31]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[30]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[29]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[28]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[27]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[26]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[25]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[24]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[23]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[22]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[21]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[20]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[19]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[18]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[17]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[16]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[15]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[14]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[13]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[12]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[11]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[10]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[9]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[8]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[7]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[6]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[5]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[4]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[3]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[2]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_rdata[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[31]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[30]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[29]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[28]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[27]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[26]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[25]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[24]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[23]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[22]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[21]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[20]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[19]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[18]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[17]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[16]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[15]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[14]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[13]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[12]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[11]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[10]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[9]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[8]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[7]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[6]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[5]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[4]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[3]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[2]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_mem_addr[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ixl[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ixl[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_intr' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[31]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[30]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[29]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[28]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[27]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[26]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[25]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[24]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[23]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[22]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[21]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[20]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[19]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[18]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[17]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[16]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[15]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[14]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[13]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[12]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[11]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[10]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[9]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[8]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[7]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[6]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[5]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[4]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[3]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[2]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_insn[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_halt' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_rf_wr_suppress' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[31]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[30]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[29]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[28]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[27]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[26]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[25]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[24]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[23]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[22]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[21]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[20]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[19]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[18]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[17]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[16]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[15]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[14]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[13]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[12]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[11]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[10]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[9]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[8]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[7]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[6]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[5]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[4]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[3]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[2]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_pre_mip[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[31]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[30]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[29]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[28]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[27]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[26]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[25]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[24]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[23]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[22]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[21]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[20]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[19]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[18]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[17]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[16]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[15]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[14]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[13]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[12]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[11]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[10]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[9]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[8]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[7]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[6]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[5]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[4]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[3]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[2]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_post_mip[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_nmi_int' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_nmi' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[319]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[318]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[317]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[316]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[315]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[314]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[313]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[312]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[311]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[310]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[309]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[308]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[307]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[306]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[305]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[304]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[303]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[302]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[301]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[300]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[299]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[298]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[297]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[296]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[295]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[294]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[293]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[292]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[291]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[290]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[289]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[288]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[287]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[286]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[285]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[284]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[283]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[282]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[281]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[280]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[279]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[278]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[277]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[276]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[275]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[274]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[273]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[272]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[271]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[270]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[269]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[268]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[267]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[266]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[265]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[264]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[263]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[262]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[261]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[260]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[259]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[258]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[257]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[256]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[255]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[254]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[253]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[252]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[251]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[250]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[249]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[248]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[247]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[246]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[245]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[244]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[243]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[242]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[241]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[240]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[239]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[238]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[237]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[236]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[235]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[234]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[233]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[232]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[231]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[230]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[229]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[228]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[227]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[226]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[225]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[224]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[223]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[222]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[221]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[220]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[219]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[218]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[217]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[216]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[215]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[214]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[213]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[212]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[211]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[210]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[209]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[208]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[207]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[206]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[205]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[204]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[203]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[202]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[201]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[200]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[199]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[198]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[197]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[196]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[195]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[194]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[193]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[192]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[191]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[190]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[189]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[188]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[187]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[186]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[185]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[184]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[183]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[182]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[181]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[180]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[179]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[178]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[177]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[176]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[175]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[174]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[173]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[172]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[171]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[170]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[169]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[168]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[167]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[166]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[165]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[164]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[163]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[162]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[161]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[160]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[159]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[158]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[157]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[156]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[155]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[154]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[153]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[152]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[151]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[150]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[149]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[148]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[147]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[146]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[145]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[144]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[143]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[142]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[141]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[140]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[139]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[138]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[137]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[136]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[135]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[134]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[133]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[132]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[131]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[130]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[129]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[128]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[127]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[126]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[125]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[124]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[123]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[122]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[121]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[120]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[119]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[118]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[117]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[116]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[115]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[114]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[113]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[112]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[111]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[110]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[109]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[108]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[107]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[106]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[105]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[104]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[103]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[102]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[101]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[100]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[99]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[98]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[97]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[96]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[95]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[94]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[93]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[92]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[91]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[90]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[89]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[88]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[87]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[86]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[85]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[84]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[83]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[82]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[81]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[80]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[79]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[78]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[77]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[76]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[75]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[74]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[73]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[72]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[71]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[70]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[69]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[68]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[67]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[66]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[65]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[64]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[63]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[62]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[61]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[60]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[59]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[58]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[57]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[56]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[55]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[54]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[53]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[52]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[51]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[50]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[49]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[48]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[47]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[46]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[45]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[44]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[43]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[42]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[41]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[40]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[39]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[38]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[37]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[36]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[35]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[34]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[33]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[32]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[31]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[30]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[29]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[28]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[27]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[26]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[25]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[24]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[23]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[22]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[21]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[20]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[19]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[18]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[17]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[16]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[15]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[14]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[13]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[12]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[11]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[10]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[9]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[8]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[7]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[6]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[5]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[4]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[3]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[2]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcountersh[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[319]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[318]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[317]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[316]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[315]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[314]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[313]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[312]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[311]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[310]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[309]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[308]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[307]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[306]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[305]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[304]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[303]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[302]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[301]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[300]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[299]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[298]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[297]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[296]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[295]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[294]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[293]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[292]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[291]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[290]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[289]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[288]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[287]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[286]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[285]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[284]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[283]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[282]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[281]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[280]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[279]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[278]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[277]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[276]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[275]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[274]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[273]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[272]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[271]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[270]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[269]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[268]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[267]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[266]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[265]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[264]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[263]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[262]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[261]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[260]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[259]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[258]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[257]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[256]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[255]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[254]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[253]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[252]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[251]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[250]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[249]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[248]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[247]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[246]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[245]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[244]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[243]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[242]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[241]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[240]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[239]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[238]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[237]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[236]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[235]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[234]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[233]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[232]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[231]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[230]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[229]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[228]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[227]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[226]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[225]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[224]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[223]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[222]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[221]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[220]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[219]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[218]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[217]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[216]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[215]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[214]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[213]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[212]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[211]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[210]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[209]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[208]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[207]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[206]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[205]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[204]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[203]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[202]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[201]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[200]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[199]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[198]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[197]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[196]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[195]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[194]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[193]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[192]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[191]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[190]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[189]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[188]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[187]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[186]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[185]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[184]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[183]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[182]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[181]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[180]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[179]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[178]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[177]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[176]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[175]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[174]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[173]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[172]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[171]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[170]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[169]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[168]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[167]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[166]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[165]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[164]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[163]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[162]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[161]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[160]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[159]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[158]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[157]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[156]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[155]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[154]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[153]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[152]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[151]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[150]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[149]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[148]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[147]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[146]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[145]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[144]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[143]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[142]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[141]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[140]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[139]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[138]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[137]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[136]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[135]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[134]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[133]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[132]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[131]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[130]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[129]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[128]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[127]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[126]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[125]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[124]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[123]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[122]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[121]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[120]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[119]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[118]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[117]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[116]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[115]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[114]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[113]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[112]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[111]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[110]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[109]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[108]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[107]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[106]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[105]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[104]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[103]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[102]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[101]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[100]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[99]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[98]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[97]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[96]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[95]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[94]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[93]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[92]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[91]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[90]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[89]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[88]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[87]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[86]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[85]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[84]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[83]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[82]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[81]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[80]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[79]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[78]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[77]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[76]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[75]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[74]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[73]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[72]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[71]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[70]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[69]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[68]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[67]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[66]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[65]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[64]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[63]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[62]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[61]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[60]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[59]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[58]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[57]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[56]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[55]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[54]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[53]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[52]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[51]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[50]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[49]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[48]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[47]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[46]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[45]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[44]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[43]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[42]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[41]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[40]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[39]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[38]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[37]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[36]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[35]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[34]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[33]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[32]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[31]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[30]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[29]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[28]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[27]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[26]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[25]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[24]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[23]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[22]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[21]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[20]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[19]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[18]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[17]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[16]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[15]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[14]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[13]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[12]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[11]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[10]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[9]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[8]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[7]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[6]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[5]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[4]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[3]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[2]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mhpmcounters[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[63]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[62]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[61]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[60]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[59]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[58]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[57]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[56]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[55]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[54]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[53]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[52]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[51]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[50]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[49]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[48]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[47]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[46]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[45]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[44]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[43]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[42]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[41]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[40]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[39]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[38]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[37]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[36]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[35]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[34]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[33]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[32]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[31]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[30]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[29]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[28]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[27]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[26]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[25]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[24]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[23]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[22]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[21]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[20]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[19]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[18]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[17]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[16]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[15]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[14]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[13]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[12]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[11]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[10]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[9]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[8]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[7]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[6]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[5]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[4]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[3]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[2]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_mcycle[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_irq_valid' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_ic_scr_key_valid' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_expanded_insn_valid' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_expanded_insn_last' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_expanded_insn[15]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_expanded_insn[14]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_expanded_insn[13]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_expanded_insn[12]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_expanded_insn[11]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_expanded_insn[10]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_expanded_insn[9]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_expanded_insn[8]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_expanded_insn[7]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_expanded_insn[6]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_expanded_insn[5]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_expanded_insn[4]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_expanded_insn[3]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_expanded_insn[2]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_expanded_insn[1]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_expanded_insn[0]' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_debug_req' is unconstrained in LPF and will be automatically placed
-Warning: IO 'rvfi_ext_debug_mode' is unconstrained in LPF and will be automatically placed
 Warning: IO 'rst_ni' is unconstrained in LPF and will be automatically placed
 Warning: IO 'ram_cfg_rsp_icache_tag_o[1]' is unconstrained in LPF and will be automatically placed
 Warning: IO 'ram_cfg_rsp_icache_tag_o[0]' is unconstrained in LPF and will be automatically placed
@@ -2001,8 +788,8 @@ Warning: IO 'alert_major_internal_o' is unconstrained in LPF and will be automat
 Warning: IO 'alert_major_bus_o' is unconstrained in LPF and will be automatically placed
 
 Info: Logic utilisation before packing:
-Info:     Total LUT4s:     16867/83640    20%
-Info:         logic LUTs:  15751/83640    18%
+Info:     Total LUT4s:     16969/83640    20%
+Info:         logic LUTs:  15853/83640    18%
 Info:         carry LUTs:   1116/83640     1%
 Info:           RAM LUTs:      0/10455     0%
 Info:          RAMW LUTs:      0/20910     0%
@@ -2015,10 +802,10 @@ Info: Packing carries...
 Info: Packing LUTs...
 Info: Packing LUT5-7s...
 Info: Packing FFs...
-Info:     2250 FFs paired with LUTs.
+Info:     2452 FFs paired with LUTs.
 Info: Generating derived timing constraints...
 Info: Promoting globals...
-Info: Checksum: 0x09cefb40
+Info: Checksum: 0x33a2b91c
 
 Info: Device utilisation:
 Info: 	          TRELLIS_IO:       0/    365     0%
@@ -2047,387 +834,376 @@ Info: 	     TRELLIS_ECLKBUF:       0/      8     0%
 Info: 	        ECLKBRIDGECS:       0/      2     0%
 Info: 	                DCSC:       0/      2     0%
 Info: 	          TRELLIS_FF:    3430/  83640     4%
-Info: 	        TRELLIS_COMB:   17033/  83640    20%
+Info: 	        TRELLIS_COMB:   17135/  83640    20%
 Info: 	        TRELLIS_RAMW:       0/  10455     0%
 
 Info: Placed 0 cells based on constraints.
-Info: Creating initial analytic placement for 13332 cells, random placement wirelen = 1358905.
-Info:     at initial placer iter 0, wirelen = 2287
-Info:     at initial placer iter 1, wirelen = 2204
-Info:     at initial placer iter 2, wirelen = 2211
-Info:     at initial placer iter 3, wirelen = 2125
-Info: Running main analytical placer, max placement attempts per cell = 52377612.
-Info:     at iteration #1, type ALL: wirelen solved = 2224, spread = 365757, legal = 363823; time = 0.22s
-Info:     at iteration #2, type ALL: wirelen solved = 13070, spread = 156465, legal = 159022; time = 0.27s
-Info:     at iteration #3, type ALL: wirelen solved = 29339, spread = 109203, legal = 111140; time = 0.25s
-Info:     at iteration #4, type ALL: wirelen solved = 38478, spread = 96803, legal = 99454; time = 0.24s
-Info:     at iteration #5, type ALL: wirelen solved = 44545, spread = 91939, legal = 95603; time = 0.23s
-Info:     at iteration #6, type ALL: wirelen solved = 49993, spread = 87191, legal = 90792; time = 0.22s
-Info:     at iteration #7, type ALL: wirelen solved = 52927, spread = 86153, legal = 90198; time = 0.22s
-Info:     at iteration #8, type ALL: wirelen solved = 56020, spread = 83571, legal = 88396; time = 0.22s
-Info:     at iteration #9, type ALL: wirelen solved = 57798, spread = 82149, legal = 86066; time = 0.21s
-Info:     at iteration #10, type ALL: wirelen solved = 59414, spread = 80949, legal = 85348; time = 0.21s
-Info:     at iteration #11, type ALL: wirelen solved = 60526, spread = 81390, legal = 85199; time = 0.21s
-Info:     at iteration #12, type ALL: wirelen solved = 62336, spread = 79114, legal = 83543; time = 0.21s
-Info:     at iteration #13, type ALL: wirelen solved = 62145, spread = 78710, legal = 83754; time = 0.22s
-Info:     at iteration #14, type ALL: wirelen solved = 62608, spread = 78004, legal = 83218; time = 0.21s
-Info:     at iteration #15, type ALL: wirelen solved = 62968, spread = 77391, legal = 82183; time = 0.21s
-Info:     at iteration #16, type ALL: wirelen solved = 63520, spread = 76911, legal = 81578; time = 0.21s
-Info:     at iteration #17, type ALL: wirelen solved = 63769, spread = 76784, legal = 81306; time = 0.21s
-Info:     at iteration #18, type ALL: wirelen solved = 64470, spread = 76393, legal = 80796; time = 0.21s
-Info:     at iteration #19, type ALL: wirelen solved = 64439, spread = 76479, legal = 80822; time = 0.21s
-Info:     at iteration #20, type ALL: wirelen solved = 64740, spread = 76462, legal = 80535; time = 0.21s
-Info: HeAP Placer Time: 6.04s
-Info:   of which solving equations: 4.04s
-Info:   of which spreading cells: 0.79s
-Info:   of which strict legalisation: 0.18s
+Info: Creating initial analytic placement for 13126 cells, random placement wirelen = 1335036.
+Info:     at initial placer iter 0, wirelen = 1722
+Info:     at initial placer iter 1, wirelen = 2524
+Info:     at initial placer iter 2, wirelen = 2201
+Info:     at initial placer iter 3, wirelen = 2298
+Info: Running main analytical placer, max placement attempts per cell = 52900898.
+Info:     at iteration #1, type ALL: wirelen solved = 2537, spread = 367564, legal = 367433; time = 0.20s
+Info:     at iteration #2, type ALL: wirelen solved = 14417, spread = 145392, legal = 147405; time = 0.25s
+Info:     at iteration #3, type ALL: wirelen solved = 28907, spread = 112694, legal = 114882; time = 0.23s
+Info:     at iteration #4, type ALL: wirelen solved = 39227, spread = 103211, legal = 105860; time = 0.21s
+Info:     at iteration #5, type ALL: wirelen solved = 45883, spread = 94619, legal = 98708; time = 0.21s
+Info:     at iteration #6, type ALL: wirelen solved = 51721, spread = 86998, legal = 91180; time = 0.20s
+Info:     at iteration #7, type ALL: wirelen solved = 53022, spread = 84360, legal = 88010; time = 0.20s
+Info:     at iteration #8, type ALL: wirelen solved = 55669, spread = 83022, legal = 86442; time = 0.20s
+Info:     at iteration #9, type ALL: wirelen solved = 57602, spread = 81204, legal = 85249; time = 0.20s
+Info:     at iteration #10, type ALL: wirelen solved = 58362, spread = 80560, legal = 85273; time = 0.19s
+Info:     at iteration #11, type ALL: wirelen solved = 59721, spread = 79593, legal = 84676; time = 0.19s
+Info:     at iteration #12, type ALL: wirelen solved = 60311, spread = 79539, legal = 84555; time = 0.19s
+Info:     at iteration #13, type ALL: wirelen solved = 61502, spread = 79277, legal = 83834; time = 0.20s
+Info:     at iteration #14, type ALL: wirelen solved = 61875, spread = 78661, legal = 82839; time = 0.19s
+Info:     at iteration #15, type ALL: wirelen solved = 62889, spread = 78090, legal = 83802; time = 0.19s
+Info:     at iteration #16, type ALL: wirelen solved = 63670, spread = 78404, legal = 82250; time = 0.19s
+Info:     at iteration #17, type ALL: wirelen solved = 64255, spread = 78312, legal = 81961; time = 0.19s
+Info:     at iteration #18, type ALL: wirelen solved = 64351, spread = 78669, legal = 84472; time = 0.19s
+Info:     at iteration #19, type ALL: wirelen solved = 65511, spread = 77683, legal = 83502; time = 0.19s
+Info:     at iteration #20, type ALL: wirelen solved = 65284, spread = 77380, legal = 82329; time = 0.19s
+Info:     at iteration #21, type ALL: wirelen solved = 65436, spread = 78606, legal = 82928; time = 0.19s
+Info:     at iteration #22, type ALL: wirelen solved = 66603, spread = 77673, legal = 82815; time = 0.19s
+Info: HeAP Placer Time: 5.97s
+Info:   of which solving equations: 3.96s
+Info:   of which spreading cells: 0.76s
+Info:   of which strict legalisation: 0.19s
 
 Info: Running simulated annealing placer for refinement.
-Info:   at iteration #1: temp = 0.000000, timing cost = 9379, wirelen = 80535
-Info:   at iteration #5: temp = 0.000000, timing cost = 8929, wirelen = 74237
-Info:   at iteration #10: temp = 0.000000, timing cost = 9025, wirelen = 72144
-Info:   at iteration #15: temp = 0.000000, timing cost = 8725, wirelen = 71600
-Info:   at iteration #20: temp = 0.000000, timing cost = 8931, wirelen = 71426
-Info:   at iteration #20: temp = 0.000000, timing cost = 8926, wirelen = 71434 
-Info: SA placement time 14.94s
+Info:   at iteration #1: temp = 0.000000, timing cost = 11759, wirelen = 81961
+Info:   at iteration #5: temp = 0.000000, timing cost = 16058, wirelen = 75338
+Info:   at iteration #10: temp = 0.000000, timing cost = 13196, wirelen = 73404
+Info:   at iteration #15: temp = 0.000000, timing cost = 12676, wirelen = 72831
+Info:   at iteration #20: temp = 0.000000, timing cost = 12859, wirelen = 72632
+Info:   at iteration #22: temp = 0.000000, timing cost = 12712, wirelen = 72596 
+Info: SA placement time 14.22s
 
-Info: Max frequency for clock 'clk_i': 21.21 MHz (FAIL at 50.00 MHz)
+Info: Max frequency for clock 'clk_i': 22.17 MHz (FAIL at 50.00 MHz)
 
 Info: Slack histogram:
-Info:  legend: * represents 23 endpoint(s)
-Info:          + represents [1,23) endpoint(s)
-Info: [-27152, -24832) |********+
-Info: [-24832, -22512) |*************+
-Info: [-22512, -20192) |************************************************************ 
-Info: [-20192, -17872) |*************************************************+
-Info: [-17872, -15552) |******************+
-Info: [-15552, -13232) |*******+
-Info: [-13232, -10912) |***********************************+
-Info: [-10912,  -8592) |****+
-Info: [ -8592,  -6272) |**********+
-Info: [ -6272,  -3952) |*******************+
-Info: [ -3952,  -1632) |******+
-Info: [ -1632,    688) |*******+
-Info: [   688,   3008) |*************+
-Info: [  3008,   5328) |*************************+
-Info: [  5328,   7648) |******+
-Info: [  7648,   9968) |*+
-Info: [  9968,  12288) |**+
-Info: [ 12288,  14608) |*+
-Info: [ 14608,  16928) |***+
-Info: [ 16928,  19248) |*****+
-Info: Checksum: 0x56e3c678
+Info:  legend: * represents 17 endpoint(s)
+Info:          + represents [1,17) endpoint(s)
+Info: [-25106, -22888) |+
+Info: [-22888, -20670) |*********************+
+Info: [-20670, -18452) |************************************************************ 
+Info: [-18452, -16234) |***************************************************+
+Info: [-16234, -14016) |*********************************************+
+Info: [-14016, -11798) |**********************+
+Info: [-11798,  -9580) |*****+
+Info: [ -9580,  -7362) |******************************************+
+Info: [ -7362,  -5144) |***********************+
+Info: [ -5144,  -2926) |********************+
+Info: [ -2926,   -708) |***********+
+Info: [  -708,   1510) |*********+
+Info: [  1510,   3728) |***********************+
+Info: [  3728,   5946) |************************************+
+Info: [  5946,   8164) |**+
+Info: [  8164,  10382) |******+
+Info: [ 10382,  12600) |*+
+Info: [ 12600,  14818) |+
+Info: [ 14818,  17036) |*****+
+Info: [ 17036,  19254) |*****+
+Info: Checksum: 0x38bda15d
 Info: Routing globals...
 
 Info: Routing..
 Info: Setting up routing queue.
-Info: Routing 67427 arcs.
+Info: Routing 67321 arcs.
 Info:            |   (re-)routed arcs  |   delta    | remaining|       time spent     |
 Info:    IterCnt |  w/ripup   wo/ripup |  w/r  wo/r |      arcs| batch(sec) total(sec)|
-Info:       1000 |      192        807 |  192   807 |     66738|       0.39       0.39|
-Info:       2000 |      498       1501 |  306   694 |     66286|       0.12       0.50|
-Info:       3000 |      788       2211 |  290   710 |     65839|       0.11       0.62|
-Info:       4000 |     1059       2940 |  271   729 |     65718|       0.13       0.75|
-Info:       5000 |     1290       3709 |  231   769 |     65301|       0.12       0.87|
-Info:       6000 |     1501       4498 |  211   789 |     64804|       0.11       0.98|
-Info:       7000 |     1743       5256 |  242   758 |     64240|       0.12       1.10|
-Info:       8000 |     1979       6020 |  236   764 |     63749|       0.10       1.20|
-Info:       9000 |     2120       6879 |  141   859 |     63115|       0.11       1.31|
-Info:      10000 |     2343       7656 |  223   777 |     62597|       0.12       1.43|
-Info:      11000 |     2526       8473 |  183   817 |     62032|       0.11       1.53|
-Info:      12000 |     2772       9227 |  246   754 |     61718|       0.12       1.65|
-Info:      13000 |     2937      10062 |  165   835 |     61374|       0.12       1.77|
-Info:      14000 |     3154      10845 |  217   783 |     61003|       0.11       1.88|
-Info:      15000 |     3392      11607 |  238   762 |     60650|       0.12       2.00|
-Info:      16000 |     3573      12426 |  181   819 |     60221|       0.11       2.11|
-Info:      17000 |     3743      13256 |  170   830 |     59595|       0.11       2.22|
-Info:      18000 |     3965      14034 |  222   778 |     59162|       0.11       2.33|
-Info:      19000 |     4145      14854 |  180   820 |     58693|       0.11       2.44|
-Info:      20000 |     4377      15622 |  232   768 |     58309|       0.11       2.55|
-Info:      21000 |     4578      16421 |  201   799 |     57787|       0.13       2.68|
-Info:      22000 |     4783      17216 |  205   795 |     57262|       0.11       2.79|
-Info:      23000 |     4997      18002 |  214   786 |     56723|       0.12       2.91|
-Info:      24000 |     5336      18663 |  339   661 |     56367|       0.17       3.08|
-Info:      25000 |     5585      19414 |  249   751 |     55872|       0.16       3.23|
-Info:      26000 |     5817      20182 |  232   768 |     55326|       0.12       3.35|
-Info:      27000 |     6054      20945 |  237   763 |     54976|       0.13       3.49|
-Info:      28000 |     6303      21696 |  249   751 |     54522|       0.14       3.63|
-Info:      29000 |     6585      22414 |  282   718 |     53993|       0.15       3.78|
-Info:      30000 |     6750      23249 |  165   835 |     53807|       0.13       3.91|
-Info:      31000 |     7039      23960 |  289   711 |     53291|       0.13       4.04|
-Info:      32000 |     7333      24666 |  294   706 |     53258|       0.12       4.17|
-Info:      33000 |     7591      25408 |  258   742 |     52821|       0.12       4.29|
-Info:      34000 |     7830      26169 |  239   761 |     52516|       0.12       4.41|
-Info:      35000 |     8107      26892 |  277   723 |     51925|       0.13       4.54|
-Info:      36000 |     8348      27651 |  241   759 |     51330|       0.12       4.67|
-Info:      37000 |     8564      28435 |  216   784 |     50831|       0.13       4.79|
-Info:      38000 |     8819      29180 |  255   745 |     50202|       0.12       4.91|
-Info:      39000 |     9100      29899 |  281   719 |     49790|       0.14       5.05|
-Info:      40000 |     9360      30639 |  260   740 |     49368|       0.14       5.18|
-Info:      41000 |     9561      31438 |  201   799 |     48997|       0.13       5.32|
-Info:      42000 |     9829      32170 |  268   732 |     48371|       0.13       5.45|
-Info:      43000 |    10158      32841 |  329   671 |     47811|       0.15       5.60|
-Info:      44000 |    10425      33574 |  267   733 |     47284|       0.13       5.73|
-Info:      45000 |    10788      34211 |  363   637 |     46920|       0.15       5.88|
-Info:      46000 |    11072      34927 |  284   716 |     46392|       0.14       6.02|
-Info:      47000 |    11349      35650 |  277   723 |     46078|       0.13       6.15|
-Info:      48000 |    11623      36376 |  274   726 |     45453|       0.14       6.29|
-Info:      49000 |    11774      37225 |  151   849 |     45310|       0.12       6.41|
-Info:      50000 |    12061      37938 |  287   713 |     44738|       0.14       6.55|
-Info:      51000 |    12353      38646 |  292   708 |     44316|       0.15       6.69|
-Info:      52000 |    12668      39331 |  315   685 |     43843|       0.16       6.85|
-Info:      53000 |    12940      40059 |  272   728 |     43453|       0.15       6.99|
-Info:      54000 |    13275      40724 |  335   665 |     42983|       0.18       7.18|
-Info:      55000 |    13574      41425 |  299   701 |     42720|       0.14       7.32|
-Info:      56000 |    13857      42142 |  283   717 |     42182|       0.16       7.48|
-Info:      57000 |    14206      42793 |  349   651 |     41690|       0.14       7.62|
-Info:      58000 |    14480      43519 |  274   726 |     41087|       0.15       7.77|
-Info:      59000 |    14807      44192 |  327   673 |     40757|       0.15       7.92|
-Info:      60000 |    15116      44883 |  309   691 |     40145|       0.15       8.06|
-Info:      61000 |    15441      45558 |  325   675 |     39645|       0.15       8.22|
-Info:      62000 |    15789      46210 |  348   652 |     39343|       0.18       8.39|
-Info:      63000 |    16171      46828 |  382   618 |     39496|       0.17       8.56|
-Info:      64000 |    16438      47561 |  267   733 |     39089|       0.16       8.72|
-Info:      65000 |    16767      48232 |  329   671 |     38691|       0.15       8.87|
-Info:      66000 |    16909      49090 |  142   858 |     38798|       0.15       9.02|
-Info:      67000 |    17089      49910 |  180   820 |     38342|       0.16       9.18|
-Info:      68000 |    17435      50564 |  346   654 |     37869|       0.15       9.33|
-Info:      69000 |    17702      51297 |  267   733 |     37534|       0.14       9.47|
-Info:      70000 |    18061      51938 |  359   641 |     37057|       0.15       9.62|
-Info:      71000 |    18421      52578 |  360   640 |     36523|       0.16       9.79|
-Info:      72000 |    18759      53240 |  338   662 |     36315|       0.15       9.94|
-Info:      73000 |    19157      53842 |  398   602 |     35885|       0.15      10.09|
-Info:      74000 |    19498      54501 |  341   659 |     35318|       0.12      10.21|
-Info:      75000 |    19853      55146 |  355   645 |     34772|       0.13      10.35|
-Info:      76000 |    20240      55759 |  387   613 |     34327|       0.15      10.49|
-Info:      77000 |    20585      56414 |  345   655 |     33838|       0.14      10.63|
-Info:      78000 |    20990      57009 |  405   595 |     33335|       0.14      10.78|
-Info:      79000 |    21421      57578 |  431   569 |     32917|       0.15      10.92|
-Info:      80000 |    21781      58206 |  360   628 |     32390|       0.13      11.06|
-Info:      81000 |    22151      58810 |  370   604 |     31893|       0.13      11.19|
-Info:      82000 |    22513      59437 |  362   627 |     31640|       0.16      11.35|
-Info:      83000 |    22930      60003 |  417   566 |     31136|       0.14      11.49|
-Info:      84000 |    23288      60638 |  358   635 |     30735|       0.15      11.64|
-Info:      85000 |    23645      61246 |  357   608 |     30126|       0.13      11.78|
-Info:      86000 |    23984      61877 |  339   631 |     29675|       0.14      11.92|
-Info:      87000 |    24291      62512 |  307   635 |     29094|       0.12      12.04|
-Info:      88000 |    24556      63185 |  265   673 |     28564|       0.13      12.17|
-Info:      89000 |    24815      63836 |  259   651 |     27856|       0.12      12.28|
-Info:      90000 |    25059      64489 |  244   653 |     27146|       0.11      12.39|
-Info:      91000 |    25371      65070 |  312   581 |     26621|       0.13      12.53|
-Info:      92000 |    25714      65620 |  343   550 |     26064|       0.14      12.66|
-Info:      93000 |    26042      66215 |  328   595 |     25511|       0.13      12.79|
-Info:      94000 |    26341      66833 |  299   618 |     24907|       0.13      12.91|
-Info:      95000 |    26685      67373 |  344   540 |     24297|       0.13      13.04|
-Info:      96000 |    27076      67912 |  391   539 |     23770|       0.13      13.18|
-Info:      97000 |    27460      68443 |  384   531 |     23205|       0.13      13.31|
-Info:      98000 |    27824      68988 |  364   545 |     22677|       0.15      13.46|
-Info:      99000 |    28162      69567 |  338   579 |     22226|       0.15      13.61|
-Info:     100000 |    28506      70103 |  344   536 |     21622|       0.13      13.74|
-Info:     101000 |    28877      70647 |  371   544 |     21083|       0.14      13.89|
-Info:     102000 |    29250      71191 |  373   544 |     20601|       0.16      14.05|
-Info:     103000 |    29625      71707 |  375   516 |     20002|       0.14      14.19|
-Info:     104000 |    30005      72269 |  380   562 |     19502|       0.16      14.35|
-Info:     105000 |    30381      72858 |  376   589 |     18911|       0.14      14.50|
-Info:     106000 |    30759      73450 |  378   592 |     18440|       0.18      14.68|
-Info:     107000 |    31060      74107 |  301   657 |     17858|       0.16      14.83|
-Info:     108000 |    31366      74772 |  306   665 |     17215|       0.17      15.00|
-Info:     109000 |    31674      75451 |  308   679 |     16604|       0.17      15.17|
-Info:     110000 |    31904      76213 |  230   762 |     15993|       0.16      15.33|
-Info:     111000 |    32080      77033 |  176   820 |     15253|       0.14      15.47|
-Info:     112000 |    32287      77816 |  207   783 |     14561|       0.17      15.63|
-Info:     113000 |    32597      78490 |  310   674 |     13999|       0.18      15.82|
-Info:     114000 |    32861      79192 |  264   702 |     13442|       0.19      16.00|
-Info:     115000 |    33093      79935 |  232   743 |     12780|       0.17      16.17|
-Info:     116000 |    33409      80573 |  316   638 |     12262|       0.19      16.36|
-Info:     117000 |    33667      81195 |  258   622 |     11573|       0.16      16.52|
-Info:     118000 |    33896      81791 |  229   596 |     10982|       0.18      16.70|
-Info:     119000 |    34078      82465 |  182   674 |     10264|       0.16      16.86|
-Info:     120000 |    34321      83168 |  243   703 |      9568|       0.17      17.03|
-Info:     121000 |    34553      83825 |  232   657 |      8978|       0.18      17.21|
-Info:     122000 |    34822      84413 |  269   588 |      8688|       0.21      17.43|
-Info:     123000 |    35121      85104 |  299   691 |      8351|       0.22      17.65|
-Info:     124000 |    35419      85669 |  298   565 |      7992|       0.21      17.86|
-Info:     125000 |    35739      86333 |  320   664 |      7673|       0.22      18.08|
-Info:     126000 |    36013      86980 |  274   647 |      7092|       0.23      18.32|
-Info:     127000 |    36321      87604 |  308   624 |      6619|       0.22      18.54|
-Info:     128000 |    36636      88253 |  315   649 |      6323|       0.23      18.77|
-Info:     129000 |    36978      88893 |  342   640 |      6060|       0.23      19.00|
-Info:     130000 |    37163      89708 |  185   815 |      5368|       0.19      19.19|
-Info:     131000 |    37272      90599 |  109   891 |      4502|       0.14      19.33|
-Info:     132000 |    37574      91297 |  302   698 |      4444|       0.17      19.50|
-Info:     133000 |    37919      91952 |  345   655 |      4293|       0.24      19.74|
-Info:     134000 |    38240      92631 |  321   679 |      3830|       0.23      19.98|
-Info:     135000 |    38459      93379 |  219   748 |      3081|       0.19      20.17|
-Info:     136000 |    38618      94131 |  159   752 |      2386|       0.30      20.46|
-Info:     137000 |    38916      94782 |  298   651 |      1969|       0.31      20.77|
-Info:     138000 |    39106      95480 |  190   698 |      1242|       0.33      21.10|
-Info:     139000 |    39259      96221 |  153   741 |       558|       0.26      21.37|
-Info:     139712 |    39364      96736 |  105   515 |         0|       0.21      21.58|
+Info:       1000 |      270        729 |  270   729 |     66889|       0.37       0.37|
+Info:       2000 |      555       1444 |  285   715 |     66579|       0.10       0.46|
+Info:       3000 |      804       2195 |  249   751 |     66119|       0.11       0.57|
+Info:       4000 |     1123       2876 |  319   681 |     65807|       0.11       0.69|
+Info:       5000 |     1458       3541 |  335   665 |     65385|       0.11       0.80|
+Info:       6000 |     1757       4242 |  299   701 |     65273|       0.11       0.91|
+Info:       7000 |     2090       4909 |  333   667 |     64982|       0.12       1.03|
+Info:       8000 |     2340       5659 |  250   750 |     64743|       0.12       1.14|
+Info:       9000 |     2617       6382 |  277   723 |     64193|       0.10       1.25|
+Info:      10000 |     2853       7146 |  236   764 |     63625|       0.10       1.35|
+Info:      11000 |     3031       7968 |  178   822 |     63246|       0.11       1.46|
+Info:      12000 |     3225       8774 |  194   806 |     62796|       0.11       1.56|
+Info:      13000 |     3404       9595 |  179   821 |     62648|       0.11       1.67|
+Info:      14000 |     3631      10368 |  227   773 |     62016|       0.10       1.78|
+Info:      15000 |     3795      11204 |  164   836 |     61647|       0.11       1.89|
+Info:      16000 |     4032      11967 |  237   763 |     61037|       0.11       2.00|
+Info:      17000 |     4208      12791 |  176   824 |     60748|       0.11       2.11|
+Info:      18000 |     4411      13588 |  203   797 |     60373|       0.11       2.22|
+Info:      19000 |     4596      14403 |  185   815 |     59958|       0.10       2.32|
+Info:      20000 |     4802      15197 |  206   794 |     59530|       0.10       2.43|
+Info:      21000 |     5051      15948 |  249   751 |     59041|       0.11       2.54|
+Info:      22000 |     5283      16716 |  232   768 |     59087|       0.13       2.67|
+Info:      23000 |     5472      17527 |  189   811 |     58970|       0.10       2.77|
+Info:      24000 |     5552      18447 |   80   920 |     58805|       0.11       2.88|
+Info:      25000 |     5787      19212 |  235   765 |     58271|       0.11       2.99|
+Info:      26000 |     6055      19944 |  268   732 |     57727|       0.12       3.11|
+Info:      27000 |     6316      20683 |  261   739 |     57277|       0.12       3.23|
+Info:      28000 |     6586      21413 |  270   730 |     56973|       0.13       3.36|
+Info:      29000 |     6873      22126 |  287   713 |     56644|       0.13       3.49|
+Info:      30000 |     7163      22836 |  290   710 |     56140|       0.12       3.61|
+Info:      31000 |     7489      23510 |  326   674 |     55710|       0.13       3.75|
+Info:      32000 |     7752      24247 |  263   737 |     55254|       0.13       3.88|
+Info:      33000 |     8067      24932 |  315   685 |     54832|       0.14       4.01|
+Info:      34000 |     8365      25634 |  298   702 |     54359|       0.14       4.15|
+Info:      35000 |     8715      26284 |  350   650 |     53916|       0.15       4.30|
+Info:      36000 |     9054      26945 |  339   661 |     53557|       0.13       4.43|
+Info:      37000 |     9313      27686 |  259   741 |     53169|       0.14       4.56|
+Info:      38000 |     9627      28372 |  314   686 |     52775|       0.15       4.71|
+Info:      39000 |     9941      29058 |  314   686 |     52437|       0.14       4.85|
+Info:      40000 |    10257      29742 |  316   684 |     52040|       0.13       4.99|
+Info:      41000 |    10577      30422 |  320   680 |     51515|       0.13       5.11|
+Info:      42000 |    10910      31089 |  333   667 |     51250|       0.13       5.24|
+Info:      43000 |    11194      31805 |  284   716 |     50748|       0.12       5.36|
+Info:      44000 |    11488      32511 |  294   706 |     50387|       0.12       5.48|
+Info:      45000 |    11801      33198 |  313   687 |     49945|       0.13       5.61|
+Info:      46000 |    12179      33820 |  378   622 |     49526|       0.13       5.74|
+Info:      47000 |    12463      34536 |  284   716 |     49072|       0.13       5.87|
+Info:      48000 |    12782      35217 |  319   681 |     48565|       0.13       6.00|
+Info:      49000 |    13054      35945 |  272   728 |     47929|       0.12       6.13|
+Info:      50000 |    13403      36596 |  349   651 |     47412|       0.14       6.26|
+Info:      51000 |    13743      37256 |  340   660 |     46996|       0.13       6.40|
+Info:      52000 |    14124      37875 |  381   619 |     46576|       0.14       6.54|
+Info:      53000 |    14549      38450 |  425   575 |     46122|       0.14       6.68|
+Info:      54000 |    14950      39049 |  401   599 |     45705|       0.14       6.82|
+Info:      55000 |    15291      39708 |  341   659 |     45301|       0.14       6.96|
+Info:      56000 |    15624      40375 |  333   667 |     44725|       0.13       7.09|
+Info:      57000 |    15954      41045 |  330   670 |     44350|       0.15       7.24|
+Info:      58000 |    16343      41656 |  389   611 |     43956|       0.15       7.38|
+Info:      59000 |    16676      42323 |  333   667 |     43463|       0.14       7.52|
+Info:      60000 |    17081      42918 |  405   595 |     43038|       0.14       7.67|
+Info:      61000 |    17462      43537 |  381   619 |     42935|       0.14       7.81|
+Info:      62000 |    17888      44111 |  426   574 |     42468|       0.15       7.96|
+Info:      63000 |    18263      44736 |  375   625 |     42104|       0.14       8.10|
+Info:      64000 |    18681      45318 |  418   582 |     41637|       0.15       8.25|
+Info:      65000 |    19023      45976 |  342   658 |     41542|       0.16       8.40|
+Info:      66000 |    19366      46633 |  343   657 |     40987|       0.15       8.55|
+Info:      67000 |    19697      47302 |  331   669 |     40568|       0.16       8.71|
+Info:      68000 |    20046      47953 |  349   651 |     40125|       0.14       8.85|
+Info:      69000 |    20422      48577 |  376   624 |     39620|       0.15       9.00|
+Info:      70000 |    20747      49252 |  325   675 |     39154|       0.14       9.14|
+Info:      71000 |    21138      49861 |  391   609 |     38815|       0.18       9.31|
+Info:      72000 |    21528      50471 |  390   610 |     38338|       0.15       9.46|
+Info:      73000 |    21950      51049 |  422   578 |     37918|       0.16       9.62|
+Info:      74000 |    22361      51638 |  411   589 |     37452|       0.13       9.75|
+Info:      75000 |    22809      52190 |  448   552 |     37030|       0.15       9.90|
+Info:      76000 |    23142      52857 |  333   667 |     36653|       0.14      10.04|
+Info:      77000 |    23544      53455 |  402   598 |     36255|       0.13      10.17|
+Info:      78000 |    24019      53980 |  475   525 |     35816|       0.14      10.31|
+Info:      79000 |    24443      54556 |  424   576 |     35382|       0.14      10.45|
+Info:      80000 |    24898      55101 |  455   545 |     34967|       0.14      10.59|
+Info:      81000 |    25328      55671 |  430   570 |     34516|       0.14      10.73|
+Info:      82000 |    25746      56253 |  418   582 |     34024|       0.13      10.85|
+Info:      83000 |    26149      56850 |  403   597 |     33529|       0.13      10.98|
+Info:      84000 |    26619      57380 |  470   530 |     33132|       0.15      11.14|
+Info:      85000 |    27070      57929 |  451   549 |     32731|       0.14      11.28|
+Info:      86000 |    27490      58509 |  420   580 |     32264|       0.13      11.42|
+Info:      87000 |    27900      59099 |  410   590 |     31804|       0.15      11.57|
+Info:      88000 |    28309      59690 |  409   591 |     31271|       0.15      11.72|
+Info:      89000 |    28719      60272 |  410   582 |     30902|       0.15      11.87|
+Info:      90000 |    29112      60858 |  393   586 |     30413|       0.14      12.01|
+Info:      91000 |    29449      61473 |  337   615 |     30071|       0.14      12.15|
+Info:      92000 |    29663      62252 |  214   779 |     29886|       0.15      12.30|
+Info:      93000 |    30050      62778 |  387   526 |     29417|       0.13      12.43|
+Info:      94000 |    30329      63423 |  279   645 |     29000|       0.12      12.55|
+Info:      95000 |    30711      63964 |  382   541 |     28471|       0.13      12.68|
+Info:      96000 |    31082      64515 |  371   551 |     27906|       0.12      12.80|
+Info:      97000 |    31522      65027 |  440   512 |     27529|       0.14      12.94|
+Info:      98000 |    31872      65598 |  350   571 |     26924|       0.11      13.05|
+Info:      99000 |    32224      66156 |  352   558 |     26378|       0.13      13.18|
+Info:     100000 |    32654      66675 |  430   519 |     25937|       0.15      13.33|
+Info:     101000 |    33096      67135 |  442   460 |     25438|       0.13      13.46|
+Info:     102000 |    33470      67707 |  374   572 |     25288|       0.14      13.60|
+Info:     103000 |    33839      68285 |  369   578 |     24693|       0.13      13.73|
+Info:     104000 |    34274      68754 |  435   469 |     24167|       0.13      13.86|
+Info:     105000 |    34721      69218 |  447   464 |     23675|       0.12      13.98|
+Info:     106000 |    35096      69733 |  375   515 |     23131|       0.14      14.12|
+Info:     107000 |    35559      70183 |  463   450 |     22660|       0.13      14.26|
+Info:     108000 |    35977      70661 |  418   478 |     22152|       0.13      14.38|
+Info:     109000 |    36360      71189 |  383   528 |     21619|       0.12      14.50|
+Info:     110000 |    36709      71762 |  349   573 |     21062|       0.12      14.62|
+Info:     111000 |    37077      72325 |  368   563 |     20482|       0.14      14.76|
+Info:     112000 |    37509      72864 |  432   539 |     20023|       0.16      14.92|
+Info:     113000 |    37922      73432 |  413   568 |     19562|       0.16      15.07|
+Info:     114000 |    38278      74034 |  356   602 |     19045|       0.16      15.24|
+Info:     115000 |    38674      74585 |  396   551 |     18524|       0.16      15.40|
+Info:     116000 |    39015      75219 |  341   634 |     17968|       0.15      15.54|
+Info:     117000 |    39370      75849 |  355   630 |     18006|       0.18      15.72|
+Info:     118000 |    39691      76528 |  321   679 |     17650|       0.18      15.90|
+Info:     119000 |    40026      77157 |  335   629 |     17051|       0.15      16.05|
+Info:     120000 |    40326      77812 |  300   655 |     16539|       0.17      16.22|
+Info:     121000 |    40607      78493 |  281   681 |     15965|       0.18      16.40|
+Info:     122000 |    40845      79228 |  238   735 |     15275|       0.16      16.55|
+Info:     123000 |    41054      80009 |  209   781 |     14594|       0.16      16.71|
+Info:     124000 |    41268      80787 |  214   778 |     14017|       0.17      16.88|
+Info:     125000 |    41603      81449 |  335   662 |     13644|       0.18      17.06|
+Info:     126000 |    41871      82159 |  268   710 |     12970|       0.15      17.22|
+Info:     127000 |    42108      82904 |  237   745 |     12554|       0.16      17.38|
+Info:     128000 |    42363      83594 |  255   690 |     11908|       0.15      17.53|
+Info:     129000 |    42600      84248 |  237   654 |     11223|       0.18      17.72|
+Info:     130000 |    42821      84957 |  221   709 |     10744|       0.15      17.87|
+Info:     131000 |    43023      85673 |  202   716 |     10007|       0.14      18.00|
+Info:     132000 |    43247      86378 |  224   705 |      9361|       0.17      18.18|
+Info:     133000 |    43450      87058 |  203   680 |      8614|       0.15      18.33|
+Info:     134000 |    43743      87634 |  293   576 |      8088|       0.20      18.52|
+Info:     135000 |    44051      88257 |  308   623 |      7570|       0.19      18.72|
+Info:     136000 |    44308      88866 |  257   609 |      7070|       0.21      18.93|
+Info:     137000 |    44494      89567 |  186   701 |      6326|       0.16      19.09|
+Info:     138000 |    44693      90279 |  199   712 |      5624|       0.16      19.25|
+Info:     139000 |    44800      91172 |  107   893 |      4746|       0.12      19.37|
+Info:     140000 |    45027      91945 |  227   773 |      3992|       0.13      19.50|
+Info:     141000 |    45241      92731 |  214   786 |      3206|       0.13      19.63|
+Info:     142000 |    45472      93397 |  231   666 |      2586|       0.28      19.90|
+Info:     143000 |    45657      94080 |  185   683 |      1893|       0.28      20.19|
+Info:     144000 |    45882      94754 |  225   674 |      1350|       0.40      20.59|
+Info:     145000 |    46097      95432 |  215   678 |       716|       0.39      20.98|
+Info:     146000 |    46284      96128 |  187   696 |        38|       0.79      21.77|
+Info:     146038 |    46285      96158 |    1    30 |         0|       0.08      21.86|
 Info: Routing complete.
-Info: Router1 time 21.58s
-Info: Checksum: 0x0554956c
+Info: Router1 time 21.86s
+Info: Checksum: 0xe80641dc
 
 Info: Critical path report for clock 'clk_i' (posedge -> posedge):
 Info:       type curr  total name
-Info:   clk-to-q  5.61  5.61 Source tag_bank_w0.mem.0.0.DOA14
-Info:    routing  1.40  7.01 Net ic_tag_rdata[36] (51,22) -> (51,19)
-Info:                          Sink u_ibex_core.if_stage_i.icache.way0_valid_LUT4_B_Z_PFUMX_Z_C0_L6MUX21_SD_Z_LUT4_Z.C
+Info:   clk-to-q  5.83  5.83 Source tag_bank_w0.mem.0.0.DOB1
+Info:    routing  1.11  6.94 Net ic_tag_rdata[41] (55,22) -> (54,24)
+Info:                          Sink u_ibex_core.if_stage_i.icache.way0_valid_LUT4_A_Z_LUT4_D_Z_LUT4_Z_D_PFUMX_Z_C0_LUT4_Z.D
 Info:                          Defined in:
 Info:                               ${REPO_ROOT}/flow/out/arch/ibex_top.v:11886.14-11886.22
-Info:      logic  0.24  7.24 Source u_ibex_core.if_stage_i.icache.way0_valid_LUT4_B_Z_PFUMX_Z_C0_L6MUX21_SD_Z_LUT4_Z.F
-Info:    routing  1.20  8.44 Net u_ibex_core.if_stage_i.icache.way0_valid_LUT4_B_Z_PFUMX_Z_C0_L6MUX21_SD_Z[3] (51,19) -> (51,16)
-Info:                          Sink u_ibex_core.if_stage_i.icache.way0_valid_LUT4_B_Z_PFUMX_Z_C0_L6MUX21_SD_Z_LUT4_D.D
+Info:      logic  0.24  7.17 Source u_ibex_core.if_stage_i.icache.way0_valid_LUT4_A_Z_LUT4_D_Z_LUT4_Z_D_PFUMX_Z_C0_LUT4_Z.F
+Info:    routing  0.42  7.59 Net u_ibex_core.if_stage_i.icache.way0_valid_LUT4_A_Z_LUT4_D_Z_LUT4_Z_D_PFUMX_Z_C0[4] (54,24) -> (54,24)
+Info:                          Sink u_ibex_core.if_stage_i.icache.way0_valid_LUT4_A_Z_LUT4_D_Z_LUT4_Z_D_PFUMX_Z_BLUT_LUT4_Z.M
 Info:                          Defined in:
 Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
-Info:      logic  0.24  8.67 Source u_ibex_core.if_stage_i.icache.way0_valid_LUT4_B_Z_PFUMX_Z_C0_L6MUX21_SD_Z_LUT4_D.F
-Info:    routing  0.00  8.67 Net u_ibex_core.if_stage_i.icache.way0_valid_LUT4_B_Z_PFUMX_Z_C0_L6MUX21_SD_Z_LUT4_D_Z (51,16) -> (51,16)
-Info:                          Sink u_ibex_core.if_stage_i.icache.way0_valid_LUT4_B_Z_PFUMX_Z_C0_L6MUX21_SD_Z_PFUMX_C0_BLUT_LUT4_Z.F1
+Info:      logic  0.26  7.85 Source u_ibex_core.if_stage_i.icache.way0_valid_LUT4_A_Z_LUT4_D_Z_LUT4_Z_D_PFUMX_Z_BLUT_LUT4_Z.OFX
+Info:    routing  0.79  8.64 Net u_ibex_core.if_stage_i.icache.way0_valid_LUT4_A_Z_LUT4_D_Z_LUT4_Z_D[0] (54,24) -> (54,24)
+Info:                          Sink u_ibex_core.if_stage_i.icache.way0_valid_LUT4_A_Z_LUT4_D_Z_LUT4_Z.A
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
+Info:      logic  0.24  8.87 Source u_ibex_core.if_stage_i.icache.way0_valid_LUT4_A_Z_LUT4_D_Z_LUT4_Z.F
+Info:    routing  1.57  10.44 Net instr_rvalid_i_LUT4_B_2_Z_LUT4_D_Z_PFUMX_BLUT_Z[5] (54,24) -> (55,14)
+Info:                          Sink instr_rvalid_i_LUT4_B_1_Z_LUT4_D_Z_LUT4_Z.D
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
+Info:      logic  0.24  10.67 Source instr_rvalid_i_LUT4_B_1_Z_LUT4_D_Z_LUT4_Z.F
+Info:    routing  1.58  12.25 Net instr_rvalid_i_LUT4_B_1_Z_LUT4_D_Z[5] (55,14) -> (50,24)
+Info:                          Sink u_ibex_core.if_stage_i.icache.lookup_addr_ic0_LUT4_Z_7_D_LUT4_D_Z_LUT4_Z_D_L6MUX21_Z_D0_PFUMX_Z_BLUT_LUT4_Z_C_CCU2C_S0_COUT_CCU2C_CIN_S0_LUT4_D_3_Z_PFUMX_C0_Z_L6MUX21_Z_2_D1_PFUMX_Z_ALUT_LUT4_Z.M
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
+Info:      logic  0.26  12.51 Source u_ibex_core.if_stage_i.icache.lookup_addr_ic0_LUT4_Z_7_D_LUT4_D_Z_LUT4_Z_D_L6MUX21_Z_D0_PFUMX_Z_BLUT_LUT4_Z_C_CCU2C_S0_COUT_CCU2C_CIN_S0_LUT4_D_3_Z_PFUMX_C0_Z_L6MUX21_Z_2_D1_PFUMX_Z_ALUT_LUT4_Z.OFX
+Info:    routing  0.76  13.27 Net u_ibex_core.if_stage_i.icache.lookup_addr_ic0_LUT4_Z_7_D_LUT4_D_Z_LUT4_Z_D_L6MUX21_Z_D0_PFUMX_Z_BLUT_LUT4_Z_C_CCU2C_S0_COUT_CCU2C_CIN_S0_LUT4_D_3_Z_PFUMX_C0_Z[6] (50,24) -> (51,27)
+Info:                          Sink u_ibex_core.if_stage_i.icache.lookup_addr_ic0_LUT4_Z_7_D_LUT4_D_Z_LUT4_Z_D_LUT4_D_1_Z_LUT4_Z_B_LUT4_D_Z_LUT4_D_Z_PFUMX_C0_Z_LUT4_D.C
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
+Info:      logic  0.24  13.50 Source u_ibex_core.if_stage_i.icache.lookup_addr_ic0_LUT4_Z_7_D_LUT4_D_Z_LUT4_Z_D_LUT4_D_1_Z_LUT4_Z_B_LUT4_D_Z_LUT4_D_Z_PFUMX_C0_Z_LUT4_D.F
+Info:    routing  0.00  13.50 Net u_ibex_core.if_stage_i.icache.lookup_addr_ic0_LUT4_Z_7_D_LUT4_D_Z_LUT4_Z_D_LUT4_D_1_Z_LUT4_Z_B_LUT4_D_Z_LUT4_D_Z_PFUMX_C0_Z_LUT4_D_Z (51,27) -> (51,27)
+Info:                          Sink u_ibex_core.if_stage_i.icache.lookup_addr_ic0_LUT4_Z_7_D_LUT4_D_Z_LUT4_Z_D_LUT4_D_1_Z_LUT4_Z_B_LUT4_D_Z_LUT4_D_Z_PFUMX_C0_Z_PFUMX_C0_BLUT_LUT4_Z.F1
 Info:                          Defined in:
 Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:133.22-133.24
-Info:      logic  0.17  8.84 Source u_ibex_core.if_stage_i.icache.way0_valid_LUT4_B_Z_PFUMX_Z_C0_L6MUX21_SD_Z_PFUMX_C0_BLUT_LUT4_Z.OFX
-Info:    routing  0.96  9.80 Net u_ibex_core.if_stage_i.icache.lookup_grant_TRELLIS_FF_DI_Q[3] (51,16) -> (50,14)
-Info:                          Sink instr_rvalid_i_LUT4_B_2_Z_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z.C
+Info:      logic  0.17  13.67 Source u_ibex_core.if_stage_i.icache.lookup_addr_ic0_LUT4_Z_7_D_LUT4_D_Z_LUT4_Z_D_LUT4_D_1_Z_LUT4_Z_B_LUT4_D_Z_LUT4_D_Z_PFUMX_C0_Z_PFUMX_C0_BLUT_LUT4_Z.OFX
+Info:    routing  1.02  14.69 Net instr_addr_o_PFUMX_Z_C0_LUT4_Z_D_LUT4_Z_C_LUT4_D_1_Z_LUT4_Z_B_PFUMX_Z_3_C0[2] (51,27) -> (54,21)
+Info:                          Sink instr_rvalid_i_LUT4_B_2_Z_LUT4_B_Z_PFUMX_BLUT_Z_LUT4_Z.A
 Info:                          Defined in:
 Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
-Info:      logic  0.24  10.04 Source instr_rvalid_i_LUT4_B_2_Z_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z.F
-Info:    routing  0.00  10.04 Net instr_rvalid_i_LUT4_B_2_Z_L6MUX21_Z_D1_PFUMX_Z_ALUT (50,14) -> (50,14)
-Info:                          Sink instr_rvalid_i_LUT4_B_2_Z_L6MUX21_Z_D1_PFUMX_Z_BLUT_LUT4_Z.F1
-Info:                          Defined in:
-Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:141.30-141.32
-Info:      logic  0.17  10.20 Source instr_rvalid_i_LUT4_B_2_Z_L6MUX21_Z_D1_PFUMX_Z_BLUT_LUT4_Z.OFX
-Info:    routing  0.00  10.20 Net instr_rvalid_i_LUT4_B_2_Z_L6MUX21_Z_D1 (50,14) -> (50,14)
-Info:                          Sink instr_rvalid_i_LUT4_B_2_Z_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z.FXB
-Info:                          Defined in:
-Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:141.38-141.40
-Info:      logic  0.24  10.45 Source instr_rvalid_i_LUT4_B_2_Z_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z.OFX
-Info:    routing  0.96  11.40 Net instr_rvalid_i_LUT4_B_2_Z[5] (50,14) -> (47,16)
-Info:                          Sink instr_rvalid_i_LUT4_B_3_Z_LUT4_C_Z_PFUMX_ALUT_Z_L6MUX21_Z_1_SD_L6MUX21_Z_1_D1_PFUMX_Z_ALUT_LUT4_Z.M
+Info:      logic  0.24  14.93 Source instr_rvalid_i_LUT4_B_2_Z_LUT4_B_Z_PFUMX_BLUT_Z_LUT4_Z.F
+Info:    routing  1.94  16.87 Net instr_rvalid_i_LUT4_B_2_Z_LUT4_B_Z_PFUMX_BLUT_Z[1] (54,21) -> (70,26)
+Info:                          Sink instr_rvalid_i_LUT4_B_2_Z_LUT4_B_Z_PFUMX_BLUT_Z_LUT4_Z_2_D_LUT4_Z_1.D
 Info:                          Defined in:
 Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
-Info:      logic  0.26  11.66 Source instr_rvalid_i_LUT4_B_3_Z_LUT4_C_Z_PFUMX_ALUT_Z_L6MUX21_Z_1_SD_L6MUX21_Z_1_D1_PFUMX_Z_ALUT_LUT4_Z.OFX
-Info:    routing  1.54  13.20 Net instr_rvalid_i_LUT4_B_3_Z_LUT4_C_Z_PFUMX_ALUT_Z_L6MUX21_Z_1_SD[6] (47,16) -> (49,27)
-Info:                          Sink instr_rvalid_i_LUT4_B_3_Z_LUT4_C_Z_PFUMX_ALUT_Z_L6MUX21_Z_1_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.M
+Info:      logic  0.24  17.10 Source instr_rvalid_i_LUT4_B_2_Z_LUT4_B_Z_PFUMX_BLUT_Z_LUT4_Z_2_D_LUT4_Z_1.F
+Info:    routing  0.42  17.52 Net instr_rvalid_i_LUT4_B_2_Z_LUT4_B_Z_PFUMX_BLUT_Z_LUT4_Z_2_D[3] (70,26) -> (70,26)
+Info:                          Sink instr_rvalid_i_LUT4_B_2_Z_LUT4_B_Z_PFUMX_BLUT_Z_LUT4_Z_2.D
 Info:                          Defined in:
 Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
-Info:      logic  0.26  13.45 Source instr_rvalid_i_LUT4_B_3_Z_LUT4_C_Z_PFUMX_ALUT_Z_L6MUX21_Z_1_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.OFX
-Info:    routing  1.52  14.97 Net instr_rvalid_i_LUT4_B_3_Z_LUT4_C_Z_PFUMX_ALUT_Z[4] (49,27) -> (53,19)
-Info:                          Sink instr_rvalid_i_LUT4_B_3_Z_LUT4_C_Z_PFUMX_ALUT_Z_PFUMX_C0_3_ALUT_LUT4_Z.M
+Info:      logic  0.24  17.76 Source instr_rvalid_i_LUT4_B_2_Z_LUT4_B_Z_PFUMX_BLUT_Z_LUT4_Z_2.F
+Info:    routing  2.54  20.30 Net instr_addr_o_PFUMX_Z_C0_LUT4_Z_D_LUT4_Z_C_LUT4_D_1_Z_LUT4_Z_D_LUT4_Z_D_LUT4_Z_A[1] (70,26) -> (40,16)
+Info:                          Sink u_ibex_core.if_stage_i.instr_valid_id_d_LUT4_Z_C_LUT4_Z_D_LUT4_D_1_Z_LUT4_D_Z_TRELLIS_FF_DI_Q_LUT4_Z.B
 Info:                          Defined in:
 Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
-Info:      logic  0.26  15.22 Source instr_rvalid_i_LUT4_B_3_Z_LUT4_C_Z_PFUMX_ALUT_Z_PFUMX_C0_3_ALUT_LUT4_Z.OFX
-Info:    routing  0.90  16.12 Net instr_rvalid_i_LUT4_B_3_Z_LUT4_C_Z_PFUMX_ALUT_Z_L6MUX21_SD_Z[0] (53,19) -> (53,17)
-Info:                          Sink instr_rvalid_i_LUT4_B_3_Z_LUT4_C_Z_PFUMX_ALUT_Z_PFUMX_C0_Z_L6MUX21_D1_Z_L6MUX21_Z_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.D
+Info:      logic  0.24  20.54 Source u_ibex_core.if_stage_i.instr_valid_id_d_LUT4_Z_C_LUT4_Z_D_LUT4_D_1_Z_LUT4_D_Z_TRELLIS_FF_DI_Q_LUT4_Z.F
+Info:    routing  2.00  22.54 Net instr_rvalid_i_LUT4_B_2_Z_LUT4_B_Z_PFUMX_BLUT_Z_LUT4_Z_1_B_PFUMX_C0_5_Z_PFUMX_C0_Z_L6MUX21_D1_Z_LUT4_D_Z[3] (40,16) -> (56,18)
+Info:                          Sink u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_L6MUX21_Z_4_D0_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.D
 Info:                          Defined in:
 Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
-Info:      logic  0.24  16.36 Source instr_rvalid_i_LUT4_B_3_Z_LUT4_C_Z_PFUMX_ALUT_Z_PFUMX_C0_Z_L6MUX21_D1_Z_L6MUX21_Z_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.F
-Info:    routing  0.00  16.36 Net instr_rvalid_i_LUT4_B_3_Z_LUT4_C_Z_PFUMX_ALUT_Z_PFUMX_C0_Z_L6MUX21_D1_Z_L6MUX21_Z_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT (53,17) -> (53,17)
-Info:                          Sink instr_rvalid_i_LUT4_B_3_Z_LUT4_C_Z_PFUMX_ALUT_Z_PFUMX_C0_Z_L6MUX21_D1_Z_L6MUX21_Z_D1_L6MUX21_Z_D0_PFUMX_Z_BLUT_LUT4_Z.F1
+Info:      logic  0.24  22.77 Source u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_L6MUX21_Z_4_D0_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.F
+Info:    routing  0.00  22.77 Net u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_L6MUX21_Z_4_D0_L6MUX21_Z_D0_PFUMX_Z_ALUT (56,18) -> (56,18)
+Info:                          Sink u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_L6MUX21_Z_4_D0_L6MUX21_Z_D0_PFUMX_Z_BLUT_LUT4_Z.F1
 Info:                          Defined in:
-Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:157.38-157.40
-Info:      logic  0.17  16.53 Source instr_rvalid_i_LUT4_B_3_Z_LUT4_C_Z_PFUMX_ALUT_Z_PFUMX_C0_Z_L6MUX21_D1_Z_L6MUX21_Z_D1_L6MUX21_Z_D0_PFUMX_Z_BLUT_LUT4_Z.OFX
-Info:    routing  0.00  16.53 Net instr_rvalid_i_LUT4_B_3_Z_LUT4_C_Z_PFUMX_ALUT_Z_PFUMX_C0_Z_L6MUX21_D1_Z_L6MUX21_Z_D1_L6MUX21_Z_D0 (53,17) -> (53,17)
-Info:                          Sink instr_rvalid_i_LUT4_B_3_Z_LUT4_C_Z_PFUMX_ALUT_Z_PFUMX_C0_Z_L6MUX21_D1_Z_L6MUX21_Z_D1_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z.FXA
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:157.22-157.24
+Info:      logic  0.17  22.94 Source u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_L6MUX21_Z_4_D0_L6MUX21_Z_D0_PFUMX_Z_BLUT_LUT4_Z.OFX
+Info:    routing  0.00  22.94 Net u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_L6MUX21_Z_4_D0_L6MUX21_Z_D0 (56,18) -> (56,18)
+Info:                          Sink u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_L6MUX21_Z_4_D0_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z.FXA
 Info:                          Defined in:
-Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:157.58-157.60
-Info:      logic  0.24  16.76 Source instr_rvalid_i_LUT4_B_3_Z_LUT4_C_Z_PFUMX_ALUT_Z_PFUMX_C0_Z_L6MUX21_D1_Z_L6MUX21_Z_D1_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z.OFX
-Info:    routing  0.00  16.76 Net instr_rvalid_i_LUT4_B_3_Z_LUT4_C_Z_PFUMX_ALUT_Z_PFUMX_C0_Z_L6MUX21_D1_Z_L6MUX21_Z_D1 (53,17) -> (53,17)
-Info:                          Sink instr_rvalid_i_LUT4_B_3_Z_LUT4_C_Z_PFUMX_ALUT_Z_PFUMX_C0_Z_L6MUX21_D1_Z_L6MUX21_Z_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.FXB
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:157.50-157.52
+Info:      logic  0.24  23.18 Source u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_L6MUX21_Z_4_D0_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z.OFX
+Info:    routing  0.00  23.18 Net u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_L6MUX21_Z_4_D0 (56,18) -> (56,18)
+Info:                          Sink u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_L6MUX21_Z_4_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.FXA
 Info:                          Defined in:
-Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:157.70-157.72
-Info:      logic  0.24  17.01 Source instr_rvalid_i_LUT4_B_3_Z_LUT4_C_Z_PFUMX_ALUT_Z_PFUMX_C0_Z_L6MUX21_D1_Z_L6MUX21_Z_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.OFX
-Info:    routing  2.08  19.09 Net instr_rvalid_i_LUT4_B_3_Z_LUT4_C_Z_PFUMX_ALUT_Z_PFUMX_C0_Z_L6MUX21_D1_Z[6] (53,17) -> (67,8)
-Info:                          Sink u_ibex_core.if_stage_i.icache.fb_count_b1_LUT4_B_1_Z_TRELLIS_FF_Q_DI_L6MUX21_Z_D0_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z_D_LUT4_D_Z_LUT4_C_Z_PFUMX_Z_81_BLUT_LUT4_Z_D_LUT4_C_Z_L6MUX21_Z_2_SD_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z.M
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:157.66-157.68
+Info:      logic  0.24  23.42 Source u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_L6MUX21_Z_4_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.OFX
+Info:    routing  3.30  26.72 Net u_ibex_core.if_stage_i.cd.cm_sp_offset_q_TRELLIS_FF_Q_6_DI_LUT4_C_Z_LUT4_D_Z_LUT4_Z_D_LUT4_Z_D_LUT4_Z_C_LUT4_C_B[4] (56,18) -> (21,29)
+Info:                          Sink u_ibex_core.if_stage_i.cd.cm_sp_offset_q_TRELLIS_FF_Q_6_DI_LUT4_C_Z_LUT4_D_Z_LUT4_Z_D_LUT4_Z_D_LUT4_Z_C_LUT4_C_B_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z.M
 Info:                          Defined in:
-Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
-Info:      logic  0.26  19.34 Source u_ibex_core.if_stage_i.icache.fb_count_b1_LUT4_B_1_Z_TRELLIS_FF_Q_DI_L6MUX21_Z_D0_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z_D_LUT4_D_Z_LUT4_C_Z_PFUMX_Z_81_BLUT_LUT4_Z_D_LUT4_C_Z_L6MUX21_Z_2_SD_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z.OFX
-Info:    routing  0.67  20.01 Net u_ibex_core.if_stage_i.icache.fb_count_b1_LUT4_B_1_Z_TRELLIS_FF_Q_DI_L6MUX21_Z_D0_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z_D_LUT4_D_Z_LUT4_C_Z_PFUMX_Z_81_BLUT_LUT4_Z_D_LUT4_C_Z_L6MUX21_Z_2_SD[6] (67,8) -> (67,7)
-Info:                          Sink u_ibex_core.if_stage_i.icache.fb_count_b1_LUT4_B_1_Z_TRELLIS_FF_Q_DI_L6MUX21_Z_D0_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z_D_LUT4_D_Z_LUT4_C_Z_PFUMX_Z_81_BLUT_LUT4_Z_D_LUT4_C_Z_L6MUX21_Z_2_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.M
-Info:                          Defined in:
-Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
-Info:      logic  0.26  20.26 Source u_ibex_core.if_stage_i.icache.fb_count_b1_LUT4_B_1_Z_TRELLIS_FF_Q_DI_L6MUX21_Z_D0_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z_D_LUT4_D_Z_LUT4_C_Z_PFUMX_Z_81_BLUT_LUT4_Z_D_LUT4_C_Z_L6MUX21_Z_2_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.OFX
-Info:    routing  1.86  22.12 Net u_ibex_core.if_stage_i.icache.fb_count_b1_LUT4_B_1_Z_TRELLIS_FF_Q_DI_L6MUX21_Z_D0_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z_D_LUT4_D_Z_LUT4_C_Z_LUT4_Z_108_C[2] (67,7) -> (58,17)
-Info:                          Sink u_ibex_core.if_stage_i.cd.i6_L6MUX21_Z_SD_L6MUX21_Z_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.M
+Info:                               ${REPO_ROOT}/flow/out/arch/ibex_top.v:12808.14-12808.27
+Info:      logic  0.26  26.98 Source u_ibex_core.if_stage_i.cd.cm_sp_offset_q_TRELLIS_FF_Q_6_DI_LUT4_C_Z_LUT4_D_Z_LUT4_Z_D_LUT4_Z_D_LUT4_Z_C_LUT4_C_B_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z.OFX
+Info:    routing  1.16  28.14 Net u_ibex_core.if_stage_i.instr_decompressed_PFUMX_Z_6_C0_LUT4_Z_A[4] (21,29) -> (15,32)
+Info:                          Sink u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_LUT4_Z_14_D_LUT4_D_Z_PFUMX_Z_C0_LUT4_Z_1_A_PFUMX_C0_Z_CCU2C_B1_B0_L6MUX21_Z_SD_LUT4_B_Z_LUT4_D_Z_LUT4_Z_1.D
 Info:                          Defined in:
 Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
-Info:      logic  0.26  22.38 Source u_ibex_core.if_stage_i.cd.i6_L6MUX21_Z_SD_L6MUX21_Z_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.OFX
-Info:    routing  2.34  24.72 Net u_ibex_core.if_stage_i.cd.i6_L6MUX21_Z_SD[5] (58,17) -> (32,13)
-Info:                          Sink u_ibex_core.if_stage_i.cd.i6_L6MUX21_Z_D1_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z.M
+Info:      logic  0.24  28.37 Source u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_LUT4_Z_14_D_LUT4_D_Z_PFUMX_Z_C0_LUT4_Z_1_A_PFUMX_C0_Z_CCU2C_B1_B0_L6MUX21_Z_SD_LUT4_B_Z_LUT4_D_Z_LUT4_Z_1.F
+Info:    routing  1.19  29.56 Net u_ibex_core.if_stage_i.illegal_c_insn_LUT4_Z_A[1] (15,32) -> (15,28)
+Info:                          Sink u_ibex_core.if_stage_i.instr_decompressed_PFUMX_Z_BLUT_LUT4_Z_D_LUT4_D_1_Z_L6MUX21_Z_D1_L6MUX21_Z_SD_PFUMX_C0_Z_LUT4_Z.D
 Info:                          Defined in:
 Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
-Info:      logic  0.26  24.98 Source u_ibex_core.if_stage_i.cd.i6_L6MUX21_Z_D1_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z.OFX
-Info:    routing  0.00  24.98 Net u_ibex_core.if_stage_i.cd.i6_L6MUX21_Z_D1 (32,13) -> (32,13)
-Info:                          Sink u_ibex_core.if_stage_i.cd.i6_L6MUX21_Z_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.FXB
-Info:                          Defined in:
-Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:157.70-157.72
-Info:      logic  0.24  25.22 Source u_ibex_core.if_stage_i.cd.i6_L6MUX21_Z_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.OFX
-Info:    routing  1.96  27.18 Net u_ibex_core.if_stage_i.fetch_rdata[6] (32,13) -> (21,3)
-Info:                          Sink u_ibex_core.if_stage_i.instr_decompressed_PFUMX_Z_C0_PFUMX_Z_C0_LUT4_Z_1_C_LUT4_Z_C_LUT4_B_C_LUT4_Z_D_PFUMX_C0_Z_LUT4_Z.C
+Info:      logic  0.24  29.80 Source u_ibex_core.if_stage_i.instr_decompressed_PFUMX_Z_BLUT_LUT4_Z_D_LUT4_D_1_Z_L6MUX21_Z_D1_L6MUX21_Z_SD_PFUMX_C0_Z_LUT4_Z.F
+Info:    routing  1.08  30.88 Net u_ibex_core.if_stage_i.instr_decompressed_LUT4_Z_8_D_LUT4_Z_B[6] (15,28) -> (14,24)
+Info:                          Sink u_ibex_core.if_stage_i.instr_decompressed_PFUMX_Z_BLUT_LUT4_Z_D_LUT4_D_1_Z_L6MUX21_Z_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.M
 Info:                          Defined in:
 Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
-Info:      logic  0.24  27.42 Source u_ibex_core.if_stage_i.instr_decompressed_PFUMX_Z_C0_PFUMX_Z_C0_LUT4_Z_1_C_LUT4_Z_C_LUT4_B_C_LUT4_Z_D_PFUMX_C0_Z_LUT4_Z.F
-Info:    routing  1.33  28.75 Net u_ibex_core.if_stage_i.illegal_c_insn_PFUMX_Z_C0_LUT4_Z_1_C_LUT4_Z_D_LUT4_B_Z_LUT4_Z_C_LUT4_B_Z_PFUMX_Z_C0_PFUMX_Z_C0[3] (21,3) -> (23,12)
-Info:                          Sink u_ibex_core.if_stage_i.instr_decompressed_PFUMX_Z_10_C0_L6MUX21_Z_SD_PFUMX_Z_C0_LUT4_Z_1_C_LUT4_D_Z_CCU2C_A0_COUT_CCU2C_CIN_A0_LUT4_Z_D_LUT4_Z.D
+Info:      logic  0.26  31.14 Source u_ibex_core.if_stage_i.instr_decompressed_PFUMX_Z_BLUT_LUT4_Z_D_LUT4_D_1_Z_L6MUX21_Z_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.OFX
+Info:    routing  1.08  32.22 Net u_ibex_core.if_stage_i.instr_decompressed_PFUMX_Z_BLUT_LUT4_Z_D_LUT4_D_1_Z[2] (14,24) -> (13,25)
+Info:                          Sink u_ibex_core.if_stage_i.instr_decompressed_L6MUX21_Z_2_D0_PFUMX_Z_BLUT_LUT4_Z.C
 Info:                          Defined in:
 Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
-Info:      logic  0.24  28.98 Source u_ibex_core.if_stage_i.instr_decompressed_PFUMX_Z_10_C0_L6MUX21_Z_SD_PFUMX_Z_C0_LUT4_Z_1_C_LUT4_D_Z_CCU2C_A0_COUT_CCU2C_CIN_A0_LUT4_Z_D_LUT4_Z.F
-Info:    routing  0.63  29.61 Net u_ibex_core.if_stage_i.instr_decompressed_PFUMX_Z_10_C0_L6MUX21_Z_SD_PFUMX_Z_C0_LUT4_Z_1_C_LUT4_D_Z_CCU2C_A0_COUT_CCU2C_CIN_A0_LUT4_Z_D[1] (23,12) -> (23,12)
-Info:                          Sink u_ibex_core.if_stage_i.instr_decompressed_PFUMX_Z_10_C0_L6MUX21_Z_SD_PFUMX_Z_C0_LUT4_Z_1_C_LUT4_D_Z_CCU2C_A0_COUT_CCU2C_CIN_A0_LUT4_Z_D_LUT4_D.D
+Info:      logic  0.40  32.62 Source u_ibex_core.if_stage_i.instr_decompressed_L6MUX21_Z_2_D0_PFUMX_Z_BLUT_LUT4_Z.OFX
+Info:    routing  0.00  32.62 Net u_ibex_core.if_stage_i.instr_decompressed_L6MUX21_Z_2_D0 (13,25) -> (13,25)
+Info:                          Sink u_ibex_core.if_stage_i.instr_decompressed_L6MUX21_Z_2_D1_PFUMX_Z_ALUT_LUT4_Z.FXA
 Info:                          Defined in:
-Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
-Info:      logic  0.24  29.85 Source u_ibex_core.if_stage_i.instr_decompressed_PFUMX_Z_10_C0_L6MUX21_Z_SD_PFUMX_Z_C0_LUT4_Z_1_C_LUT4_D_Z_CCU2C_A0_COUT_CCU2C_CIN_A0_LUT4_Z_D_LUT4_D.F
-Info:    routing  0.65  30.50 Net u_ibex_core.if_stage_i.instr_decompressed_PFUMX_Z_10_C0_L6MUX21_Z_SD_PFUMX_Z_C0_LUT4_Z_1_C_LUT4_D_Z_CCU2C_A0_COUT_CCU2C_CIN_A0_LUT4_Z_D_LUT4_D_Z[4] (23,12) -> (24,6)
-Info:                          Sink u_ibex_core.if_stage_i.illegal_c_insn_PFUMX_Z_C0_LUT4_Z_1_C_LUT4_Z_D_LUT4_B_Z_LUT4_Z_C_LUT4_B_D_LUT4_Z_1.D
-Info:                          Defined in:
-Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
-Info:      logic  0.24  30.74 Source u_ibex_core.if_stage_i.illegal_c_insn_PFUMX_Z_C0_LUT4_Z_1_C_LUT4_Z_D_LUT4_B_Z_LUT4_Z_C_LUT4_B_D_LUT4_Z_1.F
-Info:    routing  0.42  31.16 Net u_ibex_core.if_stage_i.illegal_c_insn_PFUMX_Z_C0_LUT4_Z_1_C_LUT4_Z_D_LUT4_B_Z_LUT4_Z_C_LUT4_B_D[4] (24,6) -> (24,6)
-Info:                          Sink u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_LUT4_Z_14_D_PFUMX_C0_Z_PFUMX_Z_1_BLUT_LUT4_Z.M
-Info:                          Defined in:
-Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
-Info:      logic  0.26  31.42 Source u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_LUT4_Z_14_D_PFUMX_C0_Z_PFUMX_Z_1_BLUT_LUT4_Z.OFX
-Info:    routing  0.62  32.04 Net u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_LUT4_Z_14_D_PFUMX_C0_Z[4] (24,6) -> (26,6)
-Info:                          Sink u_ibex_core.if_stage_i.instr_decompressed_L6MUX21_Z_3_D1_PFUMX_Z_BLUT_LUT4_Z.M
-Info:                          Defined in:
-Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
-Info:      logic  0.26  32.29 Source u_ibex_core.if_stage_i.instr_decompressed_L6MUX21_Z_3_D1_PFUMX_Z_BLUT_LUT4_Z.OFX
-Info:    routing  0.00  32.29 Net u_ibex_core.if_stage_i.instr_decompressed_L6MUX21_Z_3_D1 (26,6) -> (26,6)
-Info:                          Sink u_ibex_core.if_stage_i.instr_decompressed_L6MUX21_Z_3_D1_PFUMX_Z_ALUT_LUT4_Z.FXB
-Info:                          Defined in:
-Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:141.38-141.40
-Info:      logic  0.24  32.53 Source u_ibex_core.if_stage_i.instr_decompressed_L6MUX21_Z_3_D1_PFUMX_Z_ALUT_LUT4_Z.OFX
-Info:    routing  2.23  34.76 Net u_ibex_core.if_stage_i.instr_decompressed[20] (26,6) -> (26,33)
-Info:                          Sink u_ibex_core.if_stage_i.instr_rdata_alu_id_o_TRELLIS_FF_Q_19.M
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:141.34-141.36
+Info:      logic  0.24  32.86 Source u_ibex_core.if_stage_i.instr_decompressed_L6MUX21_Z_2_D1_PFUMX_Z_ALUT_LUT4_Z.OFX
+Info:    routing  2.46  35.31 Net u_ibex_core.if_stage_i.instr_decompressed[17] (13,25) -> (34,36)
+Info:                          Sink u_ibex_core.if_stage_i.instr_rdata_alu_id_o_TRELLIS_FF_Q_16.M
 Info:                          Defined in:
 Info:                               ${REPO_ROOT}/flow/out/arch/ibex_top.v:14018.14-14018.32
-Info:      setup  0.00  34.76 Source u_ibex_core.if_stage_i.instr_rdata_alu_id_o_TRELLIS_FF_Q_19.M
-Info: 11.50 ns logic, 23.26 ns routing
+Info:      setup  0.00  35.31 Source u_ibex_core.if_stage_i.instr_rdata_alu_id_o_TRELLIS_FF_Q_16.M
+Info: 10.90 ns logic, 24.42 ns routing
 
-Warning: Max frequency for clock 'clk_i': 28.77 MHz (FAIL at 50.00 MHz)
+Warning: Max frequency for clock 'clk_i': 28.32 MHz (FAIL at 50.00 MHz)
 
 Info: Slack histogram:
 Info:  legend: * represents 21 endpoint(s)
 Info:          + represents [1,21) endpoint(s)
-Info: [-14761, -13070) |**********+
-Info: [-13070, -11379) |*********************+
-Info: [-11379,  -9688) |************************************************************ 
-Info: [ -9688,  -7997) |********************************************************+
-Info: [ -7997,  -6306) |****************************+
-Info: [ -6306,  -4615) |***************************+
-Info: [ -4615,  -2924) |*********+
-Info: [ -2924,  -1233) |*******************+
-Info: [ -1233,    458) |********+
-Info: [   458,   2149) |*********+
-Info: [  2149,   3840) |********+
-Info: [  3840,   5531) |******************+
-Info: [  5531,   7222) |**************************+
-Info: [  7222,   8913) |****+
-Info: [  8913,  10604) |+
-Info: [ 10604,  12295) |*+
-Info: [ 12295,  13986) |**+
-Info: [ 13986,  15677) |+
-Info: [ 15677,  17368) |***+
-Info: [ 17368,  19059) |******+
-2001 warnings, 0 errors
+Info: [-15314, -13595) |+
+Info: [-13595, -11876) |******+
+Info: [-11876, -10157) |*******************+
+Info: [-10157,  -8438) |************************************************************ 
+Info: [ -8438,  -6719) |******************************************+
+Info: [ -6719,  -5000) |*************************+
+Info: [ -5000,  -3281) |******************+
+Info: [ -3281,  -1562) |********************************************+
+Info: [ -1562,    157) |*************+
+Info: [   157,   1876) |**********+
+Info: [  1876,   3595) |*********+
+Info: [  3595,   5314) |**************************+
+Info: [  5314,   7033) |**************************+
+Info: [  7033,   8752) |*+
+Info: [  8752,  10471) |+
+Info: [ 10471,  12190) |****+
+Info: [ 12190,  13909) |*+
+Info: [ 13909,  15628) |+
+Info: [ 15628,  17347) |***+
+Info: [ 17347,  19066) |*****+
+788 warnings, 0 errors
 
 Info: Program finished normally.
