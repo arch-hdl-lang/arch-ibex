@@ -2,7 +2,7 @@
 # sky130hd place-and-route of one lane's synthesised ibex_top with OpenROAD's
 # regression flow (no OpenROAD-flow-scripts needed).
 #   flow/openroad/run.sh <sv|arch>
-# Inputs : flow/out/<lane>/sky130/netlist.v (from flow/sky130_synth.sh) and its
+# Inputs : flow/out/<lane>/sky130/netlist_sta.v (from flow/sky130_synth.sh) and its
 #          synth.stat (the die is sized from the synthesised area at UTIL %).
 # Outputs: flow/out/<lane>/openroad/{results/,openroad.log,final_*.rpt} and copies
 #          review-package/reports/<lane>_openroad_final_{area,timing,power}.rpt,
@@ -13,23 +13,40 @@ lane="${1:?lane (sv|arch)}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export OPENROAD_TEST="${OPENROAD_TEST:-$HOME/github/OpenROAD/test}"
 OPENROAD_EXE="${OPENROAD_EXE:-$HOME/.local/bin/openroad}"
-UTIL="${UTIL:-50}"
+# UTIL is the ratio of the *synthesised* cell area to the core area. 25 % is
+# used (not ORFS's 50 %) because OpenROAD's regression flow pads every cell by
+# 4 sites per side during global placement (sky130hd.vars) and repair_design
+# adds ~20 k buffers: at 50 % the padded area filled 93 % of the core and
+# detailed placement failed on the 24-site-wide enable flops of the RAM arrays
+# (first attempt, 2026-09-04: DPL-0036 on 5,977 instances). Identical on both lanes.
+UTIL="${UTIL:-25}"
 in="$REPO_ROOT/flow/out/$lane/sky130"
-[ -f "$in/netlist.v" ] || { echo "[$lane] missing $in/netlist.v (run flow/sky130_synth.sh)"; exit 2; }
+# netlist_sta.v is netlist.v with the (timing-irrelevant) `signed` keyword
+# stripped from wire declarations; OpenROAD's Verilog reader, like OpenSTA's,
+# rejects `wire signed`. Identical to netlist.v on the SV lane.
+[ -f "$in/netlist_sta.v" ] || { echo "[$lane] missing $in/netlist_sta.v (run flow/sky130_synth.sh)"; exit 2; }
 area=$(grep -oE "Chip area for module '\\\\ibex_top': [0-9.]+" "$in/synth.stat" | grep -oE '[0-9.]+$')
 # Square die holding the synthesised area at UTIL % core utilisation, plus a
 # 10 um core margin on each side; the same rule on both lanes (ORFS's
 # CORE_UTILIZATION semantics), rounded up to a whole micron.
 side=$(python3 -c "import math; print(math.ceil(math.sqrt($area/($UTIL/100.0))) + 20)")
 out="$REPO_ROOT/flow/out/$lane/openroad"; mkdir -p "$out/results"
-export LANE="$lane" NETLIST="$in/netlist.v" SDC="$REPO_ROOT/flow/openroad/constraint.sdc" DIE_SIDE="$side" RESULTS_DIR="$out/results" OUT="$out"
+export LANE="$lane" NETLIST="$in/netlist_sta.v" SDC="$REPO_ROOT/flow/openroad/constraint.sdc" DIE_SIDE="$side" RESULTS_DIR="$out/results" OUT="$out"
 echo "[$lane] synthesised area ${area} um2, UTIL=${UTIL}% -> die ${side}x${side} um"
 start=$(date +%s)
 "$OPENROAD_EXE" -exit -no_init "$REPO_ROOT/flow/openroad/lane.tcl" > "$out/openroad.log" 2>&1
 rc=$?
 echo "[$lane] openroad exit=$rc in $(( $(date +%s) - start )) s"
+[ $rc -eq 0 ] || exit $rc
+# Final reports from the saved (filled, routed, extracted) design; the script
+# prints marker-delimited sections that are split into final_*.rpt here.
+start=$(date +%s)
+"$OPENROAD_EXE" -exit -no_init "$REPO_ROOT/flow/openroad/report.tcl" > "$out/report.log" 2>&1
+rc=$?
+echo "[$lane] report exit=$rc in $(( $(date +%s) - start )) s"
+awk -v out="$out" '/^##### /{f=$2; if(f=="end")f=""; next} f{print > (out"/"f)}' "$out/report.log"
 R="$REPO_ROOT/review-package/reports"
-for f in final_area.rpt final_timing.rpt final_power.rpt final_metrics.txt; do
+for f in final_area.rpt final_timing.rpt final_power.rpt final_checks.rpt final_metrics.txt; do
   [ -f "$out/$f" ] && cp "$out/$f" "$R/${lane}_openroad_$f"
 done
 exit $rc

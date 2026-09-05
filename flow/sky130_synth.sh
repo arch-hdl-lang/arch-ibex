@@ -59,9 +59,15 @@ synth -top ibex_top
 dfflibmap -liberty $SKY130_LIB
 techmap -map $REPO_ROOT/flow/sky130_latch_map.v
 abc -liberty $SKY130_LIB
+# Undefined bits ('x, e.g. unused multiplier intermediate bits) become 0, and
+# constant drivers become conb_1 tie cells (one HI, one LO); OpenROAD's reader
+# otherwise turns them into unroutable zero_/one_ power nets (TritonRoute
+# DRT-0305) and the P&R flow's repair_tie_fanout expects tie cells.
+setundef -zero
+hilomap -singleton -hicell sky130_fd_sc_hd__conb_1 HI -locell sky130_fd_sc_hd__conb_1 LO
 opt_clean -purge
 tee -o $out/synth.stat stat -liberty $SKY130_LIB
-write_verilog -noattr -noexpr $out/netlist.v
+write_verilog -noattr -noexpr -nohex -nodec $out/netlist.v
 YS
   echo "[$lane] yosys ..."; start=$(date +%s)
   if yosys -q -l "$out/synth.log" -s "$out/synth.ys" > /dev/null 2>&1; then

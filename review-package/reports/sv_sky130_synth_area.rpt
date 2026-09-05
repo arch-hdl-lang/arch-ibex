@@ -1,18 +1,18 @@
 
-16. Printing statistics.
+18. Printing statistics.
 
 === ibex_top ===
 
         +----------Local Count, excluding submodules.
         |        +-Local Area, excluding submodules.
         |        | 
-    55973        - wires
-   102861        - wire bits
-     1265        - public wires
-    48153        - public wire bits
+    55974        - wires
+   102862        - wire bits
+     1266        - public wires
+    48154        - public wire bits
        54        - ports
       787        - port bits
-   102077 1.74E+06 cells
+   102079 1.74E+06 cells
         6   67.565   sky130_fd_sc_hd__a2111o_1
        75   656.88   sky130_fd_sc_hd__a2111oi_0
        11   96.342   sky130_fd_sc_hd__a211o_1
@@ -41,6 +41,7 @@
        65  569.296   sky130_fd_sc_hd__and4_1
        11  110.106   sky130_fd_sc_hd__and4b_1
       399  1.5E+03   sky130_fd_sc_hd__clkinv_1
+        2    7.507   sky130_fd_sc_hd__conb_1
      1928 4.82E+04   sky130_fd_sc_hd__dfrtp_1
         7  183.926   sky130_fd_sc_hd__dfstp_2
         1   15.014   sky130_fd_sc_hd__dlxtn_1
@@ -93,6 +94,6 @@
       348 3.05E+03   sky130_fd_sc_hd__xor2_1
         3   71.318   sky130_fd_sc_hd__xor3_1
 
-   Chip area for module '\ibex_top': 1736603.039999
+   Chip area for module '\ibex_top': 1736610.547199
      of which used for sequential elements: 1393239.977599 (80.23%)
 

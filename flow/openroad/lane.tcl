@@ -28,24 +28,4 @@ set global_place_density 0.5
 
 include -echo "flow.tcl"
 
-# ── Final reports on the routed, parasitic-extracted design ──────────────
-set out $::env(OUT)
-report_design_area                                       > $out/final_area.rpt
-report_cell_usage                                       >> $out/final_area.rpt
-report_wns                                               > $out/final_timing.rpt
-report_tns                                              >> $out/final_timing.rpt
-report_worst_slack -max -digits 3                       >> $out/final_timing.rpt
-report_worst_slack -min -digits 3                       >> $out/final_timing.rpt
-report_checks -path_delay max -group_path_count 5 -digits 3 >> $out/final_timing.rpt
-report_checks -path_delay min -group_path_count 1 -digits 3 >> $out/final_timing.rpt
-report_check_types -max_slew -max_capacitance -max_fanout -violators >> $out/final_timing.rpt
-report_power                                             > $out/final_power.rpt
-set fh [open $out/final_metrics.txt w]
-puts $fh "design_area_um2 [sta::format_area [rsz::design_area] 0]"
-puts $fh "utilization_pct [format %.1f [expr [rsz::utilization] * 100]]"
-puts $fh "wns_ns [sta::worst_slack -max]"
-puts $fh "tns_ns [sta::total_negative_slack -max]"
-puts $fh "drv_count [detailed_route_num_drvs]"
-puts $fh "instance_count [sta::network_instance_count]"
-puts $fh "die_side_um $side"
-close $fh
+# Final reports: flow/openroad/report.tcl (run by run.sh on the saved design).

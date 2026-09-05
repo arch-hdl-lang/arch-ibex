@@ -12,6 +12,12 @@ synth -top ibex_top
 dfflibmap -liberty /Users/<user>/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
 techmap -map /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/flow/sky130_latch_map.v
 abc -liberty /Users/<user>/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+# Undefined bits ('x, e.g. unused multiplier intermediate bits) become 0, and
+# constant drivers become conb_1 tie cells (one HI, one LO); OpenROAD's reader
+# otherwise turns them into unroutable zero_/one_ power nets (TritonRoute
+# DRT-0305) and the P&R flow's repair_tie_fanout expects tie cells.
+setundef -zero
+hilomap -singleton -hicell sky130_fd_sc_hd__conb_1 HI -locell sky130_fd_sc_hd__conb_1 LO
 opt_clean -purge
 tee -o /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/flow/out/sv/sky130/synth.stat stat -liberty /Users/<user>/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
-write_verilog -noattr -noexpr /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/flow/out/sv/sky130/netlist.v
+write_verilog -noattr -noexpr -nohex -nodec /Users/<user>/github/arch-ibex/.claude/worktrees/code-arch-instructions-7b4027/flow/out/sv/sky130/netlist.v
