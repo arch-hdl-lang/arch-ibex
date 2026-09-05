@@ -30,15 +30,15 @@ from `claude/code-arch-instructions-7b4027` at `8c4b3ca` (= `main`).
 | arch-com PR for the stub fix | [arch-hdl-lang/arch-com#993](https://github.com/arch-hdl-lang/arch-com/pull/993), branch `fix/stub-variant-mangling` (commit `a814dc62` on `origin/main` `f4569890`): same 12-line change plus regression test `test_interface_stub_not_variant_mangled`; local `cargo test --release` green (30 suites); **CI: all checks passed**. |
 | arch-com issues filed (2026-09-04) | [#995](https://github.com/arch-hdl-lang/arch-com/issues/995) thread lowering `PROCASSINIT` pattern; [#996](https://github.com/arch-hdl-lang/arch-com/issues/996) `arch sim --pybind` reference-member binding (the two `test_archsim_units` gate failures); [#997](https://github.com/arch-hdl-lang/arch-com/issues/997) `pipe_reg` tap reads vs operand-latency check (spec's FIR example no longer compiles) |
 | Commit messages on `review-package` | plain descriptive messages, no AI-authorship trailer |
-| ECP5 (Phase 5) | `nextpnr-ecp5` is **not installed** (owner confirmed); Phase 5 stays blocked unless it is installed later |
-| sky130 P&R (Phase 4.4) | OpenROAD-flow-scripts is not present (`~/github/OpenROAD/test/orfs` is OpenROAD's Bazel test dir, not ORFS; no Docker image); a concrete install plan will be proposed when Phase 4.4 is reached |
+| ECP5 (Phase 5) | `nextpnr-ecp5` was not installed; the owner chose a source build (2026-09-04): `brew install prjtrellis` (1.4) + `git clone --depth 1 https://github.com/YosysHQ/nextpnr` at `8dbcee5`, `cmake -DARCH=ecp5 -DTRELLIS_INSTALL_PREFIX=$(brew --prefix prjtrellis)`, binary `~/github/nextpnr/build/nextpnr-ecp5` (110 MB). Yosys `synth_ecp5` comes from the Homebrew Yosys. |
+| sky130 P&R (Phase 4.4) | OpenROAD-flow-scripts is not present anywhere on the host (shell history, memory notes and a depth-9 filesystem search; `~/github/OpenROAD/test/orfs` is OpenROAD's Bazel test dir, `test/sky130hd` its platform files). Used instead: **OpenROAD's own regression flow** `~/github/OpenROAD/test/flow.tcl` (floorplan → tapcell → PDN → global/detailed placement → repair → CTS → global + detailed route → antenna repair → filler → RCX) with its sky130hd platform, driven by `flow/openroad/run.sh`; smoke-tested on OpenROAD's `gcd_sky130hd` design (9 s, exit 0). The prepared ORFS configs under `flow/orfs/` remain for a host that has ORFS. |
 
-## Tools missing (blockers for later phases)
+## Tools missing (as found at Phase 0; resolved as recorded in the decisions table above)
 
-| Tool | Needed by | Status |
+| Tool | Needed by | Status at Phase 0 → outcome |
 |---|---|---|
-| `nextpnr-ecp5` (+ `prjtrellis` DB, `ecppack`) | Phase 5 | Not installed. Homebrew has `nextpnr-ice40` and `prjtrellis` only, no `nextpnr-ecp5` formula; no oss-cad-suite install found. Options: build nextpnr from source against `brew install prjtrellis`, or install YosysHQ oss-cad-suite (macOS arm64 tarball). Either is a system-level install → needs your OK. |
-| OpenROAD-flow-scripts (ORFS) | Phase 4.4 | Not present anywhere under `~`. The local OpenROAD binary exists, but ORFS (Makefile flow, `designs/sky130hd/ibex`, platform files) must be cloned; ORFS expects its own Yosys/OpenROAD builds and is not routinely supported on macOS. Needs your OK and likely >15 min of setup. |
+| `nextpnr-ecp5` (+ `prjtrellis` DB) | Phase 5 | Not installed, no Homebrew formula → built from source on 2026-09-04 (see decisions table). |
+| OpenROAD-flow-scripts (ORFS) | Phase 4.4 | Not present → replaced by OpenROAD's own regression flow (see decisions table); ORFS configs kept under `flow/orfs/` for reference. |
 
 ## ARCH compiler candidates (Phase 0)
 
