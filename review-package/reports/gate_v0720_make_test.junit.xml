@@ -1,0 +1,898 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="12" skipped="75" tests="249" time="60.101" timestamp="2026-09-05T11:42:44.815125-07:00" hostname="SHUQINGs-MacBook-Air.local"><testcase classname="tests.test_coremark_compare" name="test_coremark_swap_matches_upstream" time="0.000"><skipped type="pytest.skip" message="CoreMark comparison is an opt-in long-running benchmark">${REPO_ROOT}/tests/test_coremark_compare.py:417: CoreMark comparison is an opt-in long-running benchmark</skipped></testcase><testcase classname="tests.test_harc_runner" name="test_arch_coverage_ignores_generated_thread_counter_toggle" time="0.001" /><testcase classname="tests.test_archsim_units" name="test_archsim_unit[IbexAlu]" time="6.256"><properties><property name="archsim_wall_seconds" value="6.253" /><property name="archsim_module" value="IbexAlu" /></properties><failure message="Failed: arch sim failed for IbexAlu (rc=1, 6.25s)&#10;--- STDOUT (tail) ---&#10;&#10;--- STDERR (tail) ---&#10;Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_alu0/VStructs.cpp&#10;Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_alu0/Vibex_alu.cpp&#10;Generated pybind11 wrapper: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_alu0/Vibex_alu_pybind.cpp&#10;Compiling pybind11 module...&#10;/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_alu0/Vibex_alu_pybind.cpp:79:41: error: cannot form a pointer-to-member to member 'imd_val_q_i_0' of reference type 'uint32_t &amp;' (aka 'unsigned int &amp;')&#10;   79 |         .def_readwrite(&quot;imd_val_q_i_0&quot;, &amp;Vibex_alu::imd_val_q_i_0)&#10;      |                                         ^&#10;/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_alu0/Vibex_alu_pybind.cpp:80:41: error: cannot form a pointer-to-member to member 'imd_val_q_i_1' of reference type 'uint32_t &amp;' (aka 'unsigned int &amp;')&#10;   80 |         .def_readwrite(&quot;imd_val_q_i_1&quot;, &amp;Vibex_alu::imd_val_q_i_1)&#10;      |                                         ^&#10;/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_alu0/Vibex_alu_pybind.cpp:81:41: error: cannot form a pointer-to-member to member 'imd_val_d_o_0' of reference type 'uint32_t &amp;' (aka 'unsigned int &amp;')&#10;   81 |         .def_readwrite(&quot;imd_val_d_o_0&quot;, &amp;Vibex_alu::imd_val_d_o_0)&#10;      |                                         ^&#10;/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_alu0/Vibex_alu_pybind.cpp:82:41: error: cannot form a pointer-to-member to member 'imd_val_d_o_1' of reference type 'uint32_t &amp;' (aka 'unsigned int &amp;')&#10;   82 |         .def_readwrite(&quot;imd_val_d_o_1&quot;, &amp;Vibex_alu::imd_val_d_o_1)&#10;      |                                         ^&#10;4 errors generated.&#10;Pybind11 link failed for Vibex_alu_pybind">arch_bin = '~/.local/bin/arch-0.72.0', arch_stem = 'IbexAlu'
+cocotb_test = 'test_ibex_alu_unit.py'
+tmp_path_factory = TempPathFactory(_given_basetemp=PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>...5k29j301gs_lsdrnlvdjw0000gn/T/pytest-of-<user>/pytest-49/popen-gw3'), _retention_count=3, _retention_policy='all')
+record_property = &lt;function record_property.&lt;locals&gt;.append_property at 0x10533c220&gt;
+
+    @pytest.mark.parametrize(
+        "arch_stem,cocotb_test",
+        MODULES,
+        ids=[(m.values[0] if hasattr(m, "values") else m[0]) for m in MODULES],
+    )
+    def test_archsim_unit(
+        arch_bin: str,
+        arch_stem: str,
+        cocotb_test: str,
+        tmp_path_factory: pytest.TempPathFactory,
+        record_property,
+    ):
+        arch_file = SRC_DIR / f"{arch_stem}.arch"
+        test_file = COCOTB_TESTS_DIR / cocotb_test
+        if not arch_file.is_file():
+            pytest.skip(f"missing {arch_file}; run `make build` first")
+        if not test_file.is_file():
+            pytest.skip(f"missing {test_file}")
+    
+        # Each module gets its own outdir so xdist workers don't collide.
+        outdir = tmp_path_factory.mktemp(f"archsim_{_camel_to_snake(arch_stem)}")
+    
+        cmd = [
+            arch_bin, "sim", "--pybind",
+            "--test", str(test_file),
+            "-o", str(outdir),
+            str(arch_file),
+        ]
+        env = os.environ.copy()
+        # The launcher inherits PYTHONPATH; keep cwd inside outdir so the
+        # generated runner's relative imports land correctly.
+        t0 = time.perf_counter()
+        proc = subprocess.run(
+            cmd, cwd=str(outdir),
+            env=env,
+            capture_output=True, text=True,
+            timeout=300,
+        )
+        elapsed = time.perf_counter() - t0
+        record_property("archsim_wall_seconds", f"{elapsed:.3f}")
+        record_property("archsim_module", arch_stem)
+    
+        # arch sim returns non-zero on any cocotb failure; on stderr we
+        # expect a "Results: N tests, ALL PASSED" footer for the green path.
+        if proc.returncode != 0 or "ALL PASSED" not in proc.stdout + proc.stderr:
+            # Surface tails to make CI noise debuggable.
+            tail_out = "\n".join(proc.stdout.splitlines()[-40:])
+            tail_err = "\n".join(proc.stderr.splitlines()[-40:])
+&gt;           pytest.fail(
+                f"arch sim failed for {arch_stem} (rc={proc.returncode}, "
+                f"{elapsed:.2f}s)\n"
+                f"--- STDOUT (tail) ---\n{tail_out}\n"
+                f"--- STDERR (tail) ---\n{tail_err}\n"
+            )
+E           Failed: arch sim failed for IbexAlu (rc=1, 6.25s)
+E           --- STDOUT (tail) ---
+E           
+E           --- STDERR (tail) ---
+E           Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_alu0/VStructs.cpp
+E           Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_alu0/Vibex_alu.cpp
+E           Generated pybind11 wrapper: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_alu0/Vibex_alu_pybind.cpp
+E           Compiling pybind11 module...
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_alu0/Vibex_alu_pybind.cpp:79:41: error: cannot form a pointer-to-member to member 'imd_val_q_i_0' of reference type 'uint32_t &amp;' (aka 'unsigned int &amp;')
+E              79 |         .def_readwrite("imd_val_q_i_0", &amp;Vibex_alu::imd_val_q_i_0)
+E                 |                                         ^
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_alu0/Vibex_alu_pybind.cpp:80:41: error: cannot form a pointer-to-member to member 'imd_val_q_i_1' of reference type 'uint32_t &amp;' (aka 'unsigned int &amp;')
+E              80 |         .def_readwrite("imd_val_q_i_1", &amp;Vibex_alu::imd_val_q_i_1)
+E                 |                                         ^
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_alu0/Vibex_alu_pybind.cpp:81:41: error: cannot form a pointer-to-member to member 'imd_val_d_o_0' of reference type 'uint32_t &amp;' (aka 'unsigned int &amp;')
+E              81 |         .def_readwrite("imd_val_d_o_0", &amp;Vibex_alu::imd_val_d_o_0)
+E                 |                                         ^
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_alu0/Vibex_alu_pybind.cpp:82:41: error: cannot form a pointer-to-member to member 'imd_val_d_o_1' of reference type 'uint32_t &amp;' (aka 'unsigned int &amp;')
+E              82 |         .def_readwrite("imd_val_d_o_1", &amp;Vibex_alu::imd_val_d_o_1)
+E                 |                                         ^
+E           4 errors generated.
+E           Pybind11 link failed for Vibex_alu_pybind
+
+tests/test_archsim_units.py:102: Failed</failure></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/add-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/addi-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/and-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_harc_runner" name="test_arch_coverage_dat_waiver_excludes_exact_zero_record" time="0.001" /><testcase classname="tests.test_ibex_counter_unit_full" name="test_ibex_counter_unit_full[cw1_pvu0]" time="8.546" /><testcase classname="tests.test_harc_runner" name="test_arch_coverage_dat_waiver_fails_when_stale" time="0.001" /><testcase classname="tests.test_harc_runner" name="test_merge_coverage_dat_uses_arch_coverage_merge" time="0.008" /><testcase classname="tests.test_harc_phase1_canaries" name="test_harc_phase1_canary[ibex_alu]" time="0.005"><failure message="AssertionError: HARC binary not found; set HARC_BIN or build ~/github/arch-ibex/.claude/worktrees/harc-com/target/release/harc">canary = HarcCanary(top='ibex_alu', dut_file='src/IbexAlu.arch', harc_files=('tests/harc/lib/ibex_alu_vip.harc', 'tests/harc/unit/ibex_alu_harc_test.harc'), test='IbexAluFullVerification', require_branch_data=True)
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw5/test_harc_phase1_canary_ibex_a0')
+
+    @pytest.mark.parametrize("canary", PHASE1_CANARIES, ids=lambda c: c.top)
+    def test_harc_phase1_canary(canary: HarcCanary, tmp_path: Path) -&gt; None:
+        dut_file = REPO_ROOT / canary.dut_file
+        harc_files = [REPO_ROOT / path for path in canary.harc_files]
+        extra_args = ("--arch-bin", resolve_arch_bin(), "--codegen", "v1")
+    
+&gt;       harc_check(harc_files=harc_files, cwd=REPO_ROOT)
+
+tests/test_harc_phase1_canaries.py:81: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/harc_runner.py:2936: in harc_check
+    return run_harc(
+tests/harc_runner.py:463: in run_harc
+    binary = str(harc_bin) if harc_bin is not None else resolve_harc_bin()
+                                                        ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def resolve_harc_bin() -&gt; str:
+        """Resolve the HARC executable from HARC_BIN, sibling checkout, or PATH."""
+    
+        env = os.environ.get("HARC_BIN")
+        if env:
+            path = Path(env).expanduser()
+            if path.is_file():
+                return str(path)
+            raise AssertionError(f"HARC_BIN points to a missing file: {path}")
+    
+        if DEFAULT_HARC_BIN.is_file():
+            return str(DEFAULT_HARC_BIN)
+    
+        which = shutil.which("harc")
+        if which:
+            return which
+    
+&gt;       raise AssertionError(
+            "HARC binary not found; set HARC_BIN or build "
+            f"{DEFAULT_HARC_BIN}"
+        )
+E       AssertionError: HARC binary not found; set HARC_BIN or build ~/github/arch-ibex/.claude/worktrees/harc-com/target/release/harc
+
+tests/harc_runner.py:383: AssertionError</failure></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/andi-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/auipc-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/beq-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/bge-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/bgeu-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/blt-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/bltu-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/bne-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/fence-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/jal-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/jalr-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/lb-align-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/lbu-align-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/lh-align-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/lhu-align-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/lui-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/lw-align-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/misalign1-jalr-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/or-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/ori-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/sb-align-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/sh-align-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/sll-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/slli-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/slt-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/slti-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/sltiu-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/sltu-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/sra-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/srai-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_harc_runner" name="test_merge_coverage_dat_rejects_empty_input" time="0.001" /><testcase classname="tests.test_harc_runner" name="test_merge_coverage_dat_reports_arch_cli_failure" time="0.003" /><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/srl-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/srli-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/sub-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/sw-align-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/xor-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_harc_runner" name="test_crv_seed_manifest_records_reproducible_default_tbir_command" time="0.001" /><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[I/xori-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[M/div-01]" time="0.001"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_harc_runner" name="test_crv_seed_manifest_rejects_codegen_escape_hatch" time="0.000" /><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[M/divu-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[M/mul-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[M/mulh-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_harc_runner" name="test_harc_sim_coverage_command_rejects_codegen_escape_hatch" time="0.000" /><testcase classname="tests.test_harc_runner" name="test_harc_sim_coverage_command_records_seed" time="0.000" /><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[M/mulhsu-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[M/mulhu-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[M/rem-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[M/remu-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/cadd-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/caddi-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/caddi16sp-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/caddi4spn-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/cand-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_harc_runner" name="test_harc_sim_coverage_command_rejects_seed_extra_arg" time="0.001" /><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/candi-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/cbeqz-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/cbnez-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_harc_runner" name="test_harc_sim_coverage_command_rejects_negative_seed" time="0.002" /><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/cebreak-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/cj-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/cjal-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/cjalr-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/cjr-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/cli-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/clui-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/clw-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/clwsp-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/cmv-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/cnop-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_harc_runner" name="test_crv_seed_manifest_sorts_entries_for_parallel_determinism" time="0.002" /><testcase classname="tests.test_harc_runner" name="test_crv_seed_manifest_rejects_duplicate_profile_seed" time="0.001" /><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/cor-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_harc_runner" name="test_run_crv_seed_campaign_runs_seeds_and_merges_coverage" time="0.477" /><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/cslli-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/csrai-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/csrli-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/csub-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/csw-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/cswsp-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_generate_reference[C/cxor-01]" time="0.000"><skipped type="pytest.skip" message="set ARCH_TESTS_GENERATE_REF=1">${REPO_ROOT}/tests/test_arch_tests.py:385: set ARCH_TESTS_GENERATE_REF=1</skipped></testcase><testcase classname="tests.test_harc_phase1_canaries" name="test_harc_phase1_canary[ibex_counter]" time="0.001"><failure message="AssertionError: HARC binary not found; set HARC_BIN or build ~/github/arch-ibex/.claude/worktrees/harc-com/target/release/harc">canary = HarcCanary(top='ibex_counter', dut_file='src/IbexCounter.arch', harc_files=('tests/harc/lib/ibex_counter_vip.harc', 'tests/harc/unit/ibex_counter_harc_test.harc'), test='IbexCounterCanary', require_branch_data=True)
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw5/test_harc_phase1_canary_ibex_c0')
+
+    @pytest.mark.parametrize("canary", PHASE1_CANARIES, ids=lambda c: c.top)
+    def test_harc_phase1_canary(canary: HarcCanary, tmp_path: Path) -&gt; None:
+        dut_file = REPO_ROOT / canary.dut_file
+        harc_files = [REPO_ROOT / path for path in canary.harc_files]
+        extra_args = ("--arch-bin", resolve_arch_bin(), "--codegen", "v1")
+    
+&gt;       harc_check(harc_files=harc_files, cwd=REPO_ROOT)
+
+tests/test_harc_phase1_canaries.py:81: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/harc_runner.py:2936: in harc_check
+    return run_harc(
+tests/harc_runner.py:463: in run_harc
+    binary = str(harc_bin) if harc_bin is not None else resolve_harc_bin()
+                                                        ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def resolve_harc_bin() -&gt; str:
+        """Resolve the HARC executable from HARC_BIN, sibling checkout, or PATH."""
+    
+        env = os.environ.get("HARC_BIN")
+        if env:
+            path = Path(env).expanduser()
+            if path.is_file():
+                return str(path)
+            raise AssertionError(f"HARC_BIN points to a missing file: {path}")
+    
+        if DEFAULT_HARC_BIN.is_file():
+            return str(DEFAULT_HARC_BIN)
+    
+        which = shutil.which("harc")
+        if which:
+            return which
+    
+&gt;       raise AssertionError(
+            "HARC binary not found; set HARC_BIN or build "
+            f"{DEFAULT_HARC_BIN}"
+        )
+E       AssertionError: HARC binary not found; set HARC_BIN or build ~/github/arch-ibex/.claude/worktrees/harc-com/target/release/harc
+
+tests/harc_runner.py:383: AssertionError</failure></testcase><testcase classname="tests.test_harc_phase1_canaries" name="test_harc_phase1_canary[ibex_register_file_ff]" time="0.002"><failure message="AssertionError: HARC binary not found; set HARC_BIN or build ~/github/arch-ibex/.claude/worktrees/harc-com/target/release/harc">canary = HarcCanary(top='ibex_register_file_ff', dut_file='src/IbexRegisterFileFf.arch', harc_files=('tests/harc/lib/ibex_regis...c', 'tests/harc/unit/ibex_register_file_ff_harc_test.harc'), test='IbexRegisterFileFfCanary', require_branch_data=True)
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw5/test_harc_phase1_canary_ibex_r0')
+
+    @pytest.mark.parametrize("canary", PHASE1_CANARIES, ids=lambda c: c.top)
+    def test_harc_phase1_canary(canary: HarcCanary, tmp_path: Path) -&gt; None:
+        dut_file = REPO_ROOT / canary.dut_file
+        harc_files = [REPO_ROOT / path for path in canary.harc_files]
+        extra_args = ("--arch-bin", resolve_arch_bin(), "--codegen", "v1")
+    
+&gt;       harc_check(harc_files=harc_files, cwd=REPO_ROOT)
+
+tests/test_harc_phase1_canaries.py:81: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/harc_runner.py:2936: in harc_check
+    return run_harc(
+tests/harc_runner.py:463: in run_harc
+    binary = str(harc_bin) if harc_bin is not None else resolve_harc_bin()
+                                                        ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def resolve_harc_bin() -&gt; str:
+        """Resolve the HARC executable from HARC_BIN, sibling checkout, or PATH."""
+    
+        env = os.environ.get("HARC_BIN")
+        if env:
+            path = Path(env).expanduser()
+            if path.is_file():
+                return str(path)
+            raise AssertionError(f"HARC_BIN points to a missing file: {path}")
+    
+        if DEFAULT_HARC_BIN.is_file():
+            return str(DEFAULT_HARC_BIN)
+    
+        which = shutil.which("harc")
+        if which:
+            return which
+    
+&gt;       raise AssertionError(
+            "HARC binary not found; set HARC_BIN or build "
+            f"{DEFAULT_HARC_BIN}"
+        )
+E       AssertionError: HARC binary not found; set HARC_BIN or build ~/github/arch-ibex/.claude/worktrees/harc-com/target/release/harc
+
+tests/harc_runner.py:383: AssertionError</failure></testcase><testcase classname="tests.test_harc_phase1_canaries" name="test_harc_phase1_canary[ibex_wb_stage]" time="0.001"><failure message="AssertionError: HARC binary not found; set HARC_BIN or build ~/github/arch-ibex/.claude/worktrees/harc-com/target/release/harc">canary = HarcCanary(top='ibex_wb_stage', dut_file='src/IbexWbStage.arch', harc_files=('tests/harc/lib/ibex_wb_stage_vip.harc', 'tests/harc/unit/ibex_wb_stage_harc_test.harc'), test='IbexWbStagePhase1Canary', require_branch_data=False)
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw5/test_harc_phase1_canary_ibex_w0')
+
+    @pytest.mark.parametrize("canary", PHASE1_CANARIES, ids=lambda c: c.top)
+    def test_harc_phase1_canary(canary: HarcCanary, tmp_path: Path) -&gt; None:
+        dut_file = REPO_ROOT / canary.dut_file
+        harc_files = [REPO_ROOT / path for path in canary.harc_files]
+        extra_args = ("--arch-bin", resolve_arch_bin(), "--codegen", "v1")
+    
+&gt;       harc_check(harc_files=harc_files, cwd=REPO_ROOT)
+
+tests/test_harc_phase1_canaries.py:81: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/harc_runner.py:2936: in harc_check
+    return run_harc(
+tests/harc_runner.py:463: in run_harc
+    binary = str(harc_bin) if harc_bin is not None else resolve_harc_bin()
+                                                        ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def resolve_harc_bin() -&gt; str:
+        """Resolve the HARC executable from HARC_BIN, sibling checkout, or PATH."""
+    
+        env = os.environ.get("HARC_BIN")
+        if env:
+            path = Path(env).expanduser()
+            if path.is_file():
+                return str(path)
+            raise AssertionError(f"HARC_BIN points to a missing file: {path}")
+    
+        if DEFAULT_HARC_BIN.is_file():
+            return str(DEFAULT_HARC_BIN)
+    
+        which = shutil.which("harc")
+        if which:
+            return which
+    
+&gt;       raise AssertionError(
+            "HARC binary not found; set HARC_BIN or build "
+            f"{DEFAULT_HARC_BIN}"
+        )
+E       AssertionError: HARC binary not found; set HARC_BIN or build ~/github/arch-ibex/.claude/worktrees/harc-com/target/release/harc
+
+tests/harc_runner.py:383: AssertionError</failure></testcase><testcase classname="tests.test_harc_runner" name="test_harc_functional_coverage_artifact_rejects_truncated_cross_detail" time="0.001" /><testcase classname="tests.test_harc_runner" name="test_harc_functional_coverage_artifact_rejects_duplicate_records" time="0.001" /><testcase classname="tests.test_harc_runner" name="test_harc_functional_coverage_artifact_ignores_non_cross_not_hit_lines" time="0.000" /><testcase classname="tests.test_harc_runner" name="test_harc_functional_coverage_artifact_from_jsonl_preserves_cross_bins" time="0.002" /><testcase classname="tests.test_harc_runner" name="test_harc_functional_coverage_artifact_from_jsonl_rejects_bad_summary" time="0.002" /><testcase classname="tests.test_harc_runner" name="test_harc_functional_coverage_artifact_from_jsonl_rejects_bad_count" time="0.002" /><testcase classname="tests.test_harc_runner" name="test_merge_harc_functional_coverage_artifacts_reports_holes" time="0.001" /><testcase classname="tests.test_harc_runner" name="test_selected_cross_waiver_accounting_is_not_full_closure" time="0.001" /><testcase classname="tests.test_harc_runner" name="test_selected_cross_waiver_accounting_rejects_stale_count" time="0.001" /><testcase classname="tests.test_harc_runner" name="test_selected_cross_bin_waiver_accounting_counts_cross_once" time="0.001" /><testcase classname="tests.test_harc_runner" name="test_selected_cross_bin_waiver_accounting_rejects_stale_hit_bin" time="0.001" /><testcase classname="tests.test_harc_runner" name="test_selected_cross_bin_waiver_accounting_rejects_unknown_bin" time="0.001" /><testcase classname="tests.test_harc_runner" name="test_selected_cross_bin_waiver_accounting_rejects_duplicate_bin" time="0.001" /><testcase classname="tests.test_harc_runner" name="test_merge_harc_functional_coverage_rejects_missing_cross_schema" time="0.001" /><testcase classname="tests.test_harc_runner" name="test_merge_harc_functional_coverage_rejects_unknown_hit_bin" time="0.002" /><testcase classname="tests.test_harc_runner" name="test_merge_harc_functional_coverage_campaigns_records_provenance" time="0.007" /><testcase classname="tests.test_harc_runner" name="test_merge_harc_functional_coverage_campaigns_rejects_duplicate_names" time="0.003" /><testcase classname="tests.test_harc_runner" name="test_merge_harc_functional_coverage_campaigns_rejects_bad_seed_manifest" time="0.002" /><testcase classname="tests.test_harc_runner" name="test_merge_harc_functional_coverage_campaigns_rejects_non_default_tbir" time="0.001" /><testcase classname="tests.test_harc_runner" name="test_merge_harc_functional_coverage_campaigns_rejects_unseeded_command" time="0.001" /><testcase classname="tests.test_harc_runner" name="test_run_crv_seed_campaign_exports_functional_coverage" time="0.252" /><testcase classname="tests.test_harc_runner" name="test_compressed_decoder_coverage_status_matches_inventory" time="0.002" /><testcase classname="tests.test_harc_runner" name="test_checked_in_compressed_decoder_coverage_status_is_complete" time="0.001"><failure message="FileNotFoundError: [Errno 2] No such file or directory: '${REPO_ROOT}/tests/harc/plans/ibex_compressed_decoder_full_bins.md'">def test_checked_in_compressed_decoder_coverage_status_is_complete() -&gt; None:
+        root = Path(__file__).resolve().parents[1]
+    
+&gt;       assert_compressed_decoder_coverage_status_complete(
+            inventory_path=root / "tests/harc/plans/ibex_compressed_decoder_full_bins.md",
+            status_path=root
+            / "tests/harc/plans/ibex_compressed_decoder_full_coverage_status.md",
+        )
+
+tests/test_harc_runner.py:1390: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/harc_runner.py:1027: in assert_compressed_decoder_coverage_status_complete
+    inventory = compressed_decoder_coverage_inventory(inventory_path)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/harc_runner.py:924: in compressed_decoder_coverage_inventory
+    for raw in Path(path).read_text().splitlines():
+               ^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/anaconda3/lib/python3.13/pathlib/_local.py:546: in read_text
+    return PathBase.read_text(self, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/anaconda3/lib/python3.13/pathlib/_abc.py:632: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('${REPO_ROOT}/tests/harc/plans/ibex_compressed_decoder_full_bins.md')
+mode = 'r', buffering = -1, encoding = 'locale', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+&gt;       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '${REPO_ROOT}/tests/harc/plans/ibex_compressed_decoder_full_bins.md'
+
+/opt/homebrew/anaconda3/lib/python3.13/pathlib/_local.py:537: FileNotFoundError</failure></testcase><testcase classname="tests.test_harc_runner" name="test_compressed_decoder_coverage_status_fails_on_missing_bin" time="0.002" /><testcase classname="tests.test_harc_runner" name="test_compressed_decoder_coverage_status_rejects_shorthand" time="0.002" /><testcase classname="tests.test_ibex_decoder_unit_full" name="test_ibex_decoder_unit_full" time="8.089" /><testcase classname="tests.test_archsim_units" name="test_archsim_unit[IbexRegisterFileFf]" time="15.658"><properties><property name="archsim_wall_seconds" value="15.657" /><property name="archsim_module" value="IbexRegisterFileFf" /></properties><failure message="Failed: arch sim failed for IbexRegisterFileFf (rc=0, 15.66s)&#10;--- STDOUT (tail) ---&#10;[1/8] Running async_reset_clears_all...&#10;  PASS: async_reset_clears_all&#10;[2/8] Running write_then_read_roundtrip...&#10;  PASS: write_then_read_roundtrip&#10;[3/8] Running write_enable_low_holds_value...&#10;  PASS: write_enable_low_holds_value&#10;[4/8] Running two_simultaneous_reads...&#10;  PASS: two_simultaneous_reads&#10;[5/8] Running read_during_write_returns_old_value...&#10;  PASS: read_during_write_returns_old_value&#10;[6/8] Running x0_reads_zero_after_reset...&#10;  PASS: x0_reads_zero_after_reset&#10;[7/8] Running x0_reads_zero_despite_write...&#10;  PASS: x0_reads_zero_despite_write&#10;[8/8] Running x0_write_does_not_alias_other_registers...&#10;  PASS: x0_write_does_not_alias_other_registers&#10;&#10;============================================================&#10;Results: 8 tests; 8 passed, 0 failed, 0 skipped&#10;============================================================&#10;--- STDERR (tail) ---&#10;Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_register_file_ff0/VStructs.cpp&#10;Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_register_file_ff0/Vibex_register_file_ff.cpp&#10;Generated pybind11 wrapper: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_register_file_ff0/Vibex_register_file_ff_pybind.cpp&#10;Compiling pybind11 module...&#10;Built: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_register_file_ff0/Vibex_register_file_ff_pybind.cpython-313-darwin.so&#10;Running test: ${REPO_ROOT}/tests/cocotb_tests/test_ibex_register_file_ff_unit.py">arch_bin = '~/.local/bin/arch-0.72.0'
+arch_stem = 'IbexRegisterFileFf'
+cocotb_test = 'test_ibex_register_file_ff_unit.py'
+tmp_path_factory = TempPathFactory(_given_basetemp=PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>...5k29j301gs_lsdrnlvdjw0000gn/T/pytest-of-<user>/pytest-49/popen-gw3'), _retention_count=3, _retention_policy='all')
+record_property = &lt;function record_property.&lt;locals&gt;.append_property at 0x10533d800&gt;
+
+    @pytest.mark.parametrize(
+        "arch_stem,cocotb_test",
+        MODULES,
+        ids=[(m.values[0] if hasattr(m, "values") else m[0]) for m in MODULES],
+    )
+    def test_archsim_unit(
+        arch_bin: str,
+        arch_stem: str,
+        cocotb_test: str,
+        tmp_path_factory: pytest.TempPathFactory,
+        record_property,
+    ):
+        arch_file = SRC_DIR / f"{arch_stem}.arch"
+        test_file = COCOTB_TESTS_DIR / cocotb_test
+        if not arch_file.is_file():
+            pytest.skip(f"missing {arch_file}; run `make build` first")
+        if not test_file.is_file():
+            pytest.skip(f"missing {test_file}")
+    
+        # Each module gets its own outdir so xdist workers don't collide.
+        outdir = tmp_path_factory.mktemp(f"archsim_{_camel_to_snake(arch_stem)}")
+    
+        cmd = [
+            arch_bin, "sim", "--pybind",
+            "--test", str(test_file),
+            "-o", str(outdir),
+            str(arch_file),
+        ]
+        env = os.environ.copy()
+        # The launcher inherits PYTHONPATH; keep cwd inside outdir so the
+        # generated runner's relative imports land correctly.
+        t0 = time.perf_counter()
+        proc = subprocess.run(
+            cmd, cwd=str(outdir),
+            env=env,
+            capture_output=True, text=True,
+            timeout=300,
+        )
+        elapsed = time.perf_counter() - t0
+        record_property("archsim_wall_seconds", f"{elapsed:.3f}")
+        record_property("archsim_module", arch_stem)
+    
+        # arch sim returns non-zero on any cocotb failure; on stderr we
+        # expect a "Results: N tests, ALL PASSED" footer for the green path.
+        if proc.returncode != 0 or "ALL PASSED" not in proc.stdout + proc.stderr:
+            # Surface tails to make CI noise debuggable.
+            tail_out = "\n".join(proc.stdout.splitlines()[-40:])
+            tail_err = "\n".join(proc.stderr.splitlines()[-40:])
+&gt;           pytest.fail(
+                f"arch sim failed for {arch_stem} (rc={proc.returncode}, "
+                f"{elapsed:.2f}s)\n"
+                f"--- STDOUT (tail) ---\n{tail_out}\n"
+                f"--- STDERR (tail) ---\n{tail_err}\n"
+            )
+E           Failed: arch sim failed for IbexRegisterFileFf (rc=0, 15.66s)
+E           --- STDOUT (tail) ---
+E           [1/8] Running async_reset_clears_all...
+E             PASS: async_reset_clears_all
+E           [2/8] Running write_then_read_roundtrip...
+E             PASS: write_then_read_roundtrip
+E           [3/8] Running write_enable_low_holds_value...
+E             PASS: write_enable_low_holds_value
+E           [4/8] Running two_simultaneous_reads...
+E             PASS: two_simultaneous_reads
+E           [5/8] Running read_during_write_returns_old_value...
+E             PASS: read_during_write_returns_old_value
+E           [6/8] Running x0_reads_zero_after_reset...
+E             PASS: x0_reads_zero_after_reset
+E           [7/8] Running x0_reads_zero_despite_write...
+E             PASS: x0_reads_zero_despite_write
+E           [8/8] Running x0_write_does_not_alias_other_registers...
+E             PASS: x0_write_does_not_alias_other_registers
+E           
+E           ============================================================
+E           Results: 8 tests; 8 passed, 0 failed, 0 skipped
+E           ============================================================
+E           --- STDERR (tail) ---
+E           Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_register_file_ff0/VStructs.cpp
+E           Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_register_file_ff0/Vibex_register_file_ff.cpp
+E           Generated pybind11 wrapper: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_register_file_ff0/Vibex_register_file_ff_pybind.cpp
+E           Compiling pybind11 module...
+E           Built: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_register_file_ff0/Vibex_register_file_ff_pybind.cpython-313-darwin.so
+E           Running test: ${REPO_ROOT}/tests/cocotb_tests/test_ibex_register_file_ff_unit.py
+
+tests/test_archsim_units.py:102: Failed</failure></testcase><testcase classname="tests.test_ex_block_unit" name="test_ex_block_unit" time="8.159" /><testcase classname="tests.test_ex_block_unit_full" name="test_ex_block_unit_full" time="8.007" /><testcase classname="tests.test_ibex_compressed_decoder_unit_full" name="test_ibex_compressed_decoder_unit_full" time="8.697" /><testcase classname="tests.test_alu_unit" name="test_ibex_alu_unit" time="9.279" /><testcase classname="tests.test_ibex_counter_unit_full" name="test_ibex_counter_unit_full[cw1_pvu1]" time="9.555" /><testcase classname="tests.test_ibex_core_unit_full" name="test_ibex_core_unit_full" time="14.002" /><testcase classname="tests.test_ibex_controller_unit" name="test_ibex_controller_unit" time="9.287" /><testcase classname="tests.test_ibex_controller_unit_full" name="test_ibex_controller_unit_full" time="9.719" /><testcase classname="tests.test_ibex_fetch_fifo_unit" name="test_ibex_fetch_fifo_unit" time="9.232" /><testcase classname="tests.test_ibex_compressed_decoder_unit" name="test_ibex_compressed_decoder_unit" time="9.390" /><testcase classname="tests.test_ibex_counter_unit_full" name="test_ibex_counter_unit_full[cw32_pvu0]" time="8.516" /><testcase classname="tests.test_ibex_fetch_fifo_unit_full" name="test_ibex_fetch_fifo_unit_full" time="8.289" /><testcase classname="tests.test_archsim_units" name="test_archsim_unit[IbexCounter]" time="13.974"><properties><property name="archsim_wall_seconds" value="13.972" /><property name="archsim_module" value="IbexCounter" /></properties><failure message="Failed: arch sim failed for IbexCounter (rc=0, 13.97s)&#10;--- STDOUT (tail) ---&#10;[1/6] Running reset_clears_counter...&#10;  PASS: reset_clears_counter&#10;[2/6] Running increment_advances_counter...&#10;  PASS: increment_advances_counter&#10;[3/6] Running high_bits_tied_to_zero...&#10;  PASS: high_bits_tied_to_zero&#10;[4/6] Running write_beats_increment...&#10;  PASS: write_beats_increment&#10;[5/6] Running half_word_write_priority...&#10;  PASS: half_word_write_priority&#10;[6/6] Running upd_forwards_incremented_value...&#10;  PASS: upd_forwards_incremented_value&#10;&#10;============================================================&#10;Results: 6 tests; 6 passed, 0 failed, 0 skipped&#10;============================================================&#10;--- STDERR (tail) ---&#10;Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_counter0/VStructs.cpp&#10;Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_counter0/Vibex_counter.cpp&#10;Generated pybind11 wrapper: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_counter0/Vibex_counter_pybind.cpp&#10;Compiling pybind11 module...&#10;Built: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_counter0/Vibex_counter_pybind.cpython-313-darwin.so&#10;Running test: ${REPO_ROOT}/tests/cocotb_tests/test_ibex_counter_unit.py">arch_bin = '~/.local/bin/arch-0.72.0'
+arch_stem = 'IbexCounter', cocotb_test = 'test_ibex_counter_unit.py'
+tmp_path_factory = TempPathFactory(_given_basetemp=PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>...5k29j301gs_lsdrnlvdjw0000gn/T/pytest-of-<user>/pytest-49/popen-gw3'), _retention_count=3, _retention_policy='all')
+record_property = &lt;function record_property.&lt;locals&gt;.append_property at 0x10533dd00&gt;
+
+    @pytest.mark.parametrize(
+        "arch_stem,cocotb_test",
+        MODULES,
+        ids=[(m.values[0] if hasattr(m, "values") else m[0]) for m in MODULES],
+    )
+    def test_archsim_unit(
+        arch_bin: str,
+        arch_stem: str,
+        cocotb_test: str,
+        tmp_path_factory: pytest.TempPathFactory,
+        record_property,
+    ):
+        arch_file = SRC_DIR / f"{arch_stem}.arch"
+        test_file = COCOTB_TESTS_DIR / cocotb_test
+        if not arch_file.is_file():
+            pytest.skip(f"missing {arch_file}; run `make build` first")
+        if not test_file.is_file():
+            pytest.skip(f"missing {test_file}")
+    
+        # Each module gets its own outdir so xdist workers don't collide.
+        outdir = tmp_path_factory.mktemp(f"archsim_{_camel_to_snake(arch_stem)}")
+    
+        cmd = [
+            arch_bin, "sim", "--pybind",
+            "--test", str(test_file),
+            "-o", str(outdir),
+            str(arch_file),
+        ]
+        env = os.environ.copy()
+        # The launcher inherits PYTHONPATH; keep cwd inside outdir so the
+        # generated runner's relative imports land correctly.
+        t0 = time.perf_counter()
+        proc = subprocess.run(
+            cmd, cwd=str(outdir),
+            env=env,
+            capture_output=True, text=True,
+            timeout=300,
+        )
+        elapsed = time.perf_counter() - t0
+        record_property("archsim_wall_seconds", f"{elapsed:.3f}")
+        record_property("archsim_module", arch_stem)
+    
+        # arch sim returns non-zero on any cocotb failure; on stderr we
+        # expect a "Results: N tests, ALL PASSED" footer for the green path.
+        if proc.returncode != 0 or "ALL PASSED" not in proc.stdout + proc.stderr:
+            # Surface tails to make CI noise debuggable.
+            tail_out = "\n".join(proc.stdout.splitlines()[-40:])
+            tail_err = "\n".join(proc.stderr.splitlines()[-40:])
+&gt;           pytest.fail(
+                f"arch sim failed for {arch_stem} (rc={proc.returncode}, "
+                f"{elapsed:.2f}s)\n"
+                f"--- STDOUT (tail) ---\n{tail_out}\n"
+                f"--- STDERR (tail) ---\n{tail_err}\n"
+            )
+E           Failed: arch sim failed for IbexCounter (rc=0, 13.97s)
+E           --- STDOUT (tail) ---
+E           [1/6] Running reset_clears_counter...
+E             PASS: reset_clears_counter
+E           [2/6] Running increment_advances_counter...
+E             PASS: increment_advances_counter
+E           [3/6] Running high_bits_tied_to_zero...
+E             PASS: high_bits_tied_to_zero
+E           [4/6] Running write_beats_increment...
+E             PASS: write_beats_increment
+E           [5/6] Running half_word_write_priority...
+E             PASS: half_word_write_priority
+E           [6/6] Running upd_forwards_incremented_value...
+E             PASS: upd_forwards_incremented_value
+E           
+E           ============================================================
+E           Results: 6 tests; 6 passed, 0 failed, 0 skipped
+E           ============================================================
+E           --- STDERR (tail) ---
+E           Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_counter0/VStructs.cpp
+E           Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_counter0/Vibex_counter.cpp
+E           Generated pybind11 wrapper: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_counter0/Vibex_counter_pybind.cpp
+E           Compiling pybind11 module...
+E           Built: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_counter0/Vibex_counter_pybind.cpython-313-darwin.so
+E           Running test: ${REPO_ROOT}/tests/cocotb_tests/test_ibex_counter_unit.py
+
+tests/test_archsim_units.py:102: Failed</failure></testcase><testcase classname="tests.test_ibex_core_unit" name="test_ibex_core_unit" time="14.783" /><testcase classname="tests.test_ibex_counter_unit" name="test_ibex_counter_unit" time="9.501" /><testcase classname="tests.test_cpu_programs" name="test_cpu_program[timer_isr]" time="26.198" /><testcase classname="tests.test_ibex_icache_unit_full" name="test_ibex_icache_unit_full" time="9.612" /><testcase classname="tests.test_ibex_icache_unit" name="test_ibex_icache_unit" time="9.490" /><testcase classname="tests.test_cpu_programs" name="test_cpu_program[sw_isr]" time="0.443" /><testcase classname="tests.test_ibex_counter_unit_full" name="test_ibex_counter_unit_full[cw32_pvu1]" time="7.910" /><testcase classname="tests.test_cpu_programs" name="test_cpu_program[ext_isr]" time="0.880" /><testcase classname="tests.test_ibex_if_stage_unit" name="test_ibex_if_stage_unit" time="9.304" /><testcase classname="tests.test_cpu_programs" name="test_cpu_program[multictx_isr]" time="0.829" /><testcase classname="tests.test_cpu_programs" name="test_cpu_program[wfi_isr]" time="0.982" /><testcase classname="tests.test_cpu_programs" name="test_cpu_program[ecall_isr]" time="0.810" /><testcase classname="tests.test_cpu_programs" name="test_cpu_program[pmp_exec_isr]" time="0.757" /><testcase classname="tests.test_cpu_programs" name="test_cpu_program[pmp_load_isr]" time="0.718" /><testcase classname="tests.test_ibex_id_stage_unit" name="test_ibex_id_stage_unit" time="8.350" /><testcase classname="tests.test_ibex_decoder_unit" name="test_ibex_decoder_unit" time="8.196" /><testcase classname="tests.test_cpu_programs" name="test_cpu_program[pmp_misaligned_isr]" time="0.612" /><testcase classname="tests.test_cpu_programs" name="test_cpu_program[icache_bench]" time="1.446" /><testcase classname="tests.test_ibex_id_stage_unit_full" name="test_ibex_id_stage_unit_full" time="7.981" /><testcase classname="tests.test_ibex_multdiv_fast_unit" name="test_ibex_multdiv_fast_unit" time="7.874" /><testcase classname="tests.test_ibex_multdiv_fast_unit_full" name="test_ibex_multdiv_fast_unit_full" time="8.302" /><testcase classname="tests.test_ibex_counter_unit_full" name="test_ibex_counter_unit_full[cw64_pvu0]" time="9.086" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/add-01]" time="35.671" /><testcase classname="tests.test_load_store_unit_unit_full" name="test_load_store_unit_unit_full" time="9.065" /><testcase classname="tests.test_ibex_pmp_unit_full" name="test_ibex_pmp_unit_full" time="8.385" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/addi-01]" time="1.130" /><testcase classname="tests.test_archsim_units" name="test_archsim_unit[IbexDecoder]" time="13.511"><properties><property name="archsim_wall_seconds" value="13.510" /><property name="archsim_module" value="IbexDecoder" /></properties><failure message="Failed: arch sim failed for IbexDecoder (rc=0, 13.51s)&#10;--- STDOUT (tail) ---&#10;[1/12] Running immediate_extraction_canonical_set...&#10;  PASS: immediate_extraction_canonical_set&#10;[2/12] Running register_addressing_slices...&#10;  PASS: register_addressing_slices&#10;[3/12] Running rf_we_asserted_for_arithmetic_and_cleared_on_illegal...&#10;  PASS: rf_we_asserted_for_arithmetic_and_cleared_on_illegal&#10;[4/12] Running rf_ren_per_opcode...&#10;  PASS: rf_ren_per_opcode&#10;[5/12] Running alu_operator_for_add...&#10;  PASS: alu_operator_for_add&#10;[6/12] Running alu_operand_mux_for_op_class...&#10;  PASS: alu_operand_mux_for_op_class&#10;[7/12] Running bt_mux_constants_under_branch_target_alu_zero...&#10;  PASS: bt_mux_constants_under_branch_target_alu_zero&#10;[8/12] Running multdiv_control_for_mul...&#10;  PASS: multdiv_control_for_mul&#10;[9/12] Running csr_control_for_csrrw...&#10;  PASS: csr_control_for_csrrw&#10;[10/12] Running lsu_control_for_sw...&#10;  PASS: lsu_control_for_sw&#10;[11/12] Running control_flag_outputs_for_jal...&#10;  PASS: control_flag_outputs_for_jal&#10;[12/12] Running illegal_insn_aggregation_for_rv32b_opcode...&#10;  PASS: illegal_insn_aggregation_for_rv32b_opcode&#10;&#10;============================================================&#10;Results: 12 tests; 12 passed, 0 failed, 0 skipped&#10;============================================================&#10;--- STDERR (tail) ---&#10;Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_decoder0/VStructs.cpp&#10;Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_decoder0/Vibex_decoder.cpp&#10;Generated pybind11 wrapper: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_decoder0/Vibex_decoder_pybind.cpp&#10;Compiling pybind11 module...&#10;Built: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_decoder0/Vibex_decoder_pybind.cpython-313-darwin.so&#10;Running test: ${REPO_ROOT}/tests/cocotb_tests/test_ibex_decoder_unit.py">arch_bin = '~/.local/bin/arch-0.72.0'
+arch_stem = 'IbexDecoder', cocotb_test = 'test_ibex_decoder_unit.py'
+tmp_path_factory = TempPathFactory(_given_basetemp=PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>...5k29j301gs_lsdrnlvdjw0000gn/T/pytest-of-<user>/pytest-49/popen-gw3'), _retention_count=3, _retention_policy='all')
+record_property = &lt;function record_property.&lt;locals&gt;.append_property at 0x10533df80&gt;
+
+    @pytest.mark.parametrize(
+        "arch_stem,cocotb_test",
+        MODULES,
+        ids=[(m.values[0] if hasattr(m, "values") else m[0]) for m in MODULES],
+    )
+    def test_archsim_unit(
+        arch_bin: str,
+        arch_stem: str,
+        cocotb_test: str,
+        tmp_path_factory: pytest.TempPathFactory,
+        record_property,
+    ):
+        arch_file = SRC_DIR / f"{arch_stem}.arch"
+        test_file = COCOTB_TESTS_DIR / cocotb_test
+        if not arch_file.is_file():
+            pytest.skip(f"missing {arch_file}; run `make build` first")
+        if not test_file.is_file():
+            pytest.skip(f"missing {test_file}")
+    
+        # Each module gets its own outdir so xdist workers don't collide.
+        outdir = tmp_path_factory.mktemp(f"archsim_{_camel_to_snake(arch_stem)}")
+    
+        cmd = [
+            arch_bin, "sim", "--pybind",
+            "--test", str(test_file),
+            "-o", str(outdir),
+            str(arch_file),
+        ]
+        env = os.environ.copy()
+        # The launcher inherits PYTHONPATH; keep cwd inside outdir so the
+        # generated runner's relative imports land correctly.
+        t0 = time.perf_counter()
+        proc = subprocess.run(
+            cmd, cwd=str(outdir),
+            env=env,
+            capture_output=True, text=True,
+            timeout=300,
+        )
+        elapsed = time.perf_counter() - t0
+        record_property("archsim_wall_seconds", f"{elapsed:.3f}")
+        record_property("archsim_module", arch_stem)
+    
+        # arch sim returns non-zero on any cocotb failure; on stderr we
+        # expect a "Results: N tests, ALL PASSED" footer for the green path.
+        if proc.returncode != 0 or "ALL PASSED" not in proc.stdout + proc.stderr:
+            # Surface tails to make CI noise debuggable.
+            tail_out = "\n".join(proc.stdout.splitlines()[-40:])
+            tail_err = "\n".join(proc.stderr.splitlines()[-40:])
+&gt;           pytest.fail(
+                f"arch sim failed for {arch_stem} (rc={proc.returncode}, "
+                f"{elapsed:.2f}s)\n"
+                f"--- STDOUT (tail) ---\n{tail_out}\n"
+                f"--- STDERR (tail) ---\n{tail_err}\n"
+            )
+E           Failed: arch sim failed for IbexDecoder (rc=0, 13.51s)
+E           --- STDOUT (tail) ---
+E           [1/12] Running immediate_extraction_canonical_set...
+E             PASS: immediate_extraction_canonical_set
+E           [2/12] Running register_addressing_slices...
+E             PASS: register_addressing_slices
+E           [3/12] Running rf_we_asserted_for_arithmetic_and_cleared_on_illegal...
+E             PASS: rf_we_asserted_for_arithmetic_and_cleared_on_illegal
+E           [4/12] Running rf_ren_per_opcode...
+E             PASS: rf_ren_per_opcode
+E           [5/12] Running alu_operator_for_add...
+E             PASS: alu_operator_for_add
+E           [6/12] Running alu_operand_mux_for_op_class...
+E             PASS: alu_operand_mux_for_op_class
+E           [7/12] Running bt_mux_constants_under_branch_target_alu_zero...
+E             PASS: bt_mux_constants_under_branch_target_alu_zero
+E           [8/12] Running multdiv_control_for_mul...
+E             PASS: multdiv_control_for_mul
+E           [9/12] Running csr_control_for_csrrw...
+E             PASS: csr_control_for_csrrw
+E           [10/12] Running lsu_control_for_sw...
+E             PASS: lsu_control_for_sw
+E           [11/12] Running control_flag_outputs_for_jal...
+E             PASS: control_flag_outputs_for_jal
+E           [12/12] Running illegal_insn_aggregation_for_rv32b_opcode...
+E             PASS: illegal_insn_aggregation_for_rv32b_opcode
+E           
+E           ============================================================
+E           Results: 12 tests; 12 passed, 0 failed, 0 skipped
+E           ============================================================
+E           --- STDERR (tail) ---
+E           Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_decoder0/VStructs.cpp
+E           Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_decoder0/Vibex_decoder.cpp
+E           Generated pybind11 wrapper: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_decoder0/Vibex_decoder_pybind.cpp
+E           Compiling pybind11 module...
+E           Built: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_decoder0/Vibex_decoder_pybind.cpython-313-darwin.so
+E           Running test: ${REPO_ROOT}/tests/cocotb_tests/test_ibex_decoder_unit.py
+
+tests/test_archsim_units.py:102: Failed</failure></testcase><testcase classname="tests.test_prefetch_buffer_unit_full" name="test_prefetch_buffer_unit_full" time="8.564" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/and-01]" time="1.282" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/andi-01]" time="1.061" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/auipc-01]" time="1.081" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/beq-01]" time="0.778" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/bge-01]" time="0.592" /><testcase classname="tests.test_ibex_if_stage_unit_full" name="test_ibex_if_stage_unit_full" time="9.873" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/bgeu-01]" time="0.611" /><testcase classname="tests.test_register_file_ff_unit" name="test_ibex_register_file_ff_unit" time="9.117" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/blt-01]" time="0.560" /><testcase classname="tests.test_ibex_pmp_unit" name="test_ibex_pmp_unit" time="8.868" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/bltu-01]" time="0.476" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/bne-01]" time="0.654" /><testcase classname="tests.test_prefetch_buffer_unit" name="test_prefetch_buffer_unit" time="8.818" /><testcase classname="tests.test_ibex_counter_unit_full" name="test_ibex_counter_unit_full[cw64_pvu1]" time="5.564" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/fence-01]" time="0.644" /><testcase classname="tests.test_ibex_top_unit" name="test_ibex_top_unit" time="13.473" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/jal-01]" time="0.515" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/jalr-01]" time="0.569" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/lb-align-01]" time="0.658" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/lbu-align-01]" time="0.485" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/lh-align-01]" time="0.392" /><testcase classname="tests.test_soc_lint" name="test_ibex_mini_soc_lints" time="2.677"><failure message="Failed: verilator --lint-only failed:&#10;CMD:&#10;  verilator --lint-only -Wall -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM -Wno-PINMISSING -Wno-WIDTHEXPAND -Wno-IMPORTSTAR -Wno-DECLFILENAME -Wno-UNOPTFLAT --unroll-count 72 -f /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/lowrisc_ibex_ibex_top_tracing_0.1.stripped.vc --top-module ibex_mini_soc /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/clint_basic/ClintPkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/clint_basic/Clint.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/clint_basic/ClintLogic.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/plic_multictx/PlicMultictxPkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/plic_multictx/PlicMultictx.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/plic_multictx/PlicMultictxLogic.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrFilePkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrAccess.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrFile.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrTrapCoord.sv ${REPO_ROOT}/soc/obi_to_axi_lite.sv ${REPO_ROOT}/soc/ibex_mini_soc.sv ${REPO_ROOT}/soc/ibex_cs_registers_hybrid.sv ~/github/ibex/shared/rtl/ram_2p.sv ~/github/ibex/shared/rtl/sim/simulator_ctrl.sv ${REPO_ROOT}/build/ibex_core_shared_pkg.sv ${REPO_ROOT}/build/fb_age_arb.sv ${REPO_ROOT}/build/ibex_alu.sv ${REPO_ROOT}/build/ibex_compressed_decoder.sv ${REPO_ROOT}/build/ibex_controller.sv ${REPO_ROOT}/build/ibex_core.sv ${REPO_ROOT}/build/ibex_counter.sv ${REPO_ROOT}/build/ibex_decoder.sv ${REPO_ROOT}/build/ibex_ex_block.sv ${REPO_ROOT}/build/ibex_fetch_fifo.sv ${REPO_ROOT}/build/ibex_icache.sv ${REPO_ROOT}/build/ibex_icache_output_stage.sv ${REPO_ROOT}/build/ibex_id_stage.sv ${REPO_ROOT}/build/ibex_if_stage.sv ${REPO_ROOT}/build/ibex_load_store_unit.sv ${REPO_ROOT}/build/ibex_multdiv_fast.sv ${REPO_ROOT}/build/ibex_pmp.sv ${REPO_ROOT}/build/ibex_prefetch_buffer.sv ${REPO_ROOT}/build/ibex_register_file_ff.sv ${REPO_ROOT}/build/ibex_top.sv ${REPO_ROOT}/build/ibex_wb_stage.sv ${REPO_ROOT}/build/inval_ctrl.sv ${REPO_ROOT}/build/ram_port_arb.sv&#10;STDERR:&#10;%Warning-PROCASSINIT: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:107:27: Procedural assignment to declaration with initial value: '_t0_state'&#10;                                                                                                                                           : ... note: In instance 'ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'&#10;                                                                                                                                           : ... Location of variable initialization&#10;  107 |   logic [3:0] _t0_state = 0;&#10;      |                           ^&#10;                      ${REPO_ROOT}/build/ibex_multdiv_fast.sv:371:7: ... Location of variable process write&#10;                                                                                                                                          : ... Perhaps should initialize instead using a reset in this process&#10;  371 |       _t0_state &lt;= 0;&#10;      |       ^~~~~~~~~&#10;                      ... For warning description see https://verilator.org/warn/PROCASSINIT?v=5.048&#10;                      ... Use &quot;/* verilator lint_off PROCASSINIT */&quot; and lint_on around source to disable this message.&#10;%Warning-PROCASSINIT: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:109:32: Procedural assignment to declaration with initial value: '_t0_loop_cnt_0'&#10;                                                                                                                                           : ... note: In instance 'ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'&#10;                                                                                                                                           : ... Location of variable initialization&#10;  109 |   logic [4:0] _t0_loop_cnt_0 = 0;&#10;      |                                ^&#10;                      ${REPO_ROOT}/build/ibex_multdiv_fast.sv:453:7: ... Location of variable process write&#10;                                                                                                                                          : ... Perhaps should initialize instead using a reset in this process&#10;  453 |       _t0_loop_cnt_0 &lt;= 0;&#10;      |       ^~~~~~~~~~~~~~&#10;%Warning-SYNCASYNCNET: ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: Signal flopped as both synchronous and async: 'IO_RST_N'&#10;                       ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: ... Location of async usage&#10;   67 |   input  logic IO_RST_N,&#10;      |                ^~~~~~~~&#10;                       ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: ... Location of sync usage&#10;   67 |   input  logic IO_RST_N,&#10;      |                ^~~~~~~~&#10;                       ... For warning description see https://verilator.org/warn/SYNCASYNCNET?v=5.048&#10;                       ... Use &quot;/* verilator lint_off SYNCASYNCNET */&quot; and lint_on around source to disable this message.&#10;%Error: Exiting due to 3 warning(s)&#10;&#10;STDOUT:">verilator_bin = 'verilator'
+ibex_soc_filelist = {'build_dir': PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/pope...ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/lowrisc_ibex_ibex_top_tracing_0.1.stripped.vc')}
+
+    def test_ibex_mini_soc_lints(
+        verilator_bin: str,
+        ibex_soc_filelist: dict,
+    ) -&gt; None:
+        vc_path: Path = ibex_soc_filelist["vc_path"]
+        extra_sv: list[Path] = ibex_soc_filelist["extra_sv"]
+        build_dir: Path = ibex_soc_filelist["build_dir"]
+    
+        cmd = [
+            verilator_bin,
+            "--lint-only",
+            "-Wall",
+            "-Wno-UNUSEDSIGNAL",   # Ibex ties a lot of observability ports off
+            "-Wno-UNUSEDPARAM",
+            "-Wno-PINMISSING",     # we don't connect every tracing port
+            "-Wno-WIDTHEXPAND",    # $readmemh vs. sized vectors — benign
+            "-Wno-IMPORTSTAR",     # arch-com emits `import Pkg::*;` at $unit
+            "-Wno-DECLFILENAME",   # our in-tree Ibex forks keep upstream module names
+            "-Wno-UNOPTFLAT",      # upstream ibex_ex_block.sv has an intended ALU↔multdiv
+                                   # combinational loop on alu_adder_result_ext (the
+                                   # multdiv shares the ALU's adder/comparator). With
+                                   # the FSM-based multdiv Verilator's analysis
+                                   # resolved it; the thread-based multdiv's nested
+                                   # `_threads` submodule boundary makes Verilator
+                                   # more conservative. The loop is functionally
+                                   # identical and safe in practice.
+            "--unroll-count", "72",  # required by prim_secded per Verilator#1266
+            "-f", str(vc_path),
+            "--top-module", "ibex_mini_soc",
+        ]
+        cmd.extend(str(p) for p in extra_sv)
+    
+        result = subprocess.run(
+            cmd, cwd=str(build_dir),
+            capture_output=True, text=True,
+        )
+        # Useful context on failure.
+        if result.returncode != 0:
+&gt;           pytest.fail(
+                "verilator --lint-only failed:\n"
+                f"CMD:\n  {' '.join(cmd)}\n"
+                f"STDERR:\n{result.stderr}\nSTDOUT:\n{result.stdout}"
+            )
+E           Failed: verilator --lint-only failed:
+E           CMD:
+E             verilator --lint-only -Wall -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM -Wno-PINMISSING -Wno-WIDTHEXPAND -Wno-IMPORTSTAR -Wno-DECLFILENAME -Wno-UNOPTFLAT --unroll-count 72 -f /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/lowrisc_ibex_ibex_top_tracing_0.1.stripped.vc --top-module ibex_mini_soc /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/clint_basic/ClintPkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/clint_basic/Clint.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/clint_basic/ClintLogic.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/plic_multictx/PlicMultictxPkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/plic_multictx/PlicMultictx.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/plic_multictx/PlicMultictxLogic.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrFilePkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrAccess.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrFile.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrTrapCoord.sv ${REPO_ROOT}/soc/obi_to_axi_lite.sv ${REPO_ROOT}/soc/ibex_mini_soc.sv ${REPO_ROOT}/soc/ibex_cs_registers_hybrid.sv ~/github/ibex/shared/rtl/ram_2p.sv ~/github/ibex/shared/rtl/sim/simulator_ctrl.sv ${REPO_ROOT}/build/ibex_core_shared_pkg.sv ${REPO_ROOT}/build/fb_age_arb.sv ${REPO_ROOT}/build/ibex_alu.sv ${REPO_ROOT}/build/ibex_compressed_decoder.sv ${REPO_ROOT}/build/ibex_controller.sv ${REPO_ROOT}/build/ibex_core.sv ${REPO_ROOT}/build/ibex_counter.sv ${REPO_ROOT}/build/ibex_decoder.sv ${REPO_ROOT}/build/ibex_ex_block.sv ${REPO_ROOT}/build/ibex_fetch_fifo.sv ${REPO_ROOT}/build/ibex_icache.sv ${REPO_ROOT}/build/ibex_icache_output_stage.sv ${REPO_ROOT}/build/ibex_id_stage.sv ${REPO_ROOT}/build/ibex_if_stage.sv ${REPO_ROOT}/build/ibex_load_store_unit.sv ${REPO_ROOT}/build/ibex_multdiv_fast.sv ${REPO_ROOT}/build/ibex_pmp.sv ${REPO_ROOT}/build/ibex_prefetch_buffer.sv ${REPO_ROOT}/build/ibex_register_file_ff.sv ${REPO_ROOT}/build/ibex_top.sv ${REPO_ROOT}/build/ibex_wb_stage.sv ${REPO_ROOT}/build/inval_ctrl.sv ${REPO_ROOT}/build/ram_port_arb.sv
+E           STDERR:
+E           %Warning-PROCASSINIT: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:107:27: Procedural assignment to declaration with initial value: '_t0_state'
+E                                                                                                                                                      : ... note: In instance 'ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
+E                                                                                                                                                      : ... Location of variable initialization
+E             107 |   logic [3:0] _t0_state = 0;
+E                 |                           ^
+E                                 ${REPO_ROOT}/build/ibex_multdiv_fast.sv:371:7: ... Location of variable process write
+E                                                                                                                                                     : ... Perhaps should initialize instead using a reset in this process
+E             371 |       _t0_state &lt;= 0;
+E                 |       ^~~~~~~~~
+E                                 ... For warning description see https://verilator.org/warn/PROCASSINIT?v=5.048
+E                                 ... Use "/* verilator lint_off PROCASSINIT */" and lint_on around source to disable this message.
+E           %Warning-PROCASSINIT: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:109:32: Procedural assignment to declaration with initial value: '_t0_loop_cnt_0'
+E                                                                                                                                                      : ... note: In instance 'ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
+E                                                                                                                                                      : ... Location of variable initialization
+E             109 |   logic [4:0] _t0_loop_cnt_0 = 0;
+E                 |                                ^
+E                                 ${REPO_ROOT}/build/ibex_multdiv_fast.sv:453:7: ... Location of variable process write
+E                                                                                                                                                     : ... Perhaps should initialize instead using a reset in this process
+E             453 |       _t0_loop_cnt_0 &lt;= 0;
+E                 |       ^~~~~~~~~~~~~~
+E           %Warning-SYNCASYNCNET: ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: Signal flopped as both synchronous and async: 'IO_RST_N'
+E                                  ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: ... Location of async usage
+E              67 |   input  logic IO_RST_N,
+E                 |                ^~~~~~~~
+E                                  ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: ... Location of sync usage
+E              67 |   input  logic IO_RST_N,
+E                 |                ^~~~~~~~
+E                                  ... For warning description see https://verilator.org/warn/SYNCASYNCNET?v=5.048
+E                                  ... Use "/* verilator lint_off SYNCASYNCNET */" and lint_on around source to disable this message.
+E           %Error: Exiting due to 3 warning(s)
+E           
+E           STDOUT:
+
+tests/test_soc_lint.py:59: Failed</failure></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/lhu-align-01]" time="0.308" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/lui-01]" time="0.316" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/lw-align-01]" time="0.266" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/misalign1-jalr-01]" time="0.352" /><testcase classname="tests.test_wb_stage_unit_full" name="test_wb_stage_unit_full" time="6.057" /><testcase classname="tests.test_load_store_unit_unit" name="test_load_store_unit_unit" time="5.662" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/or-01]" time="0.391" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/ori-01]" time="0.360" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/sb-align-01]" time="0.234" /><testcase classname="tests.test_archsim_units" name="test_archsim_unit[IbexCompressedDecoder]" time="3.834"><properties><property name="archsim_wall_seconds" value="3.833" /><property name="archsim_module" value="IbexCompressedDecoder" /></properties><failure message="Failed: arch sim failed for IbexCompressedDecoder (rc=1, 3.83s)&#10;--- STDOUT (tail) ---&#10;[12/29] Running q1_c_andi...&#10;  PASS: q1_c_andi&#10;[13/29] Running q1_c_sub...&#10;  PASS: q1_c_sub&#10;[14/29] Running q1_c_mul...&#10;  PASS: q1_c_mul&#10;[15/29] Running q1_zcb_extends_and_not...&#10;  PASS: q1_zcb_extends_and_not&#10;[16/29] Running q1_c_beqz...&#10;  PASS: q1_c_beqz&#10;[17/29] Running q2_c_slli...&#10;  PASS: q2_c_slli&#10;[18/29] Running q2_c_lwsp...&#10;  PASS: q2_c_lwsp&#10;[19/29] Running q2_c_mv...&#10;  PASS: q2_c_mv&#10;[20/29] Running q2_c_swsp...&#10;  PASS: q2_c_swsp&#10;[21/29] Running q2_reserved_funct3...&#10;  PASS: q2_reserved_funct3&#10;[22/29] Running zcmp_cm_push_full_walk...&#10;  FAIL: zcmp_cm_push_full_walk&#10;[23/29] Running zcmp_cm_pop_first_step...&#10;  PASS: zcmp_cm_pop_first_step&#10;[24/29] Running zcmp_cm_mvsa01_first_step...&#10;  PASS: zcmp_cm_mvsa01_first_step&#10;[25/29] Running zcmp_default_reserved...&#10;  PASS: zcmp_default_reserved&#10;[26/29] Running is_compressed_pure_lsb_decode...&#10;  PASS: is_compressed_pure_lsb_decode&#10;[27/29] Running gets_expanded_gated_by_valid...&#10;  PASS: gets_expanded_gated_by_valid&#10;[28/29] Running zcmp_fsm_stable_when_valid_low...&#10;  PASS: zcmp_fsm_stable_when_valid_low&#10;[29/29] Running pass_through_default_outputs...&#10;  PASS: pass_through_default_outputs&#10;&#10;============================================================&#10;Results: 29 tests; 28 passed, 1 failed, 0 skipped&#10;============================================================&#10;--- STDERR (tail) ---&#10;      |                               ~      ^    ~&#10;/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_compressed_decoder0/VFunctions.h:126:38: note: use '=' to turn this equality comparison into an assignment&#10;  126 |                           if ((rlist == 16)) {&#10;      |                                      ^~&#10;      |                                      =&#10;/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_compressed_decoder0/VFunctions.h:146:11: warning: equality comparison with extraneous parentheses [-Wparentheses-equality]&#10;  146 |   if ((r4 == 15)) {&#10;      |        ~~~^~~~~&#10;/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_compressed_decoder0/VFunctions.h:146:11: note: remove extraneous parentheses around the comparison to silence this warning&#10;  146 |   if ((r4 == 15)) {&#10;      |       ~   ^    ~&#10;/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_compressed_decoder0/VFunctions.h:146:11: note: use '=' to turn this equality comparison into an assignment&#10;  146 |   if ((r4 == 15)) {&#10;      |           ^~&#10;      |           =&#10;14 warnings generated.&#10;Built: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_compressed_decoder0/Vibex_compressed_decoder_pybind.cpython-313-darwin.so&#10;Running test: ${REPO_ROOT}/tests/cocotb_tests/test_ibex_compressed_decoder_unit.py&#10;Traceback (most recent call last):&#10;  File &quot;/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_compressed_decoder0/_arch_python/0.72.0/arch_cocotb/runner.py&quot;, line 62, in run_registered_tests&#10;    asyncio.run(simulator.run_test(invoke, dut))&#10;    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&#10;  File &quot;/opt/homebrew/anaconda3/lib/python3.13/asyncio/runners.py&quot;, line 195, in run&#10;    return runner.run(main)&#10;           ~~~~~~~~~~^^^^^^&#10;  File &quot;/opt/homebrew/anaconda3/lib/python3.13/asyncio/runners.py&quot;, line 118, in run&#10;    return self._loop.run_until_complete(task)&#10;           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^&#10;  File &quot;/opt/homebrew/anaconda3/lib/python3.13/asyncio/base_events.py&quot;, line 725, in run_until_complete&#10;    return future.result()&#10;           ~~~~~~~~~~~~~^^&#10;  File &quot;/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_compressed_decoder0/_arch_python/0.72.0/arch_cocotb/simulator.py&quot;, line 196, in run_test&#10;    raise exception&#10;  File &quot;/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_compressed_decoder0/_arch_python/0.72.0/arch_cocotb/runner.py&quot;, line 58, in invoke&#10;    return await coroutine&#10;           ^^^^^^^^^^^^^^^&#10;  File &quot;${REPO_ROOT}/tests/cocotb_tests/test_ibex_compressed_decoder_unit.py&quot;, line 353, in zcmp_cm_push_full_walk&#10;    assert int(dut.instr_o.value) == 0xFF010113&#10;           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^&#10;AssertionError">arch_bin = '~/.local/bin/arch-0.72.0'
+arch_stem = 'IbexCompressedDecoder'
+cocotb_test = 'test_ibex_compressed_decoder_unit.py'
+tmp_path_factory = TempPathFactory(_given_basetemp=PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>...5k29j301gs_lsdrnlvdjw0000gn/T/pytest-of-<user>/pytest-49/popen-gw3'), _retention_count=3, _retention_policy='all')
+record_property = &lt;function record_property.&lt;locals&gt;.append_property at 0x10533e980&gt;
+
+    @pytest.mark.parametrize(
+        "arch_stem,cocotb_test",
+        MODULES,
+        ids=[(m.values[0] if hasattr(m, "values") else m[0]) for m in MODULES],
+    )
+    def test_archsim_unit(
+        arch_bin: str,
+        arch_stem: str,
+        cocotb_test: str,
+        tmp_path_factory: pytest.TempPathFactory,
+        record_property,
+    ):
+        arch_file = SRC_DIR / f"{arch_stem}.arch"
+        test_file = COCOTB_TESTS_DIR / cocotb_test
+        if not arch_file.is_file():
+            pytest.skip(f"missing {arch_file}; run `make build` first")
+        if not test_file.is_file():
+            pytest.skip(f"missing {test_file}")
+    
+        # Each module gets its own outdir so xdist workers don't collide.
+        outdir = tmp_path_factory.mktemp(f"archsim_{_camel_to_snake(arch_stem)}")
+    
+        cmd = [
+            arch_bin, "sim", "--pybind",
+            "--test", str(test_file),
+            "-o", str(outdir),
+            str(arch_file),
+        ]
+        env = os.environ.copy()
+        # The launcher inherits PYTHONPATH; keep cwd inside outdir so the
+        # generated runner's relative imports land correctly.
+        t0 = time.perf_counter()
+        proc = subprocess.run(
+            cmd, cwd=str(outdir),
+            env=env,
+            capture_output=True, text=True,
+            timeout=300,
+        )
+        elapsed = time.perf_counter() - t0
+        record_property("archsim_wall_seconds", f"{elapsed:.3f}")
+        record_property("archsim_module", arch_stem)
+    
+        # arch sim returns non-zero on any cocotb failure; on stderr we
+        # expect a "Results: N tests, ALL PASSED" footer for the green path.
+        if proc.returncode != 0 or "ALL PASSED" not in proc.stdout + proc.stderr:
+            # Surface tails to make CI noise debuggable.
+            tail_out = "\n".join(proc.stdout.splitlines()[-40:])
+            tail_err = "\n".join(proc.stderr.splitlines()[-40:])
+&gt;           pytest.fail(
+                f"arch sim failed for {arch_stem} (rc={proc.returncode}, "
+                f"{elapsed:.2f}s)\n"
+                f"--- STDOUT (tail) ---\n{tail_out}\n"
+                f"--- STDERR (tail) ---\n{tail_err}\n"
+            )
+E           Failed: arch sim failed for IbexCompressedDecoder (rc=1, 3.83s)
+E           --- STDOUT (tail) ---
+E           [12/29] Running q1_c_andi...
+E             PASS: q1_c_andi
+E           [13/29] Running q1_c_sub...
+E             PASS: q1_c_sub
+E           [14/29] Running q1_c_mul...
+E             PASS: q1_c_mul
+E           [15/29] Running q1_zcb_extends_and_not...
+E             PASS: q1_zcb_extends_and_not
+E           [16/29] Running q1_c_beqz...
+E             PASS: q1_c_beqz
+E           [17/29] Running q2_c_slli...
+E             PASS: q2_c_slli
+E           [18/29] Running q2_c_lwsp...
+E             PASS: q2_c_lwsp
+E           [19/29] Running q2_c_mv...
+E             PASS: q2_c_mv
+E           [20/29] Running q2_c_swsp...
+E             PASS: q2_c_swsp
+E           [21/29] Running q2_reserved_funct3...
+E             PASS: q2_reserved_funct3
+E           [22/29] Running zcmp_cm_push_full_walk...
+E             FAIL: zcmp_cm_push_full_walk
+E           [23/29] Running zcmp_cm_pop_first_step...
+E             PASS: zcmp_cm_pop_first_step
+E           [24/29] Running zcmp_cm_mvsa01_first_step...
+E             PASS: zcmp_cm_mvsa01_first_step
+E           [25/29] Running zcmp_default_reserved...
+E             PASS: zcmp_default_reserved
+E           [26/29] Running is_compressed_pure_lsb_decode...
+E             PASS: is_compressed_pure_lsb_decode
+E           [27/29] Running gets_expanded_gated_by_valid...
+E             PASS: gets_expanded_gated_by_valid
+E           [28/29] Running zcmp_fsm_stable_when_valid_low...
+E             PASS: zcmp_fsm_stable_when_valid_low
+E           [29/29] Running pass_through_default_outputs...
+E             PASS: pass_through_default_outputs
+E           
+E           ============================================================
+E           Results: 29 tests; 28 passed, 1 failed, 0 skipped
+E           ============================================================
+E           --- STDERR (tail) ---
+E                 |                               ~      ^    ~
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_compressed_decoder0/VFunctions.h:126:38: note: use '=' to turn this equality comparison into an assignment
+E             126 |                           if ((rlist == 16)) {
+E                 |                                      ^~
+E                 |                                      =
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_compressed_decoder0/VFunctions.h:146:11: warning: equality comparison with extraneous parentheses [-Wparentheses-equality]
+E             146 |   if ((r4 == 15)) {
+E                 |        ~~~^~~~~
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_compressed_decoder0/VFunctions.h:146:11: note: remove extraneous parentheses around the comparison to silence this warning
+E             146 |   if ((r4 == 15)) {
+E                 |       ~   ^    ~
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_compressed_decoder0/VFunctions.h:146:11: note: use '=' to turn this equality comparison into an assignment
+E             146 |   if ((r4 == 15)) {
+E                 |           ^~
+E                 |           =
+E           14 warnings generated.
+E           Built: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_compressed_decoder0/Vibex_compressed_decoder_pybind.cpython-313-darwin.so
+E           Running test: ${REPO_ROOT}/tests/cocotb_tests/test_ibex_compressed_decoder_unit.py
+E           Traceback (most recent call last):
+E             File "/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_compressed_decoder0/_arch_python/0.72.0/arch_cocotb/runner.py", line 62, in run_registered_tests
+E               asyncio.run(simulator.run_test(invoke, dut))
+E               ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E             File "/opt/homebrew/anaconda3/lib/python3.13/asyncio/runners.py", line 195, in run
+E               return runner.run(main)
+E                      ~~~~~~~~~~^^^^^^
+E             File "/opt/homebrew/anaconda3/lib/python3.13/asyncio/runners.py", line 118, in run
+E               return self._loop.run_until_complete(task)
+E                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+E             File "/opt/homebrew/anaconda3/lib/python3.13/asyncio/base_events.py", line 725, in run_until_complete
+E               return future.result()
+E                      ~~~~~~~~~~~~~^^
+E             File "/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_compressed_decoder0/_arch_python/0.72.0/arch_cocotb/simulator.py", line 196, in run_test
+E               raise exception
+E             File "/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_compressed_decoder0/_arch_python/0.72.0/arch_cocotb/runner.py", line 58, in invoke
+E               return await coroutine
+E                      ^^^^^^^^^^^^^^^
+E             File "${REPO_ROOT}/tests/cocotb_tests/test_ibex_compressed_decoder_unit.py", line 353, in zcmp_cm_push_full_walk
+E               assert int(dut.instr_o.value) == 0xFF010113
+E                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError
+
+tests/test_archsim_units.py:102: Failed</failure></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/sh-align-01]" time="0.217" /><testcase classname="tests.test_ibex_top_unit_full" name="test_ibex_top_unit_full" time="7.960" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/sll-01]" time="0.205" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/slli-01]" time="0.212" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/slt-01]" time="0.275" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/slti-01]" time="0.299" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/sltiu-01]" time="0.301" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/sltu-01]" time="0.297" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/sra-01]" time="0.289" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/srai-01]" time="0.239" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/srl-01]" time="0.256" /><testcase classname="tests.test_wb_stage_unit" name="test_wb_stage_unit" time="2.237" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/srli-01]" time="0.216" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/sub-01]" time="0.208" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/sw-align-01]" time="0.189" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/xor-01]" time="0.189" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[I/xori-01]" time="0.195" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[M/div-01]" time="0.181" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[M/divu-01]" time="0.193" /><testcase classname="tests.test_archsim_units" name="test_archsim_unit[IbexMultdivFast]" time="1.490"><properties><property name="archsim_wall_seconds" value="1.489" /><property name="archsim_module" value="IbexMultdivFast" /></properties><failure message="Failed: arch sim failed for IbexMultdivFast (rc=1, 1.49s)&#10;--- STDOUT (tail) ---&#10;&#10;--- STDERR (tail) ---&#10;1 warning generated.&#10;In file included from /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/Vibex_multdiv_fast.cpp:1:&#10;In file included from /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/Vibex_multdiv_fast.h:5:&#10;/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/VFunctions.h:91:21: warning: equality comparison with extraneous parentheses [-Wparentheses-equality]&#10;   91 |   if ((part_rem_msb == divisor_msb)) {&#10;      |        ~~~~~~~~~~~~~^~~~~~~~~~~~~~&#10;/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/VFunctions.h:91:21: note: remove extraneous parentheses around the comparison to silence this warning&#10;   91 |   if ((part_rem_msb == divisor_msb)) {&#10;      |       ~             ^             ~&#10;/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/VFunctions.h:91:21: note: use '=' to turn this equality comparison into an assignment&#10;   91 |   if ((part_rem_msb == divisor_msb)) {&#10;      |                     ^~&#10;      |                     =&#10;1 warning generated.&#10;In file included from /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/V_ibex_multdiv_fast_threads_pybind.cpp:5:&#10;In file included from /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/V_ibex_multdiv_fast_threads.h:5:&#10;/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/VFunctions.h:91:21: warning: equality comparison with extraneous parentheses [-Wparentheses-equality]&#10;   91 |   if ((part_rem_msb == divisor_msb)) {&#10;      |        ~~~~~~~~~~~~~^~~~~~~~~~~~~~&#10;/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/VFunctions.h:91:21: note: remove extraneous parentheses around the comparison to silence this warning&#10;   91 |   if ((part_rem_msb == divisor_msb)) {&#10;      |       ~             ^             ~&#10;/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/VFunctions.h:91:21: note: use '=' to turn this equality comparison into an assignment&#10;   91 |   if ((part_rem_msb == divisor_msb)) {&#10;      |                     ^~&#10;      |                     =&#10;/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/V_ibex_multdiv_fast_threads_pybind.cpp:117:41: error: cannot form a pointer-to-member to member 'imd_val_q_i_0' of reference type 'uint64_t &amp;' (aka 'unsigned long long &amp;')&#10;  117 |         .def_readwrite(&quot;imd_val_q_i_0&quot;, &amp;V_ibex_multdiv_fast_threads::imd_val_q_i_0)&#10;      |                                         ^&#10;/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/V_ibex_multdiv_fast_threads_pybind.cpp:118:41: error: cannot form a pointer-to-member to member 'imd_val_q_i_1' of reference type 'uint64_t &amp;' (aka 'unsigned long long &amp;')&#10;  118 |         .def_readwrite(&quot;imd_val_q_i_1&quot;, &amp;V_ibex_multdiv_fast_threads::imd_val_q_i_1)&#10;      |                                         ^&#10;/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/V_ibex_multdiv_fast_threads_pybind.cpp:119:41: error: cannot form a pointer-to-member to member 'imd_val_d_o_0' of reference type 'uint64_t &amp;' (aka 'unsigned long long &amp;')&#10;  119 |         .def_readwrite(&quot;imd_val_d_o_0&quot;, &amp;V_ibex_multdiv_fast_threads::imd_val_d_o_0)&#10;      |                                         ^&#10;/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/V_ibex_multdiv_fast_threads_pybind.cpp:120:41: error: cannot form a pointer-to-member to member 'imd_val_d_o_1' of reference type 'uint64_t &amp;' (aka 'unsigned long long &amp;')&#10;  120 |         .def_readwrite(&quot;imd_val_d_o_1&quot;, &amp;V_ibex_multdiv_fast_threads::imd_val_d_o_1)&#10;      |                                         ^&#10;1 warning and 4 errors generated.&#10;Pybind11 link failed for V_ibex_multdiv_fast_threads_pybind">arch_bin = '~/.local/bin/arch-0.72.0'
+arch_stem = 'IbexMultdivFast', cocotb_test = 'test_ibex_multdiv_fast_unit.py'
+tmp_path_factory = TempPathFactory(_given_basetemp=PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>...5k29j301gs_lsdrnlvdjw0000gn/T/pytest-of-<user>/pytest-49/popen-gw3'), _retention_count=3, _retention_policy='all')
+record_property = &lt;function record_property.&lt;locals&gt;.append_property at 0x10533e5c0&gt;
+
+    @pytest.mark.parametrize(
+        "arch_stem,cocotb_test",
+        MODULES,
+        ids=[(m.values[0] if hasattr(m, "values") else m[0]) for m in MODULES],
+    )
+    def test_archsim_unit(
+        arch_bin: str,
+        arch_stem: str,
+        cocotb_test: str,
+        tmp_path_factory: pytest.TempPathFactory,
+        record_property,
+    ):
+        arch_file = SRC_DIR / f"{arch_stem}.arch"
+        test_file = COCOTB_TESTS_DIR / cocotb_test
+        if not arch_file.is_file():
+            pytest.skip(f"missing {arch_file}; run `make build` first")
+        if not test_file.is_file():
+            pytest.skip(f"missing {test_file}")
+    
+        # Each module gets its own outdir so xdist workers don't collide.
+        outdir = tmp_path_factory.mktemp(f"archsim_{_camel_to_snake(arch_stem)}")
+    
+        cmd = [
+            arch_bin, "sim", "--pybind",
+            "--test", str(test_file),
+            "-o", str(outdir),
+            str(arch_file),
+        ]
+        env = os.environ.copy()
+        # The launcher inherits PYTHONPATH; keep cwd inside outdir so the
+        # generated runner's relative imports land correctly.
+        t0 = time.perf_counter()
+        proc = subprocess.run(
+            cmd, cwd=str(outdir),
+            env=env,
+            capture_output=True, text=True,
+            timeout=300,
+        )
+        elapsed = time.perf_counter() - t0
+        record_property("archsim_wall_seconds", f"{elapsed:.3f}")
+        record_property("archsim_module", arch_stem)
+    
+        # arch sim returns non-zero on any cocotb failure; on stderr we
+        # expect a "Results: N tests, ALL PASSED" footer for the green path.
+        if proc.returncode != 0 or "ALL PASSED" not in proc.stdout + proc.stderr:
+            # Surface tails to make CI noise debuggable.
+            tail_out = "\n".join(proc.stdout.splitlines()[-40:])
+            tail_err = "\n".join(proc.stderr.splitlines()[-40:])
+&gt;           pytest.fail(
+                f"arch sim failed for {arch_stem} (rc={proc.returncode}, "
+                f"{elapsed:.2f}s)\n"
+                f"--- STDOUT (tail) ---\n{tail_out}\n"
+                f"--- STDERR (tail) ---\n{tail_err}\n"
+            )
+E           Failed: arch sim failed for IbexMultdivFast (rc=1, 1.49s)
+E           --- STDOUT (tail) ---
+E           
+E           --- STDERR (tail) ---
+E           1 warning generated.
+E           In file included from /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/Vibex_multdiv_fast.cpp:1:
+E           In file included from /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/Vibex_multdiv_fast.h:5:
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/VFunctions.h:91:21: warning: equality comparison with extraneous parentheses [-Wparentheses-equality]
+E              91 |   if ((part_rem_msb == divisor_msb)) {
+E                 |        ~~~~~~~~~~~~~^~~~~~~~~~~~~~
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/VFunctions.h:91:21: note: remove extraneous parentheses around the comparison to silence this warning
+E              91 |   if ((part_rem_msb == divisor_msb)) {
+E                 |       ~             ^             ~
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/VFunctions.h:91:21: note: use '=' to turn this equality comparison into an assignment
+E              91 |   if ((part_rem_msb == divisor_msb)) {
+E                 |                     ^~
+E                 |                     =
+E           1 warning generated.
+E           In file included from /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/V_ibex_multdiv_fast_threads_pybind.cpp:5:
+E           In file included from /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/V_ibex_multdiv_fast_threads.h:5:
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/VFunctions.h:91:21: warning: equality comparison with extraneous parentheses [-Wparentheses-equality]
+E              91 |   if ((part_rem_msb == divisor_msb)) {
+E                 |        ~~~~~~~~~~~~~^~~~~~~~~~~~~~
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/VFunctions.h:91:21: note: remove extraneous parentheses around the comparison to silence this warning
+E              91 |   if ((part_rem_msb == divisor_msb)) {
+E                 |       ~             ^             ~
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/VFunctions.h:91:21: note: use '=' to turn this equality comparison into an assignment
+E              91 |   if ((part_rem_msb == divisor_msb)) {
+E                 |                     ^~
+E                 |                     =
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/V_ibex_multdiv_fast_threads_pybind.cpp:117:41: error: cannot form a pointer-to-member to member 'imd_val_q_i_0' of reference type 'uint64_t &amp;' (aka 'unsigned long long &amp;')
+E             117 |         .def_readwrite("imd_val_q_i_0", &amp;V_ibex_multdiv_fast_threads::imd_val_q_i_0)
+E                 |                                         ^
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/V_ibex_multdiv_fast_threads_pybind.cpp:118:41: error: cannot form a pointer-to-member to member 'imd_val_q_i_1' of reference type 'uint64_t &amp;' (aka 'unsigned long long &amp;')
+E             118 |         .def_readwrite("imd_val_q_i_1", &amp;V_ibex_multdiv_fast_threads::imd_val_q_i_1)
+E                 |                                         ^
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/V_ibex_multdiv_fast_threads_pybind.cpp:119:41: error: cannot form a pointer-to-member to member 'imd_val_d_o_0' of reference type 'uint64_t &amp;' (aka 'unsigned long long &amp;')
+E             119 |         .def_readwrite("imd_val_d_o_0", &amp;V_ibex_multdiv_fast_threads::imd_val_d_o_0)
+E                 |                                         ^
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/V_ibex_multdiv_fast_threads_pybind.cpp:120:41: error: cannot form a pointer-to-member to member 'imd_val_d_o_1' of reference type 'uint64_t &amp;' (aka 'unsigned long long &amp;')
+E             120 |         .def_readwrite("imd_val_d_o_1", &amp;V_ibex_multdiv_fast_threads::imd_val_d_o_1)
+E                 |                                         ^
+E           1 warning and 4 errors generated.
+E           Pybind11 link failed for V_ibex_multdiv_fast_threads_pybind
+
+tests/test_archsim_units.py:102: Failed</failure></testcase><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[M/mul-01]" time="0.197" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[M/mulh-01]" time="0.198" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[M/mulhsu-01]" time="0.201" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[M/mulhu-01]" time="0.199" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[M/rem-01]" time="0.199" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[M/remu-01]" time="0.195" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/cadd-01]" time="0.191" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/caddi-01]" time="0.181" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/caddi16sp-01]" time="0.179" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/caddi4spn-01]" time="0.177" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/cand-01]" time="0.182" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/candi-01]" time="0.180" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/cbeqz-01]" time="0.180" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/cbnez-01]" time="0.180" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/cebreak-01]" time="0.180" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/cj-01]" time="0.178" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/cjal-01]" time="0.176" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/cjalr-01]" time="0.176" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/cjr-01]" time="0.177" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/cli-01]" time="0.178" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/clui-01]" time="0.180" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/clw-01]" time="0.180" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/clwsp-01]" time="0.177" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/cmv-01]" time="0.176" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/cnop-01]" time="0.175" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/cor-01]" time="0.181" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/cslli-01]" time="0.176" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/csrai-01]" time="0.174" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/csrli-01]" time="0.177" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/csub-01]" time="0.189" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/csw-01]" time="0.180" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/cswsp-01]" time="0.177" /><testcase classname="tests.test_arch_tests" name="test_arch_test_on_swap[C/cxor-01]" time="0.176" /></testsuite></testsuites>

@@ -8,6 +8,7 @@ from `claude/code-arch-instructions-7b4027` at `8c4b3ca` (= `main`).
 
 | Tool | Version | Identity / path | Used in |
 |---|---|---|---|
+| ARCH compiler | 0.72.0 (release asset, see decisions table) | `~/.local/arch-v0.72.0/arch-aarch64-apple-darwin/arch` (symlink `~/.local/bin/arch-0.72.0`) | everything from TASK3 on |
 | Verilator | 5.048 (2026-04-26) | `/opt/homebrew/bin/verilator`, installed 2026-05-26 | lint, cocotb sims |
 | Yosys | 0.67+post, git `b8e7da6f` | `/opt/homebrew/bin/yosys` (has `synth_ecp5`, `synth_sky130` help entries) | Phase 4, 5 |
 | sv2v | 0.0.13 | `/opt/homebrew/bin/sv2v` | Phase 4 |
@@ -24,7 +25,7 @@ from `claude/code-arch-instructions-7b4027` at `8c4b3ca` (= `main`).
 
 | Decision | Choice |
 |---|---|
-| ARCH compiler pin (final) | **arch-com release `v0.72.0`** (tag on merge commit `e5e93bf8`, 2026-09-05; `arch --version` → `arch 0.72.0`). Rebuild: `git checkout v0.72.0 && cargo build --release`, or the GitHub release artifacts. All measurements in this package were produced with the local merge commit `89ec0522` = main `f4569890` + PR #993 + PR #994 (patches in `reports/arch_com_pin_000{1,2}-*.patch`); both PRs were squash-merged into main on 2026-09-05 (`0b6a6976`, `dfff1523`) and v0.72.0 was cut from that main (PR #1000, version bump only). **Verified equivalent:** rebuilding the port with `v0.72.0` emits byte-identical SV for all 23 files (`diff -r` against the `89ec0522` build, 2026-09-05). |
+| ARCH compiler pin (final) | **arch `0.72.0` from the published release** (https://github.com/arch-hdl-lang/arch-com/releases/tag/v0.72.0, tag on merge commit `e5e93bf8`, 2026-09-05). Installed asset: `arch-aarch64-apple-darwin.tar.xz` (2,462,548 bytes), SHA-256 `a6163bacfbd892c1cb7751382bf5cd186f9f22ff380a72fc33dcb83896de1586` (matches the release's `sha256.sum`), unpacked to `~/.local/arch-v0.72.0/arch-aarch64-apple-darwin/arch`, `arch --version` → `arch 0.72.0`. The repo now pins this version in `.arch-version`; `scripts/build.sh` refuses any other `arch` (TASK3 A1). Install on another machine: download the platform asset from the release page (or run its `arch-installer.sh`), verify the SHA-256 against `sha256.sum`, set `ARCH_BIN`. History: the TASK2 measurements (Phases 2–5) were produced with the local merge commit `89ec0522` = main `f4569890` + PR #993 + PR #994, whose two patches are kept under `attic/` for provenance only (both PRs are merged; nothing needs `git am` any more); rebuilding the port with v0.72.0 emits byte-identical SV for all 23 files (`diff -r`, 2026-09-05), and the TASK3 re-gate below reproduces every TASK2 number. |
 | Earlier pin (Phases 1–3 measurements) | v0.71.0 (`1a7d9fd7`) + the same two fixes (`ead3aa8f`, `fa4c864f`), plus a hand backport of the `sext` emitter fix. Abandoned at the Phase 4 gate because release v0.71.0's SV emitter still indexes unnamed expressions (`{a,b}[hi:lo]`, `f(x)[i]`, `$signed(x)[i]`) that Verilator accepts but Yosys and sv2v reject; arch-com main fixed those in August (arch#827, #919, #834, `b0a4daba`, `27b4c313`), and the cherry-picks do not apply cleanly to v0.71.0. Decision by the repo owner. All Phase 2/3 numbers were re-run on the final pin (see `12-icache-handshake.md` §8, `13-lint.md`). |
 | arch-com PR for the arbiter fix | [arch-hdl-lang/arch-com#994](https://github.com/arch-hdl-lang/arch-com/pull/994), branch `fix/arbiter-valid-only-ready` off `origin/main` `f4569890`: same change plus `test_arbiter_valid_only_request_channel_keeps_internal_ready`; local `cargo test --release` green; **CI: all checks passed**; squash-merged 2026-09-05 as `dfff1523`. |
 | arch-com PR for the stub fix | [arch-hdl-lang/arch-com#993](https://github.com/arch-hdl-lang/arch-com/pull/993), branch `fix/stub-variant-mangling` (commit `a814dc62` on `origin/main` `f4569890`): same 12-line change plus regression test `test_interface_stub_not_variant_mangled`; local `cargo test --release` green (30 suites); **CI: all checks passed**; squash-merged 2026-09-05 as `0b6a6976`. |
@@ -115,3 +116,34 @@ avoid two parameterisations of one stub — e.g. two stubs
 wrappers of those names; (3) a rename pass in `scripts/build.sh` mapping
 `prim_ram_1p__*` back to `prim_ram_1p` (does not change what is
 measured, but is a flow-script workaround of a compiler bug).
+
+
+## TASK3 Part A — re-gate on the released arch 0.72.0 (2026-09-05)
+
+`.arch-version` = `0.72.0`; `scripts/build.sh` checks `arch --version` against it and
+refuses a mismatch (verified: the 0.70.7 binary on `PATH` is rejected with the
+install hint). `make build` with the release binary: 23 / 23 `.sv`, no port change
+(`<scratch>/make-build-A3.log`); `arch check` 23 / 23, one warning (the suppressed comb
+SCC in `IbexCoreSharedPkg`; `reports/arch_check_v0720.log`).
+
+| Suite (assertions on) | Result | Wall | Files |
+|---|---|---|---|
+| `make lint` | FAIL, the same 3 warnings as TASK2 (2 × `PROCASSINIT`, 1 × `SYNCASYNCNET`) | 1 s | `reports/gate_v0720_make_lint.{log,junit.xml}` |
+| `make test` (249 items) | **162 passed / 12 failed / 75 skipped** — identical to TASK2 | 60 s | `reports/gate_v0720_make_test.{log,junit.xml}` |
+| `tests/test_arch_tests.py` | **74 / 74 pass** (74 reference-generation variants skipped by design) | 21 s | `reports/gate_v0720_arch_tests.{log,junit.xml}` |
+| CoreMark compare | pass, validated: Arch 112,855 vs SV 111,651 ticks, ratio **1.0108** (8.861 vs 8.956 CoreMark/MHz) — identical to TASK2 | 46 s | `reports/gate_v0720_coremark.{log,junit.xml}` |
+
+The 12 `make test` failures by cause, none in a design suite: `test_soc_lint` (1, the
+lint warnings above); `test_archsim_units` (6 — `arch sim --pybind` still emits the
+`cannot form a pointer-to-member to member … of reference type` wrapper, i.e.
+**arch-com#996 is not fixed in 0.72.0**; the six modules fail exactly as on the
+TASK2 pin); `test_harc_phase1_canaries` (4, "HARC binary not found": the runner's
+default HARC path is wrong inside a git worktree, HARC drift); `test_harc_runner`
+(1, the never-committed `tests/harc/plans/ibex_compressed_decoder_*` files).
+
+Core-level lint on the 0.72.0 output (`13-lint.md`, TASK3 A5): identical counts to
+TASK2 — 141 with waivers (`UNUSEDPARAM` 73, `UNUSEDSIGNAL` 54, `DECLFILENAME` 6,
+`IMPORTSTAR` 4, `WIDTHEXPAND` 2, `PROCASSINIT` 2) and 490 without; the
+`PROCASSINIT` thread-state-initializer pattern (arch-com#995) is still emitted
+(`build/ibex_multdiv_fast.sv:107`, `_t0_state`). Logs
+`reports/lint_v0720_arch_lane_ibex_top{,_nowaiver}.log`.

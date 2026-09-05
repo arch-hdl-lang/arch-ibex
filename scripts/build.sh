@@ -42,6 +42,19 @@ if [[ -z "${ARCH_BIN}" ]]; then
   exit 1
 fi
 
+# Compiler pin: refuse to build with any `arch` whose version differs from
+# .arch-version (the reproducibility guard the reviewer package asked for).
+PIN_FILE="${REPO_ROOT}/.arch-version"
+if [[ -f "${PIN_FILE}" ]]; then
+  want="$(tr -d '[:space:]' < "${PIN_FILE}")"
+  have="$("${ARCH_BIN}" --version 2>/dev/null | awk '{print $2}')"
+  if [[ "${have}" != "${want}" ]]; then
+    echo "error: arch version mismatch: ${ARCH_BIN} reports '${have:-unknown}', .arch-version pins '${want}'." >&2
+    echo "  Install arch v${want} (https://github.com/arch-hdl-lang/arch-com/releases/tag/v${want}) and set ARCH_BIN to it." >&2
+    exit 1
+  fi
+fi
+
 mkdir -p "${BUILD_DIR}"
 
 if [[ $# -eq 0 ]]; then
