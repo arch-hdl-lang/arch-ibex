@@ -117,3 +117,9 @@ owner's earlier archive of the first pass and is untracked.
 source, both merged upstream), `reports/gate_v0720_*`, `reports/lint_v0720_*`,
 `reports/arch_check_v0720.log`, `.arch-version` (repo root): scrubbed with the same
 `sed`; no ARCH source; `TASK3.md` is the brief, not for upload.
+
+Phase B additions: `reports/gate_v0720_rvfi1_*`, the `reports/arch_ecp5_rvfi_*`,
+`arch_sky130_rvfi_*`, `arch_openroad_rvfi_final_*` copies (previous Arch-lane
+reports kept for traceability), re-generated `arch_ecp5_*`, `arch_sky130_*`,
+`arch_openroad_final_*`: scrubbed with the same `sed`; no ARCH source.
+`src/sim/IbexTopRvfiSim.arch` is design source in the repo, not in the package.

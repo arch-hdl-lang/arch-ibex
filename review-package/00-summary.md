@@ -1,8 +1,10 @@
 # 00 — Summary: ARCH port of Ibex vs. hand-written SystemVerilog
 
 Evidence package for Reviewer 1, comment 2. **This file is the single
-source of truth as of 2026-09-05** (TASK3 Part A: repinned to the released
-arch 0.72.0 and re-gated; every number below was reproduced on it); it supersedes the 2026-09-03 first
+source of truth as of 2026-09-05** (TASK3: repinned to the released arch
+0.72.0 and re-gated, every functional number below reproduced on it; the
+RVFI trace ports made conditional so the synthesis lanes compare
+upstream's `ifdef RVFI` boundary like-for-like); it supersedes the 2026-09-03 first
 pass (whose numbers are listed at the end under "Superseded"). Every
 number is traceable to a file under `reports/` or a command named in
 the numbered files (`01`–`04` first pass, `10`–`15` this pass); those
@@ -23,8 +25,11 @@ the same hand-written test SoC for simulation and are synthesised as
 **Source state.** Branch `review-package` on top of `8c4b3ca`
 (2026-06-29): the port sources carry the Phase 1–2 changes of
 `11-port-changes.md` (one compiler-compatibility rewrite; the icache
-arbiter handshake fix and its follow-ups), and the unit tests changed
-with them. No other design source was touched.
+arbiter handshake fix and its follow-ups), the unit tests changed with
+them, and Phase B (`param RVFI` + `generate_if` around the 38 RVFI ports
+of `ibex_top`, a sim-only shim that selects RVFI = 1 for the harness, and
+`make build` / `make build-synth` profiles). No other design source was
+touched.
 
 **Toolchain (`10-toolchain.md`).** ARCH compiler: the published release
 `arch 0.72.0` (asset `arch-aarch64-apple-darwin.tar.xz`, SHA-256
@@ -46,7 +51,7 @@ Verilator 5.048
 | 10 CPU programs (ISRs, PMP faults, icache bench), end-to-end | 10 / 10 | Arch (SV lane: 10 / 10, `02-functional.md`) | same; `reports/functional_sv_lane.junit.xml` |
 | RISC-V arch tests rv32i_m I/M/C, signatures vs upstream-generated references | 74 / 74 bit-identical | Arch vs SV | `reports/gate_arch_tests.junit.xml` |
 | CoreMark (one run, both lanes in one test) | Arch 112,855 ticks vs SV 111,651 (ratio 1.0108; 8.861 vs 8.956 CoreMark/MHz) | both | `reports/gate_coremark.log` |
-| `make test` overall (249 items) | 162 passed / 12 failed / 75 skipped | Arch | `reports/gate_make_test.log` |
+| `make test` overall (249 items) | 162 passed / 12 failed / 75 skipped — identical on the release 0.72.0 (`reports/gate_v0720_*`) and on the RVFI = 1 Phase B build (`reports/gate_v0720_rvfi1_*`) | Arch | `reports/gate_make_test.log` |
 | `make lint` (SoC, `-Wall`, project waivers) | FAIL, 3 warnings (2 × `PROCASSINIT` compiler pattern, 1 × `SYNCASYNCNET` reset-tracking flops); SV lane fails on the same `SYNCASYNCNET` | both | `reports/gate_make_lint.log` |
 
 The 12 `make test` failures are all toolchain/repo drift, none in a
@@ -108,6 +113,11 @@ None is an error; none changes generated logic.
 
 ## sky130 (open PDK, `sky130_fd_sc_hd` tt 25 °C 1.80 V), `ibex_top`, both lanes identical flow — `14-sky130.md`
 
+Both lanes' tops now expose the same 54 ports (Phase B); the Arch lane
+was re-synthesised from the RVFI = 0 tree on 2026-09-05 and is identical
+to the 2026-09-04 numbers cell for cell (`14-sky130.md` §4.5); the SV
+lane's numbers are from 2026-09-04, nothing changed on that lane.
+
 ### Logic synthesis (Yosys, flattened; §4.3)
 
 | Metric | SV lane | Arch lane | Arch / SV | Report |
@@ -123,36 +133,44 @@ None is an error; none changes generated logic.
 
 | Metric | SV lane | Arch lane | Arch / SV | Report |
 |---|---|---|---|---|
-| Design area after P&R (µm², fillers excluded) | 2,277,607 | 2,600,940 | **1.142×** | `reports/{sv,arch}_openroad_final_area.rpt` |
+| Design area after P&R (µm², fillers excluded) | 2,277,607 | 2,597,237 | **1.140×** | `reports/{sv,arch}_openroad_final_area.rpt` |
 | Die / final utilisation | 2,656 µm square / 32.8 % | 2,774 µm square / 34.3 % | | `reports/*_openroad_final_metrics.txt` |
-| Setup WNS / TNS at 10 ns (extracted parasitics) | −9.660 ns / −197,688 ns | −17.987 ns / −932,797 ns | | `reports/*_openroad_final_timing.rpt` |
-| **fmax = 1 / (10 ns − WNS)** | **50.9 MHz** | **35.7 MHz** | **0.70×** | derived |
-| Hold WNS (input-port paths, 2 ns input delay) | −0.237 ns | −1.737 ns | | same |
-| DRC / antenna violations | 0 / 3 | 0 / 0 | | `reports/*_openroad_final_checks.rpt` |
+| Setup WNS / TNS at 10 ns (extracted parasitics) | −9.660 ns / −197,688 ns | −17.702 ns / −929,210 ns | | `reports/*_openroad_final_timing.rpt` |
+| **fmax = 1 / (10 ns − WNS)** | **50.9 MHz** | **36.1 MHz** | **0.71×** | derived |
+| Hold WNS (input-port paths, 2 ns input delay) | −0.237 ns | −2.022 ns | | same |
+| DRC / antenna violations | 0 / 3 | 0 / 1 | | `reports/*_openroad_final_checks.rpt` |
 | Power, default activity (W) | 0.442 | 0.426 | 0.96× | `reports/*_openroad_final_power.rpt` |
 | Global-route wirelength (µm) | 12.97 M | 16.87 M | 1.30× | `flow/out/*/openroad/openroad.log` |
+| Effect of the RVFI ports (Phase B re-run vs the run with the ports) | | −3,703 µm² (−0.14 %), +0.29 ns WNS (noise) | | `14-sky130.md` §4.5 |
 
 Critical path on both lanes: register-to-register into the icache RAM
 arrays' enable flops through the buffered 11 k-fanout enable nets; the
 Arch lane's version adds an adder carry chain in front of it
 (`14-sky130.md` §4.4).
 
+The Arch column is the 2026-09-05 re-run without the RVFI ports; the SV
+column is unchanged from 2026-09-04 (same scripts, tools and knobs). The
+ports had accounted for 0.14 % of the area gap (1,213 tie cells) and none
+of the fmax gap (`14-sky130.md` §4.5).
+
 ## ECP5 FPGA (LFE5U-85F, speed 6, Yosys `synth_ecp5` + nextpnr-ecp5, 50 MHz constraint, 3 seeds) — `15-ecp5.md`
 
 | Metric | SV lane | Arch lane | Arch / SV | Report |
 |---|---|---|---|---|
-| LUT4 after packing (logic + carry) | 11,055 | 16,867 | 1.53× | `reports/{sv,arch}_ecp5_nextpnr_seed1.log` |
+| LUT4 after packing (logic + carry) | 11,055 | 16,969 (16,867 before Phase B) | 1.53× | `reports/{sv,arch}_ecp5_nextpnr_seed1.log` |
 | Flip-flops | 2,534 | 3,430 | 1.35× | same |
 | Block RAM (DP16KD) / multiplier (MULT18X18D) | 6 / 1 | 6 / 1 | identical mapping | `reports/{sv,arch}_ecp5_synth.stat` |
-| fmax, mean of seeds 1–3 [min–max] (MHz) | 33.56 [33.13–34.36] | 29.14 [28.60–30.06] | 0.87× | `reports/{sv,arch}_ecp5_report_seed{1,2,3}.json` |
+| fmax, mean of seeds 1–3 [min–max] (MHz) | 33.56 [33.13–34.36] | 28.27 [27.98–28.52] (29.14 before Phase B, `reports/arch_ecp5_rvfi_*`) | 0.84× | `reports/{sv,arch}_ecp5_report_seed{1,2,3}.json` |
 | Meets 50 MHz | no | no | | same |
 | Critical path (both lanes) | tag-bank block RAM read → tag compare / IF data path → ID-stage instruction register | | | `reports/*_ecp5_nextpnr_seed1.log` |
 
 Substitutions applied identically to both lanes: the generic clock
 gate is a pass-through (`clk_o = clk_i`; no fabric clock-gate cell),
-and the core is placed out-of-context (787 / 2,000 top-level IO bits
-exceed any ECP5 package; no IO buffers, no bitstream). Details
-`15-ecp5.md` §5.3.
+and the core is placed out-of-context (787 top-level IO bits exceed
+any ECP5 package; no IO buffers, no bitstream). The Phase B re-run
+moved the Arch lane by synthesis noise only (+102 LUT4, −0.9 MHz, inside
+the seed spread); the SV lane reproduced exactly. Details `15-ecp5.md`
+§5.3–5.4.
 
 ## Development-effort proxies (git; no hours inferred) — `01-inventory.md`
 
@@ -190,10 +208,12 @@ exceed any ECP5 package; no IO buffers, no bitstream). Details
    every assertions-on simulation (`02-functional.md`).
 3. **Configuration breadth.** Upstream SV is fully parametric; the port
    is single-configuration. LOC and unused-parameter counts reflect that.
-4. **RVFI ports.** The ported top exposes its 38 RVFI outputs
-   (1,213 bits) unconditionally, tied to constants; upstream hides them
-   behind `ifdef RVFI`. Out-of-context on ECP5 they vanish; on sky130
-   they add top-level pins and tie cells to the Arch lane.
+4. **RVFI ports (resolved).** Until Phase B the ported top exposed its 38
+   RVFI outputs (1,213 bits) unconditionally; they are now `generate_if
+   RVFI` ports, off for synthesis as upstream's `ifdef RVFI`. At
+   synthesis they had cost nothing (constants); after
+   place-and-route they were 1,213 tie cells, 0.14 % of the Arch lane's
+   area, and no timing (`14-sky130.md` §4.5).
 5. **Sky130 P&R** uses OpenROAD's regression flow, not ORFS, and a
    25 % utilisation die (a 50 % die failed detailed placement under the
    flow's placement padding). Numbers depend on that die and the
@@ -215,6 +235,8 @@ exceed any ECP5 package; no IO buffers, no bitstream). Details
 | ARCH LOC 6,343 code lines | superseded by 6,353 (Phase 1–2 edits) |
 | May-2026 sky130 numbers from committed notes (+1.7 % / +5.1 % SoC, +15.2 % icache module, 1.14× power) (`04-synthesis.md`) | superseded by the reproducible `ibex_top` flow in `14-sky130.md`; not directly comparable (different scope, Yosys version, and icache) |
 | "FPGA: not measured", "post-P&R: not measured" | superseded by `15-ecp5.md` and `14-sky130.md` §4.4 |
+| Arch-lane ECP5 fmax 29.14 MHz / 16,867 LUT4 and the sky130 Arch P&R numbers with the RVFI ports present (`reports/arch_ecp5_rvfi_*`, `reports/arch_openroad_rvfi_final_*`) | superseded by the Phase B re-runs (`15-ecp5.md` §5.4, `14-sky130.md` §4.5) |
+| Caveat 4 "RVFI ports unconditional" | resolved by Phase B (`11-port-changes.md`) |
 
 ## Commands run, in order (this pass)
 
@@ -235,6 +257,9 @@ verilator --lint-only -Wall -Wno-fatal --unroll-count 72 --top-module ibex_top -
 python3 flow/make_filelists.py <fusesoc .vc>; ./flow/sv2v.sh; ./flow/sky130_synth.sh sv arch; ./flow/openroad/run.sh sv & ./flow/openroad/run.sh arch
 # Phase 5: ECP5 (15-ecp5.md)
 ./flow/ecp5_pnr.sh synth; ./flow/ecp5_pnr.sh pnr
+# TASK3: pin, Phase B, re-runs
+./scripts/build.sh (guarded by .arch-version); make build; make build-synth; gate as Phase 2 → reports/gate_v0720_*, gate_v0720_rvfi1_*
+./flow/sv2v.sh; ./flow/sky130_synth.sh arch; ./flow/openroad/run.sh arch; ./flow/ecp5_pnr.sh all   # Arch lane from build-synth/
 # Phase 6: LOC recount, sanitize
 python3 <scratch>/loc.py src/*.arch > reports/loc_arch_phase2.txt; python3 <scratch>/loc.py build/*.sv > reports/loc_generated_pin.txt
 sed -i '' 's|<worktree>|${REPO_ROOT}|g; s|/Users/<user>|~|g; …' reports/*   # see 06-sanitize.md
