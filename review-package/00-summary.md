@@ -36,7 +36,7 @@ touched.
 `f3cfcd60…7170`), pinned by `.arch-version` and enforced by
 `scripts/build.sh`; 0.72.1 adds the two fixes this package found
 (arch-com #995, #996). The post-P&R numbers below are from 0.72.0;
-everything else was re-run on 0.72.1. The TASK2 measurements were made on the equivalent
+everything, including post-P&R, was re-run on 0.72.1. The TASK2 measurements were made on the equivalent
 local merge `89ec0522`; the release regenerates byte-identical SV for
 all 23 files and the full gate re-run on it (`10-toolchain.md`, TASK3
 Part A) reproduces every functional, CoreMark and lint number below.
@@ -139,18 +139,18 @@ mapping ≈3 % worse; deleting just those three lines from the 0.72.0 SV
 reproduces the 0.72.1 number (`14-sky130.md` §4.6). It also shows this
 flow's synthesis comparison is sensitive at the several-percent level.
 
-### Post-place-and-route (OpenROAD regression flow, 10 ns clock, 25 % die utilisation rule; §4.4) — measured on arch 0.72.0, not yet re-run on 0.72.1
+### Post-place-and-route (OpenROAD regression flow, 10 ns clock, 25 % die utilisation rule; §4.4) — Arch lane re-run on arch 0.72.1
 
 | Metric | SV lane | Arch lane | Arch / SV | Report |
 |---|---|---|---|---|
-| Design area after P&R (µm², fillers excluded) | 2,277,607 | 2,597,237 | **1.140×** | `reports/{sv,arch}_openroad_final_area.rpt` |
-| Die / final utilisation | 2,656 µm square / 32.8 % | 2,774 µm square / 34.3 % | | `reports/*_openroad_final_metrics.txt` |
-| Setup WNS / TNS at 10 ns (extracted parasitics) | −9.660 ns / −197,688 ns | −17.702 ns / −929,210 ns | | `reports/*_openroad_final_timing.rpt` |
-| **fmax = 1 / (10 ns − WNS)** | **50.9 MHz** | **36.1 MHz** | **0.71×** | derived |
-| Hold WNS (input-port paths, 2 ns input delay) | −0.237 ns | −2.022 ns | | same |
-| DRC / antenna violations | 0 / 3 | 0 / 1 | | `reports/*_openroad_final_checks.rpt` |
-| Power, default activity (W) | 0.442 | 0.426 | 0.96× | `reports/*_openroad_final_power.rpt` |
-| Global-route wirelength (µm) | 12.97 M | 16.87 M | 1.30× | `flow/out/*/openroad/openroad.log` |
+| Design area after P&R (µm², fillers excluded) | 2,277,607 | 2,458,025 (0.72.1; 2,597,237 on 0.72.0) | **1.079×** | `reports/{sv,arch}_openroad_final_area.rpt` |
+| Die / final utilisation | 2,656 µm square / 32.8 % | 2,732 µm square / 33.5 % | | `reports/*_openroad_final_metrics.txt` |
+| Setup WNS / TNS at 10 ns (extracted parasitics) | −9.660 ns / −197,688 ns | −15.433 ns / −886,000 ns | | `reports/*_openroad_final_timing.rpt` |
+| **fmax = 1 / (10 ns − WNS)** | **50.9 MHz** | **39.3 MHz** (36.1 on 0.72.0) | **0.77×** | derived |
+| Hold WNS (input-port paths, 2 ns input delay) | −0.237 ns | −0.298 ns | | same |
+| DRC / antenna violations | 0 / 3 | 0 / 0 | | `reports/*_openroad_final_checks.rpt` |
+| Power, default activity (W) | 0.442 | 0.391 | 0.88× | `reports/*_openroad_final_power.rpt` |
+| Global-route wirelength (µm) | 12.97 M | 15.12 M | 1.17× | `flow/out/*/openroad/openroad.log` |
 | Effect of the RVFI ports (Phase B re-run vs the run with the ports) | | −3,703 µm² (−0.14 %), +0.29 ns WNS (noise) | | `14-sky130.md` §4.5 |
 
 Critical path on both lanes: register-to-register into the icache RAM
@@ -158,10 +158,14 @@ arrays' enable flops through the buffered 11 k-fanout enable nets; the
 Arch lane's version adds an adder carry chain in front of it
 (`14-sky130.md` §4.4).
 
-The Arch column is the 2026-09-05 re-run without the RVFI ports; the SV
-column is unchanged from 2026-09-04 (same scripts, tools and knobs). The
-ports had accounted for 0.14 % of the area gap (1,213 tie cells) and none
-of the fmax gap (`14-sky130.md` §4.5).
+The Arch column is the 2026-09-05 re-run without the RVFI ports on arch
+0.72.1; the SV column is unchanged from 2026-09-04 (same scripts, tools
+and knobs). The RVFI ports had accounted for 0.14 % of the area gap and
+none of the fmax gap (`14-sky130.md` §4.5); the three compiler-introduced
+declaration initializers fixed in 0.72.1 accounted for 5.4 % of the Arch
+lane's post-P&R area and 2.3 ns of its setup slack (§4.6). The critical
+path on both lanes is the fetch/branch loop into the icache enable flops
+(SV from the `mie` CSR, Arch from the register-file read address).
 
 ## ECP5 FPGA (LFE5U-85F, speed 6, Yosys `synth_ecp5` + nextpnr-ecp5, 50 MHz constraint, 3 seeds) — `15-ecp5.md`
 
@@ -240,7 +244,7 @@ the seed spread); the SV lane reproduced exactly. Details `15-ecp5.md`
 |---|---|
 | Arch lane 0 / 10 CPU programs as-is, 10 / 10 with `--no-assert` (`02-functional.md`) | superseded by 10 / 10 with assertions on, after the Phase 2 fix |
 | Compiler `arch 0.70.0 @ 2ffcc60b` as the working compiler | superseded by the released `arch 0.72.1` pin (`10-toolchain.md`) |
-| Arch-lane sky130 synthesis 1,896,047 µm² / 126,389 cells (1.092×) and the 141-warning lint on 0.72.0 | superseded on 0.72.1 by 1,838,368 µm² / 114,307 cells (1.059×) and 140 warnings; the post-P&R rows still carry 0.72.0 (`14-sky130.md` §4.6) |
+| Arch-lane sky130 synthesis 1,896,047 µm² / 126,389 cells (1.092×), post-P&R 2,597,237 µm² / 36.1 MHz (1.140× / 0.71×) and the 141-warning lint on 0.72.0 | superseded on 0.72.1 by 1,838,368 µm² / 114,307 cells (1.059×), 2,458,025 µm² / 39.3 MHz (1.079× / 0.77×) and 140 warnings (`14-sky130.md` §4.6; 0.72.0 reports kept as `*_v0720_*`) |
 | TASK2 gate on the local merge `89ec0522` (`12-icache-handshake.md` §8) | reproduced number-for-number on the released 0.72.0 (`10-toolchain.md`, TASK3 Part A; `reports/gate_v0720_*`) |
 | Arch-lane Verilator `-Wall` 150 / 499 warnings (`03-source-metrics.md`) | superseded by 141 / 490 (`13-lint.md`; Phase 2 removed the arbiter ready wires and a `WIDTHEXPAND`) |
 | ARCH LOC 6,343 code lines | superseded by 6,353 (Phase 1–2 edits) |

@@ -127,3 +127,4 @@ reports kept for traceability), re-generated `arch_ecp5_*`, `arch_sky130_*`,
 0.72.1 re-run additions: `reports/gate_v0721_*`, `lint_v0721_*`, `arch_check_v0721.log`,
 regenerated `arch_sky130_*` / `arch_ecp5_*` (0.72.1) with the 0.72.0 copies kept as
 `arch_sky130_v0720_*` / `arch_ecp5_v0720_*`: scrubbed; no ARCH source.
+Post-P&R on 0.72.1: regenerated `reports/arch_openroad_final_*`, previous run kept as `arch_openroad_v0720_final_*`; scrubbed.
