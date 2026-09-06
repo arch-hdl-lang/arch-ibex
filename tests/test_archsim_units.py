@@ -94,8 +94,13 @@ def test_archsim_unit(
     record_property("archsim_module", arch_stem)
 
     # arch sim returns non-zero on any cocotb failure; on stderr we
-    # expect a "Results: N tests, ALL PASSED" footer for the green path.
-    if proc.returncode != 0 or "ALL PASSED" not in proc.stdout + proc.stderr:
+    # expect a green footer: arch <= 0.71 printed "ALL PASSED"; the 0.72
+    # native cocotb runtime prints "Results: N tests; N passed, 0 failed, 0 skipped".
+    out = proc.stdout + proc.stderr
+    summary_ok = "ALL PASSED" in out or (
+        re.search(r"Results: \d+ tests; \d+ passed, 0 failed", out) is not None
+    )
+    if proc.returncode != 0 or not summary_ok:
         # Surface tails to make CI noise debuggable.
         tail_out = "\n".join(proc.stdout.splitlines()[-40:])
         tail_err = "\n".join(proc.stderr.splitlines()[-40:])
