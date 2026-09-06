@@ -94,8 +94,15 @@ _build_one() {
   # Simulation profile: the top is built together with the RVFI shim so the
   # RVFI = 1 variant of `ibex_top` is the one emitted (see src/sim/).
   local -a extra_inputs=()
-  if [[ "${arch_stem}" == "IbexTop" && "${ARCH_BUILD_PROFILE}" == "sim" ]]; then
-    extra_inputs+=("${SRC_DIR}/sim/IbexTopRvfiSim.arch")
+  if [[ "${arch_stem}" == "IbexTop" ]]; then
+    # The two profiles emit different `ibex_top` interfaces (with / without the
+    # RVFI ports). A stale src/ibex_top.archi left by the other profile would
+    # shadow the module being compiled and break the shim's instantiation, so
+    # the top is always elaborated from source.
+    rm -f "${SRC_DIR}/ibex_top.archi" "${SRC_DIR}/ibex_top_rvfi_sim.archi"
+    if [[ "${ARCH_BUILD_PROFILE}" == "sim" ]]; then
+      extra_inputs+=("${SRC_DIR}/sim/IbexTopRvfiSim.arch")
+    fi
   fi
   echo "arch build $(basename "${f}") ${extra_inputs[*]:+(+ $(basename "${extra_inputs[0]}"))}→ $(basename "${BUILD_DIR}")/${sv_stem}.sv"
   "${ARCH_BIN}" build -o "${BUILD_DIR}/${sv_stem}.sv" "${f}" "${extra_inputs[@]}"

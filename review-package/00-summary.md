@@ -32,9 +32,11 @@ of `ibex_top`, a sim-only shim that selects RVFI = 1 for the harness, and
 touched.
 
 **Toolchain (`10-toolchain.md`).** ARCH compiler: the published release
-`arch 0.72.0` (asset `arch-aarch64-apple-darwin.tar.xz`, SHA-256
-`a6163bac…1586`), pinned by `.arch-version` and enforced by
-`scripts/build.sh`. The TASK2 measurements were made on the equivalent
+`arch 0.72.1` (asset `arch-aarch64-apple-darwin.tar.xz`, SHA-256
+`f3cfcd60…7170`), pinned by `.arch-version` and enforced by
+`scripts/build.sh`; 0.72.1 adds the two fixes this package found
+(arch-com #995, #996). The post-P&R numbers below are from 0.72.0;
+everything else was re-run on 0.72.1. The TASK2 measurements were made on the equivalent
 local merge `89ec0522`; the release regenerates byte-identical SV for
 all 23 files and the full gate re-run on it (`10-toolchain.md`, TASK3
 Part A) reproduces every functional, CoreMark and lint number below.
@@ -51,12 +53,13 @@ Verilator 5.048
 | 10 CPU programs (ISRs, PMP faults, icache bench), end-to-end | 10 / 10 | Arch (SV lane: 10 / 10, `02-functional.md`) | same; `reports/functional_sv_lane.junit.xml` |
 | RISC-V arch tests rv32i_m I/M/C, signatures vs upstream-generated references | 74 / 74 bit-identical | Arch vs SV | `reports/gate_arch_tests.junit.xml` |
 | CoreMark (one run, both lanes in one test) | Arch 112,855 ticks vs SV 111,651 (ratio 1.0108; 8.861 vs 8.956 CoreMark/MHz) | both | `reports/gate_coremark.log` |
-| `make test` overall (249 items) | 162 passed / 12 failed / 75 skipped — identical on the release 0.72.0 (`reports/gate_v0720_*`) and on the RVFI = 1 Phase B build (`reports/gate_v0720_rvfi1_*`) | Arch | `reports/gate_make_test.log` |
-| `make lint` (SoC, `-Wall`, project waivers) | FAIL, 3 warnings (2 × `PROCASSINIT` compiler pattern, 1 × `SYNCASYNCNET` reset-tracking flops); SV lane fails on the same `SYNCASYNCNET` | both | `reports/gate_make_lint.log` |
+| `make test` overall (249 items) | **167 passed / 7 failed / 75 skipped on 0.72.1** (`reports/gate_v0721_*`; 162 / 12 / 75 on 0.72.0, `reports/gate_v0720_*`, `gate_v0720_rvfi1_*`) | Arch | `reports/gate_v0721_make_test.log` |
+| `make lint` (SoC, `-Wall`, project waivers) | FAIL, **1** warning on 0.72.1 (`SYNCASYNCNET` reset-tracking flops; the 2 × `PROCASSINIT` are fixed in 0.72.1); SV lane fails on the same `SYNCASYNCNET` | both | `reports/gate_v0721_make_lint.log` |
 
-The 12 `make test` failures are all toolchain/repo drift, none in a
-design suite: the SoC lint above (1), `arch sim --pybind` wrapper
-compile error on the current compiler (6 modules, arch-com#996), HARC
+The 7 `make test` failures are all toolchain/repo drift, none in a
+design suite: the SoC lint above (1), one native-simulator divergence on
+a multi-cycle Zcmp expansion in the compressed decoder (arch-com#1003;
+the other five `arch sim` modules pass since #996 was fixed), HARC
 0.2.0 rejecting the checked-in runner's `--codegen` flag (4), and a test
 reading plan files that were never committed (1). Every design suite is
 green with the generated protocol checkers enabled — the state the first
@@ -97,8 +100,8 @@ hard-codes one configuration.
 | Check | Upstream SV | Arch lane | Report |
 |---|---|---|---|
 | `arch check`, final pin, 23 files | n/a | 23 / 23 pass, 1 warning (suppressed comb SCC) | `reports/arch_check_pinned.log` |
-| Verilator `-Wall`, `ibex_top`, with upstream `.vlt` waivers | 3 (`UNOPTFLAT`) | **141** (`UNUSEDPARAM` 73, `UNUSEDSIGNAL` 54, `DECLFILENAME` 6, `IMPORTSTAR` 4, `WIDTHEXPAND` 2, `PROCASSINIT` 2) | `reports/lint_sv_lane_ibex_top.log`, `reports/lint_arch_lane_ibex_top.log` |
-| Verilator `-Wall`, no waivers on either lane | 339 | 490 | `reports/lint_*_nowaiver.log` |
+| Verilator `-Wall`, `ibex_top`, with upstream `.vlt` waivers | 3 (`UNOPTFLAT`) | **140** on 0.72.1 (`UNUSEDPARAM` 74, `UNUSEDSIGNAL` 54, `DECLFILENAME` 6, `IMPORTSTAR` 4, `WIDTHEXPAND` 2; `PROCASSINIT` 0 — was 141 with 2 on 0.72.0) | `reports/lint_sv_lane_ibex_top.log`, `reports/lint_v0721_arch_lane_ibex_top.log` |
+| Verilator `-Wall`, no waivers on either lane | 339 | 489 | `reports/lint_*_nowaiver.log` |
 | Verilator errors | 0 | 0 | same |
 
 Arch-lane-only warnings, classified (`13-lint.md` §2, per-warning list in
@@ -122,14 +125,21 @@ lane's numbers are from 2026-09-04, nothing changed on that lane.
 
 | Metric | SV lane | Arch lane | Arch / SV | Report |
 |---|---|---|---|---|
-| Cell area (µm²) | 1,736,611 | 1,896,047 | **1.092×** | `reports/{sv,arch}_sky130_synth_area.rpt` |
-| Cells | 102,079 | 126,389 | 1.238× | same |
+| Cell area (µm²) | 1,736,611 | 1,896,047 on 0.72.0 → **1,838,368 on 0.72.1** | **1.092× → 1.059×** | `reports/{sv,arch}_sky130_synth_area.rpt` |
+| Cells | 102,079 | 126,389 → 114,307 (0.72.1) | 1.238× → 1.120× | same |
 | Flip-flops (all) / of which RAM-array enable flops | 46,719 / 44,784 | 47,650 / 45,590 | +931 / +806 | same |
 | Area excluding the RAM-array flops (≈ control + datapath) | ≈ 0.40 M µm² | ≈ 0.53 M µm² | ≈ 1.3× | derived from same |
 | Unmapped / black-boxed cells | 0 | 0 | | `flow/out/*/sky130/sta.log` |
 | Synthesis-netlist STA (no buffering) | WNS −805 ns | WNS −26,490 ns | **not usable** (unbuffered 11k-fanout RAM enables) | `reports/*_sky130_sta_wns_tns.rpt` |
 
-### Post-place-and-route (OpenROAD regression flow, 10 ns clock, 25 % die utilisation rule; §4.4)
+The 0.72.1 synthesis drop is a compiler artefact removed, not a design
+change: three `= 0` declaration initializers on the multdiv thread's
+registers (never present on the SV lane) made Yosys's flattened ABC
+mapping ≈3 % worse; deleting just those three lines from the 0.72.0 SV
+reproduces the 0.72.1 number (`14-sky130.md` §4.6). It also shows this
+flow's synthesis comparison is sensitive at the several-percent level.
+
+### Post-place-and-route (OpenROAD regression flow, 10 ns clock, 25 % die utilisation rule; §4.4) — measured on arch 0.72.0, not yet re-run on 0.72.1
 
 | Metric | SV lane | Arch lane | Arch / SV | Report |
 |---|---|---|---|---|
@@ -157,10 +167,10 @@ of the fmax gap (`14-sky130.md` §4.5).
 
 | Metric | SV lane | Arch lane | Arch / SV | Report |
 |---|---|---|---|---|
-| LUT4 after packing (logic + carry) | 11,055 | 16,969 (16,867 before Phase B) | 1.53× | `reports/{sv,arch}_ecp5_nextpnr_seed1.log` |
-| Flip-flops | 2,534 | 3,430 | 1.35× | same |
+| LUT4 after packing (logic + carry) | 11,055 | 17,026 on 0.72.1 (16,969 on 0.72.0) | 1.54× | `reports/{sv,arch}_ecp5_nextpnr_seed1.log` |
+| Flip-flops | 2,534 | 3,440 (3,430 on 0.72.0) | 1.36× | same |
 | Block RAM (DP16KD) / multiplier (MULT18X18D) | 6 / 1 | 6 / 1 | identical mapping | `reports/{sv,arch}_ecp5_synth.stat` |
-| fmax, mean of seeds 1–3 [min–max] (MHz) | 33.56 [33.13–34.36] | 28.27 [27.98–28.52] (29.14 before Phase B, `reports/arch_ecp5_rvfi_*`) | 0.84× | `reports/{sv,arch}_ecp5_report_seed{1,2,3}.json` |
+| fmax, mean of seeds 1–3 [min–max] (MHz) | 33.56 [33.13–34.36] | 28.55 [27.89–28.98] on 0.72.1 (28.27 on 0.72.0, 29.14 before Phase B) | 0.85× | `reports/{sv,arch}_ecp5_report_seed{1,2,3}.json` |
 | Meets 50 MHz | no | no | | same |
 | Critical path (both lanes) | tag-bank block RAM read → tag compare / IF data path → ID-stage instruction register | | | `reports/*_ecp5_nextpnr_seed1.log` |
 
@@ -229,7 +239,8 @@ the seed spread); the SV lane reproduced exactly. Details `15-ecp5.md`
 | First-pass number | Status |
 |---|---|
 | Arch lane 0 / 10 CPU programs as-is, 10 / 10 with `--no-assert` (`02-functional.md`) | superseded by 10 / 10 with assertions on, after the Phase 2 fix |
-| Compiler `arch 0.70.0 @ 2ffcc60b` as the working compiler | superseded by the released `arch 0.72.0` pin (`10-toolchain.md`) |
+| Compiler `arch 0.70.0 @ 2ffcc60b` as the working compiler | superseded by the released `arch 0.72.1` pin (`10-toolchain.md`) |
+| Arch-lane sky130 synthesis 1,896,047 µm² / 126,389 cells (1.092×) and the 141-warning lint on 0.72.0 | superseded on 0.72.1 by 1,838,368 µm² / 114,307 cells (1.059×) and 140 warnings; the post-P&R rows still carry 0.72.0 (`14-sky130.md` §4.6) |
 | TASK2 gate on the local merge `89ec0522` (`12-icache-handshake.md` §8) | reproduced number-for-number on the released 0.72.0 (`10-toolchain.md`, TASK3 Part A; `reports/gate_v0720_*`) |
 | Arch-lane Verilator `-Wall` 150 / 499 warnings (`03-source-metrics.md`) | superseded by 141 / 490 (`13-lint.md`; Phase 2 removed the arbiter ready wires and a `WIDTHEXPAND`) |
 | ARCH LOC 6,343 code lines | superseded by 6,353 (Phase 1–2 edits) |

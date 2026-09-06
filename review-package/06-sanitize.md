@@ -123,3 +123,7 @@ Phase B additions: `reports/gate_v0720_rvfi1_*`, the `reports/arch_ecp5_rvfi_*`,
 reports kept for traceability), re-generated `arch_ecp5_*`, `arch_sky130_*`,
 `arch_openroad_final_*`: scrubbed with the same `sed`; no ARCH source.
 `src/sim/IbexTopRvfiSim.arch` is design source in the repo, not in the package.
+
+0.72.1 re-run additions: `reports/gate_v0721_*`, `lint_v0721_*`, `arch_check_v0721.log`,
+regenerated `arch_sky130_*` / `arch_ecp5_*` (0.72.1) with the 0.72.0 copies kept as
+`arch_sky130_v0720_*` / `arch_ecp5_v0720_*`: scrubbed; no ARCH source.

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="1.115" timestamp="2026-09-05T18:42:50.476252-07:00" hostname="SHUQINGs-MacBook-Air.local"><testcase classname="tests.test_soc_lint" name="test_ibex_mini_soc_lints" time="1.090"><failure message="Failed: verilator --lint-only failed:&#10;CMD:&#10;  verilator --lint-only -Wall -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM -Wno-PINMISSING -Wno-WIDTHEXPAND -Wno-IMPORTSTAR -Wno-DECLFILENAME -Wno-UNOPTFLAT --unroll-count 72 -f /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-68/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/lowrisc_ibex_ibex_top_tracing_0.1.stripped.vc --top-module ibex_mini_soc /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-68/ibex_soc_build0/generated/clint_basic/ClintPkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-68/ibex_soc_build0/generated/clint_basic/Clint.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-68/ibex_soc_build0/generated/clint_basic/ClintLogic.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-68/ibex_soc_build0/generated/plic_multictx/PlicMultictxPkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-68/ibex_soc_build0/generated/plic_multictx/PlicMultictx.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-68/ibex_soc_build0/generated/plic_multictx/PlicMultictxLogic.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-68/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrFilePkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-68/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrAccess.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-68/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrFile.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-68/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrTrapCoord.sv ${REPO_ROOT}/soc/obi_to_axi_lite.sv ${REPO_ROOT}/soc/ibex_mini_soc.sv ${REPO_ROOT}/soc/ibex_cs_registers_hybrid.sv ~/github/ibex/shared/rtl/ram_2p.sv ~/github/ibex/shared/rtl/sim/simulator_ctrl.sv ${REPO_ROOT}/build/ibex_core_shared_pkg.sv ${REPO_ROOT}/build/fb_age_arb.sv ${REPO_ROOT}/build/ibex_alu.sv ${REPO_ROOT}/build/ibex_compressed_decoder.sv ${REPO_ROOT}/build/ibex_controller.sv ${REPO_ROOT}/build/ibex_core.sv ${REPO_ROOT}/build/ibex_counter.sv ${REPO_ROOT}/build/ibex_decoder.sv ${REPO_ROOT}/build/ibex_ex_block.sv ${REPO_ROOT}/build/ibex_fetch_fifo.sv ${REPO_ROOT}/build/ibex_icache.sv ${REPO_ROOT}/build/ibex_icache_output_stage.sv ${REPO_ROOT}/build/ibex_id_stage.sv ${REPO_ROOT}/build/ibex_if_stage.sv ${REPO_ROOT}/build/ibex_load_store_unit.sv ${REPO_ROOT}/build/ibex_multdiv_fast.sv ${REPO_ROOT}/build/ibex_pmp.sv ${REPO_ROOT}/build/ibex_prefetch_buffer.sv ${REPO_ROOT}/build/ibex_register_file_ff.sv ${REPO_ROOT}/build/ibex_top.sv ${REPO_ROOT}/build/ibex_wb_stage.sv ${REPO_ROOT}/build/inval_ctrl.sv ${REPO_ROOT}/build/ram_port_arb.sv&#10;STDERR:&#10;%Warning-SYNCASYNCNET: ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: Signal flopped as both synchronous and async: 'IO_RST_N'&#10;                       ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: ... Location of async usage&#10;   67 |   input  logic IO_RST_N,&#10;      |                ^~~~~~~~&#10;                       ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: ... Location of sync usage&#10;   67 |   input  logic IO_RST_N,&#10;      |                ^~~~~~~~&#10;                       ... For warning description see https://verilator.org/warn/SYNCASYNCNET?v=5.048&#10;                       ... Use &quot;/* verilator lint_off SYNCASYNCNET */&quot; and lint_on around source to disable this message.&#10;%Error: Exiting due to 1 warning(s)&#10;&#10;STDOUT:">verilator_bin = 'verilator'
+ibex_soc_filelist = {'build_dir': PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-68/ibex...ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/lowrisc_ibex_ibex_top_tracing_0.1.stripped.vc')}
+
+    def test_ibex_mini_soc_lints(
+        verilator_bin: str,
+        ibex_soc_filelist: dict,
+    ) -&gt; None:
+        vc_path: Path = ibex_soc_filelist["vc_path"]
+        extra_sv: list[Path] = ibex_soc_filelist["extra_sv"]
+        build_dir: Path = ibex_soc_filelist["build_dir"]
+    
+        cmd = [
+            verilator_bin,
+            "--lint-only",
+            "-Wall",
+            "-Wno-UNUSEDSIGNAL",   # Ibex ties a lot of observability ports off
+            "-Wno-UNUSEDPARAM",
+            "-Wno-PINMISSING",     # we don't connect every tracing port
+            "-Wno-WIDTHEXPAND",    # $readmemh vs. sized vectors — benign
+            "-Wno-IMPORTSTAR",     # arch-com emits `import Pkg::*;` at $unit
+            "-Wno-DECLFILENAME",   # our in-tree Ibex forks keep upstream module names
+            "-Wno-UNOPTFLAT",      # upstream ibex_ex_block.sv has an intended ALU↔multdiv
+                                   # combinational loop on alu_adder_result_ext (the
+                                   # multdiv shares the ALU's adder/comparator). With
+                                   # the FSM-based multdiv Verilator's analysis
+                                   # resolved it; the thread-based multdiv's nested
+                                   # `_threads` submodule boundary makes Verilator
+                                   # more conservative. The loop is functionally
+                                   # identical and safe in practice.
+            "--unroll-count", "72",  # required by prim_secded per Verilator#1266
+            "-f", str(vc_path),
+            "--top-module", "ibex_mini_soc",
+        ]
+        cmd.extend(str(p) for p in extra_sv)
+    
+        result = subprocess.run(
+            cmd, cwd=str(build_dir),
+            capture_output=True, text=True,
+        )
+        # Useful context on failure.
+        if result.returncode != 0:
+&gt;           pytest.fail(
+                "verilator --lint-only failed:\n"
+                f"CMD:\n  {' '.join(cmd)}\n"
+                f"STDERR:\n{result.stderr}\nSTDOUT:\n{result.stdout}"
+            )
+E           Failed: verilator --lint-only failed:
+E           CMD:
+E             verilator --lint-only -Wall -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM -Wno-PINMISSING -Wno-WIDTHEXPAND -Wno-IMPORTSTAR -Wno-DECLFILENAME -Wno-UNOPTFLAT --unroll-count 72 -f /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-68/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/lowrisc_ibex_ibex_top_tracing_0.1.stripped.vc --top-module ibex_mini_soc /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-68/ibex_soc_build0/generated/clint_basic/ClintPkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-68/ibex_soc_build0/generated/clint_basic/Clint.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-68/ibex_soc_build0/generated/clint_basic/ClintLogic.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-68/ibex_soc_build0/generated/plic_multictx/PlicMultictxPkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-68/ibex_soc_build0/generated/plic_multictx/PlicMultictx.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-68/ibex_soc_build0/generated/plic_multictx/PlicMultictxLogic.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-68/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrFilePkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-68/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrAccess.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-68/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrFile.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-68/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrTrapCoord.sv ${REPO_ROOT}/soc/obi_to_axi_lite.sv ${REPO_ROOT}/soc/ibex_mini_soc.sv ${REPO_ROOT}/soc/ibex_cs_registers_hybrid.sv ~/github/ibex/shared/rtl/ram_2p.sv ~/github/ibex/shared/rtl/sim/simulator_ctrl.sv ${REPO_ROOT}/build/ibex_core_shared_pkg.sv ${REPO_ROOT}/build/fb_age_arb.sv ${REPO_ROOT}/build/ibex_alu.sv ${REPO_ROOT}/build/ibex_compressed_decoder.sv ${REPO_ROOT}/build/ibex_controller.sv ${REPO_ROOT}/build/ibex_core.sv ${REPO_ROOT}/build/ibex_counter.sv ${REPO_ROOT}/build/ibex_decoder.sv ${REPO_ROOT}/build/ibex_ex_block.sv ${REPO_ROOT}/build/ibex_fetch_fifo.sv ${REPO_ROOT}/build/ibex_icache.sv ${REPO_ROOT}/build/ibex_icache_output_stage.sv ${REPO_ROOT}/build/ibex_id_stage.sv ${REPO_ROOT}/build/ibex_if_stage.sv ${REPO_ROOT}/build/ibex_load_store_unit.sv ${REPO_ROOT}/build/ibex_multdiv_fast.sv ${REPO_ROOT}/build/ibex_pmp.sv ${REPO_ROOT}/build/ibex_prefetch_buffer.sv ${REPO_ROOT}/build/ibex_register_file_ff.sv ${REPO_ROOT}/build/ibex_top.sv ${REPO_ROOT}/build/ibex_wb_stage.sv ${REPO_ROOT}/build/inval_ctrl.sv ${REPO_ROOT}/build/ram_port_arb.sv
+E           STDERR:
+E           %Warning-SYNCASYNCNET: ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: Signal flopped as both synchronous and async: 'IO_RST_N'
+E                                  ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: ... Location of async usage
+E              67 |   input  logic IO_RST_N,
+E                 |                ^~~~~~~~
+E                                  ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: ... Location of sync usage
+E              67 |   input  logic IO_RST_N,
+E                 |                ^~~~~~~~
+E                                  ... For warning description see https://verilator.org/warn/SYNCASYNCNET?v=5.048
+E                                  ... Use "/* verilator lint_off SYNCASYNCNET */" and lint_on around source to disable this message.
+E           %Error: Exiting due to 1 warning(s)
+E           
+E           STDOUT:
+
+tests/test_soc_lint.py:59: Failed</failure></testcase></testsuite></testsuites>

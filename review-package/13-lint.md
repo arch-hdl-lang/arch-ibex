@@ -104,3 +104,12 @@ verilator --lint-only -Wall -Wno-fatal --unroll-count 72 --top-module ibex_top \
   -f <list>.vc > reports/lint_<lane>_ibex_top[_nowaiver].log
 python3 (classification script, output = reports/lint_arch_lane_classification.txt)
 ```
+
+## 3b. Re-run on arch 0.72.1 (2026-09-05 evening)
+
+arch-com PR #1001 (closes #995) removed the compiler-introduced declaration
+initializers: **`PROCASSINIT` 0** (was 2). Totals **140** with waivers / **489** without
+(`UNUSEDPARAM` 74 — one more than on 0.72.0 — `UNUSEDSIGNAL` 54, `DECLFILENAME` 6,
+`IMPORTSTAR` 4, `WIDTHEXPAND` 2; no-waiver run adds `PINCONNECTEMPTY` 61 and
+`SYNCASYNCNET` 1). Bin (ii) loses its `PROCASSINIT` row; the remaining compiler-emitted
+patterns of §3 are unchanged. Logs `reports/lint_v0721_arch_lane_ibex_top{,_nowaiver}.log`.

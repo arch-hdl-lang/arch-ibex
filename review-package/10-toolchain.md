@@ -8,7 +8,7 @@ from `claude/code-arch-instructions-7b4027` at `8c4b3ca` (= `main`).
 
 | Tool | Version | Identity / path | Used in |
 |---|---|---|---|
-| ARCH compiler | 0.72.0 (release asset, see decisions table) | `~/.local/arch-v0.72.0/arch-aarch64-apple-darwin/arch` (symlink `~/.local/bin/arch-0.72.0`) | everything from TASK3 on |
+| ARCH compiler | 0.72.1 (release asset, see decisions table; 0.72.0 for the post-P&R numbers) | `~/.local/arch-v0.72.1/arch-aarch64-apple-darwin/arch` (symlink `~/.local/bin/arch-0.72.1`) | everything from TASK3 on |
 | Verilator | 5.048 (2026-04-26) | `/opt/homebrew/bin/verilator`, installed 2026-05-26 | lint, cocotb sims |
 | Yosys | 0.67+post, git `b8e7da6f` | `/opt/homebrew/bin/yosys` (has `synth_ecp5`, `synth_sky130` help entries) | Phase 4, 5 |
 | sv2v | 0.0.13 | `/opt/homebrew/bin/sv2v` | Phase 4 |
@@ -25,7 +25,7 @@ from `claude/code-arch-instructions-7b4027` at `8c4b3ca` (= `main`).
 
 | Decision | Choice |
 |---|---|
-| ARCH compiler pin (final) | **arch `0.72.0` from the published release** (https://github.com/arch-hdl-lang/arch-com/releases/tag/v0.72.0, tag on merge commit `e5e93bf8`, 2026-09-05). Installed asset: `arch-aarch64-apple-darwin.tar.xz` (2,462,548 bytes), SHA-256 `a6163bacfbd892c1cb7751382bf5cd186f9f22ff380a72fc33dcb83896de1586` (matches the release's `sha256.sum`), unpacked to `~/.local/arch-v0.72.0/arch-aarch64-apple-darwin/arch`, `arch --version` → `arch 0.72.0`. The repo now pins this version in `.arch-version`; `scripts/build.sh` refuses any other `arch` (TASK3 A1). Install on another machine: download the platform asset from the release page (or run its `arch-installer.sh`), verify the SHA-256 against `sha256.sum`, set `ARCH_BIN`. History: the TASK2 measurements (Phases 2–5) were produced with the local merge commit `89ec0522` = main `f4569890` + PR #993 + PR #994, whose two patches are kept under `attic/` for provenance only (both PRs are merged; nothing needs `git am` any more); rebuilding the port with v0.72.0 emits byte-identical SV for all 23 files (`diff -r`, 2026-09-05), and the TASK3 re-gate below reproduces every TASK2 number. |
+| ARCH compiler pin (final, since 2026-09-05 evening) | **arch `0.72.1` from the published release** (https://github.com/arch-hdl-lang/arch-com/releases/tag/v0.72.1, tag on merge commit `0ea5cbd0`; asset `arch-aarch64-apple-darwin.tar.xz`, 2,463,552 bytes, SHA-256 `f3cfcd606ca71e59f0ac09e5bf28ac10ce1452b48dc19f961eefd30fff987170`, unpacked to `~/.local/arch-v0.72.1/…`; `.arch-version` = `0.72.1`). 0.72.1 = 0.72.0 + PR #1001 (no compiler-introduced declaration initializers, closes #995) + PR #1002 (`arch sim --pybind` Vec-port binding, closes #996), both found by this package. Its generated SV differs from 0.72.0 only in `ibex_multdiv_fast.sv` (three `= 0` declaration initializers gone, the two thread counters in the reset branch). Numbers re-run on 0.72.1: the gate, the core lint, sky130 synthesis and ECP5 (see the TASK3 Part A table below and `14-sky130.md` §4.6, `15-ecp5.md` §5.5); **post-P&R has not been re-run on 0.72.1** (its numbers are 0.72.0's, §4.4). Previous pin: | **arch `0.72.0` from the published release** (https://github.com/arch-hdl-lang/arch-com/releases/tag/v0.72.0, tag on merge commit `e5e93bf8`, 2026-09-05). Installed asset: `arch-aarch64-apple-darwin.tar.xz` (2,462,548 bytes), SHA-256 `a6163bacfbd892c1cb7751382bf5cd186f9f22ff380a72fc33dcb83896de1586` (matches the release's `sha256.sum`), unpacked to `~/.local/arch-v0.72.0/arch-aarch64-apple-darwin/arch`, `arch --version` → `arch 0.72.0`. The repo now pins this version in `.arch-version`; `scripts/build.sh` refuses any other `arch` (TASK3 A1). Install on another machine: download the platform asset from the release page (or run its `arch-installer.sh`), verify the SHA-256 against `sha256.sum`, set `ARCH_BIN`. History: the TASK2 measurements (Phases 2–5) were produced with the local merge commit `89ec0522` = main `f4569890` + PR #993 + PR #994, whose two patches are kept under `attic/` for provenance only (both PRs are merged; nothing needs `git am` any more); rebuilding the port with v0.72.0 emits byte-identical SV for all 23 files (`diff -r`, 2026-09-05), and the TASK3 re-gate below reproduces every TASK2 number. |
 | Earlier pin (Phases 1–3 measurements) | v0.71.0 (`1a7d9fd7`) + the same two fixes (`ead3aa8f`, `fa4c864f`), plus a hand backport of the `sext` emitter fix. Abandoned at the Phase 4 gate because release v0.71.0's SV emitter still indexes unnamed expressions (`{a,b}[hi:lo]`, `f(x)[i]`, `$signed(x)[i]`) that Verilator accepts but Yosys and sv2v reject; arch-com main fixed those in August (arch#827, #919, #834, `b0a4daba`, `27b4c313`), and the cherry-picks do not apply cleanly to v0.71.0. Decision by the repo owner. All Phase 2/3 numbers were re-run on the final pin (see `12-icache-handshake.md` §8, `13-lint.md`). |
 | arch-com PR for the arbiter fix | [arch-hdl-lang/arch-com#994](https://github.com/arch-hdl-lang/arch-com/pull/994), branch `fix/arbiter-valid-only-ready` off `origin/main` `f4569890`: same change plus `test_arbiter_valid_only_request_channel_keeps_internal_ready`; local `cargo test --release` green; **CI: all checks passed**; squash-merged 2026-09-05 as `dfff1523`. |
 | arch-com PR for the stub fix | [arch-hdl-lang/arch-com#993](https://github.com/arch-hdl-lang/arch-com/pull/993), branch `fix/stub-variant-mangling` (commit `a814dc62` on `origin/main` `f4569890`): same 12-line change plus regression test `test_interface_stub_not_variant_mangled`; local `cargo test --release` green (30 suites); **CI: all checks passed**; squash-merged 2026-09-05 as `0b6a6976`. |
@@ -155,3 +155,32 @@ Same four suites, assertions on, `reports/gate_v0720_rvfi1_*`: `make lint` FAIL 
 the same 3 warnings; `make test` 162 passed / 12 failed / 75 skipped (same 12 drift
 failures; 10 / 10 CPU programs, 39 / 39 unit cases); `test_arch_tests.py` 74 / 74;
 CoreMark ratio 1.0108 validated. Number-for-number identical to the Part A gate.
+
+### Re-gate on arch 0.72.1 (2026-09-05 evening)
+
+`.arch-version` bumped to `0.72.1`; `make build` / `make build-synth` 23 / 23, `arch check`
+23 / 23 (`reports/arch_check_v0721.log`). `scripts/build.sh` gained one more guard found
+by this re-gate: the sim and synth profiles emit different `ibex_top` interfaces, and a
+stale `src/ibex_top.archi` left by `make build-synth` shadowed the module for the RVFI
+shim's instantiation (`inst u connects rvfi_valid, which is not a port of ibex_top`)
+when `make build` ran next; the top's stub is now removed before it is built in either
+profile.
+
+| Suite (assertions on) | 0.72.0 | **0.72.1** | Files |
+|---|---|---|---|
+| `make lint` | FAIL, 3 warnings | FAIL, **1** warning (`SYNCASYNCNET` only; the two `PROCASSINIT` are gone, #995) | `reports/gate_v0721_make_lint.*` |
+| `make test` (249 items) | 162 / 12 / 75 | **167 passed / 7 failed / 75 skipped** | `reports/gate_v0721_make_test.*` |
+| `test_arch_tests.py` | 74 / 74 | 74 / 74 | `reports/gate_v0721_arch_tests.*` |
+| CoreMark compare | 1.0108 | 1.0108 (112,855 vs 111,651 ticks, validated) | `reports/gate_v0721_coremark.*` |
+
+The 7 remaining failures: `test_archsim_units[IbexCompressedDecoder]` (1 — the wrapper
+now compiles and 28 / 29 cocotb tests pass; the last is a native-simulator divergence on
+the second cycle of a multi-cycle Zcmp expansion, filed as arch-com#1003; the other five
+modules pass), the four HARC canaries and the never-committed plan file (repo/tool drift
+as before), and `test_soc_lint` (the `SYNCASYNCNET`). `tests/test_archsim_units.py` now
+accepts the 0.72 runtime's `Results: N tests; N passed, 0 failed` footer as well as the
+old `ALL PASSED`.
+
+Core lint on 0.72.1 (`reports/lint_v0721_arch_lane_ibex_top{,_nowaiver}.log`): **140** with
+waivers (`UNUSEDPARAM` 74, `UNUSEDSIGNAL` 54, `DECLFILENAME` 6, `IMPORTSTAR` 4,
+`WIDTHEXPAND` 2, **`PROCASSINIT` 0**) and 489 without.
