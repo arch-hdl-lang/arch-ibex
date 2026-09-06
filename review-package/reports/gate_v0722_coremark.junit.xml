@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="45.308" timestamp="2026-09-05T22:57:08.897045-07:00" hostname="SHUQINGs-MacBook-Air.local"><testcase classname="tests.test_coremark_compare" name="test_coremark_swap_matches_upstream" time="45.299" /></testsuite></testsuites>

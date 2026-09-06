@@ -1,0 +1,326 @@
+# `-n auto --dist=loadfile`: parallelize across test files so each
+# file's session-scoped fixtures (notably ibex_soc_filelist's
+# fusesoc setup) build once per worker, not once per case. Falls
+# back gracefully to sequential when pytest-xdist isn't installed.
+pytest tests/ -n auto --dist=loadfile
+============================= test session starts ==============================
+platform darwin -- Python 3.13.9, pytest-8.4.2, pluggy-1.5.0
+rootdir: ${REPO_ROOT}
+plugins: cocotb-test-0.2.6, xdist-3.8.0, anyio-4.10.0
+created: 10/10 workers
+10 workers [249 items]
+
+sssss.s.sssssssssssssssssssssssssssssss.sssssssssssssssss.ssssssssssssss [ 28%]
+sssssss..........FFF.....................F..F........................... [ 57%]
+.........................................F.............................. [ 86%]
+.................................                                        [100%]
+=================================== FAILURES ===================================
+______________________ test_harc_phase1_canary[ibex_alu] _______________________
+[gw5] darwin -- Python 3.13.9 /opt/homebrew/anaconda3/bin/python
+
+canary = HarcCanary(top='ibex_alu', dut_file='src/IbexAlu.arch', harc_files=('tests/harc/lib/ibex_alu_vip.harc', 'tests/harc/unit/ibex_alu_harc_test.harc'), test='IbexAluFullVerification', require_branch_data=True)
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-89/popen-gw5/test_harc_phase1_canary_ibex_a0')
+
+    @pytest.mark.parametrize("canary", PHASE1_CANARIES, ids=lambda c: c.top)
+    def test_harc_phase1_canary(canary: HarcCanary, tmp_path: Path) -> None:
+        dut_file = REPO_ROOT / canary.dut_file
+        harc_files = [REPO_ROOT / path for path in canary.harc_files]
+        extra_args = ("--arch-bin", resolve_arch_bin(), "--codegen", "v1")
+    
+>       harc_check(harc_files=harc_files, cwd=REPO_ROOT)
+
+tests/test_harc_phase1_canaries.py:81: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/harc_runner.py:2936: in harc_check
+    return run_harc(
+tests/harc_runner.py:463: in run_harc
+    binary = str(harc_bin) if harc_bin is not None else resolve_harc_bin()
+                                                        ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def resolve_harc_bin() -> str:
+        """Resolve the HARC executable from HARC_BIN, sibling checkout, or PATH."""
+    
+        env = os.environ.get("HARC_BIN")
+        if env:
+            path = Path(env).expanduser()
+            if path.is_file():
+                return str(path)
+            raise AssertionError(f"HARC_BIN points to a missing file: {path}")
+    
+        if DEFAULT_HARC_BIN.is_file():
+            return str(DEFAULT_HARC_BIN)
+    
+        which = shutil.which("harc")
+        if which:
+            return which
+    
+>       raise AssertionError(
+            "HARC binary not found; set HARC_BIN or build "
+            f"{DEFAULT_HARC_BIN}"
+        )
+E       AssertionError: HARC binary not found; set HARC_BIN or build ~/github/arch-ibex/.claude/worktrees/harc-com/target/release/harc
+
+tests/harc_runner.py:383: AssertionError
+____________________ test_harc_phase1_canary[ibex_counter] _____________________
+[gw5] darwin -- Python 3.13.9 /opt/homebrew/anaconda3/bin/python
+
+canary = HarcCanary(top='ibex_counter', dut_file='src/IbexCounter.arch', harc_files=('tests/harc/lib/ibex_counter_vip.harc', 'tests/harc/unit/ibex_counter_harc_test.harc'), test='IbexCounterCanary', require_branch_data=True)
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-89/popen-gw5/test_harc_phase1_canary_ibex_c0')
+
+    @pytest.mark.parametrize("canary", PHASE1_CANARIES, ids=lambda c: c.top)
+    def test_harc_phase1_canary(canary: HarcCanary, tmp_path: Path) -> None:
+        dut_file = REPO_ROOT / canary.dut_file
+        harc_files = [REPO_ROOT / path for path in canary.harc_files]
+        extra_args = ("--arch-bin", resolve_arch_bin(), "--codegen", "v1")
+    
+>       harc_check(harc_files=harc_files, cwd=REPO_ROOT)
+
+tests/test_harc_phase1_canaries.py:81: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/harc_runner.py:2936: in harc_check
+    return run_harc(
+tests/harc_runner.py:463: in run_harc
+    binary = str(harc_bin) if harc_bin is not None else resolve_harc_bin()
+                                                        ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def resolve_harc_bin() -> str:
+        """Resolve the HARC executable from HARC_BIN, sibling checkout, or PATH."""
+    
+        env = os.environ.get("HARC_BIN")
+        if env:
+            path = Path(env).expanduser()
+            if path.is_file():
+                return str(path)
+            raise AssertionError(f"HARC_BIN points to a missing file: {path}")
+    
+        if DEFAULT_HARC_BIN.is_file():
+            return str(DEFAULT_HARC_BIN)
+    
+        which = shutil.which("harc")
+        if which:
+            return which
+    
+>       raise AssertionError(
+            "HARC binary not found; set HARC_BIN or build "
+            f"{DEFAULT_HARC_BIN}"
+        )
+E       AssertionError: HARC binary not found; set HARC_BIN or build ~/github/arch-ibex/.claude/worktrees/harc-com/target/release/harc
+
+tests/harc_runner.py:383: AssertionError
+________________ test_harc_phase1_canary[ibex_register_file_ff] ________________
+[gw5] darwin -- Python 3.13.9 /opt/homebrew/anaconda3/bin/python
+
+canary = HarcCanary(top='ibex_register_file_ff', dut_file='src/IbexRegisterFileFf.arch', harc_files=('tests/harc/lib/ibex_regis...c', 'tests/harc/unit/ibex_register_file_ff_harc_test.harc'), test='IbexRegisterFileFfCanary', require_branch_data=True)
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-89/popen-gw5/test_harc_phase1_canary_ibex_r0')
+
+    @pytest.mark.parametrize("canary", PHASE1_CANARIES, ids=lambda c: c.top)
+    def test_harc_phase1_canary(canary: HarcCanary, tmp_path: Path) -> None:
+        dut_file = REPO_ROOT / canary.dut_file
+        harc_files = [REPO_ROOT / path for path in canary.harc_files]
+        extra_args = ("--arch-bin", resolve_arch_bin(), "--codegen", "v1")
+    
+>       harc_check(harc_files=harc_files, cwd=REPO_ROOT)
+
+tests/test_harc_phase1_canaries.py:81: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/harc_runner.py:2936: in harc_check
+    return run_harc(
+tests/harc_runner.py:463: in run_harc
+    binary = str(harc_bin) if harc_bin is not None else resolve_harc_bin()
+                                                        ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def resolve_harc_bin() -> str:
+        """Resolve the HARC executable from HARC_BIN, sibling checkout, or PATH."""
+    
+        env = os.environ.get("HARC_BIN")
+        if env:
+            path = Path(env).expanduser()
+            if path.is_file():
+                return str(path)
+            raise AssertionError(f"HARC_BIN points to a missing file: {path}")
+    
+        if DEFAULT_HARC_BIN.is_file():
+            return str(DEFAULT_HARC_BIN)
+    
+        which = shutil.which("harc")
+        if which:
+            return which
+    
+>       raise AssertionError(
+            "HARC binary not found; set HARC_BIN or build "
+            f"{DEFAULT_HARC_BIN}"
+        )
+E       AssertionError: HARC binary not found; set HARC_BIN or build ~/github/arch-ibex/.claude/worktrees/harc-com/target/release/harc
+
+tests/harc_runner.py:383: AssertionError
+____________________ test_harc_phase1_canary[ibex_wb_stage] ____________________
+[gw5] darwin -- Python 3.13.9 /opt/homebrew/anaconda3/bin/python
+
+canary = HarcCanary(top='ibex_wb_stage', dut_file='src/IbexWbStage.arch', harc_files=('tests/harc/lib/ibex_wb_stage_vip.harc', 'tests/harc/unit/ibex_wb_stage_harc_test.harc'), test='IbexWbStagePhase1Canary', require_branch_data=False)
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-89/popen-gw5/test_harc_phase1_canary_ibex_w0')
+
+    @pytest.mark.parametrize("canary", PHASE1_CANARIES, ids=lambda c: c.top)
+    def test_harc_phase1_canary(canary: HarcCanary, tmp_path: Path) -> None:
+        dut_file = REPO_ROOT / canary.dut_file
+        harc_files = [REPO_ROOT / path for path in canary.harc_files]
+        extra_args = ("--arch-bin", resolve_arch_bin(), "--codegen", "v1")
+    
+>       harc_check(harc_files=harc_files, cwd=REPO_ROOT)
+
+tests/test_harc_phase1_canaries.py:81: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/harc_runner.py:2936: in harc_check
+    return run_harc(
+tests/harc_runner.py:463: in run_harc
+    binary = str(harc_bin) if harc_bin is not None else resolve_harc_bin()
+                                                        ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def resolve_harc_bin() -> str:
+        """Resolve the HARC executable from HARC_BIN, sibling checkout, or PATH."""
+    
+        env = os.environ.get("HARC_BIN")
+        if env:
+            path = Path(env).expanduser()
+            if path.is_file():
+                return str(path)
+            raise AssertionError(f"HARC_BIN points to a missing file: {path}")
+    
+        if DEFAULT_HARC_BIN.is_file():
+            return str(DEFAULT_HARC_BIN)
+    
+        which = shutil.which("harc")
+        if which:
+            return which
+    
+>       raise AssertionError(
+            "HARC binary not found; set HARC_BIN or build "
+            f"{DEFAULT_HARC_BIN}"
+        )
+E       AssertionError: HARC binary not found; set HARC_BIN or build ~/github/arch-ibex/.claude/worktrees/harc-com/target/release/harc
+
+tests/harc_runner.py:383: AssertionError
+________ test_checked_in_compressed_decoder_coverage_status_is_complete ________
+[gw1] darwin -- Python 3.13.9 /opt/homebrew/anaconda3/bin/python
+
+    def test_checked_in_compressed_decoder_coverage_status_is_complete() -> None:
+        root = Path(__file__).resolve().parents[1]
+    
+>       assert_compressed_decoder_coverage_status_complete(
+            inventory_path=root / "tests/harc/plans/ibex_compressed_decoder_full_bins.md",
+            status_path=root
+            / "tests/harc/plans/ibex_compressed_decoder_full_coverage_status.md",
+        )
+
+tests/test_harc_runner.py:1390: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/harc_runner.py:1027: in assert_compressed_decoder_coverage_status_complete
+    inventory = compressed_decoder_coverage_inventory(inventory_path)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/harc_runner.py:924: in compressed_decoder_coverage_inventory
+    for raw in Path(path).read_text().splitlines():
+               ^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/anaconda3/lib/python3.13/pathlib/_local.py:546: in read_text
+    return PathBase.read_text(self, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/anaconda3/lib/python3.13/pathlib/_abc.py:632: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('${REPO_ROOT}/tests/harc/plans/ibex_compressed_decoder_full_bins.md')
+mode = 'r', buffering = -1, encoding = 'locale', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '${REPO_ROOT}/tests/harc/plans/ibex_compressed_decoder_full_bins.md'
+
+/opt/homebrew/anaconda3/lib/python3.13/pathlib/_local.py:537: FileNotFoundError
+___________________________ test_ibex_mini_soc_lints ___________________________
+[gw7] darwin -- Python 3.13.9 /opt/homebrew/anaconda3/bin/python
+
+verilator_bin = 'verilator'
+ibex_soc_filelist = {'build_dir': PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-89/pope...ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/lowrisc_ibex_ibex_top_tracing_0.1.stripped.vc')}
+
+    def test_ibex_mini_soc_lints(
+        verilator_bin: str,
+        ibex_soc_filelist: dict,
+    ) -> None:
+        vc_path: Path = ibex_soc_filelist["vc_path"]
+        extra_sv: list[Path] = ibex_soc_filelist["extra_sv"]
+        build_dir: Path = ibex_soc_filelist["build_dir"]
+    
+        cmd = [
+            verilator_bin,
+            "--lint-only",
+            "-Wall",
+            "-Wno-UNUSEDSIGNAL",   # Ibex ties a lot of observability ports off
+            "-Wno-UNUSEDPARAM",
+            "-Wno-PINMISSING",     # we don't connect every tracing port
+            "-Wno-WIDTHEXPAND",    # $readmemh vs. sized vectors — benign
+            "-Wno-IMPORTSTAR",     # arch-com emits `import Pkg::*;` at $unit
+            "-Wno-DECLFILENAME",   # our in-tree Ibex forks keep upstream module names
+            "-Wno-UNOPTFLAT",      # upstream ibex_ex_block.sv has an intended ALU↔multdiv
+                                   # combinational loop on alu_adder_result_ext (the
+                                   # multdiv shares the ALU's adder/comparator). With
+                                   # the FSM-based multdiv Verilator's analysis
+                                   # resolved it; the thread-based multdiv's nested
+                                   # `_threads` submodule boundary makes Verilator
+                                   # more conservative. The loop is functionally
+                                   # identical and safe in practice.
+            "--unroll-count", "72",  # required by prim_secded per Verilator#1266
+            "-f", str(vc_path),
+            "--top-module", "ibex_mini_soc",
+        ]
+        cmd.extend(str(p) for p in extra_sv)
+    
+        result = subprocess.run(
+            cmd, cwd=str(build_dir),
+            capture_output=True, text=True,
+        )
+        # Useful context on failure.
+        if result.returncode != 0:
+>           pytest.fail(
+                "verilator --lint-only failed:\n"
+                f"CMD:\n  {' '.join(cmd)}\n"
+                f"STDERR:\n{result.stderr}\nSTDOUT:\n{result.stdout}"
+            )
+E           Failed: verilator --lint-only failed:
+E           CMD:
+E             verilator --lint-only -Wall -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM -Wno-PINMISSING -Wno-WIDTHEXPAND -Wno-IMPORTSTAR -Wno-DECLFILENAME -Wno-UNOPTFLAT --unroll-count 72 -f /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-89/popen-gw7/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/lowrisc_ibex_ibex_top_tracing_0.1.stripped.vc --top-module ibex_mini_soc /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-89/popen-gw7/ibex_soc_build0/generated/clint_basic/ClintPkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-89/popen-gw7/ibex_soc_build0/generated/clint_basic/Clint.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-89/popen-gw7/ibex_soc_build0/generated/clint_basic/ClintLogic.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-89/popen-gw7/ibex_soc_build0/generated/plic_multictx/PlicMultictxPkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-89/popen-gw7/ibex_soc_build0/generated/plic_multictx/PlicMultictx.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-89/popen-gw7/ibex_soc_build0/generated/plic_multictx/PlicMultictxLogic.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-89/popen-gw7/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrFilePkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-89/popen-gw7/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrAccess.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-89/popen-gw7/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrFile.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-89/popen-gw7/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrTrapCoord.sv ${REPO_ROOT}/soc/obi_to_axi_lite.sv ${REPO_ROOT}/soc/ibex_mini_soc.sv ${REPO_ROOT}/soc/ibex_cs_registers_hybrid.sv ~/github/ibex/shared/rtl/ram_2p.sv ~/github/ibex/shared/rtl/sim/simulator_ctrl.sv ${REPO_ROOT}/build/ibex_core_shared_pkg.sv ${REPO_ROOT}/build/fb_age_arb.sv ${REPO_ROOT}/build/ibex_alu.sv ${REPO_ROOT}/build/ibex_compressed_decoder.sv ${REPO_ROOT}/build/ibex_controller.sv ${REPO_ROOT}/build/ibex_core.sv ${REPO_ROOT}/build/ibex_counter.sv ${REPO_ROOT}/build/ibex_decoder.sv ${REPO_ROOT}/build/ibex_ex_block.sv ${REPO_ROOT}/build/ibex_fetch_fifo.sv ${REPO_ROOT}/build/ibex_icache.sv ${REPO_ROOT}/build/ibex_icache_output_stage.sv ${REPO_ROOT}/build/ibex_id_stage.sv ${REPO_ROOT}/build/ibex_if_stage.sv ${REPO_ROOT}/build/ibex_load_store_unit.sv ${REPO_ROOT}/build/ibex_multdiv_fast.sv ${REPO_ROOT}/build/ibex_pmp.sv ${REPO_ROOT}/build/ibex_prefetch_buffer.sv ${REPO_ROOT}/build/ibex_register_file_ff.sv ${REPO_ROOT}/build/ibex_top.sv ${REPO_ROOT}/build/ibex_wb_stage.sv ${REPO_ROOT}/build/inval_ctrl.sv ${REPO_ROOT}/build/ram_port_arb.sv
+E           STDERR:
+E           %Warning-SYNCASYNCNET: ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: Signal flopped as both synchronous and async: 'IO_RST_N'
+E                                  ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: ... Location of async usage
+E              67 |   input  logic IO_RST_N,
+E                 |                ^~~~~~~~
+E                                  ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: ... Location of sync usage
+E              67 |   input  logic IO_RST_N,
+E                 |                ^~~~~~~~
+E                                  ... For warning description see https://verilator.org/warn/SYNCASYNCNET?v=5.048
+E                                  ... Use "/* verilator lint_off SYNCASYNCNET */" and lint_on around source to disable this message.
+E           %Error: Exiting due to 1 warning(s)
+E           
+E           STDOUT:
+
+tests/test_soc_lint.py:59: Failed
+- generated xml file: ${REPO_ROOT}/review-package/reports/gate_v0722_make_test.junit.xml -
+=========================== short test summary info ============================
+FAILED tests/test_harc_phase1_canaries.py::test_harc_phase1_canary[ibex_alu]
+FAILED tests/test_harc_phase1_canaries.py::test_harc_phase1_canary[ibex_counter]
+FAILED tests/test_harc_phase1_canaries.py::test_harc_phase1_canary[ibex_register_file_ff]
+FAILED tests/test_harc_phase1_canaries.py::test_harc_phase1_canary[ibex_wb_stage]
+FAILED tests/test_harc_runner.py::test_checked_in_compressed_decoder_coverage_status_is_complete
+FAILED tests/test_soc_lint.py::test_ibex_mini_soc_lints - Failed: verilator -...
+============= 6 failed, 168 passed, 75 skipped in 60.20s (0:01:00) =============
+make: *** [test] Error 1

@@ -32,11 +32,13 @@ of `ibex_top`, a sim-only shim that selects RVFI = 1 for the harness, and
 touched.
 
 **Toolchain (`10-toolchain.md`).** ARCH compiler: the published release
-`arch 0.72.1` (asset `arch-aarch64-apple-darwin.tar.xz`, SHA-256
-`f3cfcd60…7170`), pinned by `.arch-version` and enforced by
-`scripts/build.sh`; 0.72.1 adds the two fixes this package found
-(arch-com #995, #996). The post-P&R numbers below are from 0.72.0;
-everything, including post-P&R, was re-run on 0.72.1. The TASK2 measurements were made on the equivalent
+`arch 0.72.2` (asset `arch-aarch64-apple-darwin.tar.xz`, SHA-256
+`e4eb0952…9b5c`), pinned by `.arch-version` and enforced by
+`scripts/build.sh`. 0.72.1 added the two generated-SV fixes this package
+found (arch-com #995, #996) and every number below was re-run on it;
+0.72.2 adds only the native-simulator fix (#1003) and emits byte-identical
+SV, so the synthesis, P&R, ECP5 and lint numbers stand and only the gate
+was re-run. The TASK2 measurements were made on the equivalent
 local merge `89ec0522`; the release regenerates byte-identical SV for
 all 23 files and the full gate re-run on it (`10-toolchain.md`, TASK3
 Part A) reproduces every functional, CoreMark and lint number below.
@@ -53,15 +55,14 @@ Verilator 5.048
 | 10 CPU programs (ISRs, PMP faults, icache bench), end-to-end | 10 / 10 | Arch (SV lane: 10 / 10, `02-functional.md`) | same; `reports/functional_sv_lane.junit.xml` |
 | RISC-V arch tests rv32i_m I/M/C, signatures vs upstream-generated references | 74 / 74 bit-identical | Arch vs SV | `reports/gate_arch_tests.junit.xml` |
 | CoreMark (one run, both lanes in one test) | Arch 112,855 ticks vs SV 111,651 (ratio 1.0108; 8.861 vs 8.956 CoreMark/MHz) | both | `reports/gate_coremark.log` |
-| `make test` overall (249 items) | **167 passed / 7 failed / 75 skipped on 0.72.1** (`reports/gate_v0721_*`; 162 / 12 / 75 on 0.72.0, `reports/gate_v0720_*`, `gate_v0720_rvfi1_*`) | Arch | `reports/gate_v0721_make_test.log` |
-| `make lint` (SoC, `-Wall`, project waivers) | FAIL, **1** warning on 0.72.1 (`SYNCASYNCNET` reset-tracking flops; the 2 × `PROCASSINIT` are fixed in 0.72.1); SV lane fails on the same `SYNCASYNCNET` | both | `reports/gate_v0721_make_lint.log` |
+| `make test` overall (249 items) | **168 passed / 6 failed / 75 skipped on 0.72.2** (`reports/gate_v0722_*`; 167 / 7 / 75 on 0.72.1, 162 / 12 / 75 on 0.72.0) | Arch | `reports/gate_v0722_make_test.log` |
+| `make lint` (SoC, `-Wall`, project waivers) | FAIL, **1** warning (`SYNCASYNCNET` reset-tracking flops; the 2 × `PROCASSINIT` are fixed since 0.72.1); SV lane fails on the same `SYNCASYNCNET` | both | `reports/gate_v0722_make_lint.log` |
 
-The 7 `make test` failures are all toolchain/repo drift, none in a
-design suite: the SoC lint above (1), one native-simulator divergence on
-a multi-cycle Zcmp expansion in the compressed decoder (arch-com#1003;
-the other five `arch sim` modules pass since #996 was fixed), HARC
-0.2.0 rejecting the checked-in runner's `--codegen` flag (4), and a test
-reading plan files that were never committed (1). Every design suite is
+The 6 `make test` failures are all repo/tool drift, none in a design
+suite and none in the compiler: the SoC lint above (1), HARC 0.2.0
+rejecting the checked-in runner's `--codegen` flag (4), and a test
+reading plan files that were never committed (1). All six `arch sim`
+module suites pass (#996 and #1003 fixed in 0.72.1 / 0.72.2). Every design suite is
 green with the generated protocol checkers enabled — the state the first
 pass could only reach with `--no-assert`.
 
@@ -99,7 +100,7 @@ hard-codes one configuration.
 
 | Check | Upstream SV | Arch lane | Report |
 |---|---|---|---|
-| `arch check`, final pin, 23 files | n/a | 23 / 23 pass, 1 warning (suppressed comb SCC) | `reports/arch_check_pinned.log` |
+| `arch check`, final pin, 23 files | n/a | 23 / 23 pass, 1 warning (suppressed comb SCC) | `reports/arch_check_v0722.log` |
 | Verilator `-Wall`, `ibex_top`, with upstream `.vlt` waivers | 3 (`UNOPTFLAT`) | **140** on 0.72.1 (`UNUSEDPARAM` 74, `UNUSEDSIGNAL` 54, `DECLFILENAME` 6, `IMPORTSTAR` 4, `WIDTHEXPAND` 2; `PROCASSINIT` 0 — was 141 with 2 on 0.72.0) | `reports/lint_sv_lane_ibex_top.log`, `reports/lint_v0721_arch_lane_ibex_top.log` |
 | Verilator `-Wall`, no waivers on either lane | 339 | 489 | `reports/lint_*_nowaiver.log` |
 | Verilator errors | 0 | 0 | same |
