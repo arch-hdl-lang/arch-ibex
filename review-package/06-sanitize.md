@@ -129,3 +129,7 @@ regenerated `arch_sky130_*` / `arch_ecp5_*` (0.72.1) with the 0.72.0 copies kept
 `arch_sky130_v0720_*` / `arch_ecp5_v0720_*`: scrubbed; no ARCH source.
 Post-P&R on 0.72.1: regenerated `reports/arch_openroad_final_*`, previous run kept as `arch_openroad_v0720_final_*`; scrubbed.
 0.72.2 re-pin: `reports/gate_v0722_*`, `arch_check_v0722.log`: scrubbed; no ARCH source.
+
+Part C: `16-benchmarks.md` (no ARCH source; names benchmark problem IDs and evaluator
+files) and `reports/{verilogeval,cvdp}_reverify_v0722_*` (CSV/JSONL verdict tables and
+the CVDP notes; scrubbed; no candidate source).
