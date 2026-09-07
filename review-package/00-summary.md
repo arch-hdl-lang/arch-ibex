@@ -197,7 +197,7 @@ the seed spread); the SV lane reproduced exactly. Details `15-ecp5.md`
 | Most-revised ARCH file | `IbexIcache.arch`, 35 commits |
 | This pass (branch `review-package`) | 8 commits, 2026-09-03 → 09-05: 2 source files changed (Phase 1–2 hunks), 2 test files, 17 files under `flow/` added, 2 arch-com PRs + 3 issues |
 | Learning-store `arch check` failure records for this repo | 0 — the store only starts 2026-06-24, after the port was written |
-| Benchmark artifacts re-verified on the paper's pin, arch 0.72.2, without any LLM (TASK3 Part C; `reverify/v0.72.2*/` in the two benchmark repos) | VerilogEval: 156/156 build, 154 pass as archived, 0 outcome changes, 155/156 byte-identical SV. CVDP (archived docker runtime): 50/50 build, 48/50 byte-identical SV. Three CVDP harnesses sampled outputs derived from inputs they never drove (`X` under Icarus; `int(X)` raises), with the verdict decided by a wall-clock-seeded random draw; root-caused on `data_bus_controller_0001` and fixed by a documented evaluator shim that drives never-driven inputs to 0 at the start of every cocotb test, applied to both lanes. With the shim, both lanes score **46/50**: the archived unrepaired three fail on both, plus `perf_counters_0001` on the ARCH lane (a reset-timing race on a random input value; 2/4 unshimmed runs fail too) and `clock_jitter_detection_module_0003` on the direct-Verilog lane (a functional disagreement under a random clock period, 6/6 here). No benchmark candidate uses `thread`, so 0.72.1's emitter change touches none of them; regenerated SV is identical between the 0.72.0 and 0.72.2 runs. Archived: ARCH 47, direct-Verilog per its single run — each one draw |
+| Benchmark artifacts re-verified on the paper's pin, arch 0.72.2, without any LLM (TASK3 Part C; `reverify/v0.72.2*/` in the two benchmark repos) | VerilogEval: 156/156 build, 154 pass as archived, 0 outcome changes, 155/156 byte-identical SV. CVDP (archived docker runtime): 50/50 build, 48/50 byte-identical SV. Three CVDP harnesses sampled outputs derived from inputs they never drove (`X` under Icarus; `int(X)` raises), with the verdict decided by a wall-clock-seeded random draw; root-caused on `data_bus_controller_0001` and fixed by a documented evaluator shim that drives never-driven inputs to 0 at the start of every cocotb test, applied to both lanes. With the shim, both lanes score **46/50**: the archived unrepaired three fail on both, plus `perf_counters_0001` on the ARCH lane (a genuine spec miss: the candidate leaves `p_count_o` unmasked when there is no software request, which the harness's reset check exposes only on the random draws where `cpu_trig_i` was left at 1; its archived pass was such a draw, so the repair loop stopped early) and `clock_jitter_detection_module_0003` on the direct-Verilog lane (a functional disagreement under a random clock period, 6/6 here). No benchmark candidate uses `thread`, so 0.72.1's emitter change touches none of them; regenerated SV is identical between the 0.72.0 and 0.72.2 runs. Archived: ARCH 47, direct-Verilog per its single run — each one draw |
 
 ## Not measured / not available
 
@@ -209,9 +209,10 @@ the seed spread); the SV lane reproduced exactly. Details `15-ecp5.md`
 - riscv-dv / Spike co-simulation (not present in the repo).
 - ECP5 with real clock gating or with IO buffers (design cannot fit any
   ECP5 package's IO count).
-- A fully deterministic CVDP pass count: after the undriven-input shim, one
-  ARCH-lane harness (`perf_counters`) still depends on an unseeded random
-  draw at its reset check; the archived numbers were single draws (Part C).
+- The archived CVDP numbers as deterministic verdicts: they were single
+  unseeded draws. The evaluator now takes `--seed` and `tools/reverify.py
+  --seeds` gates on all seeds passing; a full multi-seed rerun of both lanes
+  is prepared but not yet run (Part C).
 
 ## Caveats
 
