@@ -99,7 +99,7 @@ Files added by TASK2 (all scanned as above):
 
 | File | (a) ARCH source | (b) flow scripts | (c) username paths | Note |
 |---|---|---|---|---|
-| `10-toolchain.md`, `11-port-changes.md`, `12-icache-handshake.md`, `13-lint.md`, `14-sky130.md`, `15-ecp5.md` | `11-` and `12-` quote the changed ARCH hunks by description and cite `reports/phase2_port_changes.diff`, which **is a unified diff of `src/IbexIcache.arch` and `src/FbAgeArb.arch`** (owner's call whether to ship it; the numbered files stand without it) | no (they name scripts under `flow/`) | no | |
+| `10-toolchain.md`, `11-port-changes.md`, `12-icache-handshake.md`, `13-lint.md`, `14-sky130.md`, `15-ecp5.md` | `11-` and `12-` carry **literal diff hunks** of `src/IbexIcache.arch` and `src/FbAgeArb.arch` (14 and 6 changed source lines respectively), not descriptions of them, and cite `reports/phase2_port_changes.diff` (103 changed source lines across the same two files). See the 2026-09-19 note: this flag is retired. | no (they name scripts under `flow/`) | no | |
 | `reports/gate_*.log/.junit.xml`, `reports/lint_*`, `reports/arch_check_pinned.log`, `reports/loc_*_phase2/pin.txt` | generated-SV excerpts only (Verilator quotes `build/*.sv` lines) | no | scrubbed | |
 | `reports/arch_com_pin_000{1,2}-*.patch` | no (arch-com compiler Rust source, public repo, PRs #993/#994) | no | no | |
 | `reports/phase2_test_changes.diff` | no (cocotb Python) | no | no | |
@@ -133,3 +133,142 @@ Post-P&R on 0.72.1: regenerated `reports/arch_openroad_final_*`, previous run ke
 Part C: `16-benchmarks.md` (no ARCH source; names benchmark problem IDs and evaluator
 files) and `reports/{verilogeval,cvdp}_reverify_v0722_*` (CSV/JSONL verdict tables and
 the CVDP notes; scrubbed; no candidate source).
+
+
+## Update 2026-09-19 — scrub, check hardening, flag retirement
+
+### What the old verification step could not see
+
+The 2026-09-05 re-scan was `grep -r <username> review-package` -> 0 hits,
+and it still returns 0 today. It was nevertheless blind to a live leak:
+**38 occurrences of `pytest-of-$(id -un | cut -c1-8)`** across 8 files
+(`reports/gate_*make_test.{log,junit.xml}`). pytest truncates its own
+long `PosixPath` repr with `...`, and the cut landed mid-username, so
+what survived was 8 of the 11 characters of the login. A grep for the
+*whole* username cannot match a *truncation* of it. The full-length
+occurrence on the same line had been scrubbed correctly, which is why
+the file looked clean on inspection.
+
+A second category the three original flags did not cover was present in
+**26 files, 1149 occurrences**: the macOS per-user temp id — the
+`/var/folders/<xx>/<32-char>` directory that `$TMPDIR` points into.
+Host-identifying, not a username, so nothing looked for it.
+
+### Actions taken
+
+One `sed` pass over the files that carried either pattern — the file set
+determined by `grep -rl`, **not** by a filename glob. A glob of the form
+`reports/gate_*_make_test.*` was considered and rejected: it misses
+`gate_make_test.*` (no version infix, 12 of the 38 occurrences) and
+covers none of the 18 further files carrying only the temp id. The
+temp-id expression is written without the `/private` prefix because 20
+of the 1149 occurrences lack it.
+
+```bash
+TRUNC=$(id -un | cut -c1-8)          # what pytest's truncated repr leaves behind
+TMPID=$(dirname "${TMPDIR%/}")       # /var/folders/<xx>/<32-char>
+
+grep -rlE "pytest-of-${TRUNC}|${TMPID}" reports/ \
+| while IFS= read -r f; do
+    sed -i '' -e "s/pytest-of-${TRUNC}/pytest-of-<user>/g" \
+              -e "s#${TMPID}#/var/folders/<tmp>#g" "$f"
+  done
+```
+
+Both patterns are derived from the environment rather than written out,
+so this document does not itself contain the strings it exists to
+eliminate — otherwise the checks below would flag the checklist and
+train the reader to ignore their output.
+
+**26 files changed, 508 insertions, 508 deletions** — a 1:1 line
+substitution, no line added or removed. Verified content-neutral: every
+removed line, after normalising the two patterns, is byte-identical to
+its replacement, and the pytest verdict totals are unchanged (e.g.
+`gate_make_test.log` 12 failed / 162 passed before and after,
+`gate_v0721_make_test.log` 7 failed / 167 passed). Scrubbed paths only;
+results unchanged.
+
+### Verification step (replaces the 2026-09-05 one)
+
+Run from `review-package/`. **All three must return zero**; the first is
+a prefix, so it cannot be defeated by truncation the way the old
+whole-username grep was.
+
+```bash
+grep -r "$(id -un | cut -c1-5)" .                        # username, prefix-safe
+grep -rE '/var/folders/[a-z0-9]{2}/[a-z0-9_]{30,}' .     # macOS per-user temp ids
+grep -rE '/(Users|home)/[a-z]' .                         # $HOME-style absolute paths
+```
+
+Result 2026-09-19: **0 / 0 / 0.**
+
+### The two live flags
+
+The three original flags are reduced to two:
+
+1. **Username fragments** — any prefix, not just the whole login.
+2. **Host-identifying absolute paths** — `$HOME`, per-user temp ids.
+
+**The ARCH-source flag is retired.** It was written when it was still
+open whether `src/*.arch` would be published. It is being published, so
+a check that flags quoted ARCH source in the package no longer protects
+anything, and keeping it would leave the playbook contradicting the
+publication decision — as it already did: the TASK2 table claimed `11-`
+and `12-` "quote the changed ARCH hunks by description" when both in
+fact carry literal hunks (14 and 6 changed source lines). That row is
+corrected above rather than acted on. Flow scripts are likewise no
+longer flagged: the three originally noted are derived from lowRISC's
+Apache-2.0 flow, and the library path that motivated the flag is now
+`~/.volare/sky130A`.
+
+### History: not rewritten, with a trigger
+
+The leak is in **22 commits**, and those are exactly the **22 unpushed
+commits** on this branch (`git merge-base origin/main HEAD` =
+`8c4b3ca`). `origin/main` carries zero occurrences, the `review-package`
+branch has never been pushed, and `arch-hdl-lang/arch-ibex` is private.
+The dirty history has therefore never left this machine, and today's
+exposure is nil.
+
+Decision: **do not rewrite now.** A rewrite is only needed if the dirty
+commits are published, publication cannot happen without a push, and the
+push is the natural gate. Running `git filter-repo` inside a live
+worktree of a repo carrying 30+ branches — most of them pushed — is a
+larger risk today than the thing it would prevent.
+
+The containment also makes the rewrite cheap and exactly scoped whenever
+it is wanted, because the leak range shares no commit with any pushed
+branch:
+
+```bash
+# gate: run before the first push of this branch
+git filter-repo --refs 8c4b3ca..review-package \
+  --replace-text <(printf 'pytest-of-%s==>pytest-of-<user>\n%s==>/var/folders/<tmp>\n' \
+                     "$(id -un | cut -c1-8)" "$(dirname "${TMPDIR%/}")")
+```
+
+This keeps every commit, so the effort-proxy counts (205 / 92 / 35) are
+preserved exactly. It changes the 22 commit hashes, which is
+inconsequential: the paper cites the upstream Ibex commit, not an
+arch-ibex one.
+
+### Consequences
+
+- **No hash manifest exists** in `review-package/` (`SHA256SUMS`,
+  `*.sha256`, or any file of `^[a-f0-9]{64}  ` lines — none). Nothing to
+  regenerate. Should one be added later, it must be generated *after*
+  this scrub, and the eight report files whose content changed are the
+  ones above.
+- **Three stale archives at the repo root carry the pre-scrub content**:
+  `review-package 2.zip` (2026-09-05), `review-package 3.zip`
+  (2026-09-05) and `review-package 4.zip` (2026-09-06) each contain an
+  unscrubbed `gate_make_test.log`. All four root zips are untracked.
+  They are superseded packaging snapshots, not part of the upload set;
+  delete or regenerate them rather than shipping one by mistake.
+  (`review-package.zip`, 2026-09-03, predates those logs and is clean of
+  this pattern.)
+- **Inventory drift**: 135 of the 159 files in `reports/` are named
+  nowhere in this document, covered only by the blanket "scrubbed with
+  the same sed" sentences. That is how the truncation survived several
+  re-runs. `TASK5.md` is likewise unlisted; like the other briefs it is
+  not for upload.
