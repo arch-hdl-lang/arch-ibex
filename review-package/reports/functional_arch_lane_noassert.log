@@ -1,0 +1,20 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.9, pytest-8.4.2, pluggy-1.5.0 -- /opt/homebrew/anaconda3/bin/python
+rootdir: ${REPO_ROOT}
+plugins: cocotb-test-0.2.6, xdist-3.8.0, anyio-4.10.0
+collecting ... collected 10 items
+
+tests/test_cpu_programs.py::test_cpu_program[timer_isr] PASSED           [ 10%]
+tests/test_cpu_programs.py::test_cpu_program[sw_isr] PASSED              [ 20%]
+tests/test_cpu_programs.py::test_cpu_program[ext_isr] PASSED             [ 30%]
+tests/test_cpu_programs.py::test_cpu_program[multictx_isr] PASSED        [ 40%]
+tests/test_cpu_programs.py::test_cpu_program[wfi_isr] PASSED             [ 50%]
+tests/test_cpu_programs.py::test_cpu_program[ecall_isr] PASSED           [ 60%]
+tests/test_cpu_programs.py::test_cpu_program[pmp_exec_isr] PASSED        [ 70%]
+tests/test_cpu_programs.py::test_cpu_program[pmp_load_isr] PASSED        [ 80%]
+tests/test_cpu_programs.py::test_cpu_program[pmp_misaligned_isr] PASSED  [ 90%]
+tests/test_cpu_programs.py::test_cpu_program[icache_bench] PASSED        [100%]
+
+- generated xml file: ${REPO_ROOT}/review-package/reports/functional_arch_lane_noassert.junit.xml -
+============================== 10 passed in 6.92s ==============================
+pytest tests/test_cpu_programs.py -p no:cacheprovider -v   12.24s user 1.55s system 189% cpu 7.267 total

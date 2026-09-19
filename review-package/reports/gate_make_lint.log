@@ -1,0 +1,103 @@
+pytest tests/test_soc_lint.py
+============================= test session starts ==============================
+platform darwin -- Python 3.13.9, pytest-8.4.2, pluggy-1.5.0
+rootdir: ${REPO_ROOT}
+plugins: cocotb-test-0.2.6, xdist-3.8.0, anyio-4.10.0
+collected 1 item
+
+tests/test_soc_lint.py F                                                 [100%]
+
+=================================== FAILURES ===================================
+___________________________ test_ibex_mini_soc_lints ___________________________
+
+verilator_bin = 'verilator'
+ibex_soc_filelist = {'build_dir': PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-44/ibex...ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/lowrisc_ibex_ibex_top_tracing_0.1.stripped.vc')}
+
+    def test_ibex_mini_soc_lints(
+        verilator_bin: str,
+        ibex_soc_filelist: dict,
+    ) -> None:
+        vc_path: Path = ibex_soc_filelist["vc_path"]
+        extra_sv: list[Path] = ibex_soc_filelist["extra_sv"]
+        build_dir: Path = ibex_soc_filelist["build_dir"]
+    
+        cmd = [
+            verilator_bin,
+            "--lint-only",
+            "-Wall",
+            "-Wno-UNUSEDSIGNAL",   # Ibex ties a lot of observability ports off
+            "-Wno-UNUSEDPARAM",
+            "-Wno-PINMISSING",     # we don't connect every tracing port
+            "-Wno-WIDTHEXPAND",    # $readmemh vs. sized vectors — benign
+            "-Wno-IMPORTSTAR",     # arch-com emits `import Pkg::*;` at $unit
+            "-Wno-DECLFILENAME",   # our in-tree Ibex forks keep upstream module names
+            "-Wno-UNOPTFLAT",      # upstream ibex_ex_block.sv has an intended ALU↔multdiv
+                                   # combinational loop on alu_adder_result_ext (the
+                                   # multdiv shares the ALU's adder/comparator). With
+                                   # the FSM-based multdiv Verilator's analysis
+                                   # resolved it; the thread-based multdiv's nested
+                                   # `_threads` submodule boundary makes Verilator
+                                   # more conservative. The loop is functionally
+                                   # identical and safe in practice.
+            "--unroll-count", "72",  # required by prim_secded per Verilator#1266
+            "-f", str(vc_path),
+            "--top-module", "ibex_mini_soc",
+        ]
+        cmd.extend(str(p) for p in extra_sv)
+    
+        result = subprocess.run(
+            cmd, cwd=str(build_dir),
+            capture_output=True, text=True,
+        )
+        # Useful context on failure.
+        if result.returncode != 0:
+>           pytest.fail(
+                "verilator --lint-only failed:\n"
+                f"CMD:\n  {' '.join(cmd)}\n"
+                f"STDERR:\n{result.stderr}\nSTDOUT:\n{result.stdout}"
+            )
+E           Failed: verilator --lint-only failed:
+E           CMD:
+E             verilator --lint-only -Wall -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM -Wno-PINMISSING -Wno-WIDTHEXPAND -Wno-IMPORTSTAR -Wno-DECLFILENAME -Wno-UNOPTFLAT --unroll-count 72 -f /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-44/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/lowrisc_ibex_ibex_top_tracing_0.1.stripped.vc --top-module ibex_mini_soc /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-44/ibex_soc_build0/generated/clint_basic/ClintPkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-44/ibex_soc_build0/generated/clint_basic/Clint.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-44/ibex_soc_build0/generated/clint_basic/ClintLogic.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-44/ibex_soc_build0/generated/plic_multictx/PlicMultictxPkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-44/ibex_soc_build0/generated/plic_multictx/PlicMultictx.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-44/ibex_soc_build0/generated/plic_multictx/PlicMultictxLogic.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-44/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrFilePkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-44/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrAccess.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-44/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrFile.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-44/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrTrapCoord.sv ${REPO_ROOT}/soc/obi_to_axi_lite.sv ${REPO_ROOT}/soc/ibex_mini_soc.sv ${REPO_ROOT}/soc/ibex_cs_registers_hybrid.sv ~/github/ibex/shared/rtl/ram_2p.sv ~/github/ibex/shared/rtl/sim/simulator_ctrl.sv ${REPO_ROOT}/build/ibex_core_shared_pkg.sv ${REPO_ROOT}/build/fb_age_arb.sv ${REPO_ROOT}/build/ibex_alu.sv ${REPO_ROOT}/build/ibex_compressed_decoder.sv ${REPO_ROOT}/build/ibex_controller.sv ${REPO_ROOT}/build/ibex_core.sv ${REPO_ROOT}/build/ibex_counter.sv ${REPO_ROOT}/build/ibex_decoder.sv ${REPO_ROOT}/build/ibex_ex_block.sv ${REPO_ROOT}/build/ibex_fetch_fifo.sv ${REPO_ROOT}/build/ibex_icache.sv ${REPO_ROOT}/build/ibex_icache_output_stage.sv ${REPO_ROOT}/build/ibex_id_stage.sv ${REPO_ROOT}/build/ibex_if_stage.sv ${REPO_ROOT}/build/ibex_load_store_unit.sv ${REPO_ROOT}/build/ibex_multdiv_fast.sv ${REPO_ROOT}/build/ibex_pmp.sv ${REPO_ROOT}/build/ibex_prefetch_buffer.sv ${REPO_ROOT}/build/ibex_register_file_ff.sv ${REPO_ROOT}/build/ibex_top.sv ${REPO_ROOT}/build/ibex_wb_stage.sv ${REPO_ROOT}/build/inval_ctrl.sv ${REPO_ROOT}/build/ram_port_arb.sv
+E           STDERR:
+E           %Warning-PROCASSINIT: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:107:27: Procedural assignment to declaration with initial value: '_t0_state'
+E                                                                                                                                                      : ... note: In instance 'ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
+E                                                                                                                                                      : ... Location of variable initialization
+E             107 |   logic [3:0] _t0_state = 0;
+E                 |                           ^
+E                                 ${REPO_ROOT}/build/ibex_multdiv_fast.sv:371:7: ... Location of variable process write
+E                                                                                                                                                     : ... Perhaps should initialize instead using a reset in this process
+E             371 |       _t0_state <= 0;
+E                 |       ^~~~~~~~~
+E                                 ... For warning description see https://verilator.org/warn/PROCASSINIT?v=5.048
+E                                 ... Use "/* verilator lint_off PROCASSINIT */" and lint_on around source to disable this message.
+E           %Warning-PROCASSINIT: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:109:32: Procedural assignment to declaration with initial value: '_t0_loop_cnt_0'
+E                                                                                                                                                      : ... note: In instance 'ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
+E                                                                                                                                                      : ... Location of variable initialization
+E             109 |   logic [4:0] _t0_loop_cnt_0 = 0;
+E                 |                                ^
+E                                 ${REPO_ROOT}/build/ibex_multdiv_fast.sv:453:7: ... Location of variable process write
+E                                                                                                                                                     : ... Perhaps should initialize instead using a reset in this process
+E             453 |       _t0_loop_cnt_0 <= 0;
+E                 |       ^~~~~~~~~~~~~~
+E           %Warning-SYNCASYNCNET: ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: Signal flopped as both synchronous and async: 'IO_RST_N'
+E                                  ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: ... Location of async usage
+E              67 |   input  logic IO_RST_N,
+E                 |                ^~~~~~~~
+E                                  ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: ... Location of sync usage
+E              67 |   input  logic IO_RST_N,
+E                 |                ^~~~~~~~
+E                                  ... For warning description see https://verilator.org/warn/SYNCASYNCNET?v=5.048
+E                                  ... Use "/* verilator lint_off SYNCASYNCNET */" and lint_on around source to disable this message.
+E           %Error: Exiting due to 3 warning(s)
+E           
+E           STDOUT:
+
+tests/test_soc_lint.py:59: Failed
+- generated xml file: ${REPO_ROOT}/review-package/reports/gate_make_lint.junit.xml -
+=========================== short test summary info ============================
+FAILED tests/test_soc_lint.py::test_ibex_mini_soc_lints - Failed: verilator -...
+============================== 1 failed in 1.02s ===============================
+make: *** [lint] Error 1
+make lint  0.90s user 0.22s system 76% cpu 1.468 total
+exit=2

@@ -1,10 +1,12 @@
 # Build outputs
 build/*
+build-synth/*
 !build/.gitkeep
 *.sv.bak
 
 # `arch build` side-effect intermediate-IR files written next to source
 src/*.archi
+src/sim/*.archi
 
 # Python
 __pycache__/
@@ -38,3 +40,9 @@ tests/sw/build/
 # that don't belong in shared history.
 HANDOFF.md
 arch_sim_build/
+
+# Reviewer evidence package: its logs are deliverables, not build noise.
+!review-package/reports/*.log
+
+# Synthesis flow outputs (merged Verilog, netlists, logs); reports are copied to review-package/reports/
+flow/out/

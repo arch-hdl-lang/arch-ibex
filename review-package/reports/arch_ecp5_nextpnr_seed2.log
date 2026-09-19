@@ -1,0 +1,1247 @@
+Info: constraining clock net 'clk_i' to 50.00 MHz
+Warning: IO 'test_en_i' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_req_o' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[63]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[62]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[61]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[60]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[59]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[58]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[57]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[56]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[55]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[54]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[53]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[52]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[51]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[50]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[49]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[48]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[47]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[46]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[45]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[44]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[43]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[42]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[41]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[40]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[39]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[38]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[37]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[36]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[35]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[34]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[33]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[32]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[31]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[30]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[29]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[28]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[27]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[26]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[25]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[24]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[23]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[22]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[21]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[20]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[19]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[18]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[17]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[16]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[15]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[14]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[13]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[12]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[11]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[10]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[9]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[8]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[7]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[6]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[5]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[4]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[3]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[2]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_nonce_i[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_valid_i' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[127]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[126]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[125]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[124]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[123]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[122]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[121]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[120]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[119]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[118]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[117]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[116]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[115]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[114]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[113]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[112]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[111]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[110]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[109]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[108]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[107]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[106]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[105]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[104]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[103]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[102]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[101]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[100]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[99]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[98]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[97]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[96]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[95]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[94]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[93]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[92]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[91]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[90]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[89]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[88]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[87]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[86]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[85]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[84]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[83]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[82]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[81]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[80]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[79]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[78]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[77]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[76]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[75]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[74]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[73]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[72]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[71]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[70]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[69]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[68]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[67]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[66]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[65]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[64]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[63]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[62]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[61]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[60]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[59]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[58]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[57]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[56]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[55]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[54]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[53]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[52]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[51]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[50]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[49]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[48]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[47]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[46]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[45]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[44]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[43]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[42]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[41]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[40]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[39]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[38]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[37]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[36]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[35]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[34]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[33]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[32]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[31]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[30]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[29]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[28]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[27]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[26]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[25]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[24]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[23]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[22]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[21]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[20]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[19]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[18]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[17]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[16]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[15]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[14]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[13]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[12]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[11]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[10]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[9]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[8]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[7]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[6]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[5]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[4]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[3]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[2]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scramble_key_i[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'scan_rst_ni' is unconstrained in LPF and will be automatically placed
+Warning: IO 'rst_ni' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_rsp_icache_tag_o[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_rsp_icache_tag_o[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_rsp_icache_data_o[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_rsp_icache_data_o[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_icache_tag_i[11]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_icache_tag_i[10]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_icache_tag_i[9]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_icache_tag_i[8]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_icache_tag_i[7]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_icache_tag_i[6]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_icache_tag_i[5]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_icache_tag_i[4]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_icache_tag_i[3]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_icache_tag_i[2]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_icache_tag_i[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_icache_tag_i[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_icache_data_i[11]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_icache_data_i[10]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_icache_data_i[9]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_icache_data_i[8]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_icache_data_i[7]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_icache_data_i[6]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_icache_data_i[5]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_icache_data_i[4]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_icache_data_i[3]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_icache_data_i[2]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_icache_data_i[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'ram_cfg_icache_data_i[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'lockstep_cmp_en_o[3]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'lockstep_cmp_en_o[2]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'lockstep_cmp_en_o[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'lockstep_cmp_en_o[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'irq_timer_i' is unconstrained in LPF and will be automatically placed
+Warning: IO 'irq_software_i' is unconstrained in LPF and will be automatically placed
+Warning: IO 'irq_nm_i' is unconstrained in LPF and will be automatically placed
+Warning: IO 'irq_fast_i[14]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'irq_fast_i[13]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'irq_fast_i[12]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'irq_fast_i[11]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'irq_fast_i[10]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'irq_fast_i[9]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'irq_fast_i[8]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'irq_fast_i[7]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'irq_fast_i[6]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'irq_fast_i[5]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'irq_fast_i[4]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'irq_fast_i[3]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'irq_fast_i[2]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'irq_fast_i[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'irq_fast_i[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'irq_external_i' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rvalid_i' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_req_shadow_o' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_req_o' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_intg_i[6]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_intg_i[5]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_intg_i[4]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_intg_i[3]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_intg_i[2]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_intg_i[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_intg_i[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[31]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[30]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[29]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[28]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[27]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[26]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[25]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[24]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[23]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[22]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[21]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[20]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[19]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[18]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[17]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[16]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[15]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[14]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[13]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[12]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[11]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[10]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[9]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[8]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[7]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[6]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[5]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[4]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[3]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[2]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_rdata_i[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_gnt_i' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_err_i' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[31]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[30]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[29]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[28]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[27]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[26]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[25]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[24]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[23]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[22]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[21]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[20]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[19]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[18]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[17]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[16]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[15]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[14]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[13]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[12]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[11]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[10]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[9]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[8]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[7]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[6]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[5]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[4]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[3]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[2]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_shadow_o[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[31]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[30]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[29]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[28]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[27]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[26]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[25]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[24]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[23]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[22]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[21]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[20]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[19]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[18]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[17]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[16]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[15]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[14]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[13]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[12]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[11]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[10]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[9]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[8]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[7]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[6]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[5]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[4]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[3]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[2]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'instr_addr_o[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[31]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[30]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[29]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[28]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[27]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[26]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[25]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[24]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[23]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[22]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[21]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[20]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[19]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[18]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[17]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[16]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[15]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[14]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[13]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[12]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[11]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[10]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[9]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[8]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[7]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[6]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[5]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[4]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[3]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[2]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'hart_id_i[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'fetch_enable_i[3]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'fetch_enable_i[2]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'fetch_enable_i[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'fetch_enable_i[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'double_fault_seen_o' is unconstrained in LPF and will be automatically placed
+Warning: IO 'debug_req_i' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_we_shadow_o' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_we_o' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[31]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[30]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[29]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[28]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[27]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[26]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[25]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[24]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[23]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[22]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[21]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[20]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[19]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[18]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[17]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[16]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[15]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[14]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[13]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[12]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[11]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[10]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[9]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[8]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[7]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[6]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[5]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[4]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[3]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[2]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_shadow_o[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[31]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[30]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[29]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[28]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[27]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[26]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[25]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[24]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[23]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[22]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[21]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[20]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[19]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[18]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[17]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[16]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[15]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[14]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[13]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[12]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[11]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[10]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[9]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[8]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[7]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[6]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[5]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[4]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[3]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[2]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_o[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_intg_shadow_o[6]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_intg_shadow_o[5]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_intg_shadow_o[4]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_intg_shadow_o[3]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_intg_shadow_o[2]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_intg_shadow_o[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_intg_shadow_o[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_intg_o[6]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_intg_o[5]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_intg_o[4]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_intg_o[3]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_intg_o[2]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_intg_o[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_wdata_intg_o[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rvalid_i' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_req_shadow_o' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_req_o' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_intg_i[6]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_intg_i[5]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_intg_i[4]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_intg_i[3]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_intg_i[2]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_intg_i[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_intg_i[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[31]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[30]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[29]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[28]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[27]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[26]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[25]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[24]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[23]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[22]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[21]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[20]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[19]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[18]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[17]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[16]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[15]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[14]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[13]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[12]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[11]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[10]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[9]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[8]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[7]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[6]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[5]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[4]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[3]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[2]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_rdata_i[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_gnt_i' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_err_i' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_be_shadow_o[3]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_be_shadow_o[2]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_be_shadow_o[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_be_shadow_o[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_be_o[3]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_be_o[2]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_be_o[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_be_o[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[31]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[30]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[29]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[28]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[27]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[26]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[25]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[24]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[23]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[22]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[21]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[20]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[19]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[18]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[17]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[16]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[15]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[14]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[13]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[12]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[11]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[10]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[9]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[8]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[7]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[6]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[5]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[4]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[3]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[2]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_shadow_o[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[31]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[30]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[29]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[28]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[27]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[26]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[25]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[24]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[23]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[22]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[21]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[20]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[19]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[18]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[17]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[16]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[15]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[14]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[13]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[12]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[11]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[10]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[9]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[8]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[7]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[6]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[5]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[4]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[3]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[2]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'data_addr_o[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[159]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[158]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[157]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[156]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[155]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[154]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[153]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[152]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[151]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[150]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[149]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[148]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[147]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[146]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[145]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[144]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[143]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[142]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[141]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[140]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[139]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[138]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[137]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[136]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[135]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[134]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[133]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[132]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[131]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[130]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[129]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[128]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[127]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[126]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[125]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[124]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[123]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[122]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[121]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[120]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[119]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[118]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[117]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[116]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[115]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[114]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[113]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[112]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[111]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[110]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[109]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[108]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[107]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[106]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[105]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[104]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[103]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[102]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[101]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[100]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[99]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[98]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[97]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[96]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[95]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[94]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[93]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[92]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[91]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[90]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[89]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[88]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[87]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[86]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[85]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[84]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[83]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[82]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[81]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[80]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[79]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[78]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[77]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[76]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[75]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[74]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[73]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[72]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[71]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[70]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[69]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[68]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[67]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[66]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[65]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[64]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[63]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[62]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[61]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[60]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[59]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[58]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[57]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[56]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[55]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[54]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[53]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[52]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[51]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[50]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[49]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[48]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[47]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[46]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[45]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[44]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[43]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[42]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[41]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[40]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[39]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[38]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[37]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[36]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[35]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[34]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[33]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[32]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[31]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[30]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[29]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[28]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[27]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[26]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[25]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[24]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[23]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[22]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[21]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[20]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[19]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[18]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[17]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[16]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[15]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[14]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[13]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[12]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[11]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[10]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[9]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[8]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[7]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[6]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[5]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[4]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[3]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[2]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'crash_dump_o[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'core_sleep_o' is unconstrained in LPF and will be automatically placed
+Warning: IO 'clk_i' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[31]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[30]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[29]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[28]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[27]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[26]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[25]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[24]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[23]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[22]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[21]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[20]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[19]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[18]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[17]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[16]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[15]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[14]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[13]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[12]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[11]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[10]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[9]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[8]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[7]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[6]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[5]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[4]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[3]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[2]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[1]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'boot_addr_i[0]' is unconstrained in LPF and will be automatically placed
+Warning: IO 'alert_minor_o' is unconstrained in LPF and will be automatically placed
+Warning: IO 'alert_major_internal_o' is unconstrained in LPF and will be automatically placed
+Warning: IO 'alert_major_bus_o' is unconstrained in LPF and will be automatically placed
+
+Info: Logic utilisation before packing:
+Info:     Total LUT4s:     17026/83640    20%
+Info:         logic LUTs:  15910/83640    19%
+Info:         carry LUTs:   1116/83640     1%
+Info:           RAM LUTs:      0/10455     0%
+Info:          RAMW LUTs:      0/20910     0%
+
+Info:      Total DFFs:      3440/83640     4%
+
+Info: Packing IOs..
+Info: Packing constants..
+Info: Packing carries...
+Info: Packing LUTs...
+Info: Packing LUT5-7s...
+Info: Packing FFs...
+Info:     2456 FFs paired with LUTs.
+Info: Generating derived timing constraints...
+Info: Promoting globals...
+Info: Checksum: 0xa5e2ee95
+
+Info: Device utilisation:
+Info: 	          TRELLIS_IO:       0/    365     0%
+Info: 	                DCCA:       0/     56     0%
+Info: 	              DP16KD:       6/    208     2%
+Info: 	          MULT18X18D:       1/    156     0%
+Info: 	              ALU54B:       0/     78     0%
+Info: 	             EHXPLLL:       0/      4     0%
+Info: 	             EXTREFB:       0/      2     0%
+Info: 	                DCUA:       0/      2     0%
+Info: 	           PCSCLKDIV:       0/      2     0%
+Info: 	             IOLOGIC:       0/    224     0%
+Info: 	            SIOLOGIC:       0/    141     0%
+Info: 	                 GSR:       0/      1     0%
+Info: 	               JTAGG:       0/      1     0%
+Info: 	                OSCG:       0/      1     0%
+Info: 	               SEDGA:       0/      1     0%
+Info: 	                 DTR:       0/      1     0%
+Info: 	             USRMCLK:       0/      1     0%
+Info: 	             CLKDIVF:       0/      4     0%
+Info: 	           ECLKSYNCB:       0/     10     0%
+Info: 	             DLLDELD:       0/      8     0%
+Info: 	              DDRDLL:       0/      4     0%
+Info: 	             DQSBUFM:       0/     14     0%
+Info: 	     TRELLIS_ECLKBUF:       0/      8     0%
+Info: 	        ECLKBRIDGECS:       0/      2     0%
+Info: 	                DCSC:       0/      2     0%
+Info: 	          TRELLIS_FF:    3440/  83640     4%
+Info: 	        TRELLIS_COMB:   17192/  83640    20%
+Info: 	        TRELLIS_RAMW:       0/  10455     0%
+
+Info: Placed 0 cells based on constraints.
+Info: Creating initial analytic placement for 13218 cells, random placement wirelen = 1356861.
+Info:     at initial placer iter 0, wirelen = 1787
+Info:     at initial placer iter 1, wirelen = 2527
+Info:     at initial placer iter 2, wirelen = 2163
+Info:     at initial placer iter 3, wirelen = 2359
+Info: Running main analytical placer, max placement attempts per cell = 53246040.
+Info:     at iteration #1, type ALL: wirelen solved = 2196, spread = 366934, legal = 365536; time = 0.23s
+Info:     at iteration #2, type ALL: wirelen solved = 14858, spread = 146888, legal = 148905; time = 0.28s
+Info:     at iteration #3, type ALL: wirelen solved = 32321, spread = 118196, legal = 121607; time = 0.25s
+Info:     at iteration #4, type ALL: wirelen solved = 39806, spread = 107304, legal = 110848; time = 0.23s
+Info:     at iteration #5, type ALL: wirelen solved = 44870, spread = 101040, legal = 104703; time = 0.23s
+Info:     at iteration #6, type ALL: wirelen solved = 51768, spread = 95107, legal = 98747; time = 0.22s
+Info:     at iteration #7, type ALL: wirelen solved = 53793, spread = 92453, legal = 96646; time = 0.22s
+Info:     at iteration #8, type ALL: wirelen solved = 58022, spread = 89826, legal = 93775; time = 0.21s
+Info:     at iteration #9, type ALL: wirelen solved = 60869, spread = 87742, legal = 92329; time = 0.22s
+Info:     at iteration #10, type ALL: wirelen solved = 62184, spread = 88282, legal = 92369; time = 0.21s
+Info:     at iteration #11, type ALL: wirelen solved = 64570, spread = 87159, legal = 91028; time = 0.21s
+Info:     at iteration #12, type ALL: wirelen solved = 65795, spread = 86417, legal = 89680; time = 0.21s
+Info:     at iteration #13, type ALL: wirelen solved = 66321, spread = 86868, legal = 90583; time = 0.20s
+Info:     at iteration #14, type ALL: wirelen solved = 67948, spread = 86610, legal = 90083; time = 0.20s
+Info:     at iteration #15, type ALL: wirelen solved = 68505, spread = 85778, legal = 90069; time = 0.20s
+Info:     at iteration #16, type ALL: wirelen solved = 69098, spread = 86699, legal = 90349; time = 0.22s
+Info:     at iteration #17, type ALL: wirelen solved = 70208, spread = 87067, legal = 91458; time = 0.21s
+Info: HeAP Placer Time: 5.31s
+Info:   of which solving equations: 3.56s
+Info:   of which spreading cells: 0.64s
+Info:   of which strict legalisation: 0.16s
+
+Info: Running simulated annealing placer for refinement.
+Info:   at iteration #1: temp = 0.000000, timing cost = 11660, wirelen = 89680
+Info:   at iteration #5: temp = 0.000000, timing cost = 12985, wirelen = 81564
+Info:   at iteration #10: temp = 0.000000, timing cost = 11888, wirelen = 79056
+Info:   at iteration #15: temp = 0.000000, timing cost = 11782, wirelen = 78237
+Info:   at iteration #20: temp = 0.000000, timing cost = 11806, wirelen = 77958
+Info:   at iteration #25: temp = 0.000000, timing cost = 11912, wirelen = 77885
+Info:   at iteration #29: temp = 0.000000, timing cost = 11942, wirelen = 77848 
+Info: SA placement time 22.95s
+
+Info: Max frequency for clock 'clk_i': 21.78 MHz (FAIL at 50.00 MHz)
+
+Info: Slack histogram:
+Info:  legend: * represents 19 endpoint(s)
+Info:          + represents [1,19) endpoint(s)
+Info: [-25922, -23663) |**********+
+Info: [-23663, -21404) |**********************************+
+Info: [-21404, -19145) |*******************************************+
+Info: [-19145, -16886) |************************************************************ 
+Info: [-16886, -14627) |******************************+
+Info: [-14627, -12368) |**********+
+Info: [-12368, -10109) |**************************************+
+Info: [-10109,  -7850) |*****+
+Info: [ -7850,  -5591) |*************+
+Info: [ -5591,  -3332) |***********************+
+Info: [ -3332,  -1073) |**********+
+Info: [ -1073,   1186) |****************+
+Info: [  1186,   3445) |*****************************+
+Info: [  3445,   5704) |************+
+Info: [  5704,   7963) |**+
+Info: [  7963,  10222) |+
+Info: [ 10222,  12481) |+
+Info: [ 12481,  14740) |+
+Info: [ 14740,  16999) |******+
+Info: [ 16999,  19258) |******+
+Info: Checksum: 0x29f576fb
+Info: Routing globals...
+
+Info: Routing..
+Info: Setting up routing queue.
+Info: Routing 67387 arcs.
+Info:            |   (re-)routed arcs  |   delta    | remaining|       time spent     |
+Info:    IterCnt |  w/ripup   wo/ripup |  w/r  wo/r |      arcs| batch(sec) total(sec)|
+Info:       1000 |      375        624 |  375   624 |     67166|       0.40       0.40|
+Info:       2000 |      618       1381 |  243   757 |     66798|       0.12       0.52|
+Info:       3000 |      919       2080 |  301   699 |     66406|       0.10       0.63|
+Info:       4000 |     1187       2812 |  268   732 |     65846|       0.11       0.74|
+Info:       5000 |     1506       3493 |  319   681 |     65356|       0.11       0.85|
+Info:       6000 |     1812       4187 |  306   694 |     64895|       0.11       0.96|
+Info:       7000 |     2092       4907 |  280   720 |     64509|       0.11       1.07|
+Info:       8000 |     2356       5643 |  264   736 |     63894|       0.11       1.18|
+Info:       9000 |     2578       6421 |  222   778 |     63286|       0.11       1.29|
+Info:      10000 |     2760       7239 |  182   818 |     62679|       0.11       1.40|
+Info:      11000 |     2982       8017 |  222   778 |     62236|       0.11       1.51|
+Info:      12000 |     3242       8757 |  260   740 |     62123|       0.10       1.61|
+Info:      13000 |     3443       9556 |  201   799 |     61745|       0.10       1.72|
+Info:      14000 |     3687      10312 |  244   756 |     61207|       0.10       1.82|
+Info:      15000 |     3879      11120 |  192   808 |     60863|       0.11       1.93|
+Info:      16000 |     4007      11992 |  128   872 |     60830|       0.12       2.05|
+Info:      17000 |     4219      12780 |  212   788 |     60480|       0.11       2.16|
+Info:      18000 |     4473      13526 |  254   746 |     60025|       0.12       2.28|
+Info:      19000 |     4663      14336 |  190   810 |     59650|       0.11       2.38|
+Info:      20000 |     4890      15109 |  227   773 |     59211|       0.12       2.50|
+Info:      21000 |     5067      15932 |  177   823 |     58813|       0.11       2.61|
+Info:      22000 |     5312      16687 |  245   755 |     58362|       0.13       2.74|
+Info:      23000 |     5544      17455 |  232   768 |     58019|       0.12       2.85|
+Info:      24000 |     5796      18203 |  252   748 |     57556|       0.11       2.97|
+Info:      25000 |     6055      18944 |  259   741 |     57097|       0.12       3.09|
+Info:      26000 |     6292      19707 |  237   763 |     57118|       0.12       3.21|
+Info:      27000 |     6489      20510 |  197   803 |     56704|       0.11       3.32|
+Info:      28000 |     6774      21225 |  285   715 |     56333|       0.14       3.46|
+Info:      29000 |     7015      21984 |  241   759 |     56021|       0.13       3.59|
+Info:      30000 |     7270      22729 |  255   745 |     55498|       0.12       3.71|
+Info:      31000 |     7515      23484 |  245   755 |     55023|       0.13       3.85|
+Info:      32000 |     7849      24150 |  334   666 |     54636|       0.14       3.98|
+Info:      33000 |     8109      24890 |  260   740 |     54314|       0.12       4.10|
+Info:      34000 |     8320      25679 |  211   789 |     54635|       0.12       4.23|
+Info:      35000 |     8535      26464 |  215   785 |     54164|       0.12       4.34|
+Info:      36000 |     8798      27201 |  263   737 |     53820|       0.12       4.46|
+Info:      37000 |     9039      27960 |  241   759 |     53449|       0.12       4.58|
+Info:      38000 |     9338      28661 |  299   701 |     53097|       0.13       4.71|
+Info:      39000 |     9615      29384 |  277   723 |     52770|       0.12       4.83|
+Info:      40000 |     9844      30155 |  229   771 |     52529|       0.13       4.96|
+Info:      41000 |    10116      30883 |  272   728 |     52253|       0.13       5.09|
+Info:      42000 |    10436      31563 |  320   680 |     51740|       0.14       5.23|
+Info:      43000 |    10696      32303 |  260   740 |     51507|       0.13       5.36|
+Info:      44000 |    11037      32962 |  341   659 |     51206|       0.13       5.49|
+Info:      45000 |    11320      33679 |  283   717 |     50757|       0.14       5.63|
+Info:      46000 |    11656      34343 |  336   664 |     50351|       0.14       5.77|
+Info:      47000 |    11930      35069 |  274   726 |     49792|       0.12       5.89|
+Info:      48000 |    12248      35751 |  318   682 |     49367|       0.14       6.04|
+Info:      49000 |    12549      36450 |  301   699 |     48943|       0.16       6.20|
+Info:      50000 |    12835      37164 |  286   714 |     48526|       0.13       6.33|
+Info:      51000 |    13166      37833 |  331   669 |     48278|       0.14       6.47|
+Info:      52000 |    13456      38543 |  290   710 |     47962|       0.14       6.61|
+Info:      53000 |    13790      39209 |  334   666 |     47427|       0.13       6.74|
+Info:      54000 |    14061      39938 |  271   729 |     47065|       0.13       6.87|
+Info:      55000 |    14370      40629 |  309   691 |     46697|       0.16       7.04|
+Info:      56000 |    14612      41387 |  242   758 |     46419|       0.15       7.18|
+Info:      57000 |    14979      42020 |  367   633 |     46027|       0.16       7.35|
+Info:      58000 |    15351      42648 |  372   628 |     45617|       0.15       7.50|
+Info:      59000 |    15687      43312 |  336   664 |     45198|       0.15       7.65|
+Info:      60000 |    16027      43972 |  340   660 |     44754|       0.16       7.81|
+Info:      61000 |    16367      44632 |  340   660 |     44399|       0.14       7.95|
+Info:      62000 |    16679      45320 |  312   688 |     44060|       0.15       8.10|
+Info:      63000 |    16945      46054 |  266   734 |     43656|       0.15       8.24|
+Info:      64000 |    17249      46750 |  304   696 |     43323|       0.16       8.40|
+Info:      65000 |    17546      47453 |  297   703 |     42865|       0.16       8.56|
+Info:      66000 |    17937      48062 |  391   609 |     42542|       0.19       8.75|
+Info:      67000 |    18234      48765 |  297   703 |     42213|       0.18       8.93|
+Info:      68000 |    18661      49338 |  427   573 |     41872|       0.16       9.09|
+Info:      69000 |    19028      49971 |  367   633 |     41547|       0.17       9.27|
+Info:      70000 |    19412      50587 |  384   616 |     41093|       0.22       9.48|
+Info:      71000 |    19766      51233 |  354   646 |     40700|       0.17       9.65|
+Info:      72000 |    20158      51841 |  392   608 |     40299|       0.17       9.81|
+Info:      73000 |    20445      52554 |  287   713 |     39988|       0.16       9.97|
+Info:      74000 |    20823      53176 |  378   622 |     39612|       0.17      10.15|
+Info:      75000 |    21185      53814 |  362   638 |     39238|       0.16      10.31|
+Info:      76000 |    21479      54520 |  294   706 |     38774|       0.19      10.50|
+Info:      77000 |    21835      55164 |  356   644 |     38363|       0.20      10.69|
+Info:      78000 |    22134      55865 |  299   701 |     37800|       0.17      10.87|
+Info:      79000 |    22551      56448 |  417   583 |     37381|       0.20      11.07|
+Info:      80000 |    23038      56961 |  487   513 |     37072|       0.18      11.25|
+Info:      81000 |    23487      57512 |  449   551 |     36685|       0.21      11.46|
+Info:      82000 |    23892      58107 |  405   595 |     36505|       0.19      11.64|
+Info:      83000 |    24283      58716 |  391   609 |     36191|       0.17      11.81|
+Info:      84000 |    24735      59264 |  452   548 |     35841|       0.16      11.97|
+Info:      85000 |    25226      59773 |  491   509 |     35486|       0.15      12.12|
+Info:      86000 |    25626      60373 |  400   600 |     35039|       0.15      12.27|
+Info:      87000 |    25917      61082 |  291   709 |     34889|       0.16      12.43|
+Info:      88000 |    26324      61675 |  407   593 |     34551|       0.15      12.58|
+Info:      89000 |    26719      62280 |  395   605 |     34072|       0.14      12.72|
+Info:      90000 |    27129      62870 |  410   590 |     33793|       0.18      12.90|
+Info:      91000 |    27574      63425 |  445   555 |     33350|       0.14      13.04|
+Info:      92000 |    27989      64010 |  415   585 |     33062|       0.17      13.21|
+Info:      93000 |    28289      64710 |  300   700 |     32820|       0.15      13.36|
+Info:      94000 |    28645      65354 |  356   644 |     32296|       0.15      13.51|
+Info:      95000 |    28968      66031 |  323   677 |     32224|       0.21      13.71|
+Info:      96000 |    29337      66662 |  369   631 |     31721|       0.15      13.87|
+Info:      97000 |    29717      67278 |  380   616 |     31213|       0.15      14.02|
+Info:      98000 |    30069      67894 |  352   616 |     30787|       0.15      14.16|
+Info:      99000 |    30483      68441 |  414   547 |     30307|       0.14      14.31|
+Info:     100000 |    30906      68992 |  423   551 |     29869|       0.14      14.45|
+Info:     101000 |    31261      69589 |  355   597 |     29299|       0.13      14.57|
+Info:     102000 |    31615      70167 |  354   578 |     28705|       0.12      14.70|
+Info:     103000 |    31869      70846 |  254   679 |     28113|       0.12      14.81|
+Info:     104000 |    32206      71409 |  337   563 |     27545|       0.13      14.95|
+Info:     105000 |    32453      72123 |  247   714 |     27338|       0.15      15.10|
+Info:     106000 |    32826      72639 |  373   516 |     26759|       0.13      15.22|
+Info:     107000 |    33208      73161 |  382   522 |     26187|       0.12      15.35|
+Info:     108000 |    33582      73714 |  374   553 |     25702|       0.13      15.48|
+Info:     109000 |    34014      74178 |  432   464 |     25480|       0.17      15.65|
+Info:     110000 |    34424      74704 |  410   526 |     25003|       0.16      15.81|
+Info:     111000 |    34841      75182 |  417   478 |     24491|       0.13      15.94|
+Info:     112000 |    35219      75744 |  378   562 |     24224|       0.15      16.09|
+Info:     113000 |    35633      76240 |  414   496 |     23743|       0.14      16.24|
+Info:     114000 |    36014      76768 |  381   528 |     23207|       0.14      16.37|
+Info:     115000 |    36390      77349 |  376   581 |     22874|       0.18      16.55|
+Info:     116000 |    36771      77892 |  381   543 |     22449|       0.16      16.71|
+Info:     117000 |    37099      78461 |  328   569 |     21801|       0.11      16.83|
+Info:     118000 |    37401      79084 |  302   623 |     21670|       0.13      16.96|
+Info:     119000 |    37679      79806 |  278   722 |     21772|       0.20      17.16|
+Info:     120000 |    37950      80490 |  271   684 |     21126|       0.16      17.31|
+Info:     121000 |    38263      81097 |  313   607 |     20699|       0.13      17.44|
+Info:     122000 |    38639      81660 |  376   563 |     20121|       0.15      17.59|
+Info:     123000 |    39008      82239 |  369   579 |     19742|       0.16      17.75|
+Info:     124000 |    39429      82779 |  421   540 |     19247|       0.15      17.90|
+Info:     125000 |    39826      83354 |  397   575 |     18753|       0.15      18.05|
+Info:     126000 |    40266      83889 |  440   535 |     18303|       0.19      18.24|
+Info:     127000 |    40673      84451 |  407   562 |     17763|       0.15      18.39|
+Info:     128000 |    41014      85080 |  341   629 |     17183|       0.15      18.55|
+Info:     129000 |    41333      85751 |  319   671 |     16804|       0.19      18.74|
+Info:     130000 |    41644      86437 |  311   686 |     16271|       0.18      18.92|
+Info:     131000 |    41927      87110 |  283   673 |     15736|       0.19      19.11|
+Info:     132000 |    42185      87812 |  258   702 |     15120|       0.17      19.28|
+Info:     133000 |    42501      88483 |  316   671 |     14672|       0.19      19.47|
+Info:     134000 |    42724      89239 |  223   756 |     14021|       0.18      19.65|
+Info:     135000 |    42985      89956 |  261   717 |     13406|       0.18      19.83|
+Info:     136000 |    43288      90622 |  303   666 |     12879|       0.17      20.00|
+Info:     137000 |    43585      91284 |  297   662 |     12341|       0.18      20.18|
+Info:     138000 |    43888      91957 |  303   673 |     12107|       0.22      20.40|
+Info:     139000 |    44135      92656 |  247   699 |     11686|       0.17      20.57|
+Info:     140000 |    44401      93297 |  266   641 |     11141|       0.17      20.74|
+Info:     141000 |    44689      93922 |  288   625 |     10638|       0.19      20.93|
+Info:     142000 |    44929      94586 |  240   664 |     10123|       0.16      21.09|
+Info:     143000 |    45188      95304 |  259   718 |      9504|       0.19      21.29|
+Info:     144000 |    45458      95993 |  270   689 |      9014|       0.20      21.49|
+Info:     145000 |    45764      96631 |  306   638 |      8506|       0.21      21.69|
+Info:     146000 |    46141      97207 |  377   576 |      8148|       0.24      21.93|
+Info:     147000 |    46456      97786 |  315   579 |      7662|       0.23      22.17|
+Info:     148000 |    46708      98384 |  252   598 |      7071|       0.19      22.35|
+Info:     149000 |    47038      99012 |  330   628 |      6694|       0.23      22.58|
+Info:     150000 |    47442      99603 |  404   591 |      6577|       0.28      22.87|
+Info:     151000 |    47779     100198 |  337   595 |      6130|       0.24      23.11|
+Info:     152000 |    47950     101015 |  171   817 |      5408|       0.16      23.27|
+Info:     153000 |    48043     101922 |   93   907 |      4503|       0.12      23.39|
+Info:     154000 |    48285     102680 |  242   758 |      3902|       0.17      23.56|
+Info:     155000 |    48520     103443 |  235   763 |      3197|       0.14      23.70|
+Info:     156000 |    48765     104180 |  245   737 |      3062|       0.26      23.96|
+Info:     157000 |    49090     104777 |  325   597 |      2652|       0.33      24.29|
+Info:     158000 |    49400     105389 |  310   612 |      2476|       0.30      24.59|
+Info:     159000 |    49862     105927 |  462   538 |      2353|       0.31      24.89|
+Info:     160000 |    50184     106551 |  322   624 |      2075|       0.31      25.20|
+Info:     161000 |    50559     107112 |  375   561 |      1692|       0.32      25.53|
+Info:     162000 |    50890     107713 |  331   601 |      1282|       0.36      25.89|
+Info:     163000 |    51108     108370 |  218   657 |       554|       0.37      26.26|
+Info:     163975 |    51361     108991 |  253   621 |         0|       0.55      26.81|
+Info: Routing complete.
+Info: Router1 time 26.81s
+Info: Checksum: 0x4e3416db
+
+Info: Critical path report for clock 'clk_i' (posedge -> posedge):
+Info:       type curr  total name
+Info:   clk-to-q  5.61  5.61 Source tag_bank_w1.mem.0.0.DOA9
+Info:    routing  0.88  6.49 Net ic_tag_rdata[9] (62,22) -> (62,20)
+Info:                          Sink u_ibex_core.if_stage_i.icache.way1_valid_LUT4_C_Z_LUT4_D_Z_LUT4_Z_1_D_LUT4_Z_D_LUT4_Z.C
+Info:                          Defined in:
+Info:                               ${REPO_ROOT}/flow/out/arch/ibex_top.v:11889.14-11889.22
+Info:      logic  0.24  6.73 Source u_ibex_core.if_stage_i.icache.way1_valid_LUT4_C_Z_LUT4_D_Z_LUT4_Z_1_D_LUT4_Z_D_LUT4_Z.F
+Info:    routing  0.81  7.54 Net u_ibex_core.if_stage_i.icache.way1_valid_LUT4_C_Z_LUT4_D_Z_LUT4_Z_1_D_LUT4_Z_D[3] (62,20) -> (62,20)
+Info:                          Sink u_ibex_core.if_stage_i.icache.way1_valid_LUT4_C_Z_LUT4_D_Z_LUT4_Z_1_D_LUT4_Z.D
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
+Info:      logic  0.24  7.78 Source u_ibex_core.if_stage_i.icache.way1_valid_LUT4_C_Z_LUT4_D_Z_LUT4_Z_1_D_LUT4_Z.F
+Info:    routing  0.61  8.39 Net u_ibex_core.if_stage_i.icache.way1_valid_LUT4_C_Z_LUT4_D_Z_LUT4_Z_1_D[3] (62,20) -> (62,20)
+Info:                          Sink u_ibex_core.if_stage_i.icache.way1_valid_LUT4_C_Z_LUT4_D_Z_LUT4_Z_1.D
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
+Info:      logic  0.24  8.63 Source u_ibex_core.if_stage_i.icache.way1_valid_LUT4_C_Z_LUT4_D_Z_LUT4_Z_1.F
+Info:    routing  1.02  9.65 Net u_ibex_core.if_stage_i.icache.way1_valid_LUT4_C_Z_LUT4_D_Z[4] (62,20) -> (63,23)
+Info:                          Sink u_ibex_core.if_stage_i.icache.lookup_grant_TRELLIS_FF_DI_Q_PFUMX_Z_BLUT_LUT4_Z.M
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
+Info:      logic  0.26  9.90 Source u_ibex_core.if_stage_i.icache.lookup_grant_TRELLIS_FF_DI_Q_PFUMX_Z_BLUT_LUT4_Z.OFX
+Info:    routing  1.48  11.38 Net instr_rvalid_i_LUT4_B_1_Z_LUT4_C_Z[5] (63,23) -> (50,24)
+Info:                          Sink u_ibex_core.if_stage_i.icache.lookup_addr_ic0_LUT4_Z_18_D_LUT4_D_Z_PFUMX_Z_11_ALUT_LUT4_Z_B_LUT4_D_4_Z_PFUMX_C0_Z_L6MUX21_Z_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.M
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
+Info:      logic  0.26  11.63 Source u_ibex_core.if_stage_i.icache.lookup_addr_ic0_LUT4_Z_18_D_LUT4_D_Z_PFUMX_Z_11_ALUT_LUT4_Z_B_LUT4_D_4_Z_PFUMX_C0_Z_L6MUX21_Z_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.OFX
+Info:    routing  1.20  12.84 Net u_ibex_core.if_stage_i.icache.bus_pick_requester_LUT4_Z_1_D_LUT4_Z_B_LUT4_Z_1_D_LUT4_Z_A_PFUMX_C0_1_ALUT_LUT4_Z_D_LUT4_D_Z_LUT4_Z_D_PFUMX_Z_C0[0] (50,24) -> (58,25)
+Info:                          Sink u_ibex_core.if_stage_i.icache.bus_pick_requester_LUT4_Z_1_D_LUT4_Z_B_LUT4_Z_1_D_LUT4_Z_A_PFUMX_C0_1_ALUT_LUT4_Z_D_LUT4_D_Z_LUT4_Z_C_PFUMX_Z_1_ALUT_LUT4_Z_D_PFUMX_C0_Z_L6MUX21_Z_1_D1_L6MUX21_Z_D1_PFUMX_Z_BLUT_LUT4_Z.M
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
+Info:      logic  0.26  13.09 Source u_ibex_core.if_stage_i.icache.bus_pick_requester_LUT4_Z_1_D_LUT4_Z_B_LUT4_Z_1_D_LUT4_Z_A_PFUMX_C0_1_ALUT_LUT4_Z_D_LUT4_D_Z_LUT4_Z_C_PFUMX_Z_1_ALUT_LUT4_Z_D_PFUMX_C0_Z_L6MUX21_Z_1_D1_L6MUX21_Z_D1_PFUMX_Z_BLUT_LUT4_Z.OFX
+Info:    routing  0.00  13.09 Net u_ibex_core.if_stage_i.icache.bus_pick_requester_LUT4_Z_1_D_LUT4_Z_B_LUT4_Z_1_D_LUT4_Z_A_PFUMX_C0_1_ALUT_LUT4_Z_D_LUT4_D_Z_LUT4_Z_C_PFUMX_Z_1_ALUT_LUT4_Z_D_PFUMX_C0_Z_L6MUX21_Z_1_D1_L6MUX21_Z_D1 (58,25) -> (58,25)
+Info:                          Sink u_ibex_core.if_stage_i.icache.bus_pick_requester_LUT4_Z_1_D_LUT4_Z_B_LUT4_Z_1_D_LUT4_Z_A_PFUMX_C0_1_ALUT_LUT4_Z_D_LUT4_D_Z_LUT4_Z_C_PFUMX_Z_1_ALUT_LUT4_Z_D_PFUMX_C0_Z_L6MUX21_Z_1_D1_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z.FXB
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:157.62-157.64
+Info:      logic  0.24  13.34 Source u_ibex_core.if_stage_i.icache.bus_pick_requester_LUT4_Z_1_D_LUT4_Z_B_LUT4_Z_1_D_LUT4_Z_A_PFUMX_C0_1_ALUT_LUT4_Z_D_LUT4_D_Z_LUT4_Z_C_PFUMX_Z_1_ALUT_LUT4_Z_D_PFUMX_C0_Z_L6MUX21_Z_1_D1_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z.OFX
+Info:    routing  0.00  13.34 Net u_ibex_core.if_stage_i.icache.bus_pick_requester_LUT4_Z_1_D_LUT4_Z_B_LUT4_Z_1_D_LUT4_Z_A_PFUMX_C0_1_ALUT_LUT4_Z_D_LUT4_D_Z_LUT4_Z_C_PFUMX_Z_1_ALUT_LUT4_Z_D_PFUMX_C0_Z_L6MUX21_Z_1_D1 (58,25) -> (58,25)
+Info:                          Sink u_ibex_core.if_stage_i.icache.bus_pick_requester_LUT4_Z_1_D_LUT4_Z_B_LUT4_Z_1_D_LUT4_Z_A_PFUMX_C0_1_ALUT_LUT4_Z_D_LUT4_D_Z_LUT4_Z_C_PFUMX_Z_1_ALUT_LUT4_Z_D_PFUMX_C0_Z_L6MUX21_Z_1_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.FXB
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:157.70-157.72
+Info:      logic  0.24  13.58 Source u_ibex_core.if_stage_i.icache.bus_pick_requester_LUT4_Z_1_D_LUT4_Z_B_LUT4_Z_1_D_LUT4_Z_A_PFUMX_C0_1_ALUT_LUT4_Z_D_LUT4_D_Z_LUT4_Z_C_PFUMX_Z_1_ALUT_LUT4_Z_D_PFUMX_C0_Z_L6MUX21_Z_1_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.OFX
+Info:    routing  0.69  14.26 Net u_ibex_core.if_stage_i.icache.bus_pick_requester_LUT4_Z_1_D_LUT4_Z_B_LUT4_Z_1_D_LUT4_Z_A_PFUMX_C0_1_ALUT_LUT4_Z_D_LUT4_D_Z_LUT4_Z_C_PFUMX_Z_1_ALUT_LUT4_Z_D_PFUMX_C0_Z[6] (58,25) -> (58,24)
+Info:                          Sink u_ibex_core.if_stage_i.icache.fb0_err_beat1_LUT4_A_B_LUT4_Z_D_LUT4_B_A_LUT4_A_Z_LUT4_Z_D_LUT4_Z_D_PFUMX_C0_Z_LUT4_C_D_LUT4_D_1_Z_LUT4_D_C_LUT4_D_Z_LUT4_Z_B_LUT4_Z_D_PFUMX_C0_Z_L6MUX21_Z_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.M
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
+Info:      logic  0.26  14.52 Source u_ibex_core.if_stage_i.icache.fb0_err_beat1_LUT4_A_B_LUT4_Z_D_LUT4_B_A_LUT4_A_Z_LUT4_Z_D_LUT4_Z_D_PFUMX_C0_Z_LUT4_C_D_LUT4_D_1_Z_LUT4_D_C_LUT4_D_Z_LUT4_Z_B_LUT4_Z_D_PFUMX_C0_Z_L6MUX21_Z_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.OFX
+Info:    routing  1.58  16.10 Net u_ibex_core.if_stage_i.icache.fb0_err_beat1_LUT4_A_B_LUT4_Z_D_LUT4_B_A_LUT4_A_Z_LUT4_Z_D_LUT4_Z_D_PFUMX_C0_Z_LUT4_C_D_LUT4_D_1_Z_LUT4_D_C_LUT4_D_Z_LUT4_Z_B_LUT4_Z_D_PFUMX_C0_Z[2] (58,24) -> (59,14)
+Info:                          Sink u_ibex_core.if_stage_i.icache.fb0_err_beat1_LUT4_A_1_D_L6MUX21_Z_D0_L6MUX21_Z_D1_PFUMX_Z_BLUT_LUT4_Z.C
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
+Info:      logic  0.40  16.50 Source u_ibex_core.if_stage_i.icache.fb0_err_beat1_LUT4_A_1_D_L6MUX21_Z_D0_L6MUX21_Z_D1_PFUMX_Z_BLUT_LUT4_Z.OFX
+Info:    routing  0.00  16.50 Net u_ibex_core.if_stage_i.icache.fb0_err_beat1_LUT4_A_1_D_L6MUX21_Z_D0_L6MUX21_Z_D1 (59,14) -> (59,14)
+Info:                          Sink u_ibex_core.if_stage_i.icache.fb0_err_beat1_LUT4_A_1_D_L6MUX21_Z_D0_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z.FXB
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:157.54-157.56
+Info:      logic  0.24  16.74 Source u_ibex_core.if_stage_i.icache.fb0_err_beat1_LUT4_A_1_D_L6MUX21_Z_D0_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z.OFX
+Info:    routing  0.00  16.74 Net u_ibex_core.if_stage_i.icache.fb0_err_beat1_LUT4_A_1_D_L6MUX21_Z_D0 (59,14) -> (59,14)
+Info:                          Sink u_ibex_core.if_stage_i.icache.fb0_err_beat1_LUT4_A_1_D_L6MUX21_Z_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.FXA
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:157.66-157.68
+Info:      logic  0.24  16.98 Source u_ibex_core.if_stage_i.icache.fb0_err_beat1_LUT4_A_1_D_L6MUX21_Z_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.OFX
+Info:    routing  1.80  18.78 Net debug_req_i_LUT4_C_Z_LUT4_Z_C_LUT4_C_Z_LUT4_Z_C_LUT4_Z_D_LUT4_D_Z_PFUMX_Z_C0_LUT4_Z_3_B[2] (59,14) -> (67,5)
+Info:                          Sink u_ibex_core.if_stage_i.icache.output_stage.raw_word_LUT4_Z_B_LUT4_Z_C_PFUMX_C0_Z_PFUMX_Z_81_C0_LUT4_C_Z_LUT4_D_6.M
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
+Info:      logic  0.26  19.03 Source u_ibex_core.if_stage_i.icache.output_stage.raw_word_LUT4_Z_B_LUT4_Z_C_PFUMX_C0_Z_PFUMX_Z_81_C0_LUT4_C_Z_LUT4_D_6.OFX
+Info:    routing  0.00  19.03 Net u_ibex_core.if_stage_i.icache.output_stage.raw_word_LUT4_Z_B_LUT4_Z_C_PFUMX_C0_Z_PFUMX_Z_81_C0_LUT4_C_Z_L6MUX21_SD_2_D1 (67,5) -> (67,5)
+Info:                          Sink u_ibex_core.if_stage_i.icache.output_stage.raw_word_LUT4_Z_B_LUT4_Z_C_PFUMX_C0_Z_PFUMX_Z_81_C0_LUT4_C_Z_LUT4_D_5.FXB
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:157.54-157.56
+Info:      logic  0.24  19.27 Source u_ibex_core.if_stage_i.icache.output_stage.raw_word_LUT4_Z_B_LUT4_Z_C_PFUMX_C0_Z_PFUMX_Z_81_C0_LUT4_C_Z_LUT4_D_5.OFX
+Info:    routing  0.00  19.27 Net u_ibex_core.if_stage_i.icache.output_stage.raw_word_LUT4_Z_B_LUT4_Z_C_PFUMX_C0_Z_PFUMX_Z_81_C0_LUT4_C_Z_L6MUX21_SD_2_Z (67,5) -> (67,5)
+Info:                          Sink u_ibex_core.if_stage_i.icache.output_stage.raw_word_LUT4_Z_B_LUT4_Z_C_PFUMX_C0_Z_PFUMX_Z_81_C0_LUT4_C_Z_LUT4_D_3.FXA
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:157.66-157.68
+Info:      logic  0.24  19.51 Source u_ibex_core.if_stage_i.icache.output_stage.raw_word_LUT4_Z_B_LUT4_Z_C_PFUMX_C0_Z_PFUMX_Z_81_C0_LUT4_C_Z_LUT4_D_3.OFX
+Info:    routing  4.30  23.82 Net u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_LUT4_Z_14_D_LUT4_Z_C[3] (67,5) -> (15,25)
+Info:                          Sink u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_L6MUX21_Z_3_D0_PFUMX_Z_C0_PFUMX_Z_ALUT_LUT4_Z.D
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
+Info:      logic  0.24  24.05 Source u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_L6MUX21_Z_3_D0_PFUMX_Z_C0_PFUMX_Z_ALUT_LUT4_Z.F
+Info:    routing  0.00  24.05 Net u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_L6MUX21_Z_3_D0_PFUMX_Z_C0_PFUMX_Z_ALUT (15,25) -> (15,25)
+Info:                          Sink u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_L6MUX21_Z_3_D0_PFUMX_Z_C0_PFUMX_Z_BLUT_LUT4_Z.F1
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:133.22-133.24
+Info:      logic  0.17  24.22 Source u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_L6MUX21_Z_3_D0_PFUMX_Z_C0_PFUMX_Z_BLUT_LUT4_Z.OFX
+Info:    routing  0.63  24.85 Net u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_L6MUX21_Z_3_D0_PFUMX_Z_C0[4] (15,25) -> (15,26)
+Info:                          Sink u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_L6MUX21_Z_3_D1_PFUMX_Z_BLUT_LUT4_Z.M
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
+Info:      logic  0.26  25.11 Source u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_L6MUX21_Z_3_D1_PFUMX_Z_BLUT_LUT4_Z.OFX
+Info:    routing  0.00  25.11 Net u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_L6MUX21_Z_3_D1 (15,26) -> (15,26)
+Info:                          Sink u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_L6MUX21_Z_3_D1_PFUMX_Z_ALUT_LUT4_Z.FXB
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:141.38-141.40
+Info:      logic  0.24  25.35 Source u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_L6MUX21_Z_3_D1_PFUMX_Z_ALUT_LUT4_Z.OFX
+Info:    routing  1.05  26.39 Net u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata[14] (15,26) -> (14,30)
+Info:                          Sink u_ibex_core.if_stage_i.cd.instr_i_LUT4_Z_1.D
+Info:                          Defined in:
+Info:                               ${REPO_ROOT}/flow/out/arch/ibex_top.v:12808.14-12808.27
+Info:      logic  0.24  26.63 Source u_ibex_core.if_stage_i.cd.instr_i_LUT4_Z_1.F
+Info:    routing  0.97  27.60 Net u_ibex_core.if_stage_i.fetch_rdata[14] (14,30) -> (16,32)
+Info:                          Sink u_ibex_core.if_stage_i.instr_decompressed_LUT4_Z_5_D_LUT4_Z_D_LUT4_Z_1_A_LUT4_D_2_Z_PFUMX_Z_BLUT_LUT4_Z.M
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
+Info:      logic  0.26  27.85 Source u_ibex_core.if_stage_i.instr_decompressed_LUT4_Z_5_D_LUT4_Z_D_LUT4_Z_1_A_LUT4_D_2_Z_PFUMX_Z_BLUT_LUT4_Z.OFX
+Info:    routing  1.44  29.29 Net u_ibex_core.if_stage_i.illegal_c_insn_PFUMX_Z_C0_LUT4_Z_D_LUT4_Z_D_LUT4_C_Z_LUT4_Z_1_A_LUT4_C_Z[0] (16,32) -> (18,36)
+Info:                          Sink u_ibex_core.if_stage_i.cd.cm_sp_offset_q_TRELLIS_FF_Q_6_DI_LUT4_C_1_Z_LUT4_Z_1.C
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
+Info:      logic  0.24  29.53 Source u_ibex_core.if_stage_i.cd.cm_sp_offset_q_TRELLIS_FF_Q_6_DI_LUT4_C_1_Z_LUT4_Z_1.F
+Info:    routing  1.28  30.81 Net u_ibex_core.if_stage_i.illegal_c_insn_PFUMX_Z_C0_LUT4_Z_D_LUT4_Z_D_LUT4_C_Z_LUT4_Z_D_LUT4_Z_D_LUT4_Z_C_LUT4_B_Z[3] (18,36) -> (16,31)
+Info:                          Sink u_ibex_core.if_stage_i.illegal_c_insn_PFUMX_Z_C0_LUT4_Z_D_LUT4_Z_D_LUT4_C_Z_LUT4_Z_1_D_LUT4_Z_D_LUT4_C_Z_PFUMX_Z_1_BLUT_LUT4_Z.M
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
+Info:      logic  0.26  31.06 Source u_ibex_core.if_stage_i.illegal_c_insn_PFUMX_Z_C0_LUT4_Z_D_LUT4_Z_D_LUT4_C_Z_LUT4_Z_1_D_LUT4_Z_D_LUT4_C_Z_PFUMX_Z_1_BLUT_LUT4_Z.OFX
+Info:    routing  0.68  31.74 Net u_ibex_core.if_stage_i.illegal_c_insn_PFUMX_Z_C0_LUT4_Z_D_LUT4_Z_D_LUT4_C_Z_LUT4_Z_1_D_LUT4_Z_D_LUT4_C_Z[4] (16,31) -> (16,30)
+Info:                          Sink u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_LUT4_Z_3_D_LUT4_D_Z_LUT4_Z_D_LUT4_C_1_Z_LUT4_D_C_LUT4_D_Z_PFUMX_Z_BLUT_LUT4_Z.M
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
+Info:      logic  0.26  32.00 Source u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_LUT4_Z_3_D_LUT4_D_Z_LUT4_Z_D_LUT4_C_1_Z_LUT4_D_C_LUT4_D_Z_PFUMX_Z_BLUT_LUT4_Z.OFX
+Info:    routing  0.75  32.75 Net u_ibex_core.if_stage_i.icache.output_stage.nonheld_rdata_LUT4_Z_3_D_LUT4_D_Z_LUT4_Z_D_LUT4_C_1_Z_LUT4_D_C_LUT4_D_Z[5] (16,30) -> (15,29)
+Info:                          Sink u_ibex_core.if_stage_i.instr_decompressed_L6MUX21_Z_5_D1_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z.M
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:108.23-108.24
+Info:      logic  0.26  33.01 Source u_ibex_core.if_stage_i.instr_decompressed_L6MUX21_Z_5_D1_L6MUX21_Z_D1_PFUMX_Z_ALUT_LUT4_Z.OFX
+Info:    routing  0.00  33.01 Net u_ibex_core.if_stage_i.instr_decompressed_L6MUX21_Z_5_D1 (15,29) -> (15,29)
+Info:                          Sink u_ibex_core.if_stage_i.instr_decompressed_L6MUX21_Z_5_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.FXB
+Info:                          Defined in:
+Info:                               /opt/homebrew/bin/../share/yosys/lattice/cells_map_trellis.v:157.70-157.72
+Info:      logic  0.24  33.25 Source u_ibex_core.if_stage_i.instr_decompressed_L6MUX21_Z_5_D1_L6MUX21_Z_D0_PFUMX_Z_ALUT_LUT4_Z.OFX
+Info:    routing  1.51  34.76 Net u_ibex_core.if_stage_i.instr_decompressed[16] (15,29) -> (27,33)
+Info:                          Sink u_ibex_core.if_stage_i.instr_rdata_alu_id_o_TRELLIS_FF_Q_15.M
+Info:                          Defined in:
+Info:                               ${REPO_ROOT}/flow/out/arch/ibex_top.v:14018.14-14018.32
+Info:      setup  0.00  34.76 Source u_ibex_core.if_stage_i.instr_rdata_alu_id_o_TRELLIS_FF_Q_15.M
+Info: 12.08 ns logic, 22.68 ns routing
+
+Warning: Max frequency for clock 'clk_i': 28.77 MHz (FAIL at 50.00 MHz)
+
+Info: Slack histogram:
+Info:  legend: * represents 21 endpoint(s)
+Info:          + represents [1,21) endpoint(s)
+Info: [-14762, -13071) |*+
+Info: [-13071, -11380) |**********************+
+Info: [-11380,  -9689) |***************************+
+Info: [ -9689,  -7998) |****************************************************+
+Info: [ -7998,  -6307) |************************************************************ 
+Info: [ -6307,  -4616) |*************************************+
+Info: [ -4616,  -2925) |***+
+Info: [ -2925,  -1234) |****************+
+Info: [ -1234,    457) |***************+
+Info: [   457,   2148) |*******+
+Info: [  2148,   3839) |************+
+Info: [  3839,   5530) |**************************************+
+Info: [  5530,   7221) |************+
+Info: [  7221,   8912) |*+
+Info: [  8912,  10603) |*+
+Info: [ 10603,  12294) |*+
+Info: [ 12294,  13985) |+
+Info: [ 13985,  15676) |*+
+Info: [ 15676,  17367) |*****+
+Info: [ 17367,  19058) |*****+
+788 warnings, 0 errors
+
+Info: Program finished normally.

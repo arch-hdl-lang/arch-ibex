@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Publication gate: refuse to push commits whose blobs carry identifying
+# strings. Delegates to the versioned scripts/sanitize_check.sh so the rule
+# lives in the repo and survives a re-clone; this hook is just the trigger.
+#
+# Install in a fresh clone:
+#   git config core.hooksPath "$(git rev-parse --git-dir)/hooks"
+#   cp scripts/pre-push.sample "$(git rev-parse --git-dir)/hooks/pre-push"
+set -uo pipefail
+ROOT=$(git rev-parse --show-toplevel)
+CHECK="$ROOT/scripts/sanitize_check.sh"
+[ -x "$CHECK" ] || { echo "pre-push: $CHECK missing or not executable" >&2; exit 1; }
+exec "$CHECK" --pre-push

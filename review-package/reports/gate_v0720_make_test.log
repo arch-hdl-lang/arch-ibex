@@ -1,0 +1,978 @@
+# `-n auto --dist=loadfile`: parallelize across test files so each
+# file's session-scoped fixtures (notably ibex_soc_filelist's
+# fusesoc setup) build once per worker, not once per case. Falls
+# back gracefully to sequential when pytest-xdist isn't installed.
+pytest tests/ -n auto --dist=loadfile
+============================= test session starts ==============================
+platform darwin -- Python 3.13.9, pytest-8.4.2, pluggy-1.5.0
+rootdir: ${REPO_ROOT}
+plugins: cocotb-test-0.2.6, xdist-3.8.0, anyio-4.10.0
+created: 10/10 workers
+10 workers [249 items]
+
+ssss...ssssssssssssssssssssssssssssss..sssss.s.s.sss..sssssssss.sss.ssss [ 28%]
+sssssss.s.sssssssFFFF.......................F..F............F........... [ 57%]
+.............F...........................F.......F...................F.. [ 86%]
+.....F...........................                                        [100%]
+=================================== FAILURES ===================================
+______________________ test_harc_phase1_canary[ibex_alu] _______________________
+[gw5] darwin -- Python 3.13.9 /opt/homebrew/anaconda3/bin/python
+
+canary = HarcCanary(top='ibex_alu', dut_file='src/IbexAlu.arch', harc_files=('tests/harc/lib/ibex_alu_vip.harc', 'tests/harc/unit/ibex_alu_harc_test.harc'), test='IbexAluFullVerification', require_branch_data=True)
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw5/test_harc_phase1_canary_ibex_a0')
+
+    @pytest.mark.parametrize("canary", PHASE1_CANARIES, ids=lambda c: c.top)
+    def test_harc_phase1_canary(canary: HarcCanary, tmp_path: Path) -> None:
+        dut_file = REPO_ROOT / canary.dut_file
+        harc_files = [REPO_ROOT / path for path in canary.harc_files]
+        extra_args = ("--arch-bin", resolve_arch_bin(), "--codegen", "v1")
+    
+>       harc_check(harc_files=harc_files, cwd=REPO_ROOT)
+
+tests/test_harc_phase1_canaries.py:81: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/harc_runner.py:2936: in harc_check
+    return run_harc(
+tests/harc_runner.py:463: in run_harc
+    binary = str(harc_bin) if harc_bin is not None else resolve_harc_bin()
+                                                        ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def resolve_harc_bin() -> str:
+        """Resolve the HARC executable from HARC_BIN, sibling checkout, or PATH."""
+    
+        env = os.environ.get("HARC_BIN")
+        if env:
+            path = Path(env).expanduser()
+            if path.is_file():
+                return str(path)
+            raise AssertionError(f"HARC_BIN points to a missing file: {path}")
+    
+        if DEFAULT_HARC_BIN.is_file():
+            return str(DEFAULT_HARC_BIN)
+    
+        which = shutil.which("harc")
+        if which:
+            return which
+    
+>       raise AssertionError(
+            "HARC binary not found; set HARC_BIN or build "
+            f"{DEFAULT_HARC_BIN}"
+        )
+E       AssertionError: HARC binary not found; set HARC_BIN or build ~/github/arch-ibex/.claude/worktrees/harc-com/target/release/harc
+
+tests/harc_runner.py:383: AssertionError
+____________________ test_harc_phase1_canary[ibex_counter] _____________________
+[gw5] darwin -- Python 3.13.9 /opt/homebrew/anaconda3/bin/python
+
+canary = HarcCanary(top='ibex_counter', dut_file='src/IbexCounter.arch', harc_files=('tests/harc/lib/ibex_counter_vip.harc', 'tests/harc/unit/ibex_counter_harc_test.harc'), test='IbexCounterCanary', require_branch_data=True)
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw5/test_harc_phase1_canary_ibex_c0')
+
+    @pytest.mark.parametrize("canary", PHASE1_CANARIES, ids=lambda c: c.top)
+    def test_harc_phase1_canary(canary: HarcCanary, tmp_path: Path) -> None:
+        dut_file = REPO_ROOT / canary.dut_file
+        harc_files = [REPO_ROOT / path for path in canary.harc_files]
+        extra_args = ("--arch-bin", resolve_arch_bin(), "--codegen", "v1")
+    
+>       harc_check(harc_files=harc_files, cwd=REPO_ROOT)
+
+tests/test_harc_phase1_canaries.py:81: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/harc_runner.py:2936: in harc_check
+    return run_harc(
+tests/harc_runner.py:463: in run_harc
+    binary = str(harc_bin) if harc_bin is not None else resolve_harc_bin()
+                                                        ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def resolve_harc_bin() -> str:
+        """Resolve the HARC executable from HARC_BIN, sibling checkout, or PATH."""
+    
+        env = os.environ.get("HARC_BIN")
+        if env:
+            path = Path(env).expanduser()
+            if path.is_file():
+                return str(path)
+            raise AssertionError(f"HARC_BIN points to a missing file: {path}")
+    
+        if DEFAULT_HARC_BIN.is_file():
+            return str(DEFAULT_HARC_BIN)
+    
+        which = shutil.which("harc")
+        if which:
+            return which
+    
+>       raise AssertionError(
+            "HARC binary not found; set HARC_BIN or build "
+            f"{DEFAULT_HARC_BIN}"
+        )
+E       AssertionError: HARC binary not found; set HARC_BIN or build ~/github/arch-ibex/.claude/worktrees/harc-com/target/release/harc
+
+tests/harc_runner.py:383: AssertionError
+________________ test_harc_phase1_canary[ibex_register_file_ff] ________________
+[gw5] darwin -- Python 3.13.9 /opt/homebrew/anaconda3/bin/python
+
+canary = HarcCanary(top='ibex_register_file_ff', dut_file='src/IbexRegisterFileFf.arch', harc_files=('tests/harc/lib/ibex_regis...c', 'tests/harc/unit/ibex_register_file_ff_harc_test.harc'), test='IbexRegisterFileFfCanary', require_branch_data=True)
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw5/test_harc_phase1_canary_ibex_r0')
+
+    @pytest.mark.parametrize("canary", PHASE1_CANARIES, ids=lambda c: c.top)
+    def test_harc_phase1_canary(canary: HarcCanary, tmp_path: Path) -> None:
+        dut_file = REPO_ROOT / canary.dut_file
+        harc_files = [REPO_ROOT / path for path in canary.harc_files]
+        extra_args = ("--arch-bin", resolve_arch_bin(), "--codegen", "v1")
+    
+>       harc_check(harc_files=harc_files, cwd=REPO_ROOT)
+
+tests/test_harc_phase1_canaries.py:81: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/harc_runner.py:2936: in harc_check
+    return run_harc(
+tests/harc_runner.py:463: in run_harc
+    binary = str(harc_bin) if harc_bin is not None else resolve_harc_bin()
+                                                        ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def resolve_harc_bin() -> str:
+        """Resolve the HARC executable from HARC_BIN, sibling checkout, or PATH."""
+    
+        env = os.environ.get("HARC_BIN")
+        if env:
+            path = Path(env).expanduser()
+            if path.is_file():
+                return str(path)
+            raise AssertionError(f"HARC_BIN points to a missing file: {path}")
+    
+        if DEFAULT_HARC_BIN.is_file():
+            return str(DEFAULT_HARC_BIN)
+    
+        which = shutil.which("harc")
+        if which:
+            return which
+    
+>       raise AssertionError(
+            "HARC binary not found; set HARC_BIN or build "
+            f"{DEFAULT_HARC_BIN}"
+        )
+E       AssertionError: HARC binary not found; set HARC_BIN or build ~/github/arch-ibex/.claude/worktrees/harc-com/target/release/harc
+
+tests/harc_runner.py:383: AssertionError
+____________________ test_harc_phase1_canary[ibex_wb_stage] ____________________
+[gw5] darwin -- Python 3.13.9 /opt/homebrew/anaconda3/bin/python
+
+canary = HarcCanary(top='ibex_wb_stage', dut_file='src/IbexWbStage.arch', harc_files=('tests/harc/lib/ibex_wb_stage_vip.harc', 'tests/harc/unit/ibex_wb_stage_harc_test.harc'), test='IbexWbStagePhase1Canary', require_branch_data=False)
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw5/test_harc_phase1_canary_ibex_w0')
+
+    @pytest.mark.parametrize("canary", PHASE1_CANARIES, ids=lambda c: c.top)
+    def test_harc_phase1_canary(canary: HarcCanary, tmp_path: Path) -> None:
+        dut_file = REPO_ROOT / canary.dut_file
+        harc_files = [REPO_ROOT / path for path in canary.harc_files]
+        extra_args = ("--arch-bin", resolve_arch_bin(), "--codegen", "v1")
+    
+>       harc_check(harc_files=harc_files, cwd=REPO_ROOT)
+
+tests/test_harc_phase1_canaries.py:81: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/harc_runner.py:2936: in harc_check
+    return run_harc(
+tests/harc_runner.py:463: in run_harc
+    binary = str(harc_bin) if harc_bin is not None else resolve_harc_bin()
+                                                        ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def resolve_harc_bin() -> str:
+        """Resolve the HARC executable from HARC_BIN, sibling checkout, or PATH."""
+    
+        env = os.environ.get("HARC_BIN")
+        if env:
+            path = Path(env).expanduser()
+            if path.is_file():
+                return str(path)
+            raise AssertionError(f"HARC_BIN points to a missing file: {path}")
+    
+        if DEFAULT_HARC_BIN.is_file():
+            return str(DEFAULT_HARC_BIN)
+    
+        which = shutil.which("harc")
+        if which:
+            return which
+    
+>       raise AssertionError(
+            "HARC binary not found; set HARC_BIN or build "
+            f"{DEFAULT_HARC_BIN}"
+        )
+E       AssertionError: HARC binary not found; set HARC_BIN or build ~/github/arch-ibex/.claude/worktrees/harc-com/target/release/harc
+
+tests/harc_runner.py:383: AssertionError
+________ test_checked_in_compressed_decoder_coverage_status_is_complete ________
+[gw1] darwin -- Python 3.13.9 /opt/homebrew/anaconda3/bin/python
+
+    def test_checked_in_compressed_decoder_coverage_status_is_complete() -> None:
+        root = Path(__file__).resolve().parents[1]
+    
+>       assert_compressed_decoder_coverage_status_complete(
+            inventory_path=root / "tests/harc/plans/ibex_compressed_decoder_full_bins.md",
+            status_path=root
+            / "tests/harc/plans/ibex_compressed_decoder_full_coverage_status.md",
+        )
+
+tests/test_harc_runner.py:1390: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/harc_runner.py:1027: in assert_compressed_decoder_coverage_status_complete
+    inventory = compressed_decoder_coverage_inventory(inventory_path)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/harc_runner.py:924: in compressed_decoder_coverage_inventory
+    for raw in Path(path).read_text().splitlines():
+               ^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/anaconda3/lib/python3.13/pathlib/_local.py:546: in read_text
+    return PathBase.read_text(self, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/anaconda3/lib/python3.13/pathlib/_abc.py:632: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('${REPO_ROOT}/tests/harc/plans/ibex_compressed_decoder_full_bins.md')
+mode = 'r', buffering = -1, encoding = 'locale', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '${REPO_ROOT}/tests/harc/plans/ibex_compressed_decoder_full_bins.md'
+
+/opt/homebrew/anaconda3/lib/python3.13/pathlib/_local.py:537: FileNotFoundError
+__________________________ test_archsim_unit[IbexAlu] __________________________
+[gw3] darwin -- Python 3.13.9 /opt/homebrew/anaconda3/bin/python
+
+arch_bin = '~/.local/bin/arch-0.72.0', arch_stem = 'IbexAlu'
+cocotb_test = 'test_ibex_alu_unit.py'
+tmp_path_factory = TempPathFactory(_given_basetemp=PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>...5k29j301gs_lsdrnlvdjw0000gn/T/pytest-of-<user>/pytest-49/popen-gw3'), _retention_count=3, _retention_policy='all')
+record_property = <function record_property.<locals>.append_property at 0x10533c220>
+
+    @pytest.mark.parametrize(
+        "arch_stem,cocotb_test",
+        MODULES,
+        ids=[(m.values[0] if hasattr(m, "values") else m[0]) for m in MODULES],
+    )
+    def test_archsim_unit(
+        arch_bin: str,
+        arch_stem: str,
+        cocotb_test: str,
+        tmp_path_factory: pytest.TempPathFactory,
+        record_property,
+    ):
+        arch_file = SRC_DIR / f"{arch_stem}.arch"
+        test_file = COCOTB_TESTS_DIR / cocotb_test
+        if not arch_file.is_file():
+            pytest.skip(f"missing {arch_file}; run `make build` first")
+        if not test_file.is_file():
+            pytest.skip(f"missing {test_file}")
+    
+        # Each module gets its own outdir so xdist workers don't collide.
+        outdir = tmp_path_factory.mktemp(f"archsim_{_camel_to_snake(arch_stem)}")
+    
+        cmd = [
+            arch_bin, "sim", "--pybind",
+            "--test", str(test_file),
+            "-o", str(outdir),
+            str(arch_file),
+        ]
+        env = os.environ.copy()
+        # The launcher inherits PYTHONPATH; keep cwd inside outdir so the
+        # generated runner's relative imports land correctly.
+        t0 = time.perf_counter()
+        proc = subprocess.run(
+            cmd, cwd=str(outdir),
+            env=env,
+            capture_output=True, text=True,
+            timeout=300,
+        )
+        elapsed = time.perf_counter() - t0
+        record_property("archsim_wall_seconds", f"{elapsed:.3f}")
+        record_property("archsim_module", arch_stem)
+    
+        # arch sim returns non-zero on any cocotb failure; on stderr we
+        # expect a "Results: N tests, ALL PASSED" footer for the green path.
+        if proc.returncode != 0 or "ALL PASSED" not in proc.stdout + proc.stderr:
+            # Surface tails to make CI noise debuggable.
+            tail_out = "\n".join(proc.stdout.splitlines()[-40:])
+            tail_err = "\n".join(proc.stderr.splitlines()[-40:])
+>           pytest.fail(
+                f"arch sim failed for {arch_stem} (rc={proc.returncode}, "
+                f"{elapsed:.2f}s)\n"
+                f"--- STDOUT (tail) ---\n{tail_out}\n"
+                f"--- STDERR (tail) ---\n{tail_err}\n"
+            )
+E           Failed: arch sim failed for IbexAlu (rc=1, 6.25s)
+E           --- STDOUT (tail) ---
+E           
+E           --- STDERR (tail) ---
+E           Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_alu0/VStructs.cpp
+E           Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_alu0/Vibex_alu.cpp
+E           Generated pybind11 wrapper: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_alu0/Vibex_alu_pybind.cpp
+E           Compiling pybind11 module...
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_alu0/Vibex_alu_pybind.cpp:79:41: error: cannot form a pointer-to-member to member 'imd_val_q_i_0' of reference type 'uint32_t &' (aka 'unsigned int &')
+E              79 |         .def_readwrite("imd_val_q_i_0", &Vibex_alu::imd_val_q_i_0)
+E                 |                                         ^
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_alu0/Vibex_alu_pybind.cpp:80:41: error: cannot form a pointer-to-member to member 'imd_val_q_i_1' of reference type 'uint32_t &' (aka 'unsigned int &')
+E              80 |         .def_readwrite("imd_val_q_i_1", &Vibex_alu::imd_val_q_i_1)
+E                 |                                         ^
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_alu0/Vibex_alu_pybind.cpp:81:41: error: cannot form a pointer-to-member to member 'imd_val_d_o_0' of reference type 'uint32_t &' (aka 'unsigned int &')
+E              81 |         .def_readwrite("imd_val_d_o_0", &Vibex_alu::imd_val_d_o_0)
+E                 |                                         ^
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_alu0/Vibex_alu_pybind.cpp:82:41: error: cannot form a pointer-to-member to member 'imd_val_d_o_1' of reference type 'uint32_t &' (aka 'unsigned int &')
+E              82 |         .def_readwrite("imd_val_d_o_1", &Vibex_alu::imd_val_d_o_1)
+E                 |                                         ^
+E           4 errors generated.
+E           Pybind11 link failed for Vibex_alu_pybind
+
+tests/test_archsim_units.py:102: Failed
+____________________ test_archsim_unit[IbexRegisterFileFf] _____________________
+[gw3] darwin -- Python 3.13.9 /opt/homebrew/anaconda3/bin/python
+
+arch_bin = '~/.local/bin/arch-0.72.0'
+arch_stem = 'IbexRegisterFileFf'
+cocotb_test = 'test_ibex_register_file_ff_unit.py'
+tmp_path_factory = TempPathFactory(_given_basetemp=PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>...5k29j301gs_lsdrnlvdjw0000gn/T/pytest-of-<user>/pytest-49/popen-gw3'), _retention_count=3, _retention_policy='all')
+record_property = <function record_property.<locals>.append_property at 0x10533d800>
+
+    @pytest.mark.parametrize(
+        "arch_stem,cocotb_test",
+        MODULES,
+        ids=[(m.values[0] if hasattr(m, "values") else m[0]) for m in MODULES],
+    )
+    def test_archsim_unit(
+        arch_bin: str,
+        arch_stem: str,
+        cocotb_test: str,
+        tmp_path_factory: pytest.TempPathFactory,
+        record_property,
+    ):
+        arch_file = SRC_DIR / f"{arch_stem}.arch"
+        test_file = COCOTB_TESTS_DIR / cocotb_test
+        if not arch_file.is_file():
+            pytest.skip(f"missing {arch_file}; run `make build` first")
+        if not test_file.is_file():
+            pytest.skip(f"missing {test_file}")
+    
+        # Each module gets its own outdir so xdist workers don't collide.
+        outdir = tmp_path_factory.mktemp(f"archsim_{_camel_to_snake(arch_stem)}")
+    
+        cmd = [
+            arch_bin, "sim", "--pybind",
+            "--test", str(test_file),
+            "-o", str(outdir),
+            str(arch_file),
+        ]
+        env = os.environ.copy()
+        # The launcher inherits PYTHONPATH; keep cwd inside outdir so the
+        # generated runner's relative imports land correctly.
+        t0 = time.perf_counter()
+        proc = subprocess.run(
+            cmd, cwd=str(outdir),
+            env=env,
+            capture_output=True, text=True,
+            timeout=300,
+        )
+        elapsed = time.perf_counter() - t0
+        record_property("archsim_wall_seconds", f"{elapsed:.3f}")
+        record_property("archsim_module", arch_stem)
+    
+        # arch sim returns non-zero on any cocotb failure; on stderr we
+        # expect a "Results: N tests, ALL PASSED" footer for the green path.
+        if proc.returncode != 0 or "ALL PASSED" not in proc.stdout + proc.stderr:
+            # Surface tails to make CI noise debuggable.
+            tail_out = "\n".join(proc.stdout.splitlines()[-40:])
+            tail_err = "\n".join(proc.stderr.splitlines()[-40:])
+>           pytest.fail(
+                f"arch sim failed for {arch_stem} (rc={proc.returncode}, "
+                f"{elapsed:.2f}s)\n"
+                f"--- STDOUT (tail) ---\n{tail_out}\n"
+                f"--- STDERR (tail) ---\n{tail_err}\n"
+            )
+E           Failed: arch sim failed for IbexRegisterFileFf (rc=0, 15.66s)
+E           --- STDOUT (tail) ---
+E           [1/8] Running async_reset_clears_all...
+E             PASS: async_reset_clears_all
+E           [2/8] Running write_then_read_roundtrip...
+E             PASS: write_then_read_roundtrip
+E           [3/8] Running write_enable_low_holds_value...
+E             PASS: write_enable_low_holds_value
+E           [4/8] Running two_simultaneous_reads...
+E             PASS: two_simultaneous_reads
+E           [5/8] Running read_during_write_returns_old_value...
+E             PASS: read_during_write_returns_old_value
+E           [6/8] Running x0_reads_zero_after_reset...
+E             PASS: x0_reads_zero_after_reset
+E           [7/8] Running x0_reads_zero_despite_write...
+E             PASS: x0_reads_zero_despite_write
+E           [8/8] Running x0_write_does_not_alias_other_registers...
+E             PASS: x0_write_does_not_alias_other_registers
+E           
+E           ============================================================
+E           Results: 8 tests; 8 passed, 0 failed, 0 skipped
+E           ============================================================
+E           --- STDERR (tail) ---
+E           Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_register_file_ff0/VStructs.cpp
+E           Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_register_file_ff0/Vibex_register_file_ff.cpp
+E           Generated pybind11 wrapper: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_register_file_ff0/Vibex_register_file_ff_pybind.cpp
+E           Compiling pybind11 module...
+E           Built: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_register_file_ff0/Vibex_register_file_ff_pybind.cpython-313-darwin.so
+E           Running test: ${REPO_ROOT}/tests/cocotb_tests/test_ibex_register_file_ff_unit.py
+
+tests/test_archsim_units.py:102: Failed
+________________________ test_archsim_unit[IbexCounter] ________________________
+[gw3] darwin -- Python 3.13.9 /opt/homebrew/anaconda3/bin/python
+
+arch_bin = '~/.local/bin/arch-0.72.0'
+arch_stem = 'IbexCounter', cocotb_test = 'test_ibex_counter_unit.py'
+tmp_path_factory = TempPathFactory(_given_basetemp=PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>...5k29j301gs_lsdrnlvdjw0000gn/T/pytest-of-<user>/pytest-49/popen-gw3'), _retention_count=3, _retention_policy='all')
+record_property = <function record_property.<locals>.append_property at 0x10533dd00>
+
+    @pytest.mark.parametrize(
+        "arch_stem,cocotb_test",
+        MODULES,
+        ids=[(m.values[0] if hasattr(m, "values") else m[0]) for m in MODULES],
+    )
+    def test_archsim_unit(
+        arch_bin: str,
+        arch_stem: str,
+        cocotb_test: str,
+        tmp_path_factory: pytest.TempPathFactory,
+        record_property,
+    ):
+        arch_file = SRC_DIR / f"{arch_stem}.arch"
+        test_file = COCOTB_TESTS_DIR / cocotb_test
+        if not arch_file.is_file():
+            pytest.skip(f"missing {arch_file}; run `make build` first")
+        if not test_file.is_file():
+            pytest.skip(f"missing {test_file}")
+    
+        # Each module gets its own outdir so xdist workers don't collide.
+        outdir = tmp_path_factory.mktemp(f"archsim_{_camel_to_snake(arch_stem)}")
+    
+        cmd = [
+            arch_bin, "sim", "--pybind",
+            "--test", str(test_file),
+            "-o", str(outdir),
+            str(arch_file),
+        ]
+        env = os.environ.copy()
+        # The launcher inherits PYTHONPATH; keep cwd inside outdir so the
+        # generated runner's relative imports land correctly.
+        t0 = time.perf_counter()
+        proc = subprocess.run(
+            cmd, cwd=str(outdir),
+            env=env,
+            capture_output=True, text=True,
+            timeout=300,
+        )
+        elapsed = time.perf_counter() - t0
+        record_property("archsim_wall_seconds", f"{elapsed:.3f}")
+        record_property("archsim_module", arch_stem)
+    
+        # arch sim returns non-zero on any cocotb failure; on stderr we
+        # expect a "Results: N tests, ALL PASSED" footer for the green path.
+        if proc.returncode != 0 or "ALL PASSED" not in proc.stdout + proc.stderr:
+            # Surface tails to make CI noise debuggable.
+            tail_out = "\n".join(proc.stdout.splitlines()[-40:])
+            tail_err = "\n".join(proc.stderr.splitlines()[-40:])
+>           pytest.fail(
+                f"arch sim failed for {arch_stem} (rc={proc.returncode}, "
+                f"{elapsed:.2f}s)\n"
+                f"--- STDOUT (tail) ---\n{tail_out}\n"
+                f"--- STDERR (tail) ---\n{tail_err}\n"
+            )
+E           Failed: arch sim failed for IbexCounter (rc=0, 13.97s)
+E           --- STDOUT (tail) ---
+E           [1/6] Running reset_clears_counter...
+E             PASS: reset_clears_counter
+E           [2/6] Running increment_advances_counter...
+E             PASS: increment_advances_counter
+E           [3/6] Running high_bits_tied_to_zero...
+E             PASS: high_bits_tied_to_zero
+E           [4/6] Running write_beats_increment...
+E             PASS: write_beats_increment
+E           [5/6] Running half_word_write_priority...
+E             PASS: half_word_write_priority
+E           [6/6] Running upd_forwards_incremented_value...
+E             PASS: upd_forwards_incremented_value
+E           
+E           ============================================================
+E           Results: 6 tests; 6 passed, 0 failed, 0 skipped
+E           ============================================================
+E           --- STDERR (tail) ---
+E           Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_counter0/VStructs.cpp
+E           Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_counter0/Vibex_counter.cpp
+E           Generated pybind11 wrapper: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_counter0/Vibex_counter_pybind.cpp
+E           Compiling pybind11 module...
+E           Built: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_counter0/Vibex_counter_pybind.cpython-313-darwin.so
+E           Running test: ${REPO_ROOT}/tests/cocotb_tests/test_ibex_counter_unit.py
+
+tests/test_archsim_units.py:102: Failed
+___________________________ test_ibex_mini_soc_lints ___________________________
+[gw7] darwin -- Python 3.13.9 /opt/homebrew/anaconda3/bin/python
+
+verilator_bin = 'verilator'
+ibex_soc_filelist = {'build_dir': PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/pope...ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/lowrisc_ibex_ibex_top_tracing_0.1.stripped.vc')}
+
+    def test_ibex_mini_soc_lints(
+        verilator_bin: str,
+        ibex_soc_filelist: dict,
+    ) -> None:
+        vc_path: Path = ibex_soc_filelist["vc_path"]
+        extra_sv: list[Path] = ibex_soc_filelist["extra_sv"]
+        build_dir: Path = ibex_soc_filelist["build_dir"]
+    
+        cmd = [
+            verilator_bin,
+            "--lint-only",
+            "-Wall",
+            "-Wno-UNUSEDSIGNAL",   # Ibex ties a lot of observability ports off
+            "-Wno-UNUSEDPARAM",
+            "-Wno-PINMISSING",     # we don't connect every tracing port
+            "-Wno-WIDTHEXPAND",    # $readmemh vs. sized vectors — benign
+            "-Wno-IMPORTSTAR",     # arch-com emits `import Pkg::*;` at $unit
+            "-Wno-DECLFILENAME",   # our in-tree Ibex forks keep upstream module names
+            "-Wno-UNOPTFLAT",      # upstream ibex_ex_block.sv has an intended ALU↔multdiv
+                                   # combinational loop on alu_adder_result_ext (the
+                                   # multdiv shares the ALU's adder/comparator). With
+                                   # the FSM-based multdiv Verilator's analysis
+                                   # resolved it; the thread-based multdiv's nested
+                                   # `_threads` submodule boundary makes Verilator
+                                   # more conservative. The loop is functionally
+                                   # identical and safe in practice.
+            "--unroll-count", "72",  # required by prim_secded per Verilator#1266
+            "-f", str(vc_path),
+            "--top-module", "ibex_mini_soc",
+        ]
+        cmd.extend(str(p) for p in extra_sv)
+    
+        result = subprocess.run(
+            cmd, cwd=str(build_dir),
+            capture_output=True, text=True,
+        )
+        # Useful context on failure.
+        if result.returncode != 0:
+>           pytest.fail(
+                "verilator --lint-only failed:\n"
+                f"CMD:\n  {' '.join(cmd)}\n"
+                f"STDERR:\n{result.stderr}\nSTDOUT:\n{result.stdout}"
+            )
+E           Failed: verilator --lint-only failed:
+E           CMD:
+E             verilator --lint-only -Wall -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM -Wno-PINMISSING -Wno-WIDTHEXPAND -Wno-IMPORTSTAR -Wno-DECLFILENAME -Wno-UNOPTFLAT --unroll-count 72 -f /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/lowrisc_ibex_ibex_top_tracing_0.1.stripped.vc --top-module ibex_mini_soc /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/clint_basic/ClintPkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/clint_basic/Clint.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/clint_basic/ClintLogic.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/plic_multictx/PlicMultictxPkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/plic_multictx/PlicMultictx.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/plic_multictx/PlicMultictxLogic.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrFilePkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrAccess.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrFile.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw7/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrTrapCoord.sv ${REPO_ROOT}/soc/obi_to_axi_lite.sv ${REPO_ROOT}/soc/ibex_mini_soc.sv ${REPO_ROOT}/soc/ibex_cs_registers_hybrid.sv ~/github/ibex/shared/rtl/ram_2p.sv ~/github/ibex/shared/rtl/sim/simulator_ctrl.sv ${REPO_ROOT}/build/ibex_core_shared_pkg.sv ${REPO_ROOT}/build/fb_age_arb.sv ${REPO_ROOT}/build/ibex_alu.sv ${REPO_ROOT}/build/ibex_compressed_decoder.sv ${REPO_ROOT}/build/ibex_controller.sv ${REPO_ROOT}/build/ibex_core.sv ${REPO_ROOT}/build/ibex_counter.sv ${REPO_ROOT}/build/ibex_decoder.sv ${REPO_ROOT}/build/ibex_ex_block.sv ${REPO_ROOT}/build/ibex_fetch_fifo.sv ${REPO_ROOT}/build/ibex_icache.sv ${REPO_ROOT}/build/ibex_icache_output_stage.sv ${REPO_ROOT}/build/ibex_id_stage.sv ${REPO_ROOT}/build/ibex_if_stage.sv ${REPO_ROOT}/build/ibex_load_store_unit.sv ${REPO_ROOT}/build/ibex_multdiv_fast.sv ${REPO_ROOT}/build/ibex_pmp.sv ${REPO_ROOT}/build/ibex_prefetch_buffer.sv ${REPO_ROOT}/build/ibex_register_file_ff.sv ${REPO_ROOT}/build/ibex_top.sv ${REPO_ROOT}/build/ibex_wb_stage.sv ${REPO_ROOT}/build/inval_ctrl.sv ${REPO_ROOT}/build/ram_port_arb.sv
+E           STDERR:
+E           %Warning-PROCASSINIT: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:107:27: Procedural assignment to declaration with initial value: '_t0_state'
+E                                                                                                                                                      : ... note: In instance 'ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
+E                                                                                                                                                      : ... Location of variable initialization
+E             107 |   logic [3:0] _t0_state = 0;
+E                 |                           ^
+E                                 ${REPO_ROOT}/build/ibex_multdiv_fast.sv:371:7: ... Location of variable process write
+E                                                                                                                                                     : ... Perhaps should initialize instead using a reset in this process
+E             371 |       _t0_state <= 0;
+E                 |       ^~~~~~~~~
+E                                 ... For warning description see https://verilator.org/warn/PROCASSINIT?v=5.048
+E                                 ... Use "/* verilator lint_off PROCASSINIT */" and lint_on around source to disable this message.
+E           %Warning-PROCASSINIT: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:109:32: Procedural assignment to declaration with initial value: '_t0_loop_cnt_0'
+E                                                                                                                                                      : ... note: In instance 'ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
+E                                                                                                                                                      : ... Location of variable initialization
+E             109 |   logic [4:0] _t0_loop_cnt_0 = 0;
+E                 |                                ^
+E                                 ${REPO_ROOT}/build/ibex_multdiv_fast.sv:453:7: ... Location of variable process write
+E                                                                                                                                                     : ... Perhaps should initialize instead using a reset in this process
+E             453 |       _t0_loop_cnt_0 <= 0;
+E                 |       ^~~~~~~~~~~~~~
+E           %Warning-SYNCASYNCNET: ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: Signal flopped as both synchronous and async: 'IO_RST_N'
+E                                  ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: ... Location of async usage
+E              67 |   input  logic IO_RST_N,
+E                 |                ^~~~~~~~
+E                                  ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: ... Location of sync usage
+E              67 |   input  logic IO_RST_N,
+E                 |                ^~~~~~~~
+E                                  ... For warning description see https://verilator.org/warn/SYNCASYNCNET?v=5.048
+E                                  ... Use "/* verilator lint_off SYNCASYNCNET */" and lint_on around source to disable this message.
+E           %Error: Exiting due to 3 warning(s)
+E           
+E           STDOUT:
+
+tests/test_soc_lint.py:59: Failed
+________________________ test_archsim_unit[IbexDecoder] ________________________
+[gw3] darwin -- Python 3.13.9 /opt/homebrew/anaconda3/bin/python
+
+arch_bin = '~/.local/bin/arch-0.72.0'
+arch_stem = 'IbexDecoder', cocotb_test = 'test_ibex_decoder_unit.py'
+tmp_path_factory = TempPathFactory(_given_basetemp=PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>...5k29j301gs_lsdrnlvdjw0000gn/T/pytest-of-<user>/pytest-49/popen-gw3'), _retention_count=3, _retention_policy='all')
+record_property = <function record_property.<locals>.append_property at 0x10533df80>
+
+    @pytest.mark.parametrize(
+        "arch_stem,cocotb_test",
+        MODULES,
+        ids=[(m.values[0] if hasattr(m, "values") else m[0]) for m in MODULES],
+    )
+    def test_archsim_unit(
+        arch_bin: str,
+        arch_stem: str,
+        cocotb_test: str,
+        tmp_path_factory: pytest.TempPathFactory,
+        record_property,
+    ):
+        arch_file = SRC_DIR / f"{arch_stem}.arch"
+        test_file = COCOTB_TESTS_DIR / cocotb_test
+        if not arch_file.is_file():
+            pytest.skip(f"missing {arch_file}; run `make build` first")
+        if not test_file.is_file():
+            pytest.skip(f"missing {test_file}")
+    
+        # Each module gets its own outdir so xdist workers don't collide.
+        outdir = tmp_path_factory.mktemp(f"archsim_{_camel_to_snake(arch_stem)}")
+    
+        cmd = [
+            arch_bin, "sim", "--pybind",
+            "--test", str(test_file),
+            "-o", str(outdir),
+            str(arch_file),
+        ]
+        env = os.environ.copy()
+        # The launcher inherits PYTHONPATH; keep cwd inside outdir so the
+        # generated runner's relative imports land correctly.
+        t0 = time.perf_counter()
+        proc = subprocess.run(
+            cmd, cwd=str(outdir),
+            env=env,
+            capture_output=True, text=True,
+            timeout=300,
+        )
+        elapsed = time.perf_counter() - t0
+        record_property("archsim_wall_seconds", f"{elapsed:.3f}")
+        record_property("archsim_module", arch_stem)
+    
+        # arch sim returns non-zero on any cocotb failure; on stderr we
+        # expect a "Results: N tests, ALL PASSED" footer for the green path.
+        if proc.returncode != 0 or "ALL PASSED" not in proc.stdout + proc.stderr:
+            # Surface tails to make CI noise debuggable.
+            tail_out = "\n".join(proc.stdout.splitlines()[-40:])
+            tail_err = "\n".join(proc.stderr.splitlines()[-40:])
+>           pytest.fail(
+                f"arch sim failed for {arch_stem} (rc={proc.returncode}, "
+                f"{elapsed:.2f}s)\n"
+                f"--- STDOUT (tail) ---\n{tail_out}\n"
+                f"--- STDERR (tail) ---\n{tail_err}\n"
+            )
+E           Failed: arch sim failed for IbexDecoder (rc=0, 13.51s)
+E           --- STDOUT (tail) ---
+E           [1/12] Running immediate_extraction_canonical_set...
+E             PASS: immediate_extraction_canonical_set
+E           [2/12] Running register_addressing_slices...
+E             PASS: register_addressing_slices
+E           [3/12] Running rf_we_asserted_for_arithmetic_and_cleared_on_illegal...
+E             PASS: rf_we_asserted_for_arithmetic_and_cleared_on_illegal
+E           [4/12] Running rf_ren_per_opcode...
+E             PASS: rf_ren_per_opcode
+E           [5/12] Running alu_operator_for_add...
+E             PASS: alu_operator_for_add
+E           [6/12] Running alu_operand_mux_for_op_class...
+E             PASS: alu_operand_mux_for_op_class
+E           [7/12] Running bt_mux_constants_under_branch_target_alu_zero...
+E             PASS: bt_mux_constants_under_branch_target_alu_zero
+E           [8/12] Running multdiv_control_for_mul...
+E             PASS: multdiv_control_for_mul
+E           [9/12] Running csr_control_for_csrrw...
+E             PASS: csr_control_for_csrrw
+E           [10/12] Running lsu_control_for_sw...
+E             PASS: lsu_control_for_sw
+E           [11/12] Running control_flag_outputs_for_jal...
+E             PASS: control_flag_outputs_for_jal
+E           [12/12] Running illegal_insn_aggregation_for_rv32b_opcode...
+E             PASS: illegal_insn_aggregation_for_rv32b_opcode
+E           
+E           ============================================================
+E           Results: 12 tests; 12 passed, 0 failed, 0 skipped
+E           ============================================================
+E           --- STDERR (tail) ---
+E           Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_decoder0/VStructs.cpp
+E           Generated /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_decoder0/Vibex_decoder.cpp
+E           Generated pybind11 wrapper: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_decoder0/Vibex_decoder_pybind.cpp
+E           Compiling pybind11 module...
+E           Built: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_decoder0/Vibex_decoder_pybind.cpython-313-darwin.so
+E           Running test: ${REPO_ROOT}/tests/cocotb_tests/test_ibex_decoder_unit.py
+
+tests/test_archsim_units.py:102: Failed
+___________________ test_archsim_unit[IbexCompressedDecoder] ___________________
+[gw3] darwin -- Python 3.13.9 /opt/homebrew/anaconda3/bin/python
+
+arch_bin = '~/.local/bin/arch-0.72.0'
+arch_stem = 'IbexCompressedDecoder'
+cocotb_test = 'test_ibex_compressed_decoder_unit.py'
+tmp_path_factory = TempPathFactory(_given_basetemp=PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>...5k29j301gs_lsdrnlvdjw0000gn/T/pytest-of-<user>/pytest-49/popen-gw3'), _retention_count=3, _retention_policy='all')
+record_property = <function record_property.<locals>.append_property at 0x10533e980>
+
+    @pytest.mark.parametrize(
+        "arch_stem,cocotb_test",
+        MODULES,
+        ids=[(m.values[0] if hasattr(m, "values") else m[0]) for m in MODULES],
+    )
+    def test_archsim_unit(
+        arch_bin: str,
+        arch_stem: str,
+        cocotb_test: str,
+        tmp_path_factory: pytest.TempPathFactory,
+        record_property,
+    ):
+        arch_file = SRC_DIR / f"{arch_stem}.arch"
+        test_file = COCOTB_TESTS_DIR / cocotb_test
+        if not arch_file.is_file():
+            pytest.skip(f"missing {arch_file}; run `make build` first")
+        if not test_file.is_file():
+            pytest.skip(f"missing {test_file}")
+    
+        # Each module gets its own outdir so xdist workers don't collide.
+        outdir = tmp_path_factory.mktemp(f"archsim_{_camel_to_snake(arch_stem)}")
+    
+        cmd = [
+            arch_bin, "sim", "--pybind",
+            "--test", str(test_file),
+            "-o", str(outdir),
+            str(arch_file),
+        ]
+        env = os.environ.copy()
+        # The launcher inherits PYTHONPATH; keep cwd inside outdir so the
+        # generated runner's relative imports land correctly.
+        t0 = time.perf_counter()
+        proc = subprocess.run(
+            cmd, cwd=str(outdir),
+            env=env,
+            capture_output=True, text=True,
+            timeout=300,
+        )
+        elapsed = time.perf_counter() - t0
+        record_property("archsim_wall_seconds", f"{elapsed:.3f}")
+        record_property("archsim_module", arch_stem)
+    
+        # arch sim returns non-zero on any cocotb failure; on stderr we
+        # expect a "Results: N tests, ALL PASSED" footer for the green path.
+        if proc.returncode != 0 or "ALL PASSED" not in proc.stdout + proc.stderr:
+            # Surface tails to make CI noise debuggable.
+            tail_out = "\n".join(proc.stdout.splitlines()[-40:])
+            tail_err = "\n".join(proc.stderr.splitlines()[-40:])
+>           pytest.fail(
+                f"arch sim failed for {arch_stem} (rc={proc.returncode}, "
+                f"{elapsed:.2f}s)\n"
+                f"--- STDOUT (tail) ---\n{tail_out}\n"
+                f"--- STDERR (tail) ---\n{tail_err}\n"
+            )
+E           Failed: arch sim failed for IbexCompressedDecoder (rc=1, 3.83s)
+E           --- STDOUT (tail) ---
+E           [12/29] Running q1_c_andi...
+E             PASS: q1_c_andi
+E           [13/29] Running q1_c_sub...
+E             PASS: q1_c_sub
+E           [14/29] Running q1_c_mul...
+E             PASS: q1_c_mul
+E           [15/29] Running q1_zcb_extends_and_not...
+E             PASS: q1_zcb_extends_and_not
+E           [16/29] Running q1_c_beqz...
+E             PASS: q1_c_beqz
+E           [17/29] Running q2_c_slli...
+E             PASS: q2_c_slli
+E           [18/29] Running q2_c_lwsp...
+E             PASS: q2_c_lwsp
+E           [19/29] Running q2_c_mv...
+E             PASS: q2_c_mv
+E           [20/29] Running q2_c_swsp...
+E             PASS: q2_c_swsp
+E           [21/29] Running q2_reserved_funct3...
+E             PASS: q2_reserved_funct3
+E           [22/29] Running zcmp_cm_push_full_walk...
+E             FAIL: zcmp_cm_push_full_walk
+E           [23/29] Running zcmp_cm_pop_first_step...
+E             PASS: zcmp_cm_pop_first_step
+E           [24/29] Running zcmp_cm_mvsa01_first_step...
+E             PASS: zcmp_cm_mvsa01_first_step
+E           [25/29] Running zcmp_default_reserved...
+E             PASS: zcmp_default_reserved
+E           [26/29] Running is_compressed_pure_lsb_decode...
+E             PASS: is_compressed_pure_lsb_decode
+E           [27/29] Running gets_expanded_gated_by_valid...
+E             PASS: gets_expanded_gated_by_valid
+E           [28/29] Running zcmp_fsm_stable_when_valid_low...
+E             PASS: zcmp_fsm_stable_when_valid_low
+E           [29/29] Running pass_through_default_outputs...
+E             PASS: pass_through_default_outputs
+E           
+E           ============================================================
+E           Results: 29 tests; 28 passed, 1 failed, 0 skipped
+E           ============================================================
+E           --- STDERR (tail) ---
+E                 |                               ~      ^    ~
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_compressed_decoder0/VFunctions.h:126:38: note: use '=' to turn this equality comparison into an assignment
+E             126 |                           if ((rlist == 16)) {
+E                 |                                      ^~
+E                 |                                      =
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_compressed_decoder0/VFunctions.h:146:11: warning: equality comparison with extraneous parentheses [-Wparentheses-equality]
+E             146 |   if ((r4 == 15)) {
+E                 |        ~~~^~~~~
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_compressed_decoder0/VFunctions.h:146:11: note: remove extraneous parentheses around the comparison to silence this warning
+E             146 |   if ((r4 == 15)) {
+E                 |       ~   ^    ~
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_compressed_decoder0/VFunctions.h:146:11: note: use '=' to turn this equality comparison into an assignment
+E             146 |   if ((r4 == 15)) {
+E                 |           ^~
+E                 |           =
+E           14 warnings generated.
+E           Built: /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_compressed_decoder0/Vibex_compressed_decoder_pybind.cpython-313-darwin.so
+E           Running test: ${REPO_ROOT}/tests/cocotb_tests/test_ibex_compressed_decoder_unit.py
+E           Traceback (most recent call last):
+E             File "/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_compressed_decoder0/_arch_python/0.72.0/arch_cocotb/runner.py", line 62, in run_registered_tests
+E               asyncio.run(simulator.run_test(invoke, dut))
+E               ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E             File "/opt/homebrew/anaconda3/lib/python3.13/asyncio/runners.py", line 195, in run
+E               return runner.run(main)
+E                      ~~~~~~~~~~^^^^^^
+E             File "/opt/homebrew/anaconda3/lib/python3.13/asyncio/runners.py", line 118, in run
+E               return self._loop.run_until_complete(task)
+E                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+E             File "/opt/homebrew/anaconda3/lib/python3.13/asyncio/base_events.py", line 725, in run_until_complete
+E               return future.result()
+E                      ~~~~~~~~~~~~~^^
+E             File "/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_compressed_decoder0/_arch_python/0.72.0/arch_cocotb/simulator.py", line 196, in run_test
+E               raise exception
+E             File "/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_compressed_decoder0/_arch_python/0.72.0/arch_cocotb/runner.py", line 58, in invoke
+E               return await coroutine
+E                      ^^^^^^^^^^^^^^^
+E             File "${REPO_ROOT}/tests/cocotb_tests/test_ibex_compressed_decoder_unit.py", line 353, in zcmp_cm_push_full_walk
+E               assert int(dut.instr_o.value) == 0xFF010113
+E                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError
+
+tests/test_archsim_units.py:102: Failed
+______________________ test_archsim_unit[IbexMultdivFast] ______________________
+[gw3] darwin -- Python 3.13.9 /opt/homebrew/anaconda3/bin/python
+
+arch_bin = '~/.local/bin/arch-0.72.0'
+arch_stem = 'IbexMultdivFast', cocotb_test = 'test_ibex_multdiv_fast_unit.py'
+tmp_path_factory = TempPathFactory(_given_basetemp=PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>...5k29j301gs_lsdrnlvdjw0000gn/T/pytest-of-<user>/pytest-49/popen-gw3'), _retention_count=3, _retention_policy='all')
+record_property = <function record_property.<locals>.append_property at 0x10533e5c0>
+
+    @pytest.mark.parametrize(
+        "arch_stem,cocotb_test",
+        MODULES,
+        ids=[(m.values[0] if hasattr(m, "values") else m[0]) for m in MODULES],
+    )
+    def test_archsim_unit(
+        arch_bin: str,
+        arch_stem: str,
+        cocotb_test: str,
+        tmp_path_factory: pytest.TempPathFactory,
+        record_property,
+    ):
+        arch_file = SRC_DIR / f"{arch_stem}.arch"
+        test_file = COCOTB_TESTS_DIR / cocotb_test
+        if not arch_file.is_file():
+            pytest.skip(f"missing {arch_file}; run `make build` first")
+        if not test_file.is_file():
+            pytest.skip(f"missing {test_file}")
+    
+        # Each module gets its own outdir so xdist workers don't collide.
+        outdir = tmp_path_factory.mktemp(f"archsim_{_camel_to_snake(arch_stem)}")
+    
+        cmd = [
+            arch_bin, "sim", "--pybind",
+            "--test", str(test_file),
+            "-o", str(outdir),
+            str(arch_file),
+        ]
+        env = os.environ.copy()
+        # The launcher inherits PYTHONPATH; keep cwd inside outdir so the
+        # generated runner's relative imports land correctly.
+        t0 = time.perf_counter()
+        proc = subprocess.run(
+            cmd, cwd=str(outdir),
+            env=env,
+            capture_output=True, text=True,
+            timeout=300,
+        )
+        elapsed = time.perf_counter() - t0
+        record_property("archsim_wall_seconds", f"{elapsed:.3f}")
+        record_property("archsim_module", arch_stem)
+    
+        # arch sim returns non-zero on any cocotb failure; on stderr we
+        # expect a "Results: N tests, ALL PASSED" footer for the green path.
+        if proc.returncode != 0 or "ALL PASSED" not in proc.stdout + proc.stderr:
+            # Surface tails to make CI noise debuggable.
+            tail_out = "\n".join(proc.stdout.splitlines()[-40:])
+            tail_err = "\n".join(proc.stderr.splitlines()[-40:])
+>           pytest.fail(
+                f"arch sim failed for {arch_stem} (rc={proc.returncode}, "
+                f"{elapsed:.2f}s)\n"
+                f"--- STDOUT (tail) ---\n{tail_out}\n"
+                f"--- STDERR (tail) ---\n{tail_err}\n"
+            )
+E           Failed: arch sim failed for IbexMultdivFast (rc=1, 1.49s)
+E           --- STDOUT (tail) ---
+E           
+E           --- STDERR (tail) ---
+E           1 warning generated.
+E           In file included from /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/Vibex_multdiv_fast.cpp:1:
+E           In file included from /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/Vibex_multdiv_fast.h:5:
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/VFunctions.h:91:21: warning: equality comparison with extraneous parentheses [-Wparentheses-equality]
+E              91 |   if ((part_rem_msb == divisor_msb)) {
+E                 |        ~~~~~~~~~~~~~^~~~~~~~~~~~~~
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/VFunctions.h:91:21: note: remove extraneous parentheses around the comparison to silence this warning
+E              91 |   if ((part_rem_msb == divisor_msb)) {
+E                 |       ~             ^             ~
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/VFunctions.h:91:21: note: use '=' to turn this equality comparison into an assignment
+E              91 |   if ((part_rem_msb == divisor_msb)) {
+E                 |                     ^~
+E                 |                     =
+E           1 warning generated.
+E           In file included from /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/V_ibex_multdiv_fast_threads_pybind.cpp:5:
+E           In file included from /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/V_ibex_multdiv_fast_threads.h:5:
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/VFunctions.h:91:21: warning: equality comparison with extraneous parentheses [-Wparentheses-equality]
+E              91 |   if ((part_rem_msb == divisor_msb)) {
+E                 |        ~~~~~~~~~~~~~^~~~~~~~~~~~~~
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/VFunctions.h:91:21: note: remove extraneous parentheses around the comparison to silence this warning
+E              91 |   if ((part_rem_msb == divisor_msb)) {
+E                 |       ~             ^             ~
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/VFunctions.h:91:21: note: use '=' to turn this equality comparison into an assignment
+E              91 |   if ((part_rem_msb == divisor_msb)) {
+E                 |                     ^~
+E                 |                     =
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/V_ibex_multdiv_fast_threads_pybind.cpp:117:41: error: cannot form a pointer-to-member to member 'imd_val_q_i_0' of reference type 'uint64_t &' (aka 'unsigned long long &')
+E             117 |         .def_readwrite("imd_val_q_i_0", &V_ibex_multdiv_fast_threads::imd_val_q_i_0)
+E                 |                                         ^
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/V_ibex_multdiv_fast_threads_pybind.cpp:118:41: error: cannot form a pointer-to-member to member 'imd_val_q_i_1' of reference type 'uint64_t &' (aka 'unsigned long long &')
+E             118 |         .def_readwrite("imd_val_q_i_1", &V_ibex_multdiv_fast_threads::imd_val_q_i_1)
+E                 |                                         ^
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/V_ibex_multdiv_fast_threads_pybind.cpp:119:41: error: cannot form a pointer-to-member to member 'imd_val_d_o_0' of reference type 'uint64_t &' (aka 'unsigned long long &')
+E             119 |         .def_readwrite("imd_val_d_o_0", &V_ibex_multdiv_fast_threads::imd_val_d_o_0)
+E                 |                                         ^
+E           /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-49/popen-gw3/archsim_ibex_multdiv_fast0/V_ibex_multdiv_fast_threads_pybind.cpp:120:41: error: cannot form a pointer-to-member to member 'imd_val_d_o_1' of reference type 'uint64_t &' (aka 'unsigned long long &')
+E             120 |         .def_readwrite("imd_val_d_o_1", &V_ibex_multdiv_fast_threads::imd_val_d_o_1)
+E                 |                                         ^
+E           1 warning and 4 errors generated.
+E           Pybind11 link failed for V_ibex_multdiv_fast_threads_pybind
+
+tests/test_archsim_units.py:102: Failed
+- generated xml file: ${REPO_ROOT}/review-package/reports/gate_v0720_make_test.junit.xml -
+=========================== short test summary info ============================
+FAILED tests/test_harc_phase1_canaries.py::test_harc_phase1_canary[ibex_alu]
+FAILED tests/test_harc_phase1_canaries.py::test_harc_phase1_canary[ibex_counter]
+FAILED tests/test_harc_phase1_canaries.py::test_harc_phase1_canary[ibex_register_file_ff]
+FAILED tests/test_harc_phase1_canaries.py::test_harc_phase1_canary[ibex_wb_stage]
+FAILED tests/test_harc_runner.py::test_checked_in_compressed_decoder_coverage_status_is_complete
+FAILED tests/test_archsim_units.py::test_archsim_unit[IbexAlu] - Failed: arch...
+FAILED tests/test_archsim_units.py::test_archsim_unit[IbexRegisterFileFf] - F...
+FAILED tests/test_archsim_units.py::test_archsim_unit[IbexCounter] - Failed: ...
+FAILED tests/test_soc_lint.py::test_ibex_mini_soc_lints - Failed: verilator -...
+FAILED tests/test_archsim_units.py::test_archsim_unit[IbexDecoder] - Failed: ...
+FAILED tests/test_archsim_units.py::test_archsim_unit[IbexCompressedDecoder]
+FAILED tests/test_archsim_units.py::test_archsim_unit[IbexMultdivFast] - Fail...
+============ 12 failed, 162 passed, 75 skipped in 60.10s (0:01:00) =============
+make: *** [test] Error 1

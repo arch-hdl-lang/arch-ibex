@@ -1,0 +1,577 @@
+%Warning-DECLFILENAME: ${REPO_ROOT}/build/ibex_core_shared_pkg.sv:7:9: Filename 'ibex_core_shared_pkg' does not match PACKAGE name: 'IbexCoreSharedPkg'
+    7 | package IbexCoreSharedPkg;
+      |         ^~~~~~~~~~~~~~~~~
+                       ... For warning description see https://verilator.org/warn/DECLFILENAME?v=5.048
+                       ... Use "/* verilator lint_off DECLFILENAME */" and lint_on around source to disable this message.
+%Warning-DECLFILENAME: ${REPO_ROOT}/build/fb_age_arb.sv:19:8: Filename 'fb_age_arb' does not match MODULE name: 'FbAgeArb'
+   19 | module FbAgeArb #(
+      |        ^~~~~~~~
+%Warning-DECLFILENAME: ${REPO_ROOT}/build/ibex_icache_output_stage.sv:8:8: Filename 'ibex_icache_output_stage' does not match MODULE name: 'IbexIcacheOutputStage'
+    8 | module IbexIcacheOutputStage (
+      |        ^~~~~~~~~~~~~~~~~~~~~
+%Warning-DECLFILENAME: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:36:8: Filename 'ibex_multdiv_fast' does not match MODULE name: '_ibex_multdiv_fast_threads'
+   36 | module _ibex_multdiv_fast_threads #(
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-DECLFILENAME: ${REPO_ROOT}/build/inval_ctrl.sv:17:8: Filename 'inval_ctrl' does not match MODULE name: 'InvalCtrl'
+   17 | module InvalCtrl (
+      |        ^~~~~~~~~
+%Warning-DECLFILENAME: ${REPO_ROOT}/build/ram_port_arb.sv:7:8: Filename 'ram_port_arb' does not match MODULE name: 'RamPortArb'
+    7 | module RamPortArb #(
+      |        ^~~~~~~~~~
+%Warning-IMPORTSTAR: ${REPO_ROOT}/build/ibex_controller.sv:42:8: 'import::*' in $unit scope may pollute global namespace
+   42 | import IbexCoreSharedPkg::*;
+      |        ^~~~~~~~~~~~~~~~~
+                     ... For warning description see https://verilator.org/warn/IMPORTSTAR?v=5.048
+                     ... Use "/* verilator lint_off IMPORTSTAR */" and lint_on around source to disable this message.
+%Warning-IMPORTSTAR: ${REPO_ROOT}/build/ibex_core.sv:56:8: 'import::*' in $unit scope may pollute global namespace
+   56 | import IbexCoreSharedPkg::*;
+      |        ^~~~~~~~~~~~~~~~~
+%Warning-IMPORTSTAR: ${REPO_ROOT}/build/ibex_id_stage.sv:42:8: 'import::*' in $unit scope may pollute global namespace
+   42 | import IbexCoreSharedPkg::*;
+      |        ^~~~~~~~~~~~~~~~~
+%Warning-IMPORTSTAR: ${REPO_ROOT}/build/ibex_if_stage.sv:33:8: 'import::*' in $unit scope may pollute global namespace
+   33 | import IbexCoreSharedPkg::*;
+      |        ^~~~~~~~~~~~~~~~~
+%Warning-WIDTHEXPAND: ${REPO_ROOT}/build/ibex_register_file_ff.sv:27:17: Operator VAR 'RV32E' expects 32 bits on the Initial value, but Initial value's CONST '1'h0' generates 1 bits.
+   27 |   parameter int RV32E = 0,
+      |                 ^~~~~
+                      ... For warning description see https://verilator.org/warn/WIDTHEXPAND?v=5.048
+                      ... Use "/* verilator lint_off WIDTHEXPAND */" and lint_on around source to disable this message.
+%Warning-WIDTHEXPAND: ${REPO_ROOT}/build/ibex_register_file_ff.sv:29:17: Operator VAR 'DummyInstructions' expects 32 bits on the Initial value, but Initial value's CONST '1'h0' generates 1 bits.
+   29 |   parameter int DummyInstructions = 0,
+      |                 ^~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_top.sv:83:32: Parameter is not used: 'RV32ZC'
+                                                                                                                                 : ... note: In instance 'ibex_top'
+   83 |   parameter ibex_pkg::rv32zc_e RV32ZC = ibex_pkg::RV32ZcaZcbZcmp,
+      |                                ^~~~~~
+                      ... For warning description see https://verilator.org/warn/UNUSEDPARAM?v=5.048
+                      ... Use "/* verilator lint_off UNUSEDPARAM */" and lint_on around source to disable this message.
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_top.sv:84:33: Parameter is not used: 'RegFile'
+                                                                                                                                 : ... note: In instance 'ibex_top'
+   84 |   parameter ibex_pkg::regfile_e RegFile = ibex_pkg::RegFileFF,
+      |                                 ^~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_top.sv:93:19: Parameter is not used: 'ICacheScramble'
+                                                                                                                                 : ... note: In instance 'ibex_top'
+   93 |   parameter [0:0] ICacheScramble = 1'd0,
+      |                   ^~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_top.sv:94:17: Parameter is not used: 'LockstepOffset'
+                                                                                                                                 : ... note: In instance 'ibex_top'
+   94 |   parameter int LockstepOffset = 1,
+      |                 ^~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_top.sv:108:19: Parameter is not used: 'Lockstep'
+                                                                                                                                  : ... note: In instance 'ibex_top'
+  108 |   parameter [0:0] Lockstep = 1'd0,
+      |                   ^~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_top.sv:223:15: Signal is not used: 'IbexMuBiOn'
+                                                                                                                                   : ... note: In instance 'ibex_top'
+  223 |   logic [3:0] IbexMuBiOn;
+      |               ^~~~~~~~~~
+                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.048
+                       ... Use "/* verilator lint_off UNUSEDSIGNAL */" and lint_on around source to disable this message.
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_register_file_ff.sv:27:17: Parameter is not used: 'RV32E'
+                                                                                                                                              : ... note: In instance 'ibex_top.register_file_i'
+   27 |   parameter int RV32E = 0,
+      |                 ^~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_register_file_ff.sv:29:17: Parameter is not used: 'DummyInstructions'
+                                                                                                                                              : ... note: In instance 'ibex_top.register_file_i'
+   29 |   parameter int DummyInstructions = 0,
+      |                 ^~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_core.sv:61:19: Parameter is not used: 'RV32E'
+                                                                                                                                  : ... note: In instance 'ibex_top.u_ibex_core'
+   61 |   parameter [0:0] RV32E = 1'd0,
+      |                   ^~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_core.sv:64:19: Parameter is not used: 'BranchTargetALU'
+                                                                                                                                  : ... note: In instance 'ibex_top.u_ibex_core'
+   64 |   parameter [0:0] BranchTargetALU = 1'd0,
+      |                   ^~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_core.sv:65:19: Parameter is not used: 'WritebackStage'
+                                                                                                                                  : ... note: In instance 'ibex_top.u_ibex_core'
+   65 |   parameter [0:0] WritebackStage = 1'd0,
+      |                   ^~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_core.sv:67:19: Parameter is not used: 'BranchPredictor'
+                                                                                                                                  : ... note: In instance 'ibex_top.u_ibex_core'
+   67 |   parameter [0:0] BranchPredictor = 1'd0,
+      |                   ^~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_core.sv:69:19: Parameter is not used: 'MemECC'
+                                                                                                                                  : ... note: In instance 'ibex_top.u_ibex_core'
+   69 |   parameter [0:0] MemECC = 1'd0,
+      |                   ^~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_core.sv:70:19: Parameter is not used: 'DataIndTiming'
+                                                                                                                                  : ... note: In instance 'ibex_top.u_ibex_core'
+   70 |   parameter [0:0] DataIndTiming = 1'd0,
+      |                   ^~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_core.sv:71:19: Parameter is not used: 'DummyInstructions'
+                                                                                                                                  : ... note: In instance 'ibex_top.u_ibex_core'
+   71 |   parameter [0:0] DummyInstructions = 1'd0,
+      |                   ^~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_core.sv:73:19: Parameter is not used: 'SecureIbex'
+                                                                                                                                  : ... note: In instance 'ibex_top.u_ibex_core'
+   73 |   parameter [0:0] SecureIbex = 1'd0,
+      |                   ^~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_core.sv:74:19: Parameter is not used: 'ResetAll'
+                                                                                                                                  : ... note: In instance 'ibex_top.u_ibex_core'
+   74 |   parameter [0:0] ResetAll = 1'd0,
+      |                   ^~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_core.sv:75:19: Parameter is not used: 'RegFileECC'
+                                                                                                                                  : ... note: In instance 'ibex_top.u_ibex_core'
+   75 |   parameter [0:0] RegFileECC = 1'd0,
+      |                   ^~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_core.sv:87:19: Parameter is not used: 'ICacheECC'
+                                                                                                                                  : ... note: In instance 'ibex_top.u_ibex_core'
+   87 |   parameter [0:0] ICacheECC = 1'd0,
+      |                   ^~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_core.sv:88:19: Parameter is not used: 'ICacheTweakInfection'
+                                                                                                                                  : ... note: In instance 'ibex_top.u_ibex_core'
+   88 |   parameter [0:0] ICacheTweakInfection = 1'd0,
+      |                   ^~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_core.sv:89:19: Parameter is not used: 'PCIncrCheck'
+                                                                                                                                  : ... note: In instance 'ibex_top.u_ibex_core'
+   89 |   parameter [0:0] PCIncrCheck = 1'd0,
+      |                   ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_core.sv:95:17: Parameter is not used: 'RegFileDataWidth'
+                                                                                                                                  : ... note: In instance 'ibex_top.u_ibex_core'
+   95 |   parameter int RegFileDataWidth = 32,
+      |                 ^~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_core.sv:98:33: Parameter is not used: 'PMPRstCfg'
+                                                                                                                                  : ... note: In instance 'ibex_top.u_ibex_core'
+   98 |   parameter ibex_pkg::pmp_cfg_t PMPRstCfg [16] = ibex_pkg::PmpCfgRst,
+      |                                 ^~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_core.sv:99:20: Parameter is not used: 'PMPRstAddr'
+                                                                                                                                  : ... note: In instance 'ibex_top.u_ibex_core'
+   99 |   parameter [33:0] PMPRstAddr [16] = ibex_pkg::PmpAddrRst,
+      |                    ^~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_core.sv:100:37: Parameter is not used: 'PMPRstMsecCfg'
+                                                                                                                                   : ... note: In instance 'ibex_top.u_ibex_core'
+  100 |   parameter ibex_pkg::pmp_mseccfg_t PMPRstMsecCfg = ibex_pkg::PmpMseccfgRst,
+      |                                     ^~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_core.sv:726:15: Signal is not used: '_ignore_instr_type_wb'
+                                                                                                                                    : ... note: In instance 'ibex_top.u_ibex_core'
+  726 |   logic [1:0] _ignore_instr_type_wb;
+      |               ^~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_ex_block.sv:28:17: Parameter is not used: 'RV32M'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i'
+   28 |   parameter int RV32M = 2,
+      |                 ^~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_ex_block.sv:29:17: Parameter is not used: 'RV32B'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i'
+   29 |   parameter int RV32B = 0,
+      |                 ^~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_ex_block.sv:30:19: Parameter is not used: 'BranchTargetALU'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i'
+   30 |   parameter [0:0] BranchTargetALU = 1'd0
+      |                   ^~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_id_stage.sv:44:19: Parameter is not used: 'RV32E'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i'
+   44 |   parameter [0:0] RV32E = 1'd0,
+      |                   ^~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_id_stage.sv:45:17: Parameter is not used: 'RV32M'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i'
+   45 |   parameter int RV32M = 2,
+      |                 ^~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_id_stage.sv:46:17: Parameter is not used: 'RV32B'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i'
+   46 |   parameter int RV32B = 0,
+      |                 ^~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_id_stage.sv:47:19: Parameter is not used: 'BranchTargetALU'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i'
+   47 |   parameter [0:0] BranchTargetALU = 1'd0,
+      |                   ^~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_id_stage.sv:48:19: Parameter is not used: 'WritebackStage'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i'
+   48 |   parameter [0:0] WritebackStage = 1'd0,
+      |                   ^~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_id_stage.sv:49:19: Parameter is not used: 'BranchPredictor'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i'
+   49 |   parameter [0:0] BranchPredictor = 1'd0,
+      |                   ^~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_id_stage.sv:50:19: Parameter is not used: 'DataIndTiming'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i'
+   50 |   parameter [0:0] DataIndTiming = 1'd0,
+      |                   ^~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_id_stage.sv:51:19: Parameter is not used: 'MemECC'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i'
+   51 |   parameter [0:0] MemECC = 1'd0,
+      |                   ^~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_id_stage.sv:58:20: Parameter is not used: 'OP_B_REG_B'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i'
+   58 |   localparam [0:0] OP_B_REG_B = 1'd0,
+      |                    ^~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_id_stage.sv:61:20: Parameter is not used: 'IMM_A_ZERO'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i'
+   61 |   localparam [0:0] IMM_A_ZERO = 1'd1,
+      |                    ^~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_id_stage.sv:71:20: Parameter is not used: 'CSR_OP_READ'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i'
+   71 |   localparam [1:0] CSR_OP_READ = 2'd0,
+      |                    ^~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_id_stage.sv:289:15: Signal is not used: 'bt_a_mux_sel'
+                                                                                                                                        : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i'
+  289 |   logic [1:0] bt_a_mux_sel;
+      |               ^~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_id_stage.sv:290:15: Signal is not used: 'bt_b_mux_sel'
+                                                                                                                                        : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i'
+  290 |   logic [2:0] bt_b_mux_sel;
+      |               ^~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_load_store_unit.sv:24:17: Parameter is not used: 'MemECC'
+                                                                                                                                             : ... note: In instance 'ibex_top.u_ibex_core.load_store_unit_i'
+   24 |   parameter int MemECC = 0,
+      |                 ^~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_load_store_unit.sv:25:17: Parameter is not used: 'MemDataWidth'
+                                                                                                                                             : ... note: In instance 'ibex_top.u_ibex_core.load_store_unit_i'
+   25 |   parameter int MemDataWidth = 32
+      |                 ^~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_pmp.sv:31:17: Parameter is not used: 'PMPGranularity'
+                                                                                                                                 : ... note: In instance 'ibex_top.u_ibex_core.pmp_i'
+   31 |   parameter int PMPGranularity = 0,
+      |                 ^~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_pmp.sv:38:20: Parameter is not used: 'PMP_MODE_OFF'
+                                                                                                                                 : ... note: In instance 'ibex_top.u_ibex_core.pmp_i'
+   38 |   localparam [1:0] PMP_MODE_OFF = 2'd0,
+      |                    ^~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_wb_stage.sv:21:17: Parameter is not used: 'ResetAll'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.wb_stage_i'
+   21 |   parameter int ResetAll = 0,
+      |                 ^~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_wb_stage.sv:22:17: Parameter is not used: 'WritebackStage'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.wb_stage_i'
+   22 |   parameter int WritebackStage = 0,
+      |                 ^~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_wb_stage.sv:23:17: Parameter is not used: 'DummyInstructions'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.wb_stage_i'
+   23 |   parameter int DummyInstructions = 0
+      |                 ^~~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_wb_stage.sv:25:15: Signal is not used: 'clk_i'
+                                                                                                                                       : ... note: In instance 'ibex_top.u_ibex_core.wb_stage_i'
+   25 |   input logic clk_i,
+      |               ^~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_wb_stage.sv:26:15: Signal is not used: 'rst_ni'
+                                                                                                                                       : ... note: In instance 'ibex_top.u_ibex_core.wb_stage_i'
+   26 |   input logic rst_ni,
+      |               ^~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_if_stage.sv:35:19: Parameter is not used: 'ICache'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i'
+   35 |   parameter [0:0] ICache = 1'd1,
+      |                   ^~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_if_stage.sv:36:19: Parameter is not used: 'BranchPredictor'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i'
+   36 |   parameter [0:0] BranchPredictor = 1'd0,
+      |                   ^~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_if_stage.sv:37:19: Parameter is not used: 'DummyInstructions'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i'
+   37 |   parameter [0:0] DummyInstructions = 1'd0,
+      |                   ^~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_if_stage.sv:38:19: Parameter is not used: 'MemECC'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i'
+   38 |   parameter [0:0] MemECC = 1'd0,
+      |                   ^~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_if_stage.sv:39:19: Parameter is not used: 'PCIncrCheck'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i'
+   39 |   parameter [0:0] PCIncrCheck = 1'd0,
+      |                   ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_if_stage.sv:51:17: Parameter is not used: 'MemDataWidth'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i'
+   51 |   parameter int MemDataWidth = 32,
+      |                 ^~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_if_stage.sv:52:20: Parameter is not used: 'RndCnstLfsrSeed'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i'
+   52 |   parameter [31:0] RndCnstLfsrSeed = 32'd2891135988,
+      |                    ^~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_if_stage.sv:53:21: Parameter is not used: 'RndCnstLfsrPerm'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i'
+   53 |   parameter [159:0] RndCnstLfsrPerm = 160'd0
+      |                     ^~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_if_stage.sv:167:16: Bits of signal are not used: 'fetch_addr_n'[0]
+                                                                                                                                        : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i'
+  167 |   logic [31:0] fetch_addr_n;
+      |                ^~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_if_stage.sv:185:16: Bits of signal are not used: 'if_instr_addr'[31:2,0]
+                                                                                                                                        : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i'
+  185 |   logic [31:0] if_instr_addr;
+      |                ^~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_alu.sv:22:17: Parameter is not used: 'RV32B'
+                                                                                                                                 : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.alu_i'
+   22 |   parameter int RV32B = 0,
+      |                 ^~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_alu.sv:78:16: Bits of signal are not used: 'shift_out_ext'[32]
+                                                                                                                                  : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.alu_i'
+   78 |   logic [32:0] shift_out_ext;
+      |                ^~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_compressed_decoder.sv:47:19: Parameter is not used: 'ResetAll'
+                                                                                                                                                : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.cd'
+   47 |   parameter [0:0] ResetAll = 1'd0,
+      |                   ^~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_controller.sv:44:19: Parameter is not used: 'WritebackStage'
+                                                                                                                                        : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i.controller_i'
+   44 |   parameter [0:0] WritebackStage = 1'd0,
+      |                   ^~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_controller.sv:45:19: Parameter is not used: 'BranchPredictor'
+                                                                                                                                        : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i.controller_i'
+   45 |   parameter [0:0] BranchPredictor = 1'd0,
+      |                   ^~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_controller.sv:46:19: Parameter is not used: 'MemECC'
+                                                                                                                                        : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i.controller_i'
+   46 |   parameter [0:0] MemECC = 1'd0
+      |                   ^~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_controller.sv:61:15: Signal is not used: 'instr_bp_taken_i'
+                                                                                                                                         : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i.controller_i'
+   61 |   input logic instr_bp_taken_i,
+      |               ^~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_controller.sv:65:15: Signal is not used: 'instr_exec_i'
+                                                                                                                                         : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i.controller_i'
+   65 |   input logic instr_exec_i,
+      |               ^~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_controller.sv:69:15: Signal is not used: 'mem_resp_intg_err_i'
+                                                                                                                                         : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i.controller_i'
+   69 |   input logic mem_resp_intg_err_i,
+      |               ^~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_controller.sv:71:15: Signal is not used: 'branch_not_set_i'
+                                                                                                                                         : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i.controller_i'
+   71 |   input logic branch_not_set_i,
+      |               ^~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_controller.sv:75:14: Bits of signal are not used: 'irqs_i'[16]
+                                                                                                                                         : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i.controller_i'
+   75 |   input Irqs irqs_i,
+      |              ^~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_controller.sv:84:15: Signal is not used: 'stall_wb_i'
+                                                                                                                                         : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i.controller_i'
+   84 |   input logic stall_wb_i,
+      |               ^~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_controller.sv:139:9: Signal is not used: 'load_err_prio_q'
+                                                                                                                                         : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i.controller_i'
+  139 |   logic load_err_prio_q;
+      |         ^~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_controller.sv:140:9: Signal is not used: 'store_err_prio_q'
+                                                                                                                                         : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i.controller_i'
+  140 |   logic store_err_prio_q;
+      |         ^~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_controller.sv:172:9: Signal is not used: 'irq_nm_int'
+                                                                                                                                         : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i.controller_i'
+  172 |   logic irq_nm_int;
+      |         ^~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_controller.sv:174:9: Signal is not used: 'rvfi_flush_next'
+                                                                                                                                         : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i.controller_i'
+  174 |   logic rvfi_flush_next;
+      |         ^~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_decoder.sv:25:19: Parameter is not used: 'RV32E'
+                                                                                                                                     : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i.decoder_i'
+   25 |   parameter [0:0] RV32E = 1'd0,
+      |                   ^~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_decoder.sv:26:17: Parameter is not used: 'RV32M'
+                                                                                                                                     : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i.decoder_i'
+   26 |   parameter int RV32M = 2,
+      |                 ^~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_decoder.sv:27:17: Parameter is not used: 'RV32B'
+                                                                                                                                     : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i.decoder_i'
+   27 |   parameter int RV32B = 0,
+      |                 ^~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_decoder.sv:80:15: Signal is not used: 'clk_i'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i.decoder_i'
+   80 |   input logic clk_i,
+      |               ^~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_decoder.sv:81:15: Signal is not used: 'rst_ni'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i.decoder_i'
+   81 |   input logic rst_ni,
+      |               ^~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_decoder.sv:85:22: Bits of signal are not used: 'instr_rdata_alu_i'[24:15,11:7]
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.id_stage_i.decoder_i'
+   85 |   input logic [31:0] instr_rdata_alu_i,
+      |                      ^~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_icache.sv:91:19: Parameter is not used: 'ICacheECC'
+                                                                                                                                    : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
+   91 |   parameter [0:0] ICacheECC = 1'd0,
+      |                   ^~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_icache.sv:92:19: Parameter is not used: 'ResetAll'
+                                                                                                                                    : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
+   92 |   parameter [0:0] ResetAll = 1'd0,
+      |                   ^~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_icache.sv:93:17: Parameter is not used: 'BusSizeECC'
+                                                                                                                                    : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
+   93 |   parameter int BusSizeECC = 32,
+      |                 ^~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_icache.sv:94:17: Parameter is not used: 'TagSizeECC'
+                                                                                                                                    : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
+   94 |   parameter int TagSizeECC = 22,
+      |                 ^~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_icache.sv:95:17: Parameter is not used: 'LineSizeECC'
+                                                                                                                                    : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
+   95 |   parameter int LineSizeECC = 64,
+      |                 ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_icache.sv:96:19: Parameter is not used: 'BranchCache'
+                                                                                                                                    : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
+   96 |   parameter [0:0] BranchCache = 1'd0,
+      |                   ^~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_icache.sv:97:19: Parameter is not used: 'TweakInfection'
+                                                                                                                                    : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
+   97 |   parameter [0:0] TweakInfection = 1'd0
+      |                   ^~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_icache.sv:183:9: Signal is not used: 'fb0_alloc_flag'
+                                                                                                                                     : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
+  183 |   logic fb0_alloc_flag;
+      |         ^~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_icache.sv:184:9: Signal is not used: 'fb1_alloc_flag'
+                                                                                                                                     : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
+  184 |   logic fb1_alloc_flag;
+      |         ^~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_icache.sv:185:9: Signal is not used: 'fb2_alloc_flag'
+                                                                                                                                     : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
+  185 |   logic fb2_alloc_flag;
+      |         ^~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_icache.sv:186:9: Signal is not used: 'fb3_alloc_flag'
+                                                                                                                                     : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
+  186 |   logic fb3_alloc_flag;
+      |         ^~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_icache.sv:195:9: Signal is not used: 'fb0_err'
+                                                                                                                                     : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
+  195 |   logic fb0_err;
+      |         ^~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_icache.sv:196:9: Signal is not used: 'fb1_err'
+                                                                                                                                     : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
+  196 |   logic fb1_err;
+      |         ^~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_icache.sv:197:9: Signal is not used: 'fb2_err'
+                                                                                                                                     : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
+  197 |   logic fb2_err;
+      |         ^~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_icache.sv:198:9: Signal is not used: 'fb3_err'
+                                                                                                                                     : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
+  198 |   logic fb3_err;
+      |         ^~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_icache.sv:217:9: Signal is not used: 'fb_empty'
+                                                                                                                                     : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
+  217 |   logic fb_empty;
+      |         ^~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_icache.sv:223:9: Signal is not used: 'lookup_throttle'
+                                                                                                                                     : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
+  223 |   logic lookup_throttle;
+      |         ^~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_icache.sv:262:15: Signal is not used: 'fb_wants_out'
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
+  262 |   logic [3:0] fb_wants_out;
+      |               ^~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_icache.sv:325:16: Bits of signal are not used: 'fb_addr_wb_sel'[2:0]
+                                                                                                                                      : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
+  325 |   logic [31:0] fb_addr_wb_sel;
+      |                ^~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_icache.sv:375:9: Signal is not used: 'lookup_branch_ic1_q'
+                                                                                                                                     : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache'
+  375 |   logic lookup_branch_ic1_q;
+      |         ^~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:463:20: Parameter is not used: 'MD_OP_MULL'
+                                                                                                                                           : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i'
+  463 |   localparam [1:0] MD_OP_MULL = 2'd0,
+      |                    ^~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:464:20: Parameter is not used: 'MD_OP_MULH'
+                                                                                                                                           : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i'
+  464 |   localparam [1:0] MD_OP_MULH = 2'd1,
+      |                    ^~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:465:20: Parameter is not used: 'MD_OP_DIV'
+                                                                                                                                           : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i'
+  465 |   localparam [1:0] MD_OP_DIV = 2'd2,
+      |                    ^~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:466:20: Parameter is not used: 'MD_OP_REM'
+                                                                                                                                           : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i'
+  466 |   localparam [1:0] MD_OP_REM = 2'd3
+      |                    ^~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:472:15: Signal is not used: 'mult_sel_i'
+                                                                                                                                            : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i'
+  472 |   input logic mult_sel_i,
+      |               ^~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:497:25: Bits of function variable are not used: 'sum35'[34]
+                                                                                                                                            : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i'
+  497 |     logic signed [34:0] sum35;
+      |                         ^~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:517:16: Signal is not used: 'op_numerator_q'
+                                                                                                                                            : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i'
+  517 |   logic [31:0] op_numerator_q;
+      |                ^~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:518:16: Signal is not used: 'op_quotient_q'
+                                                                                                                                            : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i'
+  518 |   logic [31:0] op_quotient_q;
+      |                ^~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:519:9: Signal is not used: 'div_by_zero_q'
+                                                                                                                                           : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i'
+  519 |   logic div_by_zero_q;
+      |         ^~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/fb_age_arb.sv:70:23: Signal is not used: 'request_ready'
+                                                                                                                                    : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache.wb_arb'
+   70 |   logic [NUM_REQ-1:0] request_ready;
+      |                       ^~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/fb_age_arb.sv:72:15: Signal is not used: 'last_grant_r'
+                                                                                                                                    : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache.wb_arb'
+   72 |   logic [3:0] last_grant_r;
+      |               ^~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_icache_output_stage.sv:16:22: Bits of signal are not used: 'lookup_addr_ic1_q'[2:0]
+                                                                                                                                                  : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache.output_stage'
+   16 |   input logic [31:0] lookup_addr_ic1_q,
+      |                      ^~~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_icache_output_stage.sv:64:16: Bits of signal are not used: 'skid_next_addr'[2:0]
+                                                                                                                                                  : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache.output_stage'
+   64 |   logic [31:0] skid_next_addr;
+      |                ^~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_icache_output_stage.sv:100:16: Bits of signal are not used: 'raw_fb_addr'[31:2,0]
+                                                                                                                                                   : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache.output_stage'
+  100 |   logic [31:0] raw_fb_addr;
+      |                ^~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_icache_output_stage.sv:106:16: Bits of signal are not used: 'next_word'[31:16]
+                                                                                                                                                   : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache.output_stage'
+  106 |   logic [31:0] next_word;
+      |                ^~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_icache_output_stage.sv:110:16: Bits of signal are not used: 'lower_half'[15:2]
+                                                                                                                                                   : ... note: In instance 'ibex_top.u_ibex_core.if_stage_i.icache.output_stage'
+  110 |   logic [15:0] lower_half;
+      |                ^~~~~~~~~~
+%Warning-UNUSEDPARAM: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:37:17: Parameter is not used: 'RV32M'
+                                                                                                                                          : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
+   37 |   parameter int RV32M = 2,
+      |                 ^~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:59:22: Bits of signal are not used: 'alu_adder_ext_i'[33,0]
+                                                                                                                                           : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
+   59 |   input logic [33:0] alu_adder_ext_i,
+      |                      ^~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:90:25: Bits of function variable are not used: 'sum35'[34]
+                                                                                                                                           : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
+   90 |     logic signed [34:0] sum35;
+      |                         ^~~~~
+%Warning-PROCASSINIT: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:107:27: Procedural assignment to declaration with initial value: '_t0_state'
+                                                                                                                                           : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
+                                                                                                                                           : ... Location of variable initialization
+  107 |   logic [3:0] _t0_state = 0;
+      |                           ^
+                      ${REPO_ROOT}/build/ibex_multdiv_fast.sv:371:7: ... Location of variable process write
+                                                                                                                                          : ... Perhaps should initialize instead using a reset in this process
+  371 |       _t0_state <= 0;
+      |       ^~~~~~~~~
+                      ... For warning description see https://verilator.org/warn/PROCASSINIT?v=5.048
+                      ... Use "/* verilator lint_off PROCASSINIT */" and lint_on around source to disable this message.
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:108:16: Signal is not used: '_t0_cnt'
+                                                                                                                                            : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
+  108 |   logic [31:0] _t0_cnt = 0;
+      |                ^~~~~~~
+%Warning-PROCASSINIT: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:109:32: Procedural assignment to declaration with initial value: '_t0_loop_cnt_0'
+                                                                                                                                           : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
+                                                                                                                                           : ... Location of variable initialization
+  109 |   logic [4:0] _t0_loop_cnt_0 = 0;
+      |                                ^
+                      ${REPO_ROOT}/build/ibex_multdiv_fast.sv:453:7: ... Location of variable process write
+                                                                                                                                          : ... Perhaps should initialize instead using a reset in this process
+  453 |       _t0_loop_cnt_0 <= 0;
+      |       ^~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:110:141: Bits of signal are not used: 'arch_idx_base_0'[33:16]
+                                                                                                                                             : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
+  110 |   logic [$bits(MacRes_b_16_b_16_34(1'b0, op_a_i[15:0], signed_mode_i[1] && op_b_i[31], op_b_i[31:16], {18'd0, imd_val_q_i[0][31:16]}))-1:0] arch_idx_base_0;
+      |                                                                                                                                             ^~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:112:141: Bits of signal are not used: 'arch_idx_base_1'[33:16]
+                                                                                                                                             : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
+  112 |   logic [$bits(MacRes_b_16_b_16_34(signed_mode_i[0] && op_a_i[31], op_a_i[31:16], 1'b0, op_b_i[15:0], {18'd0, imd_val_q_i[0][31:16]}))-1:0] arch_idx_base_1;
+      |                                                                                                                                             ^~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:114:141: Bits of signal are not used: 'arch_idx_base_2'[33:16]
+                                                                                                                                             : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
+  114 |   logic [$bits(MacRes_b_16_b_16_34(signed_mode_i[0] && op_a_i[31], op_a_i[31:16], 1'b0, op_b_i[15:0], {18'd0, imd_val_q_i[0][31:16]}))-1:0] arch_idx_base_2;
+      |                                                                                                                                             ^~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:116:229: Bits of signal are not used: 'arch_idx_base_3'[33:32]
+                                                                                                                                             : ... note: In instance 'ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
+  116 |   logic [$bits(MacRes_b_16_b_16_34(signed_mode_i[0] && op_a_i[31], op_a_i[31:16], signed_mode_i[1] && op_b_i[31], op_b_i[31:16], {{16{(signed_mode_i[0] || signed_mode_i[1]) && imd_val_q_i[0][33]}}, imd_val_q_i[0][33:16]}))-1:0] arch_idx_base_3;
+      |                                                                                                                                                                                                                                     ^~~~~~~~~~~~~~~
+- V e r i l a t i o n   R e p o r t: Verilator 5.048 2026-04-26 rev vUNKNOWN-built20260426
+- Verilator: Built from 62.077 MB sources in 143 modules, into 2.118 MB in 6 C++ files needing 0.000 MB
+- Verilator: Walltime 2.012 s (elab=0.462, cvt=1.051, bld=0.000); cpu 0.482 s on 1 threads; allocated 70.734 MB

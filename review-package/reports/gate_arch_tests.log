@@ -1,0 +1,7 @@
+ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss [ 48%]
+ss...................................................................... [ 97%]
+....                                                                     [100%]
+- generated xml file: ${REPO_ROOT}/review-package/reports/gate_arch_tests.junit.xml -
+74 passed, 74 skipped in 68.66s (0:01:08)
+pytest tests/test_arch_tests.py -p no:cacheprovider -q   40.33s user 9.21s system 71% cpu 1:09.16 total
+exit=0

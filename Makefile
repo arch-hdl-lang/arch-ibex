@@ -10,13 +10,17 @@
 # come from the upstream Ibex core file); we route through the
 # tests/test_soc_lint.py harness rather than duplicating that logic.
 
-.PHONY: build lint test clean
+.PHONY: build build-synth lint test clean
 
 REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 BUILD_DIR := $(REPO_ROOT)/build
 
 build:
 	@bash scripts/build.sh
+
+# Synthesis profile: ibex_top without the RVFI ports (RVFI = 0), into build-synth/.
+build-synth:
+	@ARCH_BUILD_PROFILE=synth bash scripts/build.sh
 
 lint:
 	pytest tests/test_soc_lint.py

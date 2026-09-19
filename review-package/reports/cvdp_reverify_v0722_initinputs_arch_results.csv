@@ -1,0 +1,51 @@
+problem,top_module,candidate,archived_first_pass,archived_final,archived_passing_attempt,arch_build_ok,sim_result,wall_time_s,sv_identical,outcome_changed,runtime
+cvdp_copilot_16qam_mapper_0001,qam16_mapper_interpolated,qam16_mapper_interpolated.arch (first pass),pass,pass,0,True,pass,6.8,False,False,osvb-docker
+cvdp_copilot_16qam_mapper_0006,qam16_demapper_interpolated,qam16_demapper_interpolated.arch (first pass),pass,pass,0,True,pass,22.4,False,False,osvb-docker
+cvdp_copilot_64b66b_encoder_0001,encoder_64b66b,encoder_64b66b.arch (first pass),pass,pass,0,True,pass,1.0,True,False,osvb-docker
+cvdp_copilot_8x3_priority_encoder_0001,priority_encoder_8x3,priority_encoder_8x3.arch (first pass),pass,pass,0,True,pass,3.8,True,False,osvb-docker
+cvdp_copilot_Carry_Lookahead_Adder_0001,GP,GP.arch (first pass),pass,pass,0,True,pass,1.0,True,False,osvb-docker
+cvdp_copilot_GFCM_0001,glitch_free_mux,glitch_free_mux.arch (first pass),pass,pass,0,True,pass,1.2,True,False,osvb-docker
+cvdp_copilot_axi_stream_upscale_0001,axis_upscale,repair_attempt_01.arch,fail,pass,1,True,pass,1.0,True,False,osvb-docker
+cvdp_copilot_axis_joiner_0001,axis_joiner,axis_joiner.arch (first pass),pass,pass,0,True,pass,1.0,True,False,osvb-docker
+cvdp_copilot_bcd_counter_0001,bcd_counter,bcd_counter.arch (first pass),pass,pass,0,True,pass,7.5,True,False,osvb-docker
+cvdp_copilot_binary_to_one_hot_decoder_0001,binary_to_one_hot_decoder,binary_to_one_hot_decoder.arch (first pass),pass,pass,0,True,pass,1.1,True,False,osvb-docker
+cvdp_copilot_bus_arbiter_0001,cvdp_copilot_bus_arbiter,cvdp_copilot_bus_arbiter.arch (first pass),pass,pass,0,True,pass,1.1,True,False,osvb-docker
+cvdp_copilot_caesar_cipher_0001,caesar_cipher,caesar_cipher.arch (first pass),pass,pass,0,True,pass,1.0,True,False,osvb-docker
+cvdp_copilot_car_parking_management_0001,car_parking_system,car_parking_system.arch (first pass),pass,pass,0,True,pass,2.2,True,False,osvb-docker
+cvdp_copilot_cascaded_adder_0001,cascaded_adder,cascaded_adder.arch (first pass),pass,pass,0,True,pass,20.3,True,False,osvb-docker
+cvdp_copilot_clock_divider_0003,clock_divider,clock_divider.arch (first pass),pass,pass,0,True,pass,0.9,True,False,osvb-docker
+cvdp_copilot_clock_jitter_detection_module_0003,clock_jitter_detection_module,repair_attempt_02.arch,fail,pass,2,True,pass,2.8,True,False,osvb-docker
+cvdp_copilot_comparator_0001,signed_unsigned_comparator,signed_unsigned_comparator.arch (first pass),pass,pass,0,True,pass,0.9,True,False,osvb-docker
+cvdp_copilot_complex_multiplier_0001,complex_multiplier,complex_multiplier.arch (first pass),pass,pass,0,True,pass,1.2,True,False,osvb-docker
+cvdp_copilot_convolutional_encoder_0001,convolutional_encoder,repair_attempt_01.arch,fail,pass,1,True,pass,0.9,True,False,osvb-docker
+cvdp_copilot_data_bus_controller_0001,data_bus_controller,repair_attempt_01.arch,fail,pass,1,True,pass,1.3,True,False,osvb-docker
+cvdp_copilot_data_width_converter_0003,data_width_converter,data_width_converter.arch (first pass),pass,pass,0,True,pass,0.9,True,False,osvb-docker
+cvdp_copilot_dbi_0001,dbi_enc,dbi_enc.arch (first pass),pass,pass,0,True,pass,0.9,True,False,osvb-docker
+cvdp_copilot_decode_firstbit_0001,cvdp_copilot_decode_firstbit,repair_attempt_02.arch,fail,pass,2,True,pass,1.1,True,False,osvb-docker
+cvdp_copilot_digital_dice_roller_0001,digital_dice_roller,repair_attempt_02.arch,fail,pass,2,True,pass,47.9,True,False,osvb-docker
+cvdp_copilot_digital_stopwatch_0001,dig_stopwatch,repair_attempt_04.arch,fail,fail,0,True,fail,1.7,True,False,osvb-docker
+cvdp_copilot_edge_detector_0001,sync_pos_neg_edge_detector,sync_pos_neg_edge_detector.arch (first pass),pass,pass,0,True,pass,0.9,True,False,osvb-docker
+cvdp_copilot_factorial_0001,factorial,factorial.arch (first pass),pass,pass,0,True,pass,1.0,True,False,osvb-docker
+cvdp_copilot_fibonacci_series_0001,fibonacci_series,repair_attempt_03.arch,fail,pass,3,True,pass,0.9,True,False,osvb-docker
+cvdp_copilot_gf_multiplier_0001,gf_multiplier,gf_multiplier.arch (first pass),pass,pass,0,True,pass,1.0,True,False,osvb-docker
+cvdp_copilot_hebbian_rule_0017,hebb_gates,hebb_gates.arch (first pass),pass,pass,0,True,pass,1.0,True,False,osvb-docker
+cvdp_copilot_load_store_unit_0001,load_store_unit,load_store_unit.arch (first pass),pass,pass,0,True,pass,2.0,True,False,osvb-docker
+cvdp_copilot_matrix_multiplier_0001,matrix_multiplier,matrix_multiplier.arch (first pass),pass,pass,0,True,pass,13.6,True,False,osvb-docker
+cvdp_copilot_morse_code_0001,morse_encoder,morse_encoder.arch (first pass),pass,pass,0,True,pass,0.9,True,False,osvb-docker
+cvdp_copilot_moving_average_0001,moving_average,moving_average.arch (first pass),pass,pass,0,True,pass,2.3,True,False,osvb-docker
+cvdp_copilot_nbit_swizzling_0001,nbit_swizzling,nbit_swizzling.arch (first pass),pass,pass,0,True,pass,2.2,True,False,osvb-docker
+cvdp_copilot_packet_controller_0001,packet_controller,repair_attempt_04.arch,fail,fail,0,True,fail,1.0,True,False,osvb-docker
+cvdp_copilot_palindrome_3b_0002,palindrome_detect,palindrome_detect.arch (first pass),pass,pass,0,True,pass,1.0,True,False,osvb-docker
+cvdp_copilot_perceptron_0001,perceptron_gates,perceptron_gates.arch (first pass),pass,pass,0,True,pass,0.9,True,False,osvb-docker
+cvdp_copilot_perf_counters_0001,cvdp_copilot_perf_counters,repair_attempt_04.arch,fail,pass,4,True,fail,0.9,True,True,osvb-docker
+cvdp_copilot_perfect_squares_0001,perfect_squares_generator,perfect_squares_generator.arch (first pass),pass,pass,0,True,pass,9.6,True,False,osvb-docker
+cvdp_copilot_prbs_gen_0003,cvdp_prbs_gen,repair_attempt_01.arch,fail,pass,1,True,pass,20.3,True,False,osvb-docker
+cvdp_copilot_restoring_division_0001,restoring_division,repair_attempt_02.arch,fail,pass,2,True,pass,4.4,True,False,osvb-docker
+cvdp_copilot_reverse_bits_0001,reverse_bits,reverse_bits.arch (first pass),pass,pass,0,True,pass,0.9,True,False,osvb-docker
+cvdp_copilot_sequencial_binary_to_one_hot_decoder_0001,binary_to_one_hot_decoder_sequential,binary_to_one_hot_decoder_sequential.arch (first pass),pass,pass,0,True,pass,0.9,True,False,osvb-docker
+cvdp_copilot_static_branch_predict_0001,static_branch_predict,repair_attempt_03.arch,fail,pass,3,True,pass,0.9,True,False,osvb-docker
+cvdp_copilot_sync_lifo_0001,sync_lifo,sync_lifo.arch (first pass),pass,pass,0,True,pass,2.4,True,False,osvb-docker
+cvdp_copilot_thermostat_0001,thermostat,thermostat.arch (first pass),pass,pass,0,True,pass,0.9,True,False,osvb-docker
+cvdp_copilot_ttc_lite_0001,ttc_counter_lite,repair_attempt_02.arch,fail,pass,2,True,pass,1.0,True,False,osvb-docker
+cvdp_copilot_unpacker_one_hot_0001,unpack_one_hot,unpack_one_hot.arch (first pass),pass,pass,0,True,pass,0.9,True,False,osvb-docker
+cvdp_copilot_vending_machine_0001,vending_machine,repair_attempt_04.arch,fail,fail,0,True,fail,4.4,True,False,osvb-docker

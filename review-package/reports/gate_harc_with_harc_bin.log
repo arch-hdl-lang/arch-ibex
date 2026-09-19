@@ -1,0 +1,259 @@
+FFFF.....................................F..                             [100%]
+=================================== FAILURES ===================================
+______________________ test_harc_phase1_canary[ibex_alu] _______________________
+
+canary = HarcCanary(top='ibex_alu', dut_file='src/IbexAlu.arch', harc_files=('tests/harc/lib/ibex_alu_vip.harc', 'tests/harc/unit/ibex_alu_harc_test.harc'), test='IbexAluFullVerification', require_branch_data=True)
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-43/test_harc_phase1_canary_ibex_a0')
+
+    @pytest.mark.parametrize("canary", PHASE1_CANARIES, ids=lambda c: c.top)
+    def test_harc_phase1_canary(canary: HarcCanary, tmp_path: Path) -> None:
+        dut_file = REPO_ROOT / canary.dut_file
+        harc_files = [REPO_ROOT / path for path in canary.harc_files]
+        extra_args = ("--arch-bin", resolve_arch_bin(), "--codegen", "v1")
+    
+        harc_check(harc_files=harc_files, cwd=REPO_ROOT)
+>       harc_sim_emit_only(
+            harc_files=harc_files,
+            dut_files=[dut_file],
+            top=canary.top,
+            test=canary.test,
+            outdir=tmp_path / "emit",
+            cwd=REPO_ROOT,
+            extra_args=extra_args,
+        )
+
+tests/test_harc_phase1_canaries.py:82: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/harc_runner.py:2980: in harc_sim_emit_only
+    _sim_args(config, emit_only=True, coverage=False),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+config = HarcSim(harc_files=[PosixPath('${REPO_ROOT}/tes...4027/89328fb6-f0ff-478b-a84c-e6cb98907ec3/scratchpad/arch-com-v0.71.0-patched/target/release/arch', '--codegen', 'v1'))
+
+    def _sim_args(
+        config: HarcSim,
+        *,
+        emit_only: bool,
+        coverage: bool,
+        coverage_json: PathLike | None = None,
+    ) -> list[str]:
+        args = ["sim"]
+        has_sv = bool(config.sv_files)
+        has_dut = bool(config.dut_files)
+        if has_sv == has_dut:
+            raise AssertionError("harc sim requires exactly one backend: sv_files or dut_files")
+        if any(
+            arg == "--codegen" or str(arg).startswith("--codegen=")
+            for arg in config.extra_args
+        ):
+>           raise AssertionError("HARC runner forbids --codegen; use default TBIR")
+E           AssertionError: HARC runner forbids --codegen; use default TBIR
+
+tests/harc_runner.py:2647: AssertionError
+____________________ test_harc_phase1_canary[ibex_counter] _____________________
+
+canary = HarcCanary(top='ibex_counter', dut_file='src/IbexCounter.arch', harc_files=('tests/harc/lib/ibex_counter_vip.harc', 'tests/harc/unit/ibex_counter_harc_test.harc'), test='IbexCounterCanary', require_branch_data=True)
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-43/test_harc_phase1_canary_ibex_c0')
+
+    @pytest.mark.parametrize("canary", PHASE1_CANARIES, ids=lambda c: c.top)
+    def test_harc_phase1_canary(canary: HarcCanary, tmp_path: Path) -> None:
+        dut_file = REPO_ROOT / canary.dut_file
+        harc_files = [REPO_ROOT / path for path in canary.harc_files]
+        extra_args = ("--arch-bin", resolve_arch_bin(), "--codegen", "v1")
+    
+        harc_check(harc_files=harc_files, cwd=REPO_ROOT)
+>       harc_sim_emit_only(
+            harc_files=harc_files,
+            dut_files=[dut_file],
+            top=canary.top,
+            test=canary.test,
+            outdir=tmp_path / "emit",
+            cwd=REPO_ROOT,
+            extra_args=extra_args,
+        )
+
+tests/test_harc_phase1_canaries.py:82: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/harc_runner.py:2980: in harc_sim_emit_only
+    _sim_args(config, emit_only=True, coverage=False),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+config = HarcSim(harc_files=[PosixPath('${REPO_ROOT}/tes...4027/89328fb6-f0ff-478b-a84c-e6cb98907ec3/scratchpad/arch-com-v0.71.0-patched/target/release/arch', '--codegen', 'v1'))
+
+    def _sim_args(
+        config: HarcSim,
+        *,
+        emit_only: bool,
+        coverage: bool,
+        coverage_json: PathLike | None = None,
+    ) -> list[str]:
+        args = ["sim"]
+        has_sv = bool(config.sv_files)
+        has_dut = bool(config.dut_files)
+        if has_sv == has_dut:
+            raise AssertionError("harc sim requires exactly one backend: sv_files or dut_files")
+        if any(
+            arg == "--codegen" or str(arg).startswith("--codegen=")
+            for arg in config.extra_args
+        ):
+>           raise AssertionError("HARC runner forbids --codegen; use default TBIR")
+E           AssertionError: HARC runner forbids --codegen; use default TBIR
+
+tests/harc_runner.py:2647: AssertionError
+________________ test_harc_phase1_canary[ibex_register_file_ff] ________________
+
+canary = HarcCanary(top='ibex_register_file_ff', dut_file='src/IbexRegisterFileFf.arch', harc_files=('tests/harc/lib/ibex_regis...c', 'tests/harc/unit/ibex_register_file_ff_harc_test.harc'), test='IbexRegisterFileFfCanary', require_branch_data=True)
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-43/test_harc_phase1_canary_ibex_r0')
+
+    @pytest.mark.parametrize("canary", PHASE1_CANARIES, ids=lambda c: c.top)
+    def test_harc_phase1_canary(canary: HarcCanary, tmp_path: Path) -> None:
+        dut_file = REPO_ROOT / canary.dut_file
+        harc_files = [REPO_ROOT / path for path in canary.harc_files]
+        extra_args = ("--arch-bin", resolve_arch_bin(), "--codegen", "v1")
+    
+        harc_check(harc_files=harc_files, cwd=REPO_ROOT)
+>       harc_sim_emit_only(
+            harc_files=harc_files,
+            dut_files=[dut_file],
+            top=canary.top,
+            test=canary.test,
+            outdir=tmp_path / "emit",
+            cwd=REPO_ROOT,
+            extra_args=extra_args,
+        )
+
+tests/test_harc_phase1_canaries.py:82: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/harc_runner.py:2980: in harc_sim_emit_only
+    _sim_args(config, emit_only=True, coverage=False),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+config = HarcSim(harc_files=[PosixPath('${REPO_ROOT}/tes...4027/89328fb6-f0ff-478b-a84c-e6cb98907ec3/scratchpad/arch-com-v0.71.0-patched/target/release/arch', '--codegen', 'v1'))
+
+    def _sim_args(
+        config: HarcSim,
+        *,
+        emit_only: bool,
+        coverage: bool,
+        coverage_json: PathLike | None = None,
+    ) -> list[str]:
+        args = ["sim"]
+        has_sv = bool(config.sv_files)
+        has_dut = bool(config.dut_files)
+        if has_sv == has_dut:
+            raise AssertionError("harc sim requires exactly one backend: sv_files or dut_files")
+        if any(
+            arg == "--codegen" or str(arg).startswith("--codegen=")
+            for arg in config.extra_args
+        ):
+>           raise AssertionError("HARC runner forbids --codegen; use default TBIR")
+E           AssertionError: HARC runner forbids --codegen; use default TBIR
+
+tests/harc_runner.py:2647: AssertionError
+____________________ test_harc_phase1_canary[ibex_wb_stage] ____________________
+
+canary = HarcCanary(top='ibex_wb_stage', dut_file='src/IbexWbStage.arch', harc_files=('tests/harc/lib/ibex_wb_stage_vip.harc', 'tests/harc/unit/ibex_wb_stage_harc_test.harc'), test='IbexWbStagePhase1Canary', require_branch_data=False)
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-43/test_harc_phase1_canary_ibex_w0')
+
+    @pytest.mark.parametrize("canary", PHASE1_CANARIES, ids=lambda c: c.top)
+    def test_harc_phase1_canary(canary: HarcCanary, tmp_path: Path) -> None:
+        dut_file = REPO_ROOT / canary.dut_file
+        harc_files = [REPO_ROOT / path for path in canary.harc_files]
+        extra_args = ("--arch-bin", resolve_arch_bin(), "--codegen", "v1")
+    
+        harc_check(harc_files=harc_files, cwd=REPO_ROOT)
+>       harc_sim_emit_only(
+            harc_files=harc_files,
+            dut_files=[dut_file],
+            top=canary.top,
+            test=canary.test,
+            outdir=tmp_path / "emit",
+            cwd=REPO_ROOT,
+            extra_args=extra_args,
+        )
+
+tests/test_harc_phase1_canaries.py:82: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/harc_runner.py:2980: in harc_sim_emit_only
+    _sim_args(config, emit_only=True, coverage=False),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+config = HarcSim(harc_files=[PosixPath('${REPO_ROOT}/tes...4027/89328fb6-f0ff-478b-a84c-e6cb98907ec3/scratchpad/arch-com-v0.71.0-patched/target/release/arch', '--codegen', 'v1'))
+
+    def _sim_args(
+        config: HarcSim,
+        *,
+        emit_only: bool,
+        coverage: bool,
+        coverage_json: PathLike | None = None,
+    ) -> list[str]:
+        args = ["sim"]
+        has_sv = bool(config.sv_files)
+        has_dut = bool(config.dut_files)
+        if has_sv == has_dut:
+            raise AssertionError("harc sim requires exactly one backend: sv_files or dut_files")
+        if any(
+            arg == "--codegen" or str(arg).startswith("--codegen=")
+            for arg in config.extra_args
+        ):
+>           raise AssertionError("HARC runner forbids --codegen; use default TBIR")
+E           AssertionError: HARC runner forbids --codegen; use default TBIR
+
+tests/harc_runner.py:2647: AssertionError
+________ test_checked_in_compressed_decoder_coverage_status_is_complete ________
+
+    def test_checked_in_compressed_decoder_coverage_status_is_complete() -> None:
+        root = Path(__file__).resolve().parents[1]
+    
+>       assert_compressed_decoder_coverage_status_complete(
+            inventory_path=root / "tests/harc/plans/ibex_compressed_decoder_full_bins.md",
+            status_path=root
+            / "tests/harc/plans/ibex_compressed_decoder_full_coverage_status.md",
+        )
+
+tests/test_harc_runner.py:1390: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/harc_runner.py:1027: in assert_compressed_decoder_coverage_status_complete
+    inventory = compressed_decoder_coverage_inventory(inventory_path)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/harc_runner.py:924: in compressed_decoder_coverage_inventory
+    for raw in Path(path).read_text().splitlines():
+               ^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/anaconda3/lib/python3.13/pathlib/_local.py:546: in read_text
+    return PathBase.read_text(self, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/anaconda3/lib/python3.13/pathlib/_abc.py:632: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('${REPO_ROOT}/tests/harc/plans/ibex_compressed_decoder_full_bins.md')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '${REPO_ROOT}/tests/harc/plans/ibex_compressed_decoder_full_bins.md'
+
+/opt/homebrew/anaconda3/lib/python3.13/pathlib/_local.py:537: FileNotFoundError
+- generated xml file: ${REPO_ROOT}/review-package/reports/gate_harc_with_harc_bin.junit.xml -
+=========================== short test summary info ============================
+FAILED tests/test_harc_phase1_canaries.py::test_harc_phase1_canary[ibex_alu]
+FAILED tests/test_harc_phase1_canaries.py::test_harc_phase1_canary[ibex_counter]
+FAILED tests/test_harc_phase1_canaries.py::test_harc_phase1_canary[ibex_register_file_ff]
+FAILED tests/test_harc_phase1_canaries.py::test_harc_phase1_canary[ibex_wb_stage]
+FAILED tests/test_harc_runner.py::test_checked_in_compressed_decoder_coverage_status_is_complete
+5 failed, 39 passed in 2.45s
+pytest tests/test_harc_phase1_canaries.py tests/test_harc_runner.py -p  -q   0.78s user 0.43s system 28% cpu 4.278 total
+exit=1

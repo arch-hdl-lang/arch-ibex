@@ -8,12 +8,22 @@
 # Environment:
 #   ARCH_BIN   path to `arch` binary (default: ../arch-com/target/{release,debug}/arch
 #              if present; otherwise `arch` on PATH, ignoring macOS /usr/bin/arch)
+#   ARCH_BUILD_PROFILE   sim (default) | synth.  `sim` builds IbexTop together with
+#              src/sim/IbexTopRvfiSim.arch so `ibex_top` is elaborated with RVFI = 1
+#              (the harness's ibex_top_tracing wrapper needs the rvfi_* ports);
+#              `synth` builds it alone (RVFI = 0, upstream's `ifdef RVFI` boundary).
+#   BUILD_DIR  output directory (default: build/ for sim, build-synth/ for synth)
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC_DIR="${REPO_ROOT}/src"
-BUILD_DIR="${REPO_ROOT}/build"
+ARCH_BUILD_PROFILE="${ARCH_BUILD_PROFILE:-sim}"
+case "${ARCH_BUILD_PROFILE}" in
+  sim)   BUILD_DIR="${BUILD_DIR:-${REPO_ROOT}/build}" ;;
+  synth) BUILD_DIR="${BUILD_DIR:-${REPO_ROOT}/build-synth}" ;;
+  *) echo "error: ARCH_BUILD_PROFILE must be sim or synth (got '${ARCH_BUILD_PROFILE}')" >&2; exit 1 ;;
+esac
 
 resolve_arch_bin() {
   if [[ -n "${ARCH_BIN:-}" && -x "${ARCH_BIN}" ]]; then
@@ -42,6 +52,19 @@ if [[ -z "${ARCH_BIN}" ]]; then
   exit 1
 fi
 
+# Compiler pin: refuse to build with any `arch` whose version differs from
+# .arch-version (the reproducibility guard the reviewer package asked for).
+PIN_FILE="${REPO_ROOT}/.arch-version"
+if [[ -f "${PIN_FILE}" ]]; then
+  want="$(tr -d '[:space:]' < "${PIN_FILE}")"
+  have="$("${ARCH_BIN}" --version 2>/dev/null | awk '{print $2}')"
+  if [[ "${have}" != "${want}" ]]; then
+    echo "error: arch version mismatch: ${ARCH_BIN} reports '${have:-unknown}', .arch-version pins '${want}'." >&2
+    echo "  Install arch v${want} (https://github.com/arch-hdl-lang/arch-com/releases/tag/v${want}) and set ARCH_BIN to it." >&2
+    exit 1
+  fi
+fi
+
 mkdir -p "${BUILD_DIR}"
 
 if [[ $# -eq 0 ]]; then
@@ -68,8 +91,21 @@ _build_one() {
   arch_stem="$(basename "${f}" .arch)"
   local sv_stem
   sv_stem="$(echo "${arch_stem}" | sed -E 's/([a-z0-9])([A-Z])/\1_\2/g; s/([A-Z]+)([A-Z][a-z])/\1_\2/g' | tr '[:upper:]' '[:lower:]')"
-  echo "arch build $(basename "${f}") → build/${sv_stem}.sv"
-  "${ARCH_BIN}" build -o "${BUILD_DIR}/${sv_stem}.sv" "${f}"
+  # Simulation profile: the top is built together with the RVFI shim so the
+  # RVFI = 1 variant of `ibex_top` is the one emitted (see src/sim/).
+  local -a extra_inputs=()
+  if [[ "${arch_stem}" == "IbexTop" ]]; then
+    # The two profiles emit different `ibex_top` interfaces (with / without the
+    # RVFI ports). A stale src/ibex_top.archi left by the other profile would
+    # shadow the module being compiled and break the shim's instantiation, so
+    # the top is always elaborated from source.
+    rm -f "${SRC_DIR}/ibex_top.archi" "${SRC_DIR}/ibex_top_rvfi_sim.archi"
+    if [[ "${ARCH_BUILD_PROFILE}" == "sim" ]]; then
+      extra_inputs+=("${SRC_DIR}/sim/IbexTopRvfiSim.arch")
+    fi
+  fi
+  echo "arch build $(basename "${f}") ${extra_inputs[*]:+(+ $(basename "${extra_inputs[0]}"))}→ $(basename "${BUILD_DIR}")/${sv_stem}.sv"
+  "${ARCH_BIN}" build -o "${BUILD_DIR}/${sv_stem}.sv" "${f}" "${extra_inputs[@]}"
 
   # When a consumer `use`s a package via .archi auto-resolution,
   # `arch build -o` inlines the package contents into the consumer's
@@ -124,7 +160,9 @@ _build_one() {
     # snake_case (`ibex_multdiv_fast`). Exclude both forms.
     local self_threads_camel="_${arch_stem}_threads"
     local self_threads_snake="_${sv_stem}_threads"
-    for archi_path in "${SRC_DIR}"/*.archi; do
+    # The sim-only RVFI shim is co-emitted into ibex_top.sv; never link it.
+    strip_names+=("ibex_top_rvfi_sim")
+    for archi_path in "${SRC_DIR}"/*.archi "${SRC_DIR}"/sim/*.archi; do
       local archi_stem
       archi_stem="$(basename "${archi_path}" .archi)"
       if [[ "${archi_stem}" == "IbexCoreSharedPkg" ]]; then continue; fi

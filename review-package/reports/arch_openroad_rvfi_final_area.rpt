@@ -1,0 +1,12 @@
+Design area 2600940 um^2 34% utilization.
+Cell type report:                       Count       Area
+  Fill cell                            756436 4978619.89
+  Tap cell                             100893  126237.32
+  Antenna cell                           4015   10047.14
+  Clock buffer                          18450  138527.86
+  Timing Repair Buffer                  18967  381413.31
+  Inverter                                653    2611.25
+  Clock inverter                         1816   11721.24
+  Sequential cell                       47651 1420255.89
+  Multi-Input combinational cell        79402  510125.50
+  Total                               1028283 7579559.40

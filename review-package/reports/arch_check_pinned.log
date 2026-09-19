@@ -1,0 +1,73 @@
+# arch check, pinned compiler: arch 0.71.0 @ arch-com 89ec0522 (= main f4569890 + PR #993 a814dc62 + PR #994 7844c021), 2026-09-05T05:36Z
+# run after 'make build' so sibling .archi interface files exist
+=== src/FbAgeArb.arch
+OK: no errors
+exit=0
+=== src/IbexAlu.arch
+OK: no errors
+exit=0
+=== src/IbexCompressedDecoder.arch
+OK: no errors
+exit=0
+=== src/IbexController.arch
+OK: no errors
+exit=0
+=== src/IbexCore.arch
+warning: arch check: 1 comb SCC(s) found; 1 suppressed by pragma; 0 unblessed (warnings) (src/IbexCoreSharedPkg.arch:409)
+OK: no errors
+exit=0
+=== src/IbexCoreSharedPkg.arch
+OK: no errors
+exit=0
+=== src/IbexCounter.arch
+OK: no errors
+exit=0
+=== src/IbexDecoder.arch
+OK: no errors
+exit=0
+=== src/IbexExBlock.arch
+OK: no errors
+exit=0
+=== src/IbexFetchFifo.arch
+OK: no errors
+exit=0
+=== src/IbexIcache.arch
+OK: no errors
+exit=0
+=== src/IbexIcacheOutputStage.arch
+OK: no errors
+exit=0
+=== src/IbexIdStage.arch
+OK: no errors
+exit=0
+=== src/IbexIfStage.arch
+OK: no errors
+exit=0
+=== src/IbexLoadStoreUnit.arch
+OK: no errors
+exit=0
+=== src/IbexMultdivFast.arch
+OK: no errors
+exit=0
+=== src/IbexPmp.arch
+OK: no errors
+exit=0
+=== src/IbexPrefetchBuffer.arch
+OK: no errors
+exit=0
+=== src/IbexRegisterFileFf.arch
+OK: no errors
+exit=0
+=== src/IbexTop.arch
+OK: no errors
+exit=0
+=== src/IbexWbStage.arch
+OK: no errors
+exit=0
+=== src/InvalCtrl.arch
+OK: no errors
+exit=0
+=== src/RamPortArb.arch
+OK: no errors
+exit=0
+# PASS 23 / 23

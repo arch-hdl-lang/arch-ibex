@@ -1,0 +1,106 @@
+/// Simulation-only shim (TASK3 B1). Never synthesised and never linked:
+/// `scripts/build.sh` (sim profile) runs `arch build src/IbexTop.arch src/sim/IbexTopRvfiSim.arch`
+/// so that `ibex_top` is elaborated with `RVFI = 1` — the single-variant rule keeps
+/// the module's own name — and the harness's `ibex_top_tracing` wrapper gets the 38
+/// `rvfi_*` ports. build.sh strips this module from build/ibex_top.sv. The synth
+/// profile (`make build-synth`) builds IbexTop.arch alone: RVFI = 0, no rvfi_* ports.
+/// Every port of ibex_top is mirrored here and auto-connected; the shim's own
+/// outputs simply dangle.
+module ibex_top_rvfi_sim
+  port clk_i: in Clock<SysDomain>;
+  port rst_ni: in Reset<Async, Low>;
+  port test_en_i: in Bool;
+  port scan_rst_ni: in Bool;
+  port ram_cfg_icache_tag_i: in UInt<RAM_1P_CFG_W>;
+  port ram_cfg_rsp_icache_tag_o: out UInt<IC_NUM_WAYS>;
+  port ram_cfg_icache_data_i: in UInt<RAM_1P_CFG_W>;
+  port ram_cfg_rsp_icache_data_o: out UInt<IC_NUM_WAYS>;
+  port hart_id_i: in UInt<32>;
+  port boot_addr_i: in UInt<32>;
+  port instr_req_o: out Bool;
+  port instr_gnt_i: in Bool;
+  port instr_rvalid_i: in Bool;
+  port instr_addr_o: out UInt<32>;
+  port instr_rdata_i: in UInt<32>;
+  port instr_rdata_intg_i: in UInt<7>;
+  port instr_err_i: in Bool;
+  port data_req_o: out Bool;
+  port data_gnt_i: in Bool;
+  port data_rvalid_i: in Bool;
+  port data_we_o: out Bool;
+  port data_be_o: out UInt<4>;
+  port data_addr_o: out UInt<32>;
+  port data_wdata_o: out UInt<32>;
+  port data_wdata_intg_o: out UInt<7>;
+  port data_rdata_i: in UInt<32>;
+  port data_rdata_intg_i: in UInt<7>;
+  port data_err_i: in Bool;
+  port irq_software_i: in Bool;
+  port irq_timer_i: in Bool;
+  port irq_external_i: in Bool;
+  port irq_fast_i: in UInt<15>;
+  port irq_nm_i: in Bool;
+  port scramble_key_valid_i: in Bool;
+  port scramble_key_i: in UInt<SCRAMBLE_KEY_W>;
+  port scramble_nonce_i: in UInt<SCRAMBLE_NONCE_W>;
+  port scramble_req_o: out Bool;
+  port debug_req_i: in Bool;
+  port crash_dump_o: out UInt<160>;
+  port double_fault_seen_o: out Bool;
+  port rvfi_valid: out Bool;
+  port rvfi_order: out UInt<64>;
+  port rvfi_insn: out UInt<32>;
+  port rvfi_trap: out Bool;
+  port rvfi_halt: out Bool;
+  port rvfi_intr: out Bool;
+  port rvfi_mode: out UInt<2>;
+  port rvfi_ixl: out UInt<2>;
+  port rvfi_rs1_addr: out UInt<5>;
+  port rvfi_rs2_addr: out UInt<5>;
+  port rvfi_rs3_addr: out UInt<5>;
+  port rvfi_rs1_rdata: out UInt<32>;
+  port rvfi_rs2_rdata: out UInt<32>;
+  port rvfi_rs3_rdata: out UInt<32>;
+  port rvfi_rd_addr: out UInt<5>;
+  port rvfi_rd_wdata: out UInt<32>;
+  port rvfi_pc_rdata: out UInt<32>;
+  port rvfi_pc_wdata: out UInt<32>;
+  port rvfi_mem_addr: out UInt<32>;
+  port rvfi_mem_rmask: out UInt<4>;
+  port rvfi_mem_wmask: out UInt<4>;
+  port rvfi_mem_rdata: out UInt<32>;
+  port rvfi_mem_wdata: out UInt<32>;
+  port rvfi_ext_pre_mip: out UInt<32>;
+  port rvfi_ext_post_mip: out UInt<32>;
+  port rvfi_ext_nmi: out Bool;
+  port rvfi_ext_nmi_int: out Bool;
+  port rvfi_ext_debug_req: out Bool;
+  port rvfi_ext_debug_mode: out Bool;
+  port rvfi_ext_rf_wr_suppress: out Bool;
+  port rvfi_ext_mcycle: out UInt<64>;
+  port rvfi_ext_mhpmcounters: out unpacked ascending Vec<UInt<32>, 10>;
+  port rvfi_ext_mhpmcountersh: out unpacked ascending Vec<UInt<32>, 10>;
+  port rvfi_ext_ic_scr_key_valid: out Bool;
+  port rvfi_ext_irq_valid: out Bool;
+  port rvfi_ext_expanded_insn_valid: out Bool;
+  port rvfi_ext_expanded_insn: out UInt<16>;
+  port rvfi_ext_expanded_insn_last: out Bool;
+  port fetch_enable_i: in UInt<IbexMuBiW>;
+  port alert_minor_o: out Bool;
+  port alert_major_internal_o: out Bool;
+  port alert_major_bus_o: out Bool;
+  port core_sleep_o: out Bool;
+  port lockstep_cmp_en_o: out UInt<IbexMuBiW>;
+  port data_req_shadow_o: out Bool;
+  port data_we_shadow_o: out Bool;
+  port data_be_shadow_o: out UInt<4>;
+  port data_addr_shadow_o: out UInt<32>;
+  port data_wdata_shadow_o: out UInt<32>;
+  port data_wdata_intg_shadow_o: out UInt<7>;
+  port instr_req_shadow_o: out Bool;
+  port instr_addr_shadow_o: out UInt<32>;
+  inst u: ibex_top
+    param RVFI = 1;
+    auto;
+  end inst u
+end module ibex_top_rvfi_sim

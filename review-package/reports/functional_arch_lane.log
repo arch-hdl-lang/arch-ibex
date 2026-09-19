@@ -1,0 +1,904 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.9, pytest-8.4.2, pluggy-1.5.0 -- /opt/homebrew/anaconda3/bin/python
+rootdir: ${REPO_ROOT}
+plugins: cocotb-test-0.2.6, xdist-3.8.0, anyio-4.10.0
+collecting ... collected 11 items
+
+tests/test_soc_lint.py::test_ibex_mini_soc_lints FAILED                  [  9%]
+tests/test_cpu_programs.py::test_cpu_program[timer_isr] FAILED           [ 18%]
+tests/test_cpu_programs.py::test_cpu_program[sw_isr] FAILED              [ 27%]
+tests/test_cpu_programs.py::test_cpu_program[ext_isr] FAILED             [ 36%]
+tests/test_cpu_programs.py::test_cpu_program[multictx_isr] FAILED        [ 45%]
+tests/test_cpu_programs.py::test_cpu_program[wfi_isr] FAILED             [ 54%]
+tests/test_cpu_programs.py::test_cpu_program[ecall_isr] FAILED           [ 63%]
+tests/test_cpu_programs.py::test_cpu_program[pmp_exec_isr] FAILED        [ 72%]
+tests/test_cpu_programs.py::test_cpu_program[pmp_load_isr] FAILED        [ 81%]
+tests/test_cpu_programs.py::test_cpu_program[pmp_misaligned_isr] FAILED  [ 90%]
+tests/test_cpu_programs.py::test_cpu_program[icache_bench] FAILED        [100%]
+
+=================================== FAILURES ===================================
+___________________________ test_ibex_mini_soc_lints ___________________________
+
+verilator_bin = 'verilator'
+ibex_soc_filelist = {'build_dir': PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_...ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/lowrisc_ibex_ibex_top_tracing_0.1.stripped.vc')}
+
+    def test_ibex_mini_soc_lints(
+        verilator_bin: str,
+        ibex_soc_filelist: dict,
+    ) -> None:
+        vc_path: Path = ibex_soc_filelist["vc_path"]
+        extra_sv: list[Path] = ibex_soc_filelist["extra_sv"]
+        build_dir: Path = ibex_soc_filelist["build_dir"]
+    
+        cmd = [
+            verilator_bin,
+            "--lint-only",
+            "-Wall",
+            "-Wno-UNUSEDSIGNAL",   # Ibex ties a lot of observability ports off
+            "-Wno-UNUSEDPARAM",
+            "-Wno-PINMISSING",     # we don't connect every tracing port
+            "-Wno-WIDTHEXPAND",    # $readmemh vs. sized vectors — benign
+            "-Wno-IMPORTSTAR",     # arch-com emits `import Pkg::*;` at $unit
+            "-Wno-DECLFILENAME",   # our in-tree Ibex forks keep upstream module names
+            "-Wno-UNOPTFLAT",      # upstream ibex_ex_block.sv has an intended ALU↔multdiv
+                                   # combinational loop on alu_adder_result_ext (the
+                                   # multdiv shares the ALU's adder/comparator). With
+                                   # the FSM-based multdiv Verilator's analysis
+                                   # resolved it; the thread-based multdiv's nested
+                                   # `_threads` submodule boundary makes Verilator
+                                   # more conservative. The loop is functionally
+                                   # identical and safe in practice.
+            "--unroll-count", "72",  # required by prim_secded per Verilator#1266
+            "-f", str(vc_path),
+            "--top-module", "ibex_mini_soc",
+        ]
+        cmd.extend(str(p) for p in extra_sv)
+    
+        result = subprocess.run(
+            cmd, cwd=str(build_dir),
+            capture_output=True, text=True,
+        )
+        # Useful context on failure.
+        if result.returncode != 0:
+>           pytest.fail(
+                "verilator --lint-only failed:\n"
+                f"CMD:\n  {' '.join(cmd)}\n"
+                f"STDERR:\n{result.stderr}\nSTDOUT:\n{result.stdout}"
+            )
+E           Failed: verilator --lint-only failed:
+E           CMD:
+E             verilator --lint-only -Wall -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM -Wno-PINMISSING -Wno-WIDTHEXPAND -Wno-IMPORTSTAR -Wno-DECLFILENAME -Wno-UNOPTFLAT --unroll-count 72 -f /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/lowrisc_ibex_ibex_top_tracing_0.1.stripped.vc --top-module ibex_mini_soc /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/generated/clint_basic/ClintPkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/generated/clint_basic/Clint.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/generated/clint_basic/ClintLogic.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/generated/plic_multictx/PlicMultictxPkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/generated/plic_multictx/PlicMultictx.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/generated/plic_multictx/PlicMultictxLogic.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrFilePkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrAccess.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrFile.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrTrapCoord.sv ${REPO_ROOT}/soc/obi_to_axi_lite.sv ${REPO_ROOT}/soc/ibex_mini_soc.sv ${REPO_ROOT}/soc/ibex_cs_registers_hybrid.sv ~/github/ibex/shared/rtl/ram_2p.sv ~/github/ibex/shared/rtl/sim/simulator_ctrl.sv ${REPO_ROOT}/build/ibex_core_shared_pkg.sv ${REPO_ROOT}/build/fb_age_arb.sv ${REPO_ROOT}/build/ibex_alu.sv ${REPO_ROOT}/build/ibex_compressed_decoder.sv ${REPO_ROOT}/build/ibex_controller.sv ${REPO_ROOT}/build/ibex_core.sv ${REPO_ROOT}/build/ibex_counter.sv ${REPO_ROOT}/build/ibex_decoder.sv ${REPO_ROOT}/build/ibex_ex_block.sv ${REPO_ROOT}/build/ibex_fetch_fifo.sv ${REPO_ROOT}/build/ibex_icache.sv ${REPO_ROOT}/build/ibex_icache_output_stage.sv ${REPO_ROOT}/build/ibex_id_stage.sv ${REPO_ROOT}/build/ibex_if_stage.sv ${REPO_ROOT}/build/ibex_load_store_unit.sv ${REPO_ROOT}/build/ibex_multdiv_fast.sv ${REPO_ROOT}/build/ibex_pmp.sv ${REPO_ROOT}/build/ibex_prefetch_buffer.sv ${REPO_ROOT}/build/ibex_register_file_ff.sv ${REPO_ROOT}/build/ibex_top.sv ${REPO_ROOT}/build/ibex_wb_stage.sv ${REPO_ROOT}/build/inval_ctrl.sv ${REPO_ROOT}/build/ram_port_arb.sv
+E           STDERR:
+E           %Warning-PROCASSINIT: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:102:27: Procedural assignment to declaration with initial value: '_t0_state'
+E                                                                                                                                                      : ... note: In instance 'ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
+E                                                                                                                                                      : ... Location of variable initialization
+E             102 |   logic [3:0] _t0_state = 0;
+E                 |                           ^
+E                                 ${REPO_ROOT}/build/ibex_multdiv_fast.sv:358:7: ... Location of variable process write
+E                                                                                                                                                     : ... Perhaps should initialize instead using a reset in this process
+E             358 |       _t0_state <= 0;
+E                 |       ^~~~~~~~~
+E                                 ... For warning description see https://verilator.org/warn/PROCASSINIT?v=5.048
+E                                 ... Use "/* verilator lint_off PROCASSINIT */" and lint_on around source to disable this message.
+E           %Warning-PROCASSINIT: ${REPO_ROOT}/build/ibex_multdiv_fast.sv:104:30: Procedural assignment to declaration with initial value: '_t0_loop_cnt'
+E                                                                                                                                                      : ... note: In instance 'ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.ex_block_i.multdiv_i._threads'
+E                                                                                                                                                      : ... Location of variable initialization
+E             104 |   logic [4:0] _t0_loop_cnt = 0;
+E                 |                              ^
+E                                 ${REPO_ROOT}/build/ibex_multdiv_fast.sv:440:7: ... Location of variable process write
+E                                                                                                                                                     : ... Perhaps should initialize instead using a reset in this process
+E             440 |       _t0_loop_cnt <= 0;
+E                 |       ^~~~~~~~~~~~
+E           %Warning-SYNCASYNCNET: ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: Signal flopped as both synchronous and async: 'IO_RST_N'
+E                                  ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: ... Location of async usage
+E              67 |   input  logic IO_RST_N,
+E                 |                ^~~~~~~~
+E                                  ${REPO_ROOT}/soc/ibex_mini_soc.sv:67:16: ... Location of sync usage
+E              67 |   input  logic IO_RST_N,
+E                 |                ^~~~~~~~
+E                                  ... For warning description see https://verilator.org/warn/SYNCASYNCNET?v=5.048
+E                                  ... Use "/* verilator lint_off SYNCASYNCNET */" and lint_on around source to disable this message.
+E           %Error: Exiting due to 3 warning(s)
+E           
+E           STDOUT:
+
+tests/test_soc_lint.py:59: Failed
+_________________________ test_cpu_program[timer_isr] __________________________
+
+program = CpuProgram(name='timer_isr', cocotb_module='test_timer_isr')
+built_programs = {'ecall_isr': PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_s.../var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sw_build0/multictx_isr.vmem'), ...}
+verilator_runner = (<cocotb_tools.runner.Verilator object at 0x1028c3cb0>, PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sim_build0'))
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/test_cpu_program_timer_isr_0')
+
+    @pytest.mark.parametrize("program", PROGRAMS, ids=lambda p: p.name)
+    def test_cpu_program(
+        program: CpuProgram,
+        built_programs: dict[str, Path],
+        verilator_runner,
+        tmp_path: Path,
+    ) -> None:
+        """Run one of the bring-up programs end-to-end on the real Ibex SoC."""
+        runner, sim_build = verilator_runner
+        vmem = built_programs[program.name]
+    
+>       results_xml = runner.test(
+            test_module=program.cocotb_module,
+            hdl_toplevel="ibex_mini_soc",
+            build_dir=str(sim_build),
+            test_dir=str(COCOTB_TESTS_DIR),
+            results_xml=str(tmp_path / f"results_{program.name}.xml"),
+            extra_env={"VMEM_PATH": str(vmem)},
+        )
+E       SystemExit: 1
+
+tests/test_cpu_programs.py:232: SystemExit
+---------------------------- Captured stdout setup -----------------------------
+- V e r i l a t i o n   R e p o r t: Verilator 5.048 2026-04-26 rev vUNKNOWN-built20260426
+- Verilator: Built from 128.331 MB sources in 157 modules, into 7.170 MB in 27 C++ files needing 0.002 MB
+- Verilator: Walltime 0.539 s (elab=0.052, cvt=0.338, bld=0.000); cpu 0.539 s on 1 threads; allocated 94.156 MB
+c++  -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -Os  -c -o verilator.o ~/.local/lib/python3.13/site-packages/cocotb/share/lib/verilator/verilator.cpp
+c++ -Os  -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -c -o verilated.o /opt/homebrew/Cellar/verilator/5.048/share/verilator/include/verilated.cpp
+c++ -Os  -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -c -o verilated_dpi.o /opt/homebrew/Cellar/verilator/5.048/share/verilator/include/verilated_dpi.cpp
+c++ -Os  -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -c -o verilated_vpi.o /opt/homebrew/Cellar/verilator/5.048/share/verilator/include/verilated_vpi.cpp
+c++ -Os  -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -c -o verilated_threads.o /opt/homebrew/Cellar/verilator/5.048/share/verilator/include/verilated_threads.cpp
+c++ -Os  -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -x c++-header Vtop__pch.h -o Vtop__pch.h.fast.gch
+c++   -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -x c++-header Vtop__pch.h -o Vtop__pch.h.slow.gch
+c++ -Os  -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.fast.gch -c Vtop.cpp
+c++ -Os  -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.fast.gch -c Vtop__Dpi_Export__0.cpp
+c++ -Os  -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.fast.gch -c Vtop___024root__0.cpp
+c++ -Os  -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.fast.gch -c Vtop___024root__1.cpp
+c++ -Os  -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.fast.gch -c Vtop___024root__2.cpp
+c++ -Os  -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.fast.gch -c Vtop___024root__3.cpp
+c++ -Os  -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.fast.gch -c Vtop__Dpi.cpp
+c++   -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.slow.gch -c Vtop__ConstPool__0__Slow.cpp
+c++   -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.slow.gch -c Vtop___024root__Slow.cpp
+c++   -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.slow.gch -c Vtop___024root__0__Slow.cpp
+c++   -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.slow.gch -c Vtop___024root__1__Slow.cpp
+c++   -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.slow.gch -c Vtop_prim_cipher_pkg__Slow.cpp
+c++   -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.slow.gch -c Vtop_prim_pkg__Slow.cpp
+c++   -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.slow.gch -c Vtop___024unit__Slow.cpp
+c++   -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.slow.gch -c Vtop_prim_rom_pkg__Slow.cpp
+c++   -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.slow.gch -c Vtop_prim_pad_wrapper_pkg__Slow.cpp
+c++   -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.slow.gch -c Vtop_prim_secded_pkg__Slow.cpp
+c++   -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.slow.gch -c Vtop_prim_ram_2p_pkg__Slow.cpp
+c++   -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.slow.gch -c Vtop_ibex_tracer_pkg__Slow.cpp
+c++   -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.slow.gch -c Vtop_prim_mubi_pkg__Slow.cpp
+c++   -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.slow.gch -c Vtop_prim_ram_1p_pkg__Slow.cpp
+c++   -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.slow.gch -c Vtop_ibex_pkg__Slow.cpp
+c++   -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.slow.gch -c Vtop__Syms__ctor__0__Slow.cpp
+c++   -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.slow.gch -c Vtop__Syms__ctor__1__Slow.cpp
+c++   -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.slow.gch -c Vtop__Syms__ctor__2__Slow.cpp
+c++   -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.slow.gch -c Vtop__Syms__dtor__0__Slow.cpp
+c++   -I.  -MMD -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include -I/opt/homebrew/Cellar/verilator/5.048/share/verilator/include/vltstd -DVERILATOR=1 -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TIMING=0 -DVM_TRACE=0 -DVM_TRACE_FST=0 -DVM_TRACE_VCD=0 -DVM_TRACE_SAIF=0 -faligned-new -fbracket-depth=4096 -fcf-protection=none -Xclang -fno-pch-timestamp -Qunused-arguments -Wno-bool-operation -Wno-c++11-narrowing -Wno-constant-logical-operand -Wno-int-in-bool-context -Wno-non-pod-varargs -Wno-parentheses-equality -Wno-shadow -Wno-sign-compare -Wno-tautological-bitwise-compare -Wno-tautological-compare -Wno-uninitialized -Wno-unnecessary-virtual-specifier -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-vla-cxx-extension      -include-pch Vtop__pch.h.slow.gch -c Vtop__Syms__Slow.cpp
+c++  -Wl,-U,__Z15vl_time_stamp64v,-U,__Z13sc_time_stampv,-U,_vlog_startup_routines   verilator.o verilated.o verilated_dpi.o verilated_vpi.o verilated_threads.o Vtop__ALL.a   -Wl,-rpath,~/.local/lib/python3.13/site-packages/cocotb/libs -L~/.local/lib/python3.13/site-packages/cocotb/libs -lcocotbvpi_verilator  -pthread -lpthread   -o ibex_mini_soc
+rm Vtop__ALL.verilator_deplist.tmp
+---------------------------- Captured stderr setup -----------------------------
+%Warning-UNOPTFLAT: ${REPO_ROOT}/build/ibex_icache.sv:785:9: Signal unoptimizable: Circular combinational logic: 'ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.fb3_out_done_pulse'
+  785 |   logic fb3_out_done_pulse;
+      |         ^~~~~~~~~~~~~~~~~~
+                    ... For warning description see https://verilator.org/warn/UNOPTFLAT?v=5.048
+                    ... Use "/* verilator lint_off UNOPTFLAT */" and lint_on around source to disable this message.
+                    ${REPO_ROOT}/build/ibex_icache.sv:785:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.fb3_out_done_pulse
+                    ${REPO_ROOT}/build/ibex_icache.sv:1111:3:      Example path: ALWAYS
+                    ${REPO_ROOT}/build/ibex_icache.sv:806:15:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.wants_out_v
+                    ${REPO_ROOT}/build/ibex_icache.sv:846:24:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache.sv:262:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.fb3_wants_out
+                    ${REPO_ROOT}/build/ibex_icache.sv:882:29:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache.sv:294:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.fb3_wants_out_live
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:23:15:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:23:15:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb3_wants_out
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:190:21:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:80:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb3_covers
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:194:19:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:84:15:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb3_cost
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:197:24:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:87:15:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb_min23_cost
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:199:21:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:89:15:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb_sel_idx
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:201:22:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:91:16:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb_sel_line
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:210:19:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:97:16:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.raw_line
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:218:19:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:105:16:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.raw_word
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:223:21:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:110:16:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.lower_half
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:224:37:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:111:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.lower_is_compressed_or_err
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:225:23:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:112:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.normal_valid
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:234:24:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:121:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.nonheld_valid
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:244:25:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:131:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.out_valid_comb
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:248:24:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:135:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.accept_output
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:257:45:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:257:45:      Example path: __VdfgRegularize_hebeb780c_0_10
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:257:29:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:53:16:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb0_out_done_pulse
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:53:16:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache.sv:782:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.fb0_out_done_pulse
+                    ${REPO_ROOT}/build/ibex_icache.sv:1111:3:      Example path: ALWAYS
+%Warning-UNOPTFLAT: ${REPO_ROOT}/build/ibex_icache.sv:784:9: Signal unoptimizable: Circular combinational logic: 'ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.fb2_out_done_pulse'
+  784 |   logic fb2_out_done_pulse;
+      |         ^~~~~~~~~~~~~~~~~~
+                    ${REPO_ROOT}/build/ibex_icache.sv:784:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.fb2_out_done_pulse
+                    ${REPO_ROOT}/build/ibex_icache.sv:1111:3:      Example path: ALWAYS
+                    ${REPO_ROOT}/build/ibex_icache.sv:806:15:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.wants_out_v
+                    ${REPO_ROOT}/build/ibex_icache.sv:846:24:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache.sv:262:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.fb3_wants_out
+                    ${REPO_ROOT}/build/ibex_icache.sv:882:29:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache.sv:294:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.fb3_wants_out_live
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:23:15:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:23:15:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb3_wants_out
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:190:21:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:80:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb3_covers
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:194:19:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:84:15:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb3_cost
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:197:24:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:87:15:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb_min23_cost
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:199:21:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:89:15:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb_sel_idx
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:201:22:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:91:16:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb_sel_line
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:210:19:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:97:16:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.raw_line
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:218:19:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:105:16:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.raw_word
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:223:21:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:110:16:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.lower_half
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:224:37:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:111:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.lower_is_compressed_or_err
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:225:23:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:112:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.normal_valid
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:234:24:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:121:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.nonheld_valid
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:244:25:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:131:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.out_valid_comb
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:248:24:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:135:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.accept_output
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:257:45:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:257:45:      Example path: __VdfgRegularize_hebeb780c_0_10
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:257:29:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:53:16:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb0_out_done_pulse
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:53:16:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache.sv:782:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.fb0_out_done_pulse
+                    ${REPO_ROOT}/build/ibex_icache.sv:1111:3:      Example path: ALWAYS
+%Warning-UNOPTFLAT: ${REPO_ROOT}/build/ibex_icache.sv:783:9: Signal unoptimizable: Circular combinational logic: 'ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.fb1_out_done_pulse'
+  783 |   logic fb1_out_done_pulse;
+      |         ^~~~~~~~~~~~~~~~~~
+                    ${REPO_ROOT}/build/ibex_icache.sv:783:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.fb1_out_done_pulse
+                    ${REPO_ROOT}/build/ibex_icache.sv:1111:3:      Example path: ALWAYS
+                    ${REPO_ROOT}/build/ibex_icache.sv:806:15:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.wants_out_v
+                    ${REPO_ROOT}/build/ibex_icache.sv:846:24:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache.sv:262:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.fb3_wants_out
+                    ${REPO_ROOT}/build/ibex_icache.sv:882:29:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache.sv:294:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.fb3_wants_out_live
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:23:15:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:23:15:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb3_wants_out
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:190:21:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:80:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb3_covers
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:194:19:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:84:15:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb3_cost
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:197:24:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:87:15:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb_min23_cost
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:199:21:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:89:15:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb_sel_idx
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:201:22:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:91:16:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb_sel_line
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:210:19:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:97:16:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.raw_line
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:218:19:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:105:16:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.raw_word
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:223:21:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:110:16:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.lower_half
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:224:37:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:111:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.lower_is_compressed_or_err
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:225:23:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:112:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.normal_valid
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:234:24:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:121:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.nonheld_valid
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:244:25:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:131:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.out_valid_comb
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:248:24:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:135:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.accept_output
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:257:45:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:257:45:      Example path: __VdfgRegularize_hebeb780c_0_10
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:257:29:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:53:16:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb0_out_done_pulse
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:53:16:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache.sv:782:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.fb0_out_done_pulse
+                    ${REPO_ROOT}/build/ibex_icache.sv:1111:3:      Example path: ALWAYS
+%Warning-UNOPTFLAT: ${REPO_ROOT}/build/ibex_icache.sv:782:9: Signal unoptimizable: Circular combinational logic: 'ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.fb0_out_done_pulse'
+  782 |   logic fb0_out_done_pulse;
+      |         ^~~~~~~~~~~~~~~~~~
+                    ${REPO_ROOT}/build/ibex_icache.sv:782:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.fb0_out_done_pulse
+                    ${REPO_ROOT}/build/ibex_icache.sv:1111:3:      Example path: ALWAYS
+                    ${REPO_ROOT}/build/ibex_icache.sv:806:15:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.wants_out_v
+                    ${REPO_ROOT}/build/ibex_icache.sv:846:24:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache.sv:262:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.fb3_wants_out
+                    ${REPO_ROOT}/build/ibex_icache.sv:882:29:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache.sv:294:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.fb3_wants_out_live
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:23:15:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:23:15:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb3_wants_out
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:190:21:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:80:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb3_covers
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:194:19:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:84:15:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb3_cost
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:197:24:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:87:15:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb_min23_cost
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:199:21:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:89:15:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb_sel_idx
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:201:22:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:91:16:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb_sel_line
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:210:19:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:97:16:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.raw_line
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:218:19:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:105:16:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.raw_word
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:223:21:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:110:16:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.lower_half
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:224:37:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:111:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.lower_is_compressed_or_err
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:225:23:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:112:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.normal_valid
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:234:24:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:121:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.nonheld_valid
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:244:25:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:131:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.out_valid_comb
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:248:24:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:135:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.accept_output
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:257:45:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:257:45:      Example path: __VdfgRegularize_hebeb780c_0_10
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:257:29:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:53:16:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.output_stage.fb0_out_done_pulse
+                    ${REPO_ROOT}/build/ibex_icache_output_stage.sv:53:16:      Example path: ASSIGNW
+                    ${REPO_ROOT}/build/ibex_icache.sv:782:9:      Example path: ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.fb0_out_done_pulse
+------------------------------ Captured log setup ------------------------------
+INFO     Verilator:runner.py:632 Running command perl /opt/homebrew/bin/verilator -cc --exe -Mdir /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sim_build0 --top-module ibex_mini_soc --vpi --public-flat-rw --prefix Vtop -o ibex_mini_soc -LDFLAGS '-Wl,-rpath,~/.local/lib/python3.13/site-packages/cocotb/libs -L~/.local/lib/python3.13/site-packages/cocotb/libs -lcocotbvpi_verilator' -DRVFI=1 -DRV32M=ibex_pkg::RV32MFast -DRV32B=ibex_pkg::RV32BNone -DRV32ZC=ibex_pkg::RV32ZcaZcbZcmp -DRegFile=ibex_pkg::RegFileFF --unroll-count 72 --public-flat-rw -Wno-IMPORTSTAR -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM -Wno-PINMISSING -Wno-WIDTHEXPAND -Wno-fatal -I/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_dv_dv_fcov_macros_0 -I/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_util_get_scramble_params_0/rtl -I/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_util_memload_0/rtl -I/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_assert_0.1/rtl -I/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl ~/.local/lib/python3.13/site-packages/cocotb/share/lib/verilator/verilator.cpp /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_lint_common_0.1/tools/verilator/common.vlt /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_assert_0.1/lint/prim_assert.vlt /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_clock_buf_0/lint/prim_generic_clock_buf.vlt /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_clock_gating_0/lint/prim_generic_clock_gating.vlt /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_cdc_rand_delay_0/lint/prim_cdc_rand_delay.vlt /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_cipher_0/lint/prim_cipher.vlt /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_count_0/lint/prim_count.vlt /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_clock_mux2_0/lint/prim_generic_clock_mux2.vlt /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_pad_wrapper_0/lint/prim_generic_pad_wrapper.vlt /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_ram_1p_0/lint/prim_generic_ram_1p.vlt /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_ram_1r1w_0/lint/prim_generic_ram_1r1w.vlt /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_ram_2p_0/lint/prim_generic_ram_2p.vlt /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_rom_0/lint/prim_generic_rom.vlt /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_onehot_check_0/lint/prim_onehot_check.vlt /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_ibex_ibex_core_0.1/lint/verilator_waiver.vlt /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_ram_1p_scr_0.1/lint/prim_ram_1p_scr.vlt /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_ibex_ibex_top_0.1/lint/verilator_waiver.vlt /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_ibex_ibex_pkg_0.1/rtl/ibex_pkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_ram_1p_pkg_0/rtl/prim_ram_1p_pkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_ram_2p_pkg_0/rtl/prim_ram_2p_pkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_rom_pkg_0/rtl/prim_rom_pkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_cipher_pkg_0.1/rtl/prim_cipher_pkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_and2_0/rtl/prim_and2.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_buf_0/rtl/prim_buf.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_clock_buf_0/rtl/prim_clock_buf.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_clock_gating_0/rtl/prim_clock_gating.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_flop_0/rtl/prim_flop.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_flop_no_rst_0/rtl/prim_flop_no_rst.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_prim_pkg_0/rtl/prim_pkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_usb_diff_rx_0/rtl/prim_usb_diff_rx.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_xnor2_0/rtl/prim_xnor2.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_xor2_0/rtl/prim_xor2.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_pad_wrapper_pkg_0/rtl/prim_pad_wrapper_pkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_pkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_22_16_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_22_16_enc.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_28_22_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_28_22_enc.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_39_32_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_39_32_enc.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_64_57_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_64_57_enc.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_72_64_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_72_64_enc.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_hamming_22_16_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_hamming_22_16_enc.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_hamming_39_32_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_hamming_39_32_enc.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_hamming_72_64_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_hamming_72_64_enc.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_hamming_76_68_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_hamming_76_68_enc.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_inv_22_16_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_inv_22_16_enc.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_inv_28_22_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_inv_28_22_enc.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_inv_39_32_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_inv_39_32_enc.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_inv_64_57_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_inv_64_57_enc.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_inv_72_64_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_inv_72_64_enc.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_inv_hamming_22_16_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_inv_hamming_22_16_enc.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_inv_hamming_39_32_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_inv_hamming_39_32_enc.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_inv_hamming_72_64_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_inv_hamming_72_64_enc.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_inv_hamming_76_68_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_secded_0.1/rtl/prim_secded_inv_hamming_76_68_enc.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer_pkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_ibex_ibex_tracer_0.1/rtl/ibex_tracer.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_cdc_rand_delay_0/rtl/prim_cdc_rand_delay.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_cipher_0/rtl/prim_subst_perm.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_cipher_0/rtl/prim_present.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_cipher_0/rtl/prim_prince.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_count_0/rtl/prim_count_pkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_count_0/rtl/prim_count.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_clock_mux2_0/rtl/prim_clock_mux2.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_pad_attr_0/rtl/prim_pad_attr.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_pad_wrapper_0/rtl/prim_pad_wrapper.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_ram_1p_0/rtl/prim_ram_1p.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_ram_1r1w_0/rtl/prim_ram_1r1w.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_ram_2p_0/rtl/prim_ram_2p.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_rom_0/rtl/prim_rom.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_lfsr_0.1/rtl/prim_lfsr.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_pkg_0.1/rtl/prim_mubi_pkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_sec_anchor_0.1/rtl/prim_sec_anchor_buf.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_sec_anchor_0.1/rtl/prim_sec_anchor_flop.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_util_0.1/rtl/prim_util_pkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_clock_inv_0/rtl/prim_clock_inv.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_flop_2sync_0/rtl/prim_flop_2sync.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_flop_en_0/rtl/prim_flop_en.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_0.1/rtl/prim_mubi4_sender.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_0.1/rtl/prim_mubi4_sync.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_0.1/rtl/prim_mubi4_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_0.1/rtl/prim_mubi8_sender.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_0.1/rtl/prim_mubi8_sync.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_0.1/rtl/prim_mubi8_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_0.1/rtl/prim_mubi12_sender.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_0.1/rtl/prim_mubi12_sync.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_0.1/rtl/prim_mubi12_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_0.1/rtl/prim_mubi16_sender.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_0.1/rtl/prim_mubi16_sync.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_0.1/rtl/prim_mubi16_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_0.1/rtl/prim_mubi20_sender.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_0.1/rtl/prim_mubi20_sync.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_0.1/rtl/prim_mubi20_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_0.1/rtl/prim_mubi24_sender.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_0.1/rtl/prim_mubi24_sync.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_0.1/rtl/prim_mubi24_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_0.1/rtl/prim_mubi28_sender.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_0.1/rtl/prim_mubi28_sync.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_0.1/rtl/prim_mubi28_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_0.1/rtl/prim_mubi32_sender.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_0.1/rtl/prim_mubi32_sync.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_mubi_0.1/rtl/prim_mubi32_dec.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_onehot_0/rtl/prim_onehot_enc.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_onehot_0/rtl/prim_onehot_mux.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_onehot_check_0/rtl/prim_onehot_check.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_ram_1p_adv_0.1/rtl/prim_ram_1p_adv.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_branch_predict.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_csr.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_multdiv_slow.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_dummy_instr.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_clock_div_0/rtl/prim_clock_div.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_generic_rst_sync_0/rtl/prim_rst_sync.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_prim_ram_1p_scr_0.1/rtl/prim_ram_1p_scr.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_register_file_fpga.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_register_file_latch.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_ibex_ibex_top_0.1/rtl/ibex_lockstep.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/build/lowrisc_ibex_ibex_top_tracing_0.1/lint-verilator/src/lowrisc_ibex_ibex_top_tracing_0.1/rtl/ibex_top_tracing.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/generated/clint_basic/ClintPkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/generated/clint_basic/Clint.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/generated/clint_basic/ClintLogic.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/generated/plic_multictx/PlicMultictxPkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/generated/plic_multictx/PlicMultictx.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/generated/plic_multictx/PlicMultictxLogic.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrFilePkg.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrAccess.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrFile.sv /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/ibex_soc_build0/generated/mtrap_ibex/MTrapIbexCsrTrapCoord.sv ${REPO_ROOT}/soc/obi_to_axi_lite.sv ${REPO_ROOT}/soc/ibex_mini_soc.sv ${REPO_ROOT}/soc/ibex_cs_registers_hybrid.sv ~/github/ibex/shared/rtl/ram_2p.sv ~/github/ibex/shared/rtl/sim/simulator_ctrl.sv ${REPO_ROOT}/build/ibex_core_shared_pkg.sv ${REPO_ROOT}/build/fb_age_arb.sv ${REPO_ROOT}/build/ibex_alu.sv ${REPO_ROOT}/build/ibex_compressed_decoder.sv ${REPO_ROOT}/build/ibex_controller.sv ${REPO_ROOT}/build/ibex_core.sv ${REPO_ROOT}/build/ibex_counter.sv ${REPO_ROOT}/build/ibex_decoder.sv ${REPO_ROOT}/build/ibex_ex_block.sv ${REPO_ROOT}/build/ibex_fetch_fifo.sv ${REPO_ROOT}/build/ibex_icache.sv ${REPO_ROOT}/build/ibex_icache_output_stage.sv ${REPO_ROOT}/build/ibex_id_stage.sv ${REPO_ROOT}/build/ibex_if_stage.sv ${REPO_ROOT}/build/ibex_load_store_unit.sv ${REPO_ROOT}/build/ibex_multdiv_fast.sv ${REPO_ROOT}/build/ibex_pmp.sv ${REPO_ROOT}/build/ibex_prefetch_buffer.sv ${REPO_ROOT}/build/ibex_register_file_ff.sv ${REPO_ROOT}/build/ibex_top.sv ${REPO_ROOT}/build/ibex_wb_stage.sv ${REPO_ROOT}/build/inval_ctrl.sv ${REPO_ROOT}/build/ram_port_arb.sv in directory /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sim_build0
+INFO     Verilator:runner.py:632 Running command make -j 4 -C /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sim_build0 -f Vtop.mk VM_TRACE=0 in directory /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sim_build0
+----------------------------- Captured stdout call -----------------------------
+     -.--ns INFO     gpi                                ..mbed/gpi_embed.cpp:94   in _embed_init_python              Using Python 3.13.9 interpreter at /opt/homebrew/anaconda3/bin/python
+     -.--ns INFO     gpi                                ../gpi/GpiCommon.cpp:79   in gpi_print_registered_impl       VPI registered
+     0.00ns INFO     cocotb                             Running on Verilator version 5.048 2026-04-26
+     0.00ns INFO     cocotb                             Seeding Python random module with 1788450816
+     0.00ns INFO     cocotb                             Initialized cocotb v2.0.1 from ~/.local/lib/python3.13/site-packages/cocotb
+     0.00ns INFO     cocotb                             Running tests
+     0.00ns INFO     cocotb.regression                  running test_timer_isr.timer_isr_fires_and_stashes_mcause (1/1)
+     0.00ns WARNING  py.warnings                        ${REPO_ROOT}/tests/cocotb_tests/test_timer_isr.py:80: DeprecationWarning: The 'units' argument has been renamed to 'unit'.
+                                                          cocotb.start_soon(Clock(dut.IO_CLK, 10, units="ns").start())
+    10.00ns INFO     cocotb.ibex_mini_soc               loaded 1029 words from /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sw_build0/timer_isr.vmem
+[140000] %Fatal: fb_age_arb.sv:75: Assertion failed in ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.bus_arb.g_auto_hs_request[2]._auto_hs_request__lane_valid_stable: HANDSHAKE VIOLATION (valid must stay asserted until ready): FbAgeArb._auto_hs_request__lane_valid_stable
+%Error: ${REPO_ROOT}/build/fb_age_arb.sv:75: Verilog $stop
+Aborting...
+   140.00ns WARNING  cocotb.regression                  test_timer_isr.timer_isr_fires_and_stashes_mcause failed
+   140.00ns INFO     cocotb.regression                  ***********************************************************************************************************
+                                                        ** TEST                                               STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
+                                                        ***********************************************************************************************************
+                                                        ** test_timer_isr.timer_isr_fires_and_stashes_mcause   FAIL         140.00           0.00      29755.88  **
+                                                        ***********************************************************************************************************
+                                                        ** TESTS=1 PASS=0 FAIL=1 SKIP=0                                     140.00           0.01      19652.03  **
+                                                        ***********************************************************************************************************
+- :0: Verilog $finish
+------------------------------ Captured log call -------------------------------
+INFO     Verilator:runner.py:632 Running command /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sim_build0/ibex_mini_soc in directory ${REPO_ROOT}/tests/cocotb_tests
+ERROR    Verilator:runner.py:558 Simulation failed: 1
+ERROR    Verilator:runner.py:572 ERROR: Failed 1 of 1 tests.
+___________________________ test_cpu_program[sw_isr] ___________________________
+
+program = CpuProgram(name='sw_isr', cocotb_module='test_sw_isr')
+built_programs = {'ecall_isr': PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_s.../var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sw_build0/multictx_isr.vmem'), ...}
+verilator_runner = (<cocotb_tools.runner.Verilator object at 0x1028c3cb0>, PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sim_build0'))
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/test_cpu_program_sw_isr_0')
+
+    @pytest.mark.parametrize("program", PROGRAMS, ids=lambda p: p.name)
+    def test_cpu_program(
+        program: CpuProgram,
+        built_programs: dict[str, Path],
+        verilator_runner,
+        tmp_path: Path,
+    ) -> None:
+        """Run one of the bring-up programs end-to-end on the real Ibex SoC."""
+        runner, sim_build = verilator_runner
+        vmem = built_programs[program.name]
+    
+>       results_xml = runner.test(
+            test_module=program.cocotb_module,
+            hdl_toplevel="ibex_mini_soc",
+            build_dir=str(sim_build),
+            test_dir=str(COCOTB_TESTS_DIR),
+            results_xml=str(tmp_path / f"results_{program.name}.xml"),
+            extra_env={"VMEM_PATH": str(vmem)},
+        )
+E       SystemExit: 1
+
+tests/test_cpu_programs.py:232: SystemExit
+----------------------------- Captured stdout call -----------------------------
+     -.--ns INFO     gpi                                ..mbed/gpi_embed.cpp:94   in _embed_init_python              Using Python 3.13.9 interpreter at /opt/homebrew/anaconda3/bin/python
+     -.--ns INFO     gpi                                ../gpi/GpiCommon.cpp:79   in gpi_print_registered_impl       VPI registered
+     0.00ns INFO     cocotb                             Running on Verilator version 5.048 2026-04-26
+     0.00ns INFO     cocotb                             Seeding Python random module with 1788450816
+     0.00ns INFO     cocotb                             Initialized cocotb v2.0.1 from ~/.local/lib/python3.13/site-packages/cocotb
+     0.00ns INFO     cocotb                             Running tests
+     0.00ns INFO     cocotb.regression                  running test_sw_isr.msip_fires_and_is_acked_by_writing_zero (1/1)
+     0.00ns WARNING  py.warnings                        ${REPO_ROOT}/tests/cocotb_tests/test_sw_isr.py:61: DeprecationWarning: The 'units' argument has been renamed to 'unit'.
+                                                          cocotb.start_soon(Clock(dut.IO_CLK, 10, units="ns").start())
+    10.00ns INFO     cocotb.ibex_mini_soc               loaded 1029 words from /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sw_build0/sw_isr.vmem
+[140000] %Fatal: fb_age_arb.sv:75: Assertion failed in ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.bus_arb.g_auto_hs_request[2]._auto_hs_request__lane_valid_stable: HANDSHAKE VIOLATION (valid must stay asserted until ready): FbAgeArb._auto_hs_request__lane_valid_stable
+%Error: ${REPO_ROOT}/build/fb_age_arb.sv:75: Verilog $stop
+Aborting...
+   140.00ns WARNING  cocotb.regression                  test_sw_isr.msip_fires_and_is_acked_by_writing_zero failed
+   140.00ns INFO     cocotb.regression                  *************************************************************************************************************
+                                                        ** TEST                                                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
+                                                        *************************************************************************************************************
+                                                        ** test_sw_isr.msip_fires_and_is_acked_by_writing_zero   FAIL         140.00           0.00      29411.60  **
+                                                        *************************************************************************************************************
+                                                        ** TESTS=1 PASS=0 FAIL=1 SKIP=0                                       140.00           0.01      20348.70  **
+                                                        *************************************************************************************************************
+- :0: Verilog $finish
+------------------------------ Captured log call -------------------------------
+INFO     Verilator:runner.py:632 Running command /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sim_build0/ibex_mini_soc in directory ${REPO_ROOT}/tests/cocotb_tests
+ERROR    Verilator:runner.py:558 Simulation failed: 1
+ERROR    Verilator:runner.py:572 ERROR: Failed 1 of 1 tests.
+__________________________ test_cpu_program[ext_isr] ___________________________
+
+program = CpuProgram(name='ext_isr', cocotb_module='test_ext_isr')
+built_programs = {'ecall_isr': PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_s.../var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sw_build0/multictx_isr.vmem'), ...}
+verilator_runner = (<cocotb_tools.runner.Verilator object at 0x1028c3cb0>, PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sim_build0'))
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/test_cpu_program_ext_isr_0')
+
+    @pytest.mark.parametrize("program", PROGRAMS, ids=lambda p: p.name)
+    def test_cpu_program(
+        program: CpuProgram,
+        built_programs: dict[str, Path],
+        verilator_runner,
+        tmp_path: Path,
+    ) -> None:
+        """Run one of the bring-up programs end-to-end on the real Ibex SoC."""
+        runner, sim_build = verilator_runner
+        vmem = built_programs[program.name]
+    
+>       results_xml = runner.test(
+            test_module=program.cocotb_module,
+            hdl_toplevel="ibex_mini_soc",
+            build_dir=str(sim_build),
+            test_dir=str(COCOTB_TESTS_DIR),
+            results_xml=str(tmp_path / f"results_{program.name}.xml"),
+            extra_env={"VMEM_PATH": str(vmem)},
+        )
+E       SystemExit: 1
+
+tests/test_cpu_programs.py:232: SystemExit
+----------------------------- Captured stdout call -----------------------------
+     -.--ns INFO     gpi                                ..mbed/gpi_embed.cpp:94   in _embed_init_python              Using Python 3.13.9 interpreter at /opt/homebrew/anaconda3/bin/python
+     -.--ns INFO     gpi                                ../gpi/GpiCommon.cpp:79   in gpi_print_registered_impl       VPI registered
+     0.00ns INFO     cocotb                             Running on Verilator version 5.048 2026-04-26
+     0.00ns INFO     cocotb                             Seeding Python random module with 1788450817
+     0.00ns INFO     cocotb                             Initialized cocotb v2.0.1 from ~/.local/lib/python3.13/site-packages/cocotb
+     0.00ns INFO     cocotb                             Running tests
+     0.00ns INFO     cocotb.regression                  running test_ext_isr.plic_external_irq_via_claim_complete (1/1)
+     0.00ns WARNING  py.warnings                        ${REPO_ROOT}/tests/cocotb_tests/test_ext_isr.py:89: DeprecationWarning: The 'units' argument has been renamed to 'unit'.
+                                                          cocotb.start_soon(Clock(dut.IO_CLK, 10, units="ns").start())
+    10.00ns INFO     cocotb.ibex_mini_soc               loaded 1032 words from /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sw_build0/ext_isr.vmem
+[140000] %Fatal: fb_age_arb.sv:75: Assertion failed in ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.bus_arb.g_auto_hs_request[2]._auto_hs_request__lane_valid_stable: HANDSHAKE VIOLATION (valid must stay asserted until ready): FbAgeArb._auto_hs_request__lane_valid_stable
+%Error: ${REPO_ROOT}/build/fb_age_arb.sv:75: Verilog $stop
+Aborting...
+   140.00ns WARNING  cocotb.regression                  test_ext_isr.plic_external_irq_via_claim_complete failed
+   140.00ns INFO     cocotb.regression                  ***********************************************************************************************************
+                                                        ** TEST                                               STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
+                                                        ***********************************************************************************************************
+                                                        ** test_ext_isr.plic_external_irq_via_claim_complete   FAIL         140.00           0.00      30089.81  **
+                                                        ***********************************************************************************************************
+                                                        ** TESTS=1 PASS=0 FAIL=1 SKIP=0                                     140.00           0.01      20378.36  **
+                                                        ***********************************************************************************************************
+- :0: Verilog $finish
+------------------------------ Captured log call -------------------------------
+INFO     Verilator:runner.py:632 Running command /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sim_build0/ibex_mini_soc in directory ${REPO_ROOT}/tests/cocotb_tests
+ERROR    Verilator:runner.py:558 Simulation failed: 1
+ERROR    Verilator:runner.py:572 ERROR: Failed 1 of 1 tests.
+________________________ test_cpu_program[multictx_isr] ________________________
+
+program = CpuProgram(name='multictx_isr', cocotb_module='test_multictx_isr')
+built_programs = {'ecall_isr': PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_s.../var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sw_build0/multictx_isr.vmem'), ...}
+verilator_runner = (<cocotb_tools.runner.Verilator object at 0x1028c3cb0>, PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sim_build0'))
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/test_cpu_program_multictx_isr_0')
+
+    @pytest.mark.parametrize("program", PROGRAMS, ids=lambda p: p.name)
+    def test_cpu_program(
+        program: CpuProgram,
+        built_programs: dict[str, Path],
+        verilator_runner,
+        tmp_path: Path,
+    ) -> None:
+        """Run one of the bring-up programs end-to-end on the real Ibex SoC."""
+        runner, sim_build = verilator_runner
+        vmem = built_programs[program.name]
+    
+>       results_xml = runner.test(
+            test_module=program.cocotb_module,
+            hdl_toplevel="ibex_mini_soc",
+            build_dir=str(sim_build),
+            test_dir=str(COCOTB_TESTS_DIR),
+            results_xml=str(tmp_path / f"results_{program.name}.xml"),
+            extra_env={"VMEM_PATH": str(vmem)},
+        )
+E       SystemExit: 1
+
+tests/test_cpu_programs.py:232: SystemExit
+----------------------------- Captured stdout call -----------------------------
+     -.--ns INFO     gpi                                ..mbed/gpi_embed.cpp:94   in _embed_init_python              Using Python 3.13.9 interpreter at /opt/homebrew/anaconda3/bin/python
+     -.--ns INFO     gpi                                ../gpi/GpiCommon.cpp:79   in gpi_print_registered_impl       VPI registered
+     0.00ns INFO     cocotb                             Running on Verilator version 5.048 2026-04-26
+     0.00ns INFO     cocotb                             Seeding Python random module with 1788450817
+     0.00ns INFO     cocotb                             Initialized cocotb v2.0.1 from ~/.local/lib/python3.13/site-packages/cocotb
+     0.00ns INFO     cocotb                             Running tests
+     0.00ns INFO     cocotb.regression                  running test_multictx_isr.plic_two_contexts_fire_and_are_serviced_independently (1/1)
+     0.00ns WARNING  py.warnings                        ${REPO_ROOT}/tests/cocotb_tests/test_multictx_isr.py:82: DeprecationWarning: The 'units' argument has been renamed to 'unit'.
+                                                          cocotb.start_soon(Clock(dut.IO_CLK, 10, units="ns").start())
+    10.00ns INFO     cocotb.ibex_mini_soc               loaded 1035 words from /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sw_build0/multictx_isr.vmem
+[140000] %Fatal: fb_age_arb.sv:75: Assertion failed in ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.bus_arb.g_auto_hs_request[2]._auto_hs_request__lane_valid_stable: HANDSHAKE VIOLATION (valid must stay asserted until ready): FbAgeArb._auto_hs_request__lane_valid_stable
+%Error: ${REPO_ROOT}/build/fb_age_arb.sv:75: Verilog $stop
+Aborting...
+   140.00ns WARNING  cocotb.regression                  test_multictx_isr.plic_two_contexts_fire_and_are_serviced_independently failed
+   140.00ns INFO     cocotb.regression                  *********************************************************************************************************************************
+                                                        ** TEST                                                                     STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
+                                                        *********************************************************************************************************************************
+                                                        ** test_multictx_isr.plic_two_contexts_fire_and_are_serviced_independently   FAIL         140.00           0.00      29240.24  **
+                                                        *********************************************************************************************************************************
+                                                        ** TESTS=1 PASS=0 FAIL=1 SKIP=0                                                           140.00           0.01      20169.77  **
+                                                        *********************************************************************************************************************************
+- :0: Verilog $finish
+------------------------------ Captured log call -------------------------------
+INFO     Verilator:runner.py:632 Running command /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sim_build0/ibex_mini_soc in directory ${REPO_ROOT}/tests/cocotb_tests
+ERROR    Verilator:runner.py:558 Simulation failed: 1
+ERROR    Verilator:runner.py:572 ERROR: Failed 1 of 1 tests.
+__________________________ test_cpu_program[wfi_isr] ___________________________
+
+program = CpuProgram(name='wfi_isr', cocotb_module='test_wfi_isr')
+built_programs = {'ecall_isr': PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_s.../var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sw_build0/multictx_isr.vmem'), ...}
+verilator_runner = (<cocotb_tools.runner.Verilator object at 0x1028c3cb0>, PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sim_build0'))
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/test_cpu_program_wfi_isr_0')
+
+    @pytest.mark.parametrize("program", PROGRAMS, ids=lambda p: p.name)
+    def test_cpu_program(
+        program: CpuProgram,
+        built_programs: dict[str, Path],
+        verilator_runner,
+        tmp_path: Path,
+    ) -> None:
+        """Run one of the bring-up programs end-to-end on the real Ibex SoC."""
+        runner, sim_build = verilator_runner
+        vmem = built_programs[program.name]
+    
+>       results_xml = runner.test(
+            test_module=program.cocotb_module,
+            hdl_toplevel="ibex_mini_soc",
+            build_dir=str(sim_build),
+            test_dir=str(COCOTB_TESTS_DIR),
+            results_xml=str(tmp_path / f"results_{program.name}.xml"),
+            extra_env={"VMEM_PATH": str(vmem)},
+        )
+E       SystemExit: 1
+
+tests/test_cpu_programs.py:232: SystemExit
+----------------------------- Captured stdout call -----------------------------
+     -.--ns INFO     gpi                                ..mbed/gpi_embed.cpp:94   in _embed_init_python              Using Python 3.13.9 interpreter at /opt/homebrew/anaconda3/bin/python
+     -.--ns INFO     gpi                                ../gpi/GpiCommon.cpp:79   in gpi_print_registered_impl       VPI registered
+     0.00ns INFO     cocotb                             Running on Verilator version 5.048 2026-04-26
+     0.00ns INFO     cocotb                             Seeding Python random module with 1788450817
+     0.00ns INFO     cocotb                             Initialized cocotb v2.0.1 from ~/.local/lib/python3.13/site-packages/cocotb
+     0.00ns INFO     cocotb                             Running tests
+     0.00ns INFO     cocotb.regression                  running test_wfi_isr.wfi_drains_and_wakes_on_timer (1/1)
+     0.00ns WARNING  py.warnings                        ${REPO_ROOT}/tests/cocotb_tests/test_wfi_isr.py:75: DeprecationWarning: The 'units' argument has been renamed to 'unit'.
+                                                          cocotb.start_soon(Clock(dut.IO_CLK, 10, units="ns").start())
+    10.00ns INFO     cocotb.ibex_mini_soc               loaded 1030 words from /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sw_build0/wfi_isr.vmem
+[140000] %Fatal: fb_age_arb.sv:75: Assertion failed in ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.bus_arb.g_auto_hs_request[2]._auto_hs_request__lane_valid_stable: HANDSHAKE VIOLATION (valid must stay asserted until ready): FbAgeArb._auto_hs_request__lane_valid_stable
+%Error: ${REPO_ROOT}/build/fb_age_arb.sv:75: Verilog $stop
+Aborting...
+   140.00ns WARNING  cocotb.regression                  test_wfi_isr.wfi_drains_and_wakes_on_timer failed
+   140.00ns INFO     cocotb.regression                  ****************************************************************************************************
+                                                        ** TEST                                        STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
+                                                        ****************************************************************************************************
+                                                        ** test_wfi_isr.wfi_drains_and_wakes_on_timer   FAIL         140.00           0.00      30362.08  **
+                                                        ****************************************************************************************************
+                                                        ** TESTS=1 PASS=0 FAIL=1 SKIP=0                              140.00           0.01      20817.62  **
+                                                        ****************************************************************************************************
+- :0: Verilog $finish
+------------------------------ Captured log call -------------------------------
+INFO     Verilator:runner.py:632 Running command /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sim_build0/ibex_mini_soc in directory ${REPO_ROOT}/tests/cocotb_tests
+ERROR    Verilator:runner.py:558 Simulation failed: 1
+ERROR    Verilator:runner.py:572 ERROR: Failed 1 of 1 tests.
+_________________________ test_cpu_program[ecall_isr] __________________________
+
+program = CpuProgram(name='ecall_isr', cocotb_module='test_ecall_isr')
+built_programs = {'ecall_isr': PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_s.../var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sw_build0/multictx_isr.vmem'), ...}
+verilator_runner = (<cocotb_tools.runner.Verilator object at 0x1028c3cb0>, PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sim_build0'))
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/test_cpu_program_ecall_isr_0')
+
+    @pytest.mark.parametrize("program", PROGRAMS, ids=lambda p: p.name)
+    def test_cpu_program(
+        program: CpuProgram,
+        built_programs: dict[str, Path],
+        verilator_runner,
+        tmp_path: Path,
+    ) -> None:
+        """Run one of the bring-up programs end-to-end on the real Ibex SoC."""
+        runner, sim_build = verilator_runner
+        vmem = built_programs[program.name]
+    
+>       results_xml = runner.test(
+            test_module=program.cocotb_module,
+            hdl_toplevel="ibex_mini_soc",
+            build_dir=str(sim_build),
+            test_dir=str(COCOTB_TESTS_DIR),
+            results_xml=str(tmp_path / f"results_{program.name}.xml"),
+            extra_env={"VMEM_PATH": str(vmem)},
+        )
+E       SystemExit: 1
+
+tests/test_cpu_programs.py:232: SystemExit
+----------------------------- Captured stdout call -----------------------------
+     -.--ns INFO     gpi                                ..mbed/gpi_embed.cpp:94   in _embed_init_python              Using Python 3.13.9 interpreter at /opt/homebrew/anaconda3/bin/python
+     -.--ns INFO     gpi                                ../gpi/GpiCommon.cpp:79   in gpi_print_registered_impl       VPI registered
+     0.00ns INFO     cocotb                             Running on Verilator version 5.048 2026-04-26
+     0.00ns INFO     cocotb                             Seeding Python random module with 1788450817
+     0.00ns INFO     cocotb                             Initialized cocotb v2.0.1 from ~/.local/lib/python3.13/site-packages/cocotb
+     0.00ns INFO     cocotb                             Running tests
+     0.00ns INFO     cocotb.regression                  running test_ecall_isr.ecall_delivers_mcause_11 (1/1)
+     0.00ns WARNING  py.warnings                        ${REPO_ROOT}/tests/cocotb_tests/test_ecall_isr.py:46: DeprecationWarning: The 'units' argument has been renamed to 'unit'.
+                                                          cocotb.start_soon(Clock(dut.IO_CLK, 10, units="ns").start())
+[140000] %Fatal: fb_age_arb.sv:75: Assertion failed in ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.bus_arb.g_auto_hs_request[2]._auto_hs_request__lane_valid_stable: HANDSHAKE VIOLATION (valid must stay asserted until ready): FbAgeArb._auto_hs_request__lane_valid_stable
+%Error: ${REPO_ROOT}/build/fb_age_arb.sv:75: Verilog $stop
+Aborting...
+   140.00ns WARNING  cocotb.regression                  test_ecall_isr.ecall_delivers_mcause_11 failed
+   140.00ns INFO     cocotb.regression                  *************************************************************************************************
+                                                        ** TEST                                     STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
+                                                        *************************************************************************************************
+                                                        ** test_ecall_isr.ecall_delivers_mcause_11   FAIL         140.00           0.00      29710.71  **
+                                                        *************************************************************************************************
+                                                        ** TESTS=1 PASS=0 FAIL=1 SKIP=0                           140.00           0.01      20802.13  **
+                                                        *************************************************************************************************
+- :0: Verilog $finish
+------------------------------ Captured log call -------------------------------
+INFO     Verilator:runner.py:632 Running command /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sim_build0/ibex_mini_soc in directory ${REPO_ROOT}/tests/cocotb_tests
+ERROR    Verilator:runner.py:558 Simulation failed: 1
+ERROR    Verilator:runner.py:572 ERROR: Failed 1 of 1 tests.
+________________________ test_cpu_program[pmp_exec_isr] ________________________
+
+program = CpuProgram(name='pmp_exec_isr', cocotb_module='test_pmp_exec_isr')
+built_programs = {'ecall_isr': PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_s.../var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sw_build0/multictx_isr.vmem'), ...}
+verilator_runner = (<cocotb_tools.runner.Verilator object at 0x1028c3cb0>, PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sim_build0'))
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/test_cpu_program_pmp_exec_isr_0')
+
+    @pytest.mark.parametrize("program", PROGRAMS, ids=lambda p: p.name)
+    def test_cpu_program(
+        program: CpuProgram,
+        built_programs: dict[str, Path],
+        verilator_runner,
+        tmp_path: Path,
+    ) -> None:
+        """Run one of the bring-up programs end-to-end on the real Ibex SoC."""
+        runner, sim_build = verilator_runner
+        vmem = built_programs[program.name]
+    
+>       results_xml = runner.test(
+            test_module=program.cocotb_module,
+            hdl_toplevel="ibex_mini_soc",
+            build_dir=str(sim_build),
+            test_dir=str(COCOTB_TESTS_DIR),
+            results_xml=str(tmp_path / f"results_{program.name}.xml"),
+            extra_env={"VMEM_PATH": str(vmem)},
+        )
+E       SystemExit: 1
+
+tests/test_cpu_programs.py:232: SystemExit
+----------------------------- Captured stdout call -----------------------------
+     -.--ns INFO     gpi                                ..mbed/gpi_embed.cpp:94   in _embed_init_python              Using Python 3.13.9 interpreter at /opt/homebrew/anaconda3/bin/python
+     -.--ns INFO     gpi                                ../gpi/GpiCommon.cpp:79   in gpi_print_registered_impl       VPI registered
+     0.00ns INFO     cocotb                             Running on Verilator version 5.048 2026-04-26
+     0.00ns INFO     cocotb                             Seeding Python random module with 1788450817
+     0.00ns INFO     cocotb                             Initialized cocotb v2.0.1 from ~/.local/lib/python3.13/site-packages/cocotb
+     0.00ns INFO     cocotb                             Running tests
+     0.00ns INFO     cocotb.regression                  running test_pmp_exec_isr.pmp_exec_fault_delivers_to_handler (1/1)
+     0.00ns WARNING  py.warnings                        ${REPO_ROOT}/tests/cocotb_tests/test_pmp_exec_isr.py:79: DeprecationWarning: The 'units' argument has been renamed to 'unit'.
+                                                          cocotb.start_soon(Clock(dut.IO_CLK, 10, units="ns").start())
+    10.00ns INFO     cocotb.ibex_mini_soc               loaded 1028 words from /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sw_build0/pmp_exec_isr.vmem
+[140000] %Fatal: fb_age_arb.sv:75: Assertion failed in ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.bus_arb.g_auto_hs_request[2]._auto_hs_request__lane_valid_stable: HANDSHAKE VIOLATION (valid must stay asserted until ready): FbAgeArb._auto_hs_request__lane_valid_stable
+%Error: ${REPO_ROOT}/build/fb_age_arb.sv:75: Verilog $stop
+Aborting...
+   140.00ns WARNING  cocotb.regression                  test_pmp_exec_isr.pmp_exec_fault_delivers_to_handler failed
+   140.00ns INFO     cocotb.regression                  **************************************************************************************************************
+                                                        ** TEST                                                  STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
+                                                        **************************************************************************************************************
+                                                        ** test_pmp_exec_isr.pmp_exec_fault_delivers_to_handler   FAIL         140.00           0.00      29160.38  **
+                                                        **************************************************************************************************************
+                                                        ** TESTS=1 PASS=0 FAIL=1 SKIP=0                                        140.00           0.01      20410.95  **
+                                                        **************************************************************************************************************
+- :0: Verilog $finish
+------------------------------ Captured log call -------------------------------
+INFO     Verilator:runner.py:632 Running command /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sim_build0/ibex_mini_soc in directory ${REPO_ROOT}/tests/cocotb_tests
+ERROR    Verilator:runner.py:558 Simulation failed: 1
+ERROR    Verilator:runner.py:572 ERROR: Failed 1 of 1 tests.
+________________________ test_cpu_program[pmp_load_isr] ________________________
+
+program = CpuProgram(name='pmp_load_isr', cocotb_module='test_pmp_load_isr')
+built_programs = {'ecall_isr': PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_s.../var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sw_build0/multictx_isr.vmem'), ...}
+verilator_runner = (<cocotb_tools.runner.Verilator object at 0x1028c3cb0>, PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sim_build0'))
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/test_cpu_program_pmp_load_isr_0')
+
+    @pytest.mark.parametrize("program", PROGRAMS, ids=lambda p: p.name)
+    def test_cpu_program(
+        program: CpuProgram,
+        built_programs: dict[str, Path],
+        verilator_runner,
+        tmp_path: Path,
+    ) -> None:
+        """Run one of the bring-up programs end-to-end on the real Ibex SoC."""
+        runner, sim_build = verilator_runner
+        vmem = built_programs[program.name]
+    
+>       results_xml = runner.test(
+            test_module=program.cocotb_module,
+            hdl_toplevel="ibex_mini_soc",
+            build_dir=str(sim_build),
+            test_dir=str(COCOTB_TESTS_DIR),
+            results_xml=str(tmp_path / f"results_{program.name}.xml"),
+            extra_env={"VMEM_PATH": str(vmem)},
+        )
+E       SystemExit: 1
+
+tests/test_cpu_programs.py:232: SystemExit
+----------------------------- Captured stdout call -----------------------------
+     -.--ns INFO     gpi                                ..mbed/gpi_embed.cpp:94   in _embed_init_python              Using Python 3.13.9 interpreter at /opt/homebrew/anaconda3/bin/python
+     -.--ns INFO     gpi                                ../gpi/GpiCommon.cpp:79   in gpi_print_registered_impl       VPI registered
+     0.00ns INFO     cocotb                             Running on Verilator version 5.048 2026-04-26
+     0.00ns INFO     cocotb                             Seeding Python random module with 1788450817
+     0.00ns INFO     cocotb                             Initialized cocotb v2.0.1 from ~/.local/lib/python3.13/site-packages/cocotb
+     0.00ns INFO     cocotb                             Running tests
+     0.00ns INFO     cocotb.regression                  running test_pmp_load_isr.pmp_load_fault_delivers_to_handler (1/1)
+     0.00ns WARNING  py.warnings                        ${REPO_ROOT}/tests/cocotb_tests/test_pmp_load_isr.py:83: DeprecationWarning: The 'units' argument has been renamed to 'unit'.
+                                                          cocotb.start_soon(Clock(dut.IO_CLK, 10, units="ns").start())
+    10.00ns INFO     cocotb.ibex_mini_soc               loaded 1029 words from /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sw_build0/pmp_load_isr.vmem
+[140000] %Fatal: fb_age_arb.sv:75: Assertion failed in ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.bus_arb.g_auto_hs_request[2]._auto_hs_request__lane_valid_stable: HANDSHAKE VIOLATION (valid must stay asserted until ready): FbAgeArb._auto_hs_request__lane_valid_stable
+%Error: ${REPO_ROOT}/build/fb_age_arb.sv:75: Verilog $stop
+Aborting...
+   140.00ns WARNING  cocotb.regression                  test_pmp_load_isr.pmp_load_fault_delivers_to_handler failed
+   140.00ns INFO     cocotb.regression                  **************************************************************************************************************
+                                                        ** TEST                                                  STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
+                                                        **************************************************************************************************************
+                                                        ** test_pmp_load_isr.pmp_load_fault_delivers_to_handler   FAIL         140.00           0.00      29275.23  **
+                                                        **************************************************************************************************************
+                                                        ** TESTS=1 PASS=0 FAIL=1 SKIP=0                                        140.00           0.01      20360.70  **
+                                                        **************************************************************************************************************
+- :0: Verilog $finish
+------------------------------ Captured log call -------------------------------
+INFO     Verilator:runner.py:632 Running command /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sim_build0/ibex_mini_soc in directory ${REPO_ROOT}/tests/cocotb_tests
+ERROR    Verilator:runner.py:558 Simulation failed: 1
+ERROR    Verilator:runner.py:572 ERROR: Failed 1 of 1 tests.
+_____________________ test_cpu_program[pmp_misaligned_isr] _____________________
+
+program = CpuProgram(name='pmp_misaligned_isr', cocotb_module='test_pmp_misaligned_isr')
+built_programs = {'ecall_isr': PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_s.../var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sw_build0/multictx_isr.vmem'), ...}
+verilator_runner = (<cocotb_tools.runner.Verilator object at 0x1028c3cb0>, PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sim_build0'))
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/test_cpu_program_pmp_misaligne0')
+
+    @pytest.mark.parametrize("program", PROGRAMS, ids=lambda p: p.name)
+    def test_cpu_program(
+        program: CpuProgram,
+        built_programs: dict[str, Path],
+        verilator_runner,
+        tmp_path: Path,
+    ) -> None:
+        """Run one of the bring-up programs end-to-end on the real Ibex SoC."""
+        runner, sim_build = verilator_runner
+        vmem = built_programs[program.name]
+    
+>       results_xml = runner.test(
+            test_module=program.cocotb_module,
+            hdl_toplevel="ibex_mini_soc",
+            build_dir=str(sim_build),
+            test_dir=str(COCOTB_TESTS_DIR),
+            results_xml=str(tmp_path / f"results_{program.name}.xml"),
+            extra_env={"VMEM_PATH": str(vmem)},
+        )
+E       SystemExit: 1
+
+tests/test_cpu_programs.py:232: SystemExit
+----------------------------- Captured stdout call -----------------------------
+     -.--ns INFO     gpi                                ..mbed/gpi_embed.cpp:94   in _embed_init_python              Using Python 3.13.9 interpreter at /opt/homebrew/anaconda3/bin/python
+     -.--ns INFO     gpi                                ../gpi/GpiCommon.cpp:79   in gpi_print_registered_impl       VPI registered
+     0.00ns INFO     cocotb                             Running on Verilator version 5.048 2026-04-26
+     0.00ns INFO     cocotb                             Seeding Python random module with 1788450818
+     0.00ns INFO     cocotb                             Initialized cocotb v2.0.1 from ~/.local/lib/python3.13/site-packages/cocotb
+     0.00ns INFO     cocotb                             Running tests
+     0.00ns INFO     cocotb.regression                  running test_pmp_misaligned_isr.pmp_misaligned_fault_delivers_to_handler (1/1)
+     0.00ns WARNING  py.warnings                        ${REPO_ROOT}/tests/cocotb_tests/test_pmp_misaligned_isr.py:99: DeprecationWarning: The 'units' argument has been renamed to 'unit'.
+                                                          cocotb.start_soon(Clock(dut.IO_CLK, 10, units="ns").start())
+    10.00ns INFO     cocotb.ibex_mini_soc               loaded 1028 words from /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sw_build0/pmp_misaligned_isr.vmem
+[140000] %Fatal: fb_age_arb.sv:75: Assertion failed in ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.bus_arb.g_auto_hs_request[2]._auto_hs_request__lane_valid_stable: HANDSHAKE VIOLATION (valid must stay asserted until ready): FbAgeArb._auto_hs_request__lane_valid_stable
+%Error: ${REPO_ROOT}/build/fb_age_arb.sv:75: Verilog $stop
+Aborting...
+   140.00ns WARNING  cocotb.regression                  test_pmp_misaligned_isr.pmp_misaligned_fault_delivers_to_handler failed
+   140.00ns INFO     cocotb.regression                  **************************************************************************************************************************
+                                                        ** TEST                                                              STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
+                                                        **************************************************************************************************************************
+                                                        ** test_pmp_misaligned_isr.pmp_misaligned_fault_delivers_to_handler   FAIL         140.00           0.01      27866.48  **
+                                                        **************************************************************************************************************************
+                                                        ** TESTS=1 PASS=0 FAIL=1 SKIP=0                                                    140.00           0.01      19640.20  **
+                                                        **************************************************************************************************************************
+- :0: Verilog $finish
+------------------------------ Captured log call -------------------------------
+INFO     Verilator:runner.py:632 Running command /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sim_build0/ibex_mini_soc in directory ${REPO_ROOT}/tests/cocotb_tests
+ERROR    Verilator:runner.py:558 Simulation failed: 1
+ERROR    Verilator:runner.py:572 ERROR: Failed 1 of 1 tests.
+________________________ test_cpu_program[icache_bench] ________________________
+
+program = CpuProgram(name='icache_bench', cocotb_module='test_icache_bench')
+built_programs = {'ecall_isr': PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_s.../var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sw_build0/multictx_isr.vmem'), ...}
+verilator_runner = (<cocotb_tools.runner.Verilator object at 0x1028c3cb0>, PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sim_build0'))
+tmp_path = PosixPath('/private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/test_cpu_program_icache_bench_0')
+
+    @pytest.mark.parametrize("program", PROGRAMS, ids=lambda p: p.name)
+    def test_cpu_program(
+        program: CpuProgram,
+        built_programs: dict[str, Path],
+        verilator_runner,
+        tmp_path: Path,
+    ) -> None:
+        """Run one of the bring-up programs end-to-end on the real Ibex SoC."""
+        runner, sim_build = verilator_runner
+        vmem = built_programs[program.name]
+    
+>       results_xml = runner.test(
+            test_module=program.cocotb_module,
+            hdl_toplevel="ibex_mini_soc",
+            build_dir=str(sim_build),
+            test_dir=str(COCOTB_TESTS_DIR),
+            results_xml=str(tmp_path / f"results_{program.name}.xml"),
+            extra_env={"VMEM_PATH": str(vmem)},
+        )
+E       SystemExit: 1
+
+tests/test_cpu_programs.py:232: SystemExit
+----------------------------- Captured stdout call -----------------------------
+     -.--ns INFO     gpi                                ..mbed/gpi_embed.cpp:94   in _embed_init_python              Using Python 3.13.9 interpreter at /opt/homebrew/anaconda3/bin/python
+     -.--ns INFO     gpi                                ../gpi/GpiCommon.cpp:79   in gpi_print_registered_impl       VPI registered
+     0.00ns INFO     cocotb                             Running on Verilator version 5.048 2026-04-26
+     0.00ns INFO     cocotb                             Seeding Python random module with 1788450818
+     0.00ns INFO     cocotb                             Initialized cocotb v2.0.1 from ~/.local/lib/python3.13/site-packages/cocotb
+     0.00ns INFO     cocotb                             Running tests
+     0.00ns INFO     cocotb.regression                  running test_icache_bench.icache_bench (1/1)
+     0.00ns WARNING  py.warnings                        ${REPO_ROOT}/tests/cocotb_tests/test_icache_bench.py:51: DeprecationWarning: The 'units' argument has been renamed to 'unit'.
+                                                          cocotb.start_soon(Clock(dut.IO_CLK, 10, units="ns").start())
+    10.00ns INFO     cocotb.ibex_mini_soc               loaded 1027 words from /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sw_build0/icache_bench.vmem
+[140000] %Fatal: fb_age_arb.sv:75: Assertion failed in ibex_mini_soc.u_ibex.u_ibex_top.u_ibex_core.if_stage_i.icache.bus_arb.g_auto_hs_request[2]._auto_hs_request__lane_valid_stable: HANDSHAKE VIOLATION (valid must stay asserted until ready): FbAgeArb._auto_hs_request__lane_valid_stable
+%Error: ${REPO_ROOT}/build/fb_age_arb.sv:75: Verilog $stop
+Aborting...
+   140.00ns WARNING  cocotb.regression                  test_icache_bench.icache_bench failed
+   140.00ns INFO     cocotb.regression                  ****************************************************************************************
+                                                        ** TEST                            STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
+                                                        ****************************************************************************************
+                                                        ** test_icache_bench.icache_bench   FAIL         140.00           0.00      28623.08  **
+                                                        ****************************************************************************************
+                                                        ** TESTS=1 PASS=0 FAIL=1 SKIP=0                  140.00           0.01      19657.29  **
+                                                        ****************************************************************************************
+- :0: Verilog $finish
+------------------------------ Captured log call -------------------------------
+INFO     Verilator:runner.py:632 Running command /private/var/folders/<tmp>/T/pytest-of-<user>/pytest-2/cpu_sim_build0/ibex_mini_soc in directory ${REPO_ROOT}/tests/cocotb_tests
+ERROR    Verilator:runner.py:558 Simulation failed: 1
+ERROR    Verilator:runner.py:572 ERROR: Failed 1 of 1 tests.
+- generated xml file: ${REPO_ROOT}/review-package/reports/functional_arch_lane.junit.xml -
+=========================== short test summary info ============================
+FAILED tests/test_soc_lint.py::test_ibex_mini_soc_lints - Failed: verilator -...
+FAILED tests/test_cpu_programs.py::test_cpu_program[timer_isr] - SystemExit: 1
+FAILED tests/test_cpu_programs.py::test_cpu_program[sw_isr] - SystemExit: 1
+FAILED tests/test_cpu_programs.py::test_cpu_program[ext_isr] - SystemExit: 1
+FAILED tests/test_cpu_programs.py::test_cpu_program[multictx_isr] - SystemExi...
+FAILED tests/test_cpu_programs.py::test_cpu_program[wfi_isr] - SystemExit: 1
+FAILED tests/test_cpu_programs.py::test_cpu_program[ecall_isr] - SystemExit: 1
+FAILED tests/test_cpu_programs.py::test_cpu_program[pmp_exec_isr] - SystemExi...
+FAILED tests/test_cpu_programs.py::test_cpu_program[pmp_load_isr] - SystemExi...
+FAILED tests/test_cpu_programs.py::test_cpu_program[pmp_misaligned_isr] - Sys...
+FAILED tests/test_cpu_programs.py::test_cpu_program[icache_bench] - SystemExi...
+============================== 11 failed in 7.12s ==============================
+pytest tests/test_soc_lint.py tests/test_cpu_programs.py -p no:cacheprovider   12.91s user 1.47s system 197% cpu 7.274 total

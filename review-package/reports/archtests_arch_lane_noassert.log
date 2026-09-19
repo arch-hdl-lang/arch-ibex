@@ -1,0 +1,6 @@
+ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss [ 48%]
+ss...................................................................... [ 97%]
+....                                                                     [100%]
+- generated xml file: ${REPO_ROOT}/review-package/reports/archtests_arch_lane_noassert.junit.xml -
+74 passed, 74 skipped in 19.50s
+pytest tests/test_arch_tests.py -p no:cacheprovider -q   22.09s user 4.13s system 133% cpu 19.686 total

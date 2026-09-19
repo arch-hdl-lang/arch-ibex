@@ -547,19 +547,34 @@ module ibex_icache
   // fire (the line really isn't in cache, so a re-fetch is needed
   // for forward progress).
   pipe_reg fb_busy_prev: fb_busy_mask stages 4;
+  // Each tap is bound to its own `let` before being combined: arch-com
+  // >= 0.70.8 rejects mixing `@N` taps of different N in one expression
+  // ("operands at cycle 0 and cycle N"). The bound names are plain
+  // cycle-0 signals, so the OR below is unchanged in meaning and lowers
+  // to the same SV (`assign` aliases of `fb_busy_prev_stg{1,2,3}` /
+  // `fb_busy_prev`).
+  let fb_busy_prev1: UInt<4> = fb_busy_prev@1;
+  let fb_busy_prev2: UInt<4> = fb_busy_prev@2;
+  let fb_busy_prev3: UInt<4> = fb_busy_prev@3;
+  let fb_busy_prev4: UInt<4> = fb_busy_prev@4;
   let fb_busy_recent_mask: UInt<4> =
-    fb_busy_mask | fb_busy_prev@1 | fb_busy_prev@2
-                 | fb_busy_prev@3 | fb_busy_prev@4;
+    fb_busy_mask | fb_busy_prev1 | fb_busy_prev2
+                 | fb_busy_prev3 | fb_busy_prev4;
 
   // Recently-busy LINE coalesce: extends suppression for >=4 cycles after
   // release, but ONLY for the exact same cache line. Different lines in
   // the same page release the coalesce immediately so a tag-HIT on a
   // freshly-branched different line can drive its R-OUT-7 fast path.
+  // A STALE FB never coalesces: it will not deliver output (R-OUT-2/6),
+  // so a lookup folded onto it would wait forever. Upstream allocates a
+  // fresh FB in that case (no coalescing at all, ibex_icache.sv:701-702).
+  // The stale FB may still finish its fill (allocating line) or drain
+  // (held beat); the new FB re-fetches the target line.
   let inflight_line_match_ic0: Bool =
-    (fb_busy_recent_mask[0] and (fb0_addr[31:3] == lookup_line_ic0)) or
-    (fb_busy_recent_mask[1] and (fb1_addr[31:3] == lookup_line_ic0)) or
-    (fb_busy_recent_mask[2] and (fb2_addr[31:3] == lookup_line_ic0)) or
-    (fb_busy_recent_mask[3] and (fb3_addr[31:3] == lookup_line_ic0));
+    (fb_busy_recent_mask[0] and (not stale_q[0]) and (fb0_addr[31:3] == lookup_line_ic0)) or
+    (fb_busy_recent_mask[1] and (not stale_q[1]) and (fb1_addr[31:3] == lookup_line_ic0)) or
+    (fb_busy_recent_mask[2] and (not stale_q[2]) and (fb2_addr[31:3] == lookup_line_ic0)) or
+    (fb_busy_recent_mask[3] and (not stale_q[3]) and (fb3_addr[31:3] == lookup_line_ic0));
 
   let pending_alloc_match_ic0: Bool =
     lookup_alloc_ic1_q and
@@ -688,10 +703,6 @@ module ibex_icache
   wire wb_grant_valid:      Bool;
   wire wb_grant_requester:  UInt<2>;
 
-  wire bus_ready_0: Bool; wire bus_ready_1: Bool;
-  wire bus_ready_2: Bool; wire bus_ready_3: Bool;
-  wire wb_ready_0:  Bool; wire wb_ready_1:  Bool;
-  wire wb_ready_2:  Bool; wire wb_ready_3:  Bool;
 
   inst bus_arb: FbAgeArb
     clk <- clk_i;
@@ -700,10 +711,6 @@ module ibex_icache
     request[1].valid <- fb_wants_bus[1];
     request[2].valid <- fb_wants_bus[2];
     request[3].valid <- fb_wants_bus[3];
-    request[0].ready -> bus_ready_0;
-    request[1].ready -> bus_ready_1;
-    request[2].ready -> bus_ready_2;
-    request[3].ready -> bus_ready_3;
     age              <- fb_ages_packed;
     grant_valid      -> bus_age_grant_valid;
     grant_requester  -> bus_age_grant_requester;
@@ -728,9 +735,33 @@ module ibex_icache
     fb0_bus_demand ? 2'd0 :
     (fb1_bus_demand ? 2'd1 :
     (fb2_bus_demand ? 2'd2 : 2'd3));
-  let bus_grant_valid: Bool = bus_demand_any or bus_age_grant_valid;
-  let bus_grant_requester: UInt<2> =
+  let bus_pick_valid: Bool = bus_demand_any or bus_age_grant_valid;
+  let bus_pick_requester: UInt<2> =
     bus_demand_any ? bus_demand_requester : bus_age_grant_requester;
+
+  // R-EXT-2 hold: once a request has been presented on the bus it must
+  // stay presented, with the same address, until instr_gnt_i. Upstream
+  // guards this with fill_ext_hold_q (ibex_icache.sv:763-774): the FB
+  // waiting for a grant is neither re-arbitrated nor cancelled. Here the
+  // pick is latched while the grant is pending, overriding both the
+  // age order and the demand bias; the held FB's own wants_bus may
+  // already have dropped (stale/non-allocating), which is fine — the
+  // beat is still issued and its rvalid is routed to that FB.
+  reg bus_hold_valid_q: Bool reset rst_ni => false;
+  reg bus_hold_fb_q: UInt<2> guard bus_hold_valid_q reset none;
+  seq on clk_i rising
+    if bus_hold_valid_q
+      if instr_gnt_i
+        bus_hold_valid_q <= false;
+      end if
+    elsif bus_pick_valid and (not instr_gnt_i)
+      bus_hold_valid_q <= true;
+      bus_hold_fb_q    <= bus_pick_requester;
+    end if
+  end seq
+  let bus_grant_valid: Bool = bus_hold_valid_q or bus_pick_valid;
+  let bus_grant_requester: UInt<2> =
+    bus_hold_valid_q ? bus_hold_fb_q : bus_pick_requester;
 
   inst wb_arb: FbAgeArb
     clk <- clk_i;
@@ -739,10 +770,6 @@ module ibex_icache
     request[1].valid <- fb_wants_wb[1];
     request[2].valid <- fb_wants_wb[2];
     request[3].valid <- fb_wants_wb[3];
-    request[0].ready -> wb_ready_0;
-    request[1].ready -> wb_ready_1;
-    request[2].ready -> wb_ready_2;
-    request[3].ready -> wb_ready_3;
     age              <- fb_ages_packed;
     grant_valid      -> wb_grant_valid;
     grant_requester  -> wb_grant_requester;
@@ -759,7 +786,7 @@ module ibex_icache
   // 1-deep upstream bus model (test stimulus drives gnt + rvalid back
   // to back), one register suffices.
   // Gated by bus_inflight_valid_q; reset value never observed.
-  reg bus_inflight_fb_q:    UInt<2> reset none;
+  reg bus_inflight_fb_q:    UInt<2> guard bus_inflight_valid_q reset none;
   reg bus_inflight_valid_q: Bool reset rst_ni => false;
   seq on clk_i rising
     if bus_grant_valid and instr_gnt_i
@@ -832,9 +859,16 @@ module ibex_icache
 
     for fb in 0..3
       // Lifecycle-derived signals (mirror the old FillBufferCtrl comb).
+      // Remaining bus beats are cancelled only when the FB is stale AND
+      // will not be written to the cache (upstream: `~fill_cache_q &
+      // (branch_i | fill_stale_q)`, ibex_icache.sv:766-774; spec
+      // R-FB-6). A stale line that is still allocating is fetched to
+      // completion and written back, so a branch does not waste the
+      // prefetch.
       wants_bus_v[fb]       = (phase_q[fb] == 2'd3) and (not hit_q[fb])
                               and (beats_sent_q[fb] != beats_total)
-                              and (not stale_q[fb]) and (not err_q[fb]);
+                              and (not (stale_q[fb] and (not alloc_q[fb])))
+                              and (not err_q[fb]);
       wants_wb_v[fb]        = (phase_q[fb] == 2'd3) and alloc_q[fb]
                               and (not err_q[fb]) and (not wb_done_q[fb])
                               and (beats_rcvd_q[fb] == beats_total);
@@ -849,12 +883,18 @@ module ibex_icache
       // out_done_pulse fires, collapsing 1 cycle off the FB-on-hit
       // lifecycle. The non-hit path keeps the out_done_q gate to
       // preserve the bus/writeback ordering invariants.
+      // Never release the FB that currently owns the bus pick: with the
+      // R-EXT-2 hold its request may be granted this very cycle, and
+      // the beat would then return to whoever re-uses the slot
+      // (upstream: fill_rvd_done counts *granted* beats,
+      // ibex_icache.sv:782-783).
       releasing_v[fb] = (phase_q[fb] == 2'd3)
+                        and (not bus_grant_v[fb])
                         and wb_done_q[fb]
                         and ( out_done_q[fb]
                               or (hit_q[fb] and out_done_pulse_v[fb]) )
                         and ( (beats_rcvd_q[fb] == beats_total)
-                          or (stale_q[fb]
+                          or (stale_q[fb] and (not alloc_q[fb])
                               and (beats_rcvd_q[fb] == beats_sent_q[fb])) );
     end for
     // rvalid_v split out — refers to rvalid_route_N which is one wire
@@ -916,13 +956,10 @@ module ibex_icache
           or (not alloc_q[fb])
         )
           stale_q[fb] <= true;
-          // Only clear alloc_q for FBs that haven't fully sent their
-          // bus reqs — those won't complete a writeback. FBs with
-          // beats_sent=beats_total keep alloc_q so the cache warms
-          // up across branch_i pulses.
-          if beats_sent_q[fb] != beats_total
-            alloc_q[fb] <= false;
-          end if
+          // alloc_q is deliberately kept: a stale, allocating FB
+          // finishes its fetch and writes the line back (see
+          // wants_bus_v), exactly as upstream keeps fill_cache_q across
+          // a branch. Only inval / disable clear it (below).
         end if
         if icache_inval_i or (not icache_enable_i)
           alloc_q[fb] <= false;
@@ -997,6 +1034,9 @@ module ibex_icache
   // These overlay same-cycle IC1-hit and bus-rvalid data on top of the
   // registered fill_data_q image so the output stage can bypass without
   // waiting an extra clock for fill_data_q / beats_rcvd_q to update.
+  // A beat returning to a STALE FB must not make it a candidate: its
+  // line belongs to a stream the core has abandoned (R-OUT-2/6), and
+  // with the cache disabled the data must be re-fetched, never replayed.
   let fb0_line_live: UInt<64> =
     fb0_data_we_ic1_hit ? ic1_hit_data_combo :
     (fb0_data_we_beat0 ? {fill_data_q[0][63:32], instr_rdata_i} :
@@ -1028,10 +1068,14 @@ module ibex_icache
   let fb2_err_beat1_live: Bool = fb2_data_we_beat1 ? instr_err_i : fb2_err_beat1;
   let fb3_err_beat1_live: Bool = fb3_data_we_beat1 ? instr_err_i : fb3_err_beat1;
 
-  let fb0_wants_out_live: Bool = fb0_wants_out or rvalid_v[0] or fb0_data_we_ic1_hit;
-  let fb1_wants_out_live: Bool = fb1_wants_out or rvalid_v[1] or fb1_data_we_ic1_hit;
-  let fb2_wants_out_live: Bool = fb2_wants_out or rvalid_v[2] or fb2_data_we_ic1_hit;
-  let fb3_wants_out_live: Bool = fb3_wants_out or rvalid_v[3] or fb3_data_we_ic1_hit;
+  let fb0_wants_out_live: Bool =
+    fb0_wants_out or ((rvalid_v[0] or fb0_data_we_ic1_hit) and (not fb0_stale));
+  let fb1_wants_out_live: Bool =
+    fb1_wants_out or ((rvalid_v[1] or fb1_data_we_ic1_hit) and (not fb1_stale));
+  let fb2_wants_out_live: Bool =
+    fb2_wants_out or ((rvalid_v[2] or fb2_data_we_ic1_hit) and (not fb2_stale));
+  let fb3_wants_out_live: Bool =
+    fb3_wants_out or ((rvalid_v[3] or fb3_data_we_ic1_hit) and (not fb3_stale));
 
   // ── Centralized fill_data_q updates (proposal 2026-05-07) ──────────
   // Each FB emits three thin strobes (1 bit each) and the outer

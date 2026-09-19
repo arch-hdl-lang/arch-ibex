@@ -1,0 +1,25 @@
+  total  blank   cmnt   code  file
+     80      7     21     52  build/fb_age_arb.sv
+    293      3     90    200  build/ibex_alu.sv
+    776      9    313    454  build/ibex_compressed_decoder.sv
+    625     11    183    431  build/ibex_controller.sv
+   1117      4    295    818  build/ibex_core.sv
+     26      3     10     13  build/ibex_core_shared_pkg.sv
+     94      3     61     30  build/ibex_counter.sv
+    742      3    195    544  build/ibex_decoder.sv
+    204      3     94    107  build/ibex_ex_block.sv
+    237      3     78    156  build/ibex_fetch_fifo.sv
+   1383      7    499    877  build/ibex_icache.sv
+    447      4     33    410  build/ibex_icache_output_stage.sv
+    908      4    252    652  build/ibex_id_stage.sv
+    438      4    152    282  build/ibex_if_stage.sv
+    499      3    227    269  build/ibex_load_store_unit.sv
+    536     10    151    375  build/ibex_multdiv_fast.sv
+    477      3    110    364  build/ibex_pmp.sv
+    282      4    119    159  build/ibex_prefetch_buffer.sv
+    108      3     54     51  build/ibex_register_file_ff.sv
+    714      3    292    419  build/ibex_top.sv
+    118      3     59     56  build/ibex_wb_stage.sv
+    183      9     61    113  build/inval_ctrl.sv
+     40      4      9     27  build/ram_port_arb.sv
+  10327    110   3358   6859  TOTAL (23 files)

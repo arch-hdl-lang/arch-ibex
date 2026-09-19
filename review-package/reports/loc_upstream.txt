@@ -1,0 +1,20 @@
+  total  blank   cmnt   code  file
+   1400    210    378    812  ~/github/ibex/rtl/ibex_alu.sv
+    847     79    164    604  ~/github/ibex/rtl/ibex_compressed_decoder.sv
+    944    145    241    558  ~/github/ibex/rtl/ibex_controller.sv
+   2023    242    270   1511  ~/github/ibex/rtl/ibex_core.sv
+    111     15     16     80  ~/github/ibex/rtl/ibex_counter.sv
+   1212    146    157    909  ~/github/ibex/rtl/ibex_decoder.sv
+    217     29     35    153  ~/github/ibex/rtl/ibex_ex_block.sv
+    269     45     76    148  ~/github/ibex/rtl/ibex_fetch_fifo.sv
+   1337    170    278    889  ~/github/ibex/rtl/ibex_icache.sv
+   1156    192    235    729  ~/github/ibex/rtl/ibex_id_stage.sv
+    839    118    139    582  ~/github/ibex/rtl/ibex_if_stage.sv
+    624     96    112    416  ~/github/ibex/rtl/ibex_load_store_unit.sv
+    556     89     78    389  ~/github/ibex/rtl/ibex_multdiv_fast.sv
+    263     27     68    168  ~/github/ibex/rtl/ibex_pmp.sv
+    264     48     69    147  ~/github/ibex/rtl/ibex_prefetch_buffer.sv
+    108     22     23     63  ~/github/ibex/rtl/ibex_register_file_ff.sv
+   1394    166    130   1098  ~/github/ibex/rtl/ibex_top.sv
+    252     46     37    169  ~/github/ibex/rtl/ibex_wb_stage.sv
+  13816   1885   2506   9425  TOTAL (18 files)

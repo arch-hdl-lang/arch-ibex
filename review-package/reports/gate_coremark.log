@@ -1,0 +1,6 @@
+CoreMark compare: dut_ticks=112855 upstream_ticks=111651 ratio=1.0108 dut_cm_mhz=8.860928 upstream_cm_mhz=8.956480 validated=True
+.
+- generated xml file: ${REPO_ROOT}/review-package/reports/gate_coremark.junit.xml -
+1 passed in 49.95s
+RUN_COREMARK_COMPARE=1 pytest tests/test_coremark_compare.py -p  -q -s   45.37s user 3.28s system 96% cpu 50.193 total
+exit=0

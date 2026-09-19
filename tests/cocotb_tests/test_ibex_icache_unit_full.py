@@ -359,6 +359,10 @@ async def s9_bus_error_on_fill_beat(dut):
     # No further requests for this FB's second beat. The cache may
     # continue speculative prefetch on a later line while req_i remains
     # high.
+    # The second beat's request was already presented when the error
+    # returned; per R-EXT-2 it is held until granted. Grant it once, then
+    # no further request for this FB may appear.
+    await _bus_grant_and_beat(dut, rdata=0x0000_0013, max_wait=2)
     for _ in range(8):
         await ReadOnly()
         if int(dut.instr_req_o.value) == 1:

@@ -1,0 +1,8 @@
+die_side_um 2774
+design_area_um2 2600940
+utilization_pct 34.3
+wns_setup_ns -17.987
+wns_hold_ns -1.737
+tns_setup_ns -932796.7
+clock_skew_setup_ns 1.016
+antenna_violations 0
