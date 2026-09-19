@@ -34,6 +34,24 @@ tests/sw/build/
 # Misc
 .DS_Store
 
+# Agent and session state — never commit. `.claude/` holds git worktrees
+# (thousands of files, gigabytes); a stray `git add -A` would otherwise
+# stage the repository inside itself.
+.claude/
+.codex/
+
+# HARC tool output
+.harc_out/
+.harcgraph/
+
+# Synthesis outputs
+build-synth/
+
+# Packaging snapshots. The review package is versioned under
+# review-package/; zipped copies go stale the moment the directory
+# changes, and older ones have carried pre-scrub content.
+*.zip
+
 # Local-only session-state doc — referenced via memory, not in repo.
 # Kept local because it tracks in-progress arch-com worktree state,
 # next-session pickup notes, and decisions awaiting user confirmation
