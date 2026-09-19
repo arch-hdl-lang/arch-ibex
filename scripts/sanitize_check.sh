@@ -34,6 +34,14 @@ LABELS=(
   "\$HOME-style absolute path"
 )
 
+# Paths that must never be published, matched against the PATH of a newly
+# added blob rather than its contents. Content greps cannot catch these: for
+# agent session state and key material the path is the signal, and the bytes
+# often match nothing. .gitignore does not cover it either -- rules do not
+# bind `git add -f`, and they do not apply to branches made before the rule
+# existed.
+FORBIDDEN_PATHS='^(\.claude|\.codex|\.harc_out|\.harcgraph|build-synth)/|(^|/)(\.env|\.netrc|id_rsa|id_ed25519|credentials)($|\.)|(^|/)\.ssh/|\.(pem|p12|pfx|keystore)$'
+
 collect_ranges() {
   if [ "${1:-}" = "--pre-push" ]; then
     while read -r _local_ref local_sha _remote_ref remote_sha; do
@@ -77,6 +85,16 @@ for range in "${RANGES[@]}"; do
   [ -z "$BLOBS" ] && continue
   n=$(printf '%s\n' "$BLOBS" | wc -l | tr -d ' ')
   echo "sanitize-check: scanning $n new blob(s) in '$range'"
+
+  PATH_HITS=$(printf '%s\n' "$BLOBS" | awk '{print $2}' | grep -E "$FORBIDDEN_PATHS" | sort -u)
+  if [ -n "$PATH_HITS" ]; then
+    FAILED=1
+    c=$(printf '%s\n' "$PATH_HITS" | wc -l | tr -d ' ')
+    echo
+    echo "  BLOCKED: path that must never be published - $c newly added file(s)"
+    printf '%s\n' "$PATH_HITS" | head -20 | sed 's/^/    /'
+    [ "$c" -gt 20 ] && echo "    ... and $((c - 20)) more"
+  fi
 
   for i in 0 1 2; do
     # `tr -d '\000'` makes binary blobs safe to grep as text. Do NOT try to
