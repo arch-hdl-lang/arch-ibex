@@ -227,8 +227,16 @@ The leak is in **22 commits**, and those are exactly the **22 unpushed
 commits** on this branch (`git merge-base origin/main HEAD` =
 `8c4b3ca`). `origin/main` carries zero occurrences, the `review-package`
 branch has never been pushed, and `arch-hdl-lang/arch-ibex` is private.
-The dirty history has therefore never left this machine, and today's
-exposure is nil.
+The dirty history — the truncated login and the temp ids — has therefore
+never left this machine.
+
+Scope correction: that statement covers `review-package/` only, which is
+what this document is about. Repo-wide the picture differs — the **full**
+login is already on `origin/main` in the 7 inherited files listed below,
+pushed long before this audit. Cleaning those is a separate decision
+about the repository, not about the review package; the pre-push gate
+does not flag them, because they are already on the remote and
+re-flagging them would make it fire on every push.
 
 Decision: **do not rewrite now.** A rewrite is only needed if the dirty
 commits are published, publication cannot happen without a push, and the
@@ -236,12 +244,35 @@ push is the natural gate. Running `git filter-repo` inside a live
 worktree of a repo carrying 30+ branches — most of them pushed — is a
 larger risk today than the thing it would prevent.
 
+The gate is **mechanical, not a note**: `scripts/sanitize_check.sh` runs
+the three checks over the commits a push would add, and a `pre-push`
+hook refuses the push on any hit. The rewrite therefore happens because
+the gate demands it, not because someone remembers this document.
+Verified end-to-end: `git push --dry-run origin HEAD:review-package`
+exits 1 and the branch is still absent from the remote.
+
+Two things the gate had to get right, both found by testing it rather
+than reasoning about it:
+
+- **It scans newly added blobs, not whole trees.** This repo inherits 7
+  files from `origin/main` that contain the full login (`WORKFLOW.md`,
+  `changes/2026-05-07-*/results.md`, `changes/2026-05-11-*/results.md`
+  and four under `changes/archive/2026-05-04-port-ibex_*/`). A
+  whole-tree scan re-flags those on every push, so the gate would refuse
+  everything forever and be bypassed with `--no-verify` on reflex.
+- **Binary blobs are neutralised with `tr -d '\000'`, not detected with
+  `grep -q $'\0'`.** The shell expands `$'\0'` to the empty string, so
+  that grep matches every blob and the scan skips everything and reports
+  clean. The first version of this gate had exactly that bug and passed
+  a range known to be dirty. Re-test against a dirty range after any
+  edit to the script.
+
 The containment also makes the rewrite cheap and exactly scoped whenever
 it is wanted, because the leak range shares no commit with any pushed
 branch:
 
 ```bash
-# gate: run before the first push of this branch
+# what the pre-push gate demands before this branch can be published
 git filter-repo --refs 8c4b3ca..review-package \
   --replace-text <(printf 'pytest-of-%s==>pytest-of-<user>\n%s==>/var/folders/<tmp>\n' \
                      "$(id -un | cut -c1-8)" "$(dirname "${TMPDIR%/}")")
