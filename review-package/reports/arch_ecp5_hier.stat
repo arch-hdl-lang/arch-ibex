@@ -1,0 +1,714 @@
+
+6. Printing statistics.
+
+=== $paramod$a44ba146446955eb2e260b0fafd09112b36362f7\ibex_if_stage ===
+
+        +----------Local Count, excluding submodules.
+        | 
+      211 wires
+     1328 wire bits
+      211 public wires
+     1328 public wire bits
+       62 ports
+      777 port bits
+      304 cells
+        2   L6MUX21
+      180   LUT4
+       34   PFUMX
+       88   TRELLIS_FF
+        2 submodules
+        1   $paramod$611efa6b423864157e56afc4a60ab960f52474ff\ibex_compressed_decoder
+        1   $paramod$986d27bdd5a06cbb71ae9628ad8ac7203cd2b847\ibex_icache
+
+=== $paramod$68f9718dee4ab5cad4053882441845893cd2d425\ibex_csr ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        8 wires
+       23 wire bits
+        8 public wires
+       23 public wire bits
+        6 ports
+       16 port bits
+        7 cells
+        1   LUT4
+        6   TRELLIS_FF
+
+=== $paramod$49d91b5bf1aa7d22898ce0de9f5f2874db3b2b1a\ibex_pmp ===
+
+        +----------Local Count, excluding submodules.
+        | 
+     1679 wires
+     3325 wire bits
+     1679 public wires
+     3325 public wire bits
+        8 ports
+      281 port bits
+     1691 cells
+      256   CCU2C
+       69   L6MUX21
+     1115   LUT4
+      251   PFUMX
+
+=== $paramod$baa7fc0a76b99216a6e63820dd18707b73de5557\prim_ram_1p ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       19 wires
+      164 wire bits
+       19 public wires
+      164 public wire bits
+       10 ports
+       91 port bits
+       13 cells
+        1   DP16KD
+       10   LUT4
+        2   PFUMX
+
+=== $paramod$a817fcab25fd9b6b79d53a01dac0e1b1b1a22101\ibex_register_file_ff ===
+
+        +----------Local Count, excluding submodules.
+        | 
+     4164 wires
+     8994 wire bits
+     4164 public wires
+     8994 public wire bits
+       12 ports
+      117 port bits
+     6304 cells
+        6   CCU2C
+      548   L6MUX21
+     3867   LUT4
+      891   PFUMX
+      992   TRELLIS_FF
+
+=== $paramod$d4e8633228b1e0857b7347472395cd68339ca71e\ibex_core ===
+
+        +----------Local Count, excluding submodules.
+        | 
+      306 wires
+     3991 wire bits
+      306 public wires
+     3991 public wire bits
+       92 ports
+     2041 port bits
+       26 cells
+       16   CCU2C
+       10   LUT4
+        7 submodules
+        1   $paramod$158245387f3da7ba82feb17eac9d69cbf948ebcd\ibex_ex_block
+        1   $paramod$49d91b5bf1aa7d22898ce0de9f5f2874db3b2b1a\ibex_pmp
+        1   $paramod$57ca0b36fd5c7b9bd43bd6778c772f0e3780cc45\ibex_load_store_unit
+        1   $paramod$a44ba146446955eb2e260b0fafd09112b36362f7\ibex_if_stage
+        1   $paramod$cf39b64081fba7cefba553bce44d8850f84eff17\ibex_wb_stage
+        1   $paramod$e809e3f22c5586f0f6c737b29845dea8f5edccf4\ibex_cs_registers
+        1   $paramod$ecb41f4ab4115940ea142c355a2e73905a861254\ibex_id_stage
+
+=== $paramod\prim_buf\Width=s32'00000000000000000000000000000100 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        2 wires
+        8 wire bits
+        2 public wires
+        8 public wire bits
+        2 ports
+        8 port bits
+
+=== $paramod\_ibex_multdiv_fast_threads\RV32M=s32'00000000000000000000000000000010 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+     1082 wires
+     4772 wire bits
+     1082 public wires
+     4772 public wire bits
+       26 ports
+      446 port bits
+     1440 cells
+       62   CCU2C
+       59   L6MUX21
+     1033   LUT4
+        1   MULT18X18D
+      201   PFUMX
+       84   TRELLIS_FF
+
+=== $paramod\ibex_alu\RV32B=s32'00000000000000000000000000000000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+      482 wires
+     1666 wire bits
+      482 public wires
+     1666 public wire bits
+       15 ports
+      369 port bits
+      629 cells
+       17   CCU2C
+       19   L6MUX21
+      515   LUT4
+       78   PFUMX
+
+=== $paramod\ibex_multdiv_fast\RV32M=s32'00000000000000000000000000000010 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       56 wires
+      487 wire bits
+       56 public wires
+      487 public wire bits
+       22 ports
+      380 port bits
+       37 cells
+        5   L6MUX21
+       24   LUT4
+        8   PFUMX
+        1 submodules
+        1   $paramod\_ibex_multdiv_fast_threads\RV32M=s32'00000000000000000000000000000010
+
+=== IbexIcacheOutputStage ===
+
+        +----------Local Count, excluding submodules.
+        | 
+     4219 wires
+    11834 wire bits
+     4219 public wires
+    11834 public wire bits
+       48 ports
+      619 port bits
+     6556 cells
+       97   CCU2C
+      183   L6MUX21
+     4371   LUT4
+      971   PFUMX
+      934   TRELLIS_FF
+
+=== $paramod$1ae4e362a1f4ea73e400589bcc3434be4b455b80\ibex_decoder ===
+
+        +----------Local Count, excluding submodules.
+        | 
+      305 wires
+      832 wire bits
+      305 public wires
+      832 public wire bits
+       51 ports
+      338 port bits
+      317 cells
+       27   L6MUX21
+      232   LUT4
+       58   PFUMX
+
+=== $paramod$be15760b1bb0b2f581e88e2f735af395ac084664\ibex_controller ===
+
+        +----------Local Count, excluding submodules.
+        | 
+      403 wires
+      938 wire bits
+      403 public wires
+      938 public wire bits
+       65 ports
+      233 port bits
+      429 cells
+       16   CCU2C
+       21   L6MUX21
+      304   LUT4
+       68   PFUMX
+       20   TRELLIS_FF
+
+=== $paramod$986d27bdd5a06cbb71ae9628ad8ac7203cd2b847\ibex_icache ===
+
+        +----------Local Count, excluding submodules.
+        | 
+     2176 wires
+     5941 wire bits
+     2176 public wires
+     5941 public wire bits
+       33 ports
+      458 port bits
+     3868 cells
+       17   CCU2C
+      144   L6MUX21
+     2593   LUT4
+      565   PFUMX
+      549   TRELLIS_FF
+        4 submodules
+        2   FbAgeArb
+        1   IbexIcacheOutputStage
+        1   InvalCtrl
+
+=== $paramod$611efa6b423864157e56afc4a60ab960f52474ff\ibex_compressed_decoder ===
+
+        +----------Local Count, excluding submodules.
+        | 
+      754 wires
+     1831 wire bits
+      754 public wires
+     1831 public wire bits
+        9 ports
+       72 port bits
+      996 cells
+       13   CCU2C
+       52   L6MUX21
+      745   LUT4
+      166   PFUMX
+       20   TRELLIS_FF
+
+=== $paramod$e809e3f22c5586f0f6c737b29845dea8f5edccf4\ibex_cs_registers ===
+
+        +----------Local Count, excluding submodules.
+        | 
+     2165 wires
+     9561 wire bits
+     2165 public wires
+     9561 public wire bits
+       71 ports
+      689 port bits
+     2613 cells
+      215   L6MUX21
+     1897   LUT4
+      497   PFUMX
+        4   TRELLIS_FF
+       30 submodules
+        2   $paramod$34601000fe8707ce2501f5ed778e152043201712\ibex_csr
+        1   $paramod$410b37fbfbfa994790f1902c150d2be939cadb3b\ibex_csr
+        1   $paramod$4f46e25470a27719ee9ca03cee1a0827eff766f7\ibex_csr
+        1   $paramod$5714e31d82f2b8816750797f158ebea69a089104\ibex_csr
+        4   $paramod$68f9718dee4ab5cad4053882441845893cd2d425\ibex_csr
+        4   $paramod$69bd9f1779f5787819689c910adb47212d141491\ibex_csr
+        8   $paramod$85ba01ab5a28334786aba5877c1fe04472f39fba\ibex_csr
+        1   $paramod$9a435d8f6db004a67362aa9a56f32ea481a74dbe\ibex_csr
+        1   $paramod$a088b13b9337f1e1fba58a671f47d7c7701ffa49\ibex_csr
+        1   $paramod$bc034ef4e1b4bac0b496e4b04aec5350c1a23f8c\ibex_csr
+        1   $paramod$bd5fe889e9a87060e98fc27b988c9d49423a77da\ibex_csr
+        1   $paramod$c16eccae153ba9fb8fce8498c4f7e85e78010c3f\ibex_counter
+        1   $paramod$e55993a14b1fbc43320d549f521b710ed37596c6\ibex_csr
+        1   $paramod$eccb28a0d9c7c379466a9299a8885e9ec9033585\ibex_csr
+        1   $paramod$f770966692ac5bf8d4fe7b7895f92523d9fb3c35\ibex_csr
+        1   $paramod\ibex_counter\CounterWidth=s32'00000000000000000000000001000000
+
+=== $paramod$ecb41f4ab4115940ea142c355a2e73905a861254\ibex_id_stage ===
+
+        +----------Local Count, excluding submodules.
+        | 
+      569 wires
+     2300 wire bits
+      569 public wires
+     2300 public wire bits
+      118 ports
+      924 port bits
+      651 cells
+        3   L6MUX21
+      467   LUT4
+      110   PFUMX
+       71   TRELLIS_FF
+        2 submodules
+        1   $paramod$1ae4e362a1f4ea73e400589bcc3434be4b455b80\ibex_decoder
+        1   $paramod$be15760b1bb0b2f581e88e2f735af395ac084664\ibex_controller
+
+=== $paramod$158245387f3da7ba82feb17eac9d69cbf948ebcd\ibex_ex_block ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       46 wires
+      982 wire bits
+       46 public wires
+      982 public wire bits
+       26 ports
+      448 port bits
+      106 cells
+      105   LUT4
+        1   PFUMX
+        2 submodules
+        1   $paramod\ibex_alu\RV32B=s32'00000000000000000000000000000000
+        1   $paramod\ibex_multdiv_fast\RV32M=s32'00000000000000000000000000000010
+
+=== $paramod$57ca0b36fd5c7b9bd43bd6778c772f0e3780cc45\ibex_load_store_unit ===
+
+        +----------Local Count, excluding submodules.
+        | 
+      690 wires
+     1864 wire bits
+      690 public wires
+     1864 public wire bits
+       31 ports
+      252 port bits
+      786 cells
+       83   L6MUX21
+      465   LUT4
+      171   PFUMX
+       67   TRELLIS_FF
+
+=== $paramod$cf39b64081fba7cefba553bce44d8850f84eff17\ibex_wb_stage ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       34 wires
+      261 wire bits
+       34 public wires
+      261 public wire bits
+       30 ports
+      225 port bits
+       37 cells
+       36   LUT4
+        1   PFUMX
+
+=== FbAgeArb ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       96 wires
+      189 wire bits
+       96 public wires
+      189 public wire bits
+        6 ports
+       17 port bits
+       77 cells
+       12   L6MUX21
+       45   LUT4
+       20   PFUMX
+
+=== $paramod$69bd9f1779f5787819689c910adb47212d141491\ibex_csr ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        8 wires
+      101 wire bits
+        8 public wires
+      101 public wire bits
+        6 ports
+       68 port bits
+       33 cells
+        1   LUT4
+       32   TRELLIS_FF
+
+=== $paramod$f770966692ac5bf8d4fe7b7895f92523d9fb3c35\ibex_csr ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        8 wires
+       14 wire bits
+        8 public wires
+       14 public wire bits
+        6 ports
+       10 port bits
+        4 cells
+        1   LUT4
+        3   TRELLIS_FF
+
+=== $paramod$eccb28a0d9c7c379466a9299a8885e9ec9033585\ibex_csr ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        8 wires
+        8 wire bits
+        8 public wires
+        8 public wire bits
+        6 ports
+        6 port bits
+        2 cells
+        1   LUT4
+        1   TRELLIS_FF
+
+=== $paramod$782da2f9d68ab5dbc9fd0096f4062dc26a9edf0d\prim_ram_1p ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       19 wires
+      341 wire bits
+       19 public wires
+      341 public wire bits
+       10 ports
+      217 port bits
+       25 cells
+        2   DP16KD
+       23   LUT4
+
+=== $paramod$e55993a14b1fbc43320d549f521b710ed37596c6\ibex_csr ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        8 wires
+       59 wire bits
+        8 public wires
+       59 public wire bits
+        6 ports
+       40 port bits
+       19 cells
+        1   LUT4
+       18   TRELLIS_FF
+
+=== $paramod$4f46e25470a27719ee9ca03cee1a0827eff766f7\ibex_csr ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        8 wires
+      101 wire bits
+        8 public wires
+      101 public wire bits
+        6 ports
+       68 port bits
+       33 cells
+        1   LUT4
+       32   TRELLIS_FF
+
+=== $paramod$9a435d8f6db004a67362aa9a56f32ea481a74dbe\ibex_csr ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        8 wires
+      101 wire bits
+        8 public wires
+      101 public wire bits
+        6 ports
+       68 port bits
+       33 cells
+        1   LUT4
+       32   TRELLIS_FF
+
+=== $paramod$410b37fbfbfa994790f1902c150d2be939cadb3b\ibex_csr ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        8 wires
+       14 wire bits
+        8 public wires
+       14 public wire bits
+        6 ports
+       10 port bits
+        4 cells
+        1   LUT4
+        3   TRELLIS_FF
+
+=== $paramod$85ba01ab5a28334786aba5877c1fe04472f39fba\ibex_csr ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        8 wires
+      101 wire bits
+        8 public wires
+      101 public wire bits
+        6 ports
+       68 port bits
+       33 cells
+        1   LUT4
+       32   TRELLIS_FF
+
+=== $paramod$5714e31d82f2b8816750797f158ebea69a089104\ibex_csr ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        8 wires
+       23 wire bits
+        8 public wires
+       23 public wire bits
+        6 ports
+       16 port bits
+        7 cells
+        1   LUT4
+        6   TRELLIS_FF
+
+=== $paramod$34601000fe8707ce2501f5ed778e152043201712\ibex_csr ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        8 wires
+       26 wire bits
+        8 public wires
+       26 public wire bits
+        6 ports
+       18 port bits
+        8 cells
+        1   LUT4
+        7   TRELLIS_FF
+
+=== $paramod\ibex_counter\CounterWidth=s32'00000000000000000000000001000000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       51 wires
+      617 wire bits
+       51 public wires
+      617 public wire bits
+        8 ports
+      165 port bits
+      164 cells
+       32   CCU2C
+       68   LUT4
+       64   TRELLIS_FF
+
+=== $paramod$c16eccae153ba9fb8fce8498c4f7e85e78010c3f\ibex_counter ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       51 wires
+      617 wire bits
+       51 public wires
+      617 public wire bits
+        8 ports
+      165 port bits
+      164 cells
+       32   CCU2C
+       68   LUT4
+       64   TRELLIS_FF
+
+=== $paramod$a088b13b9337f1e1fba58a671f47d7c7701ffa49\ibex_csr ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        8 wires
+       29 wire bits
+        8 public wires
+       29 public wire bits
+        6 ports
+       20 port bits
+        9 cells
+        1   LUT4
+        8   TRELLIS_FF
+
+=== $paramod$bc034ef4e1b4bac0b496e4b04aec5350c1a23f8c\ibex_csr ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        8 wires
+        8 wire bits
+        8 public wires
+        8 public wire bits
+        6 ports
+        6 port bits
+        2 cells
+        1   LUT4
+        1   TRELLIS_FF
+
+=== $paramod$bd5fe889e9a87060e98fc27b988c9d49423a77da\ibex_csr ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        8 wires
+        8 wire bits
+        8 public wires
+        8 public wire bits
+        6 ports
+        6 port bits
+        2 cells
+        1   LUT4
+        1   TRELLIS_FF
+
+=== ibex_top ===
+
+        +----------Local Count, excluding submodules.
+        | 
+      146 wires
+     2791 wire bits
+      146 public wires
+     2791 public wire bits
+       54 ports
+      787 port bits
+        4 cells
+        3   LUT4
+        1   TRELLIS_FF
+        8 submodules
+        2   $paramod$782da2f9d68ab5dbc9fd0096f4062dc26a9edf0d\prim_ram_1p
+        1   $paramod$a817fcab25fd9b6b79d53a01dac0e1b1b1a22101\ibex_register_file_ff
+        2   $paramod$baa7fc0a76b99216a6e63820dd18707b73de5557\prim_ram_1p
+        1   $paramod$d4e8633228b1e0857b7347472395cd68339ca71e\ibex_core
+        1   $paramod\prim_buf\Width=s32'00000000000000000000000000000100
+        1   prim_clock_gating
+
+=== prim_clock_gating ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        4 wires
+        4 wire bits
+        4 public wires
+        4 public wire bits
+        4 ports
+        4 port bits
+
+=== InvalCtrl ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       48 wires
+      103 wire bits
+       48 public wires
+      103 public wire bits
+        8 ports
+       16 port bits
+       52 cells
+        4   CCU2C
+        2   L6MUX21
+       27   LUT4
+        6   PFUMX
+       13   TRELLIS_FF
+
+=== design hierarchy ===
+
+        +----------Count including submodules.
+        | 
+    27959 ibex_top
+       25 $paramod$782da2f9d68ab5dbc9fd0096f4062dc26a9edf0d\prim_ram_1p
+     6304 $paramod$a817fcab25fd9b6b79d53a01dac0e1b1b1a22101\ibex_register_file_ff
+       13 $paramod$baa7fc0a76b99216a6e63820dd18707b73de5557\prim_ram_1p
+       26 $paramod$d4e8633228b1e0857b7347472395cd68339ca71e\ibex_core
+      106   $paramod$158245387f3da7ba82feb17eac9d69cbf948ebcd\ibex_ex_block
+      629     $paramod\ibex_alu\RV32B=s32'00000000000000000000000000000000
+       37     $paramod\ibex_multdiv_fast\RV32M=s32'00000000000000000000000000000010
+     1440       $paramod\_ibex_multdiv_fast_threads\RV32M=s32'00000000000000000000000000000010
+     1691   $paramod$49d91b5bf1aa7d22898ce0de9f5f2874db3b2b1a\ibex_pmp
+      786   $paramod$57ca0b36fd5c7b9bd43bd6778c772f0e3780cc45\ibex_load_store_unit
+      304   $paramod$a44ba146446955eb2e260b0fafd09112b36362f7\ibex_if_stage
+      996     $paramod$611efa6b423864157e56afc4a60ab960f52474ff\ibex_compressed_decoder
+     3868     $paramod$986d27bdd5a06cbb71ae9628ad8ac7203cd2b847\ibex_icache
+       77       FbAgeArb
+     6556       IbexIcacheOutputStage
+       52       InvalCtrl
+       37   $paramod$cf39b64081fba7cefba553bce44d8850f84eff17\ibex_wb_stage
+     2613   $paramod$e809e3f22c5586f0f6c737b29845dea8f5edccf4\ibex_cs_registers
+        8     $paramod$34601000fe8707ce2501f5ed778e152043201712\ibex_csr
+        4     $paramod$410b37fbfbfa994790f1902c150d2be939cadb3b\ibex_csr
+       33     $paramod$4f46e25470a27719ee9ca03cee1a0827eff766f7\ibex_csr
+        7     $paramod$5714e31d82f2b8816750797f158ebea69a089104\ibex_csr
+        7     $paramod$68f9718dee4ab5cad4053882441845893cd2d425\ibex_csr
+       33     $paramod$69bd9f1779f5787819689c910adb47212d141491\ibex_csr
+       33     $paramod$85ba01ab5a28334786aba5877c1fe04472f39fba\ibex_csr
+       33     $paramod$9a435d8f6db004a67362aa9a56f32ea481a74dbe\ibex_csr
+        9     $paramod$a088b13b9337f1e1fba58a671f47d7c7701ffa49\ibex_csr
+        2     $paramod$bc034ef4e1b4bac0b496e4b04aec5350c1a23f8c\ibex_csr
+        2     $paramod$bd5fe889e9a87060e98fc27b988c9d49423a77da\ibex_csr
+      164     $paramod$c16eccae153ba9fb8fce8498c4f7e85e78010c3f\ibex_counter
+       19     $paramod$e55993a14b1fbc43320d549f521b710ed37596c6\ibex_csr
+        2     $paramod$eccb28a0d9c7c379466a9299a8885e9ec9033585\ibex_csr
+        4     $paramod$f770966692ac5bf8d4fe7b7895f92523d9fb3c35\ibex_csr
+      164     $paramod\ibex_counter\CounterWidth=s32'00000000000000000000000001000000
+      651   $paramod$ecb41f4ab4115940ea142c355a2e73905a861254\ibex_id_stage
+      317     $paramod$1ae4e362a1f4ea73e400589bcc3434be4b455b80\ibex_decoder
+      429     $paramod$be15760b1bb0b2f581e88e2f735af395ac084664\ibex_controller
+
+        +----------Count including submodules.
+        | 
+    20135 wires
+    68156 wire bits
+    20135 public wires
+    68156 public wire bits
+     1023 ports
+    11630 port bits
+        - memories
+        - memory bits
+        - processes
+    27959 cells
+      568   CCU2C
+        6   DP16KD
+     1456   L6MUX21
+    18309   LUT4
+        1   MULT18X18D
+     4121   PFUMX
+     3498   TRELLIS_FF
+        8 submodules
+        2   $paramod$782da2f9d68ab5dbc9fd0096f4062dc26a9edf0d\prim_ram_1p
+        1   $paramod$a817fcab25fd9b6b79d53a01dac0e1b1b1a22101\ibex_register_file_ff
+        2   $paramod$baa7fc0a76b99216a6e63820dd18707b73de5557\prim_ram_1p
+        1   $paramod$d4e8633228b1e0857b7347472395cd68339ca71e\ibex_core
+        1   $paramod\prim_buf\Width=s32'00000000000000000000000000000100
+        1   prim_clock_gating
+

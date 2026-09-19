@@ -204,7 +204,6 @@ the seed spread); the SV lane reproduced exactly. Details `15-ecp5.md`
 - Xilinx (Vivado / `synth_xilinx`) results, either lane (out of scope).
 - Simulation-annotated power; the post-P&R power figures are OpenSTA's
   default-activity estimates.
-- A per-module attribution of the Arch lane's extra flops and LUTs.
 - Post-P&R at any other die size / utilisation, or with ORFS itself.
 - riscv-dv / Spike co-simulation (not present in the repo).
 - ECP5 with real clock gating or with IO buffers (design cannot fit any
@@ -255,6 +254,7 @@ the seed spread); the SV lane reproduced exactly. Details `15-ecp5.md`
 | ARCH LOC 6,343 code lines | superseded by 6,353 (Phase 1–2 edits) |
 | May-2026 sky130 numbers from committed notes (+1.7 % / +5.1 % SoC, +15.2 % icache module, 1.14× power) (`04-synthesis.md`) | superseded by the reproducible `ibex_top` flow in `14-sky130.md`; not directly comparable (different scope, Yosys version, and icache) |
 | "FPGA: not measured", "post-P&R: not measured" | superseded by `15-ecp5.md` and `14-sky130.md` §4.4 |
+| "A per-module attribution of the Arch lane's extra flops and LUTs: not measured" | superseded by **`16-per-module.md`** — hierarchical synthesis of the same sv2v inputs, both targets. `ibex_icache` is 142.5 % of the unflattened ECP5 LUT delta and 99.7 % of the flop delta; the flops resolve to an 8-entry output replay buffer with no upstream counterpart, added in `8cb5fa8` as CoreMark work and halved for area in `7ea4a49`. Note ~37 % of the *flattened* LUT gap is cross-module optimisation, attributable to no module |
 | Arch-lane ECP5 fmax 29.14 MHz / 16,867 LUT4 and the sky130 Arch P&R numbers with the RVFI ports present (`reports/arch_ecp5_rvfi_*`, `reports/arch_openroad_rvfi_final_*`) | superseded by the Phase B re-runs (`15-ecp5.md` §5.4, `14-sky130.md` §4.5) |
 | Caveat 4 "RVFI ports unconditional" | resolved by Phase B (`11-port-changes.md`) |
 
