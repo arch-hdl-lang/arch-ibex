@@ -47,7 +47,9 @@ old reports as `reports/arch_ecp5_rvfi_*`, leaving the citation
 pointing at a file that had moved on. Corrected in the same change as
 this file: §5.1 now cites `reports/arch_ecp5_rvfi_synth.stat`, with a
 note that the unsuffixed `arch_ecp5_synth.stat` holds the RVFI-off
-figures (15,910 / 3,440) that this breakdown uses.
+figures. At the 0.72.4 pin that file holds 16,142 / 3,440, which is
+what this breakdown uses; the 15,910 / 3,440 above is the 0.72.2 value
+the input check reproduced.
 
 ## 2. Method
 
@@ -76,29 +78,37 @@ misreads as "a large new module appeared".
 
 ## 3. Flattened vs unflattened — read this before the table
 
+All figures arch **0.72.4** (the pinned release), matching §4.
+
 | Lane | Unflattened | Flattened | Cost of not flattening |
 |---|---|---|--:|
 | sv | 14,569 LUT4 / 2,578 FF | 9,963 / 2,534 | +4,606 LUT4 |
-| arch | 18,309 LUT4 / 3,498 FF | 15,910 / 3,440 | +2,399 LUT4 |
+| arch | 18,171 LUT4 / 3,498 FF | 16,142 / 3,440 | +2,029 LUT4 |
 
 | | LUT4 | FF |
 |---|--:|--:|
-| **flattened delta (headline)** | **+5,947** | **+906** |
-| unflattened delta (this table) | +3,740 | +920 |
+| **flattened delta (headline)** | **+6,179** | **+906** |
+| unflattened delta (this table) | +3,602 | +920 |
 
 Cross-module optimisation removes 4,606 LUT4 from the sv lane but only
-2,399 from the Arch lane. **About 2,207 LUT4 — 37 % of the headline LUT
+2,029 from the Arch lane. **About 2,577 LUT4 — 42 % of the headline LUT
 gap — exists only under flattening** and is attributable to no module:
 it is the sv lane optimising across module boundaries more effectively.
 The flop gap is stable across both views (+906 vs +920), so the flop
 attribution below carries over to the flattened figure; the LUT
-attribution accounts for the +3,740, not the +5,947.
+attribution accounts for the +3,602, not the +6,179.
+
+(At 0.72.2 these were +5,947 flattened / +3,740 unflattened, 37 %. The
+flattened Arch LUT4 rose 15,910 → 16,142 with PR #1028 because ECP5
+folds multiplies into its one hard `MULT18X18D`, so the shared-MAC
+harness costs LUT4 on this target while saving 28,491 µm² on sky130 —
+see §6a and `15-ecp5.md` §5.6.)
 
 ## 4. Attribution
 
-Percentages are of that measure's unflattened total delta (LUT4 +3,740,
-FF +920, sky130 +94,298 µm²). Sorted by |ΔLUT4|. Modules identical on
-all three measures are omitted.
+Percentages are of that measure's unflattened total delta at 0.72.4
+(LUT4 +3,602, FF +920, sky130 +66,183 µm²). Sorted by |Δ sky130|.
+Modules identical on all three measures are omitted.
 
 | Module | LUT4 sv | arch | Δ | FF sv | arch | Δ | sky130 sv | arch | Δ | % sky |
 |---|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
@@ -278,7 +288,7 @@ of **1.0134** (113,150 vs 111,651 ticks), later **1.0108**
 a structure the Arch port has and upstream Ibex does not, added to close
 a cycle-count gap and already halved on area grounds. The comparison is
 therefore between two icaches that differ architecturally, not between
-two emissions of one design. A reader taking "+5,947 LUT4" as ARCH's
+two emissions of one design. A reader taking "+6,179 LUT4" as ARCH's
 emission overhead would be reading it wrongly. Quantifying the two
 separately would need an Arch-lane build with the replay buffer
 bypassed; that variant was **not** built, because it fails the test the
