@@ -119,18 +119,18 @@
 
         +----------Local Count, excluding submodules.
         | 
-     1082 wires
-     4772 wire bits
-     1082 public wires
-     4772 public wire bits
+      717 wires
+     2440 wire bits
+      717 public wires
+     2440 public wire bits
        26 ports
       446 port bits
-     1440 cells
-       62   CCU2C
-       59   L6MUX21
-     1033   LUT4
+     1164 cells
+       20   CCU2C
+       14   L6MUX21
+      895   LUT4
         1   MULT18X18D
-      201   PFUMX
+      150   PFUMX
        84   TRELLIS_FF
 
 === $paramod\ibex_alu\RV32B=s32'00000000000000000000000000000000 ===
@@ -646,7 +646,7 @@
 
         +----------Count including submodules.
         | 
-    27959 ibex_top
+    27683 ibex_top
        25 $paramod$782da2f9d68ab5dbc9fd0096f4062dc26a9edf0d\prim_ram_1p
      6304 $paramod$a817fcab25fd9b6b79d53a01dac0e1b1b1a22101\ibex_register_file_ff
        13 $paramod$baa7fc0a76b99216a6e63820dd18707b73de5557\prim_ram_1p
@@ -654,7 +654,7 @@
       106   $paramod$158245387f3da7ba82feb17eac9d69cbf948ebcd\ibex_ex_block
       629     $paramod\ibex_alu\RV32B=s32'00000000000000000000000000000000
        37     $paramod\ibex_multdiv_fast\RV32M=s32'00000000000000000000000000000010
-     1440       $paramod\_ibex_multdiv_fast_threads\RV32M=s32'00000000000000000000000000000010
+     1164       $paramod\_ibex_multdiv_fast_threads\RV32M=s32'00000000000000000000000000000010
      1691   $paramod$49d91b5bf1aa7d22898ce0de9f5f2874db3b2b1a\ibex_pmp
       786   $paramod$57ca0b36fd5c7b9bd43bd6778c772f0e3780cc45\ibex_load_store_unit
       304   $paramod$a44ba146446955eb2e260b0fafd09112b36362f7\ibex_if_stage
@@ -687,22 +687,22 @@
 
         +----------Count including submodules.
         | 
-    20135 wires
-    68156 wire bits
-    20135 public wires
-    68156 public wire bits
+    19770 wires
+    65824 wire bits
+    19770 public wires
+    65824 public wire bits
      1023 ports
     11630 port bits
         - memories
         - memory bits
         - processes
-    27959 cells
-      568   CCU2C
+    27683 cells
+      526   CCU2C
         6   DP16KD
-     1456   L6MUX21
-    18309   LUT4
+     1411   L6MUX21
+    18171   LUT4
         1   MULT18X18D
-     4121   PFUMX
+     4070   PFUMX
      3498   TRELLIS_FF
         8 submodules
         2   $paramod$782da2f9d68ab5dbc9fd0096f4062dc26a9edf0d\prim_ram_1p

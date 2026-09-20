@@ -8,6 +8,12 @@ sv2v outputs the flattened runs consumed.
 The flattened numbers remain the headline. This is a breakdown, not a
 replacement, and §3 explains why the two do not — and cannot — agree.
 
+> **Regenerated on arch 0.72.4** (2026-09-20). The first pass of this
+> file was measured on 0.72.2 and reported `ibex_multdiv_fast` at
+> +29,292 µm² (31.2 % of the sky130 delta). That was an arch-com defect,
+> not a port cost: see §6a. On 0.72.4 the multdiv is +1,570 µm² (2.4 %)
+> and the gap is the icache alone.
+
 ## 1. Inputs
 
 Not regenerated. The same two files the flattened runs read, named by
@@ -94,61 +100,66 @@ Percentages are of that measure's unflattened total delta (LUT4 +3,740,
 FF +920, sky130 +94,298 µm²). Sorted by |ΔLUT4|. Modules identical on
 all three measures are omitted.
 
-| Module | LUT4 sv | arch | Δ | % | FF sv | arch | Δ | % | sky130 sv | arch | Δ | % |
-|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
-| `ibex_icache` | 1,750 | 7,081 | +5,331 | 142.5% | 579 | 1,496 | +917 | 99.7% | 30,163 | 95,443 | +65,280 | 69.5% |
-| `ibex_pmp` | 2,439 | 1,115 | -1,324 | -35.4% | 0 | 0 | +0 | 0.0% | 18,704 | 13,179 | -5,525 | -5.9% |
-| `ibex_register_file_ff` | 4,314 | 3,867 | -447 | -12.0% | 992 | 992 | +0 | 0.0% | 47,554 | 52,166 | +4,612 | 4.9% |
-| `ibex_multdiv_fast` | 909 | 1,057 | +148 | 4.0% | 81 | 84 | +3 | 0.3% | 20,551 | 49,843 | +29,292 | 31.2% |
-| `ibex_decoder` | 291 | 232 | -59 | -1.6% | 0 | 0 | +0 | 0.0% | 1,191 | 1,081 | -110 | -0.1% |
-| `ibex_id_stage` | 420 | 467 | +47 | 1.3% | 71 | 71 | +0 | 0.0% | 4,887 | 5,600 | +713 | 0.8% |
-| `ibex_compressed_decoder` | 702 | 745 | +43 | 1.1% | 18 | 20 | +2 | 0.2% | 4,030 | 4,621 | +591 | 0.6% |
-| `ibex_load_store_unit` | 423 | 465 | +42 | 1.1% | 68 | 67 | -1 | -0.1% | 4,696 | 4,662 | -34 | -0.0% |
-| `ibex_alu` | 541 | 515 | -26 | -0.7% | 0 | 0 | +0 | 0.0% | 5,160 | 5,484 | +324 | 0.3% |
-| `ibex_if_stage` | 196 | 180 | -16 | -0.4% | 88 | 88 | +0 | 0.0% | 3,719 | 3,711 | -8 | -0.0% |
-| `ibex_counter` | 135 | 136 | +1 | 0.0% | 128 | 128 | +0 | 0.0% | 6,984 | 7,490 | +505 | 0.5% |
-| `ibex_controller` | 304 | 304 | +0 | 0.0% | 21 | 20 | -1 | -0.1% | 2,390 | 2,342 | -48 | -0.1% |
-| `ibex_core` | 10 | 10 | +0 | 0.0% | 0 | 0 | +0 | 0.0% | 482 | 485 | +4 | 0.0% |
-| `prim_ram_1p` | 33 | 33 | +0 | 0.0% | 0 | 0 | +0 | 0.0% | 1,629,162 | 1,627,864 | -1,299 | -1.4% |
-| **total** | **14,519** | **18,259** | **+3,740** | | **2,232** | **3,152** | **+920** | | **1,809,733** | **1,904,031** | **+94,298** | |
+| Module | LUT4 sv | arch | Δ | FF sv | arch | Δ | sky130 sv | arch | Δ | % sky |
+|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| `ibex_icache` | 1,750 | 7,081 | +5,331 | 579 | 1,496 | +917 | 30,163 | 95,443 | +65,280 | 98.6% |
+| `ibex_pmp` | 2,439 | 1,115 | -1,324 | 0 | 0 | +0 | 18,704 | 13,179 | -5,525 | -8.3% |
+| `ibex_register_file_ff` | 4,314 | 3,867 | -447 | 992 | 992 | +0 | 47,554 | 52,166 | +4,612 | 7.0% |
+| `ibex_multdiv_fast` | 909 | 919 | +10 | 81 | 84 | +3 | 20,551 | 22,121 | +1,570 | 2.4% |
+| `prim_ram_1p` | 33 | 33 | +0 | 0 | 0 | +0 | 1,629,162 | 1,627,864 | -1,299 | -2.0% |
+| `ibex_id_stage` | 420 | 467 | +47 | 71 | 71 | +0 | 4,887 | 5,600 | +713 | 1.1% |
+| `ibex_compressed_decoder` | 702 | 745 | +43 | 18 | 20 | +2 | 4,030 | 4,621 | +591 | 0.9% |
+| `ibex_counter` | 135 | 136 | +1 | 128 | 128 | +0 | 6,984 | 7,490 | +505 | 0.8% |
+| `ibex_alu` | 541 | 515 | -26 | 0 | 0 | +0 | 5,160 | 5,484 | +324 | 0.5% |
+| `ibex_decoder` | 291 | 232 | -59 | 0 | 0 | +0 | 1,191 | 1,081 | -110 | -0.2% |
+| `ibex_controller` | 304 | 304 | +0 | 21 | 20 | -1 | 2,390 | 2,342 | -48 | -0.1% |
+| `ibex_load_store_unit` | 423 | 465 | +42 | 68 | 67 | -1 | 4,696 | 4,662 | -34 | -0.1% |
+| `ibex_if_stage` | 196 | 180 | -16 | 88 | 88 | +0 | 3,719 | 3,711 | -8 | -0.0% |
+| `ibex_core` | 10 | 10 | +0 | 0 | 0 | +0 | 482 | 485 | +4 | 0.0% |
+| **total** | **14,519** | **18,121** | **+3,602** | **2,232** | **3,152** | **+920** | **1,809,733** | **1,876,310** | **+66,183** | |
 
 ## 5. Findings
 
-**The gap is maximally concentrated, not spread.** On ECP5 one module —
-`ibex_icache` — accounts for **142.5 % of the net LUT delta and 99.7 %
-of the flop delta**. It exceeds 100 % because two modules move the other
-way: `ibex_pmp` is 54 % smaller in the Arch lane (−1,324 LUT4) and
-`ibex_register_file_ff` 10 % smaller (−447). Eight of the twelve
-non-trivial modules move by less than ±60 LUT4. TASK9's "top 3 ≥ 60 %"
-concentration test is met by the top module alone.
+**The gap is one module.** `ibex_icache` is **98.6 % of the sky130 area
+delta, 99.7 % of the flop delta**, and on ECP5 it exceeds the net LUT
+delta outright (+5,331 against a net +3,602) because two modules move
+the other way: `ibex_pmp` is 54 % smaller in the Arch lane (−1,324 LUT4,
+−5,525 µm²) and `ibex_register_file_ff` 10 % smaller on LUT4 (−447).
+Every other module is within ±713 µm² and ±59 LUT4.
 
 Top three by measure:
 
 | Measure | Top 3 | Share |
 |---|---|--:|
-| ECP5 LUT4 | `ibex_icache`, `ibex_pmp`, `ibex_register_file_ff` | 190 % of net (signs oppose) |
+| sky130 area | `ibex_icache`, `ibex_pmp`, `ibex_register_file_ff` | 98.6 % / −8.3 % / 7.0 % |
 | ECP5 FF | `ibex_icache` (+917), `ibex_multdiv_fast` (+3), `ibex_compressed_decoder` (+2) | 100 % |
-| sky130 area | `ibex_icache`, `ibex_multdiv_fast`, `ibex_register_file_ff` | 105.6 % |
+| ECP5 LUT4 | `ibex_icache`, `ibex_pmp`, `ibex_register_file_ff` | signs oppose |
 
-**sky130 and ECP5 disagree about second place.** `ibex_multdiv_fast` is
-+4.0 % of the LUT delta on ECP5 but **+31.2 % of the area delta on
-sky130** (+29,292 µm²). ECP5 absorbs its structure into LUT4s and carry
-chains; the standard-cell flow does not. Any single-target reading of
-"which module costs most" is therefore target-dependent below the top
-entry.
+**`ibex_multdiv_fast` is no longer a contributor.** On 0.72.2 it was
++29,292 µm² (31.2 % of the sky130 delta) and the one result that did not
+fit the pattern — large on sky130, negligible on ECP5. That was an
+arch-com defect (§6a). On 0.72.4 it is **+1,570 µm² (2.4 %)** and
+**+10 LUT4**, i.e. within noise of upstream.
 
 **Modules where the Arch lane is smaller**: `ibex_pmp` (−1,324 LUT4,
-−5,525 µm²), `ibex_register_file_ff` (−447 LUT4 on ECP5, though +4,612
-µm² on sky130), `ibex_decoder`, `ibex_controller`, `ibex_alu`,
-`ibex_if_stage`, `ibex_load_store_unit`. If `ibex_icache` matched its
-upstream counterpart, the Arch lane would be **smaller** than the sv
-lane on unflattened ECP5 LUT4.
+−5,525 µm²), `ibex_decoder`, `ibex_controller`, `ibex_alu`,
+`ibex_if_stage`, `ibex_load_store_unit`, and `ibex_register_file_ff` on
+ECP5 LUT4 (though +4,612 µm² on sky130). **If `ibex_icache` matched its
+upstream counterpart, the Arch lane would be smaller than the sv lane**
+on both measures.
 
-**The RAMs are not implicated.** `prim_ram_1p` is 1,629,162 µm² (sv) vs
-1,627,864 (arch), a −1,299 µm² difference on 1.63 M — 86 % of the
-sky130 design area, and essentially identical between lanes. Both lanes
-carry 6 DP16KD on ECP5. The sky130 ratio of 1.052× is low for this
-reason: RAM area dominates the denominator.
+**The RAMs are not implicated.** `prim_ram_1p` differs by −1,299 µm² on
+1.63 M — 86 % of the sky130 design area, essentially identical between
+lanes. Both lanes carry 6 DP16KD on ECP5. The sky130 ratio is low for
+this reason: RAM area dominates the denominator.
+
+**Do not scale this to the routed design.** These are unflattened
+synthesis figures. Post-P&R the whole-design gap is 1.075×
+(2,449,039 vs 2,277,607 µm², `14-sky130.md` Table 10) — the multdiv fix
+that removes 28,491 µm² at synthesis removes only 8,986 µm² after P&R,
+because the core is 78 % sequential and the flow re-spends part of the
+saving on timing-repair buffering. This table says *where* the logic
+difference sits, not what it costs on silicon.
 
 ### Top contributor: cell-type breakdown
 
@@ -168,6 +179,48 @@ selection logic, not arithmetic.
 
 As TASK9 directs: this is the **RVFI-off** configuration, and
 `IbexIcache.arch` was the most-revised file in the port.
+
+## 6a. The multdiv difference was a compiler defect (fixed in 0.72.4)
+
+The first pass of this file, on arch 0.72.2, reported
+`ibex_multdiv_fast` at **+29,292 µm² (31.2 % of the sky130 delta)** and
+**+148 LUT4 (4.0 %)** on ECP5 — the one row whose two targets
+disagreed. That signature was the clue: the module emitted **four
+multipliers where one was intended**, and ECP5 folds multiplies into its
+one hard `MULT18X18D`, so duplication was nearly free there and glaring
+on standard cells.
+
+`src/IbexMultdivFast.arch` declares `shared function MacRes`, which
+exists so an operator called from several thread states emits as ONE
+instance fed by state-selected operand muxes. arch-com's collector binds
+a call site by reading the state value out of the enclosing
+`_tN_state == <value>` comparison, and matched only a bare numeric
+literal. arch-com #247 (`65e5e89d`, 2026-05-11) rewrote those
+comparisons to reference a per-state localparam (`_t0_S1_action`), so
+the collector could no longer recover the value, bound no call sites,
+emitted no harness, and every call inlined its own copy of the MAC.
+
+Nothing failed: the SV stayed correct and simply got bigger. The feature
+had shipped four days earlier across 562 lines and five source files
+**with no tests at all**, so nothing caught it. It was found here by
+per-module attribution, bisected to `65e5e89d`, and confirmed against a
+preserved May build artifact that still contained the working harness
+(56 `__shared_` references; 20,420 µm² synthesised today).
+
+Fixed in **arch-com PR #1028**, released in **v0.72.4**, with the
+regression test the feature should have had:
+
+| `ibex_multdiv_fast` | `$mul` | sky130 area |
+|---|--:|--:|
+| 0.72.2 | 4 | 50,595 µm² |
+| **0.72.4** | **1** | **22,104 µm²** (−56 %) |
+| upstream `ibex_multdiv_fast` | 1 | ~21,100 µm² |
+
+Note the fix is **not** a uniform improvement: ECP5 synthesis LUT4 rises
+by 232 (16,142 vs 15,910) because the harness's operand muxes are real
+LUTs while the duplicated MACs were absorbed by the single hard DSP.
+fmax after P&R is unchanged within seed noise. The win is a
+standard-cell effect.
 
 ## 6. The icache difference is a design difference
 
