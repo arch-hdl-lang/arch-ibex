@@ -34,10 +34,14 @@ figure matches exactly; the LUT figure matches no committed pair
 +5,890, after-packing figures +5,812 and +5,914), and the string
 "5,971" appears in no file in this package. Read as +5,947 throughout.
 
-Note also that `15-ecp5.md`'s headline table cites
-`reports/arch_ecp5_synth.stat` for "15,751", which is the value in
-`reports/arch_ecp5_rvfi_synth.stat`; `arch_ecp5_synth.stat` holds
-15,910. The citation and the number disagree in the existing file.
+`15-ecp5.md` §5.1 previously cited `reports/arch_ecp5_synth.stat` for
+"15,751". Its numbers are right for what §5.1 measures — the Arch top
+*with* RVFI ports — but §5.4 later removed those ports and kept the
+old reports as `reports/arch_ecp5_rvfi_*`, leaving the citation
+pointing at a file that had moved on. Corrected in the same change as
+this file: §5.1 now cites `reports/arch_ecp5_rvfi_synth.stat`, with a
+note that the unsuffixed `arch_ecp5_synth.stat` holds the RVFI-off
+figures (15,910 / 3,440) that this breakdown uses.
 
 ## 2. Method
 
