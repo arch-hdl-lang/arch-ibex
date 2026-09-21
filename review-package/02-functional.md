@@ -60,6 +60,7 @@ the durable record is commit messages and change notes.
 | RISC-V arch tests RV32IMC on the Arch lane vs upstream references | 74/74 PASS | 2026-05-04 | commit `04d1319` (PR #14 "Phase C end-gate") |
 | Per-module unit suites at PMP enable (D2-flip) | pmp 22/22 and 28/28; icache 45/53; core 19/21; top 14/15 (failures noted as pre-existing) | 2026-05-06 | `READY.md`, commit `22937c7` |
 | CoreMark comparison harness added | — | 2026-05-10 | commits `5ffa47c`, `60a1d71` |
+| CoreMark before icache output replay buffer | Arch 113,701 ticks (8.794997 CoreMark/MHz) vs upstream 111,651 (8.956480), ratio 1.0184; subsequent 16-entry buffer: 113,234 ticks, saving 467 (0.41%) | 2026-05-10 (Pacific) | [Archived development-session test outputs and provenance](reports/coremark-prebuffer-provenance.md), source lines 15477 and 15938; both `validated=True` |
 | CoreMark comparison, one recorded run (Arch swap vs upstream, same binary, `COREMARK_ITERATIONS` default 1) | swap 113,150 ticks vs upstream 111,651 ticks, ratio 1.0134 (swap 1.3 % slower) | 2026-05-11 | `changes/2026-05-11-multdiv-activity-gate/results.md:114-115`, commit `ec74f0f` |
 | Commits after the last recorded gate | 3 commits (2026-06-21, 06-24, 06-29: HARC canaries, HARC coverage merge, LSU bus-error fix) | — | `git log --since=2026-05-14` |
 
