@@ -153,3 +153,81 @@ holds with a very large margin.
 Caveat: the icache's `branch_i` port name does not survive flattening, so
 `id_stage_i.branch_set_raw` is a proxy for it. Any logic between the two
 would have to burn 11.7 ns to invalidate the conclusion.
+
+## 4. Measured: what the rewrite is actually worth
+
+Everything above says whether a rewrite can be made *sound*. It says nothing
+about whether the prize is real. That needs synthesis + P&R, so it was
+measured directly with a one-line, deliberately **incorrect** upper-bound
+probe: revert `lookup_grant` to the pre-`da9059f` form (which reinstates the
+Bug C deadlock) and run the full flow. No correct rewrite can beat this.
+
+Same compiler (v0.72.5, verified to reproduce the pinned release's SV
+byte-for-byte before the edit), same flow, one logic line changed.
+
+| metric | current design | upper bound | delta |
+|---|---|---|---|
+| WNS setup | -15.074 ns | **-12.270 ns** | **+2.804 ns** |
+| TNS setup | -912,634 ns | **-289,326 ns** | **-68 %** |
+| design area | 2,449,039 um2 | 2,418,304 um2 | -30,735 um2 (-1.3 %) |
+| clock skew (setup) | -1.012 ns | -0.631 ns | improved |
+| WNS hold | -0.550 ns | -0.597 ns | slightly worse |
+
+Implied Fmax 39.9 -> 44.9 MHz (+12.5 %). The SV lane is at -9.660 ns
+(50.9 MHz), so this closes **2.80 of the 5.41 ns lane gap -- about half**.
+
+### The projection was wrong, and this is why the measurement mattered
+
+The path-composition analysis suggested ~8 ns (the Arch lane's worst path
+carried 20 more logic levels than the SV lane's). That figure is the depth
+difference *between the two lanes' worst paths*, which is not the same as
+the amount recoverable by one change. The real recovery is 2.80 ns.
+
+The reason is visible in the new timing report: the critical path **moves**.
+
+- The icache RAM endpoints (`data_bank_w1.rdata_o[*]`) are still there but
+  are now **adder-free** (`maj3` count 0) and sit at -11.1 ns, improved from
+  -14.9.
+- The new worst path is different work entirely: `register_file_i.raddr_a_i[4]`
+  -> `data_req_o` (an output port), -12.270 ns, and it *does* carry an adder
+  (7x `maj3`).
+
+So the icache-specific gain is ~3.9 ns (-15.07 -> -11.1), but WNS only
+improves by 2.80 because a previously-hidden LSU/`data_req_o` path becomes
+the binding constraint. **Further icache work buys nothing until
+`data_req_o` is addressed.**
+
+### Is it worth it?
+
+2.80 ns WNS and -68 % TNS for reintroducing a deadlock is not a trade -- the
+upper bound is not shippable. The question is whether the *conservative
+candidate* (section 3) gets close to it. It should: it keeps only `branch_i`
+on the grant, and `branch_i` arrives at 3.755 ns against the address's
+15.493 ns. That has not been measured; it is the next experiment, and it is
+one flow run.
+
+### Method note: assessing relative quality before the route finishes
+
+Synthesis-stage STA in this flow is **not** usable as a relative indicator,
+for a fixable reason rather than an inherent one. `flow/sky130_synth.sh`'s
+SDC sets a clock and zero I/O delays and nothing else -- no
+`set_driving_cell`, `set_load`, `set_max_fanout` or `set_max_transition` --
+so ABC maps for area with no timing target and leaves a minimum-strength
+`nor2` driving 11,008 loads, which STA charges 340 ns. That is an unbuffered
+netlist, not a measurement artifact.
+
+Cheaper checkpoints that *are* usable, in increasing cost:
+
+1. **RTL, seconds, no synthesis** -- `GRANT_INDEP` above answers "is the
+   adder in this cone?" A candidate that fails it can be rejected outright.
+2. **Post-CTS + global route** -- `flow.tcl` already reports slack there
+   (after `estimate_parasitics -global_routing`), long before detailed
+   routing. On this run: -14.571 post-placement, -11.010 post-CTS/GRT,
+   -12.270 final. Note the GRT estimate was *optimistic* by 1.26 ns here, so
+   treat it as a trend, not a number.
+3. **Full P&R** -- ~100 min for this design. Only for the final answer.
+
+Caveat: `flow/openroad/run.sh` writes into the same `flow/out/<lane>/`
+every run, so this experiment overwrote the baseline's log, routed netlist
+and SPEF. Per-experiment output directories would make staged comparisons
+possible.
