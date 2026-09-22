@@ -231,3 +231,60 @@ Caveat: `flow/openroad/run.sh` writes into the same `flow/out/<lane>/`
 every run, so this experiment overwrote the baseline's log, routed netlist
 and SPEF. Per-experiment output directories would make staged comparisons
 possible.
+
+## 5. Measured: the candidate's throughput cost is zero on both benchmarks
+
+The retiming half of the candidate is provably behaviour-preserving
+(`RETIME_SOUND`), and off a branch `lookup_addr_ic0 == prefetch_addr_q`, so
+`coalesce_ic0` already *is* the prefetch-leg compare. The entire behavioural
+delta is therefore one line:
+
+```arch
+let coalesce_cand: Bool = branch_i or coalesce_ic0;
+```
+
+which needs no retiming work to measure.
+
+| variant | `icache_bench` cycles | CoreMark dut_ticks |
+|---|---|---|
+| baseline (current, Bug C fixed) | 14,491 | 112,855 |
+| **candidate** (`branch_i or coalesce_ic0`) | **14,491** | **112,855** |
+| control: always yield (`coalesce_cand = true`) | 14,491 | 112,855 |
+| control: suppress grant on every branch | **hang** | -- |
+| pre-Bug-C (`lookup_grant = lookup_req_ic0`) | **hang** | -- |
+
+**Zero cost on both.** And it is a bound, not a point measurement: the
+candidate yields on `branch_i or coalesce_ic0`, "always yield" yields on
+everything, so the candidate suppresses a strict subset. Since the strictly
+more aggressive variant also costs nothing, the candidate cannot cost
+anything either.
+
+### Why the controls matter
+
+The first three rows being identical is, on its own, indistinguishable from
+"the benchmark never exercises this logic". The last two rows rule that out:
+
+- Suppressing the grant on every branch **hangs** `icache_bench`.
+- The pre-`da9059f` form **hangs** it too, with zero loop commits --
+  independently reproducing Bug C, and confirming the benchmark really does
+  exercise the writeback-starvation scenario.
+
+So the benchmark is sensitive to this signal in the *dangerous* direction
+(less yielding -> deadlock) while showing no cost in the *conservative*
+direction (more yielding -> free). That asymmetry is exactly what the
+candidate relies on.
+
+### What this does NOT establish
+
+Neither benchmark moves even with the term forced permanently on, so these
+workloads never reach a state where extra yielding costs a cycle. The
+zero-cost result is valid for `icache_bench` and CoreMark; it is **not** a
+general claim. A workload with a higher fill-writeback rate could pay.
+
+Also note the "suppress on every branch" hang: the design does capture a
+branch target on a non-granted branch (`prefetch_addr_q <= addr_i`, which
+upstream mirrors with `prefetch_addr_en = branch_i | lookup_grant_ic0`), but
+that retry path is evidently not robust enough to survive *every* branch
+being deferred. The candidate defers only on `branch_i && fill_write_req`,
+which is far rarer -- but "the retry path exists" should not be read as
+"deferring is always safe".
