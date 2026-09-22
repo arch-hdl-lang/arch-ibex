@@ -2980,3 +2980,129 @@ async def test_r_ext_2b_req_held_across_branch_until_gnt(dut):
         await _settle(dut)
     assert saw_line2, "branch target never requested after the held grant"
 
+
+
+# ── lookup_grant coalesce term: behavioural sensitizer ───────────────────
+#
+# `lookup_grant = lookup_req_ic0 && !((coalesce_ic0 || fb_full) && fill_write_req)`
+# came in with the Bug C fix (writeback starvation). `coalesce_ic0` compares
+# the fill-buffer line tags against `lookup_addr_ic0`, which on a branch is
+# the ALU adder's output -- that is what puts the adder on the icache RAM
+# grant and costs ~2.8 ns of WNS post-P&R.
+#
+# The proposed rewrite replaces the term with `branch_i || coalesce_ic0`,
+# i.e. on a branch stop comparing and just yield to the fill. NEITHER
+# CoreMark NOR icache_bench distinguishes the two designs -- both score
+# identically even with the term forced permanently on -- so without a
+# directed test the rewrite is behaviourally unobservable and could ship
+# wrong silently.
+#
+# This test builds the one cycle where the two designs disagree.
+
+
+async def _bus_auto_serve(dut, rdata: int = 0x0000_0013):
+    """Background bus model: grant every request, return one beat."""
+    while True:
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+        if int(dut.instr_req_o.value) == 1:
+            dut.instr_gnt_i.value = 1
+            await RisingEdge(dut.clk_i)
+            dut.instr_gnt_i.value = 0
+            await _settle(dut)
+            dut.instr_rvalid_i.value = 1
+            dut.instr_rdata_i.value = rdata & MASK32
+            await RisingEdge(dut.clk_i)
+            dut.instr_rvalid_i.value = 0
+            await _settle(dut)
+
+
+@cocotb.test()
+async def test_grant_coalesce_term_is_observable_on_branch(dut):
+    """Pins `lookup_grant` at the cycle that discriminates the shipped
+    design from the `branch_i || coalesce_ic0` rewrite.
+
+    Discriminating state:
+        fill_write_req = 1   (a fill buffer is writing back)
+        branch_i       = 1   (branching to a line that is NOT in flight)
+        coalesce_ic0   = 0   (so there is nothing to coalesce onto)
+        fb_full        = 0
+
+    Shipped design  -> lookup_grant = 1 (nothing to coalesce; lookup wins).
+    Rewrite         -> lookup_grant = 0 (yields to the fill unconditionally).
+
+    The test asserts the SHIPPED behaviour. A rewrite must flip the
+    expectation here in the same commit -- that visible edit is the whole
+    point, because no benchmark in the tree produces one.
+
+    It also asserts the discriminating state was actually REACHED. That is
+    the more important half: if the scenario cannot be constructed the test
+    fails loudly rather than passing vacuously.
+    """
+    await _start_clock(dut)
+    await _reset(dut)
+    await _wait_until_idle(dut)
+
+    cocotb.start_soon(_bus_auto_serve(dut))
+
+    # Both ways miss: tag RAM returns 0 (valid bit clear).
+    _zero_unpacked_vec(dut.ic_tag_rdata_i)
+    _zero_unpacked_vec(dut.ic_data_rdata_i)
+    dut.req_i.value   = 1
+    dut.ready_i.value = 1
+
+    ADDR_A = 0x0010_0000   # first fetch -> miss -> fill buffer allocates
+    ADDR_B = 0x0020_0040   # different tag AND index; never in flight
+
+    assert _index_of(ADDR_A) != _index_of(ADDR_B), "addresses must differ"
+
+    await _branch(dut, ADDR_A)
+    # Stop prefetching immediately: every lookup misses here, so leaving
+    # req_i high fills all four fill buffers and `fb_full` then masks the
+    # coalesce term, making the observation below non-discriminating.
+    # Exactly one FB stays busy with ADDR_A's line.
+    dut.req_i.value = 0
+    await _settle(dut)
+
+    observed = None
+    for _ in range(200):
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+        if int(dut.fill_write_req.value) != 1:
+            continue
+        # Discriminating cycle: inject a branch to a line not in flight.
+        dut.req_i.value    = 1
+        dut.branch_i.value = 1
+        dut.addr_i.value   = ADDR_B
+        await _settle(dut)
+        observed = {
+            "fill_write_req":  int(dut.fill_write_req.value),
+            "coalesce_ic0":    int(dut.coalesce_ic0.value),
+            "fb_full":         int(dut.fb_full.value),
+            "lookup_req_ic0":  int(dut.lookup_req_ic0.value),
+            "lookup_grant":    int(dut.lookup_grant.value),
+        }
+        dut.branch_i.value = 0
+        dut.req_i.value    = 0
+        await _settle(dut)
+        break
+
+    assert observed is not None, (
+        "never reached a cycle with fill_write_req=1 -- the scenario was "
+        "not constructed, so this test proves nothing"
+    )
+    # Preconditions: without these the observation below is not discriminating.
+    assert observed["fill_write_req"] == 1, observed
+    assert observed["lookup_req_ic0"] == 1, observed
+    assert observed["coalesce_ic0"] == 0, (
+        f"branch target must NOT be in flight, else both designs agree: {observed}"
+    )
+    assert observed["fb_full"] == 0, (
+        f"fb_full would mask the coalesce term, making this non-discriminating: {observed}"
+    )
+    # The discriminating observation.
+    assert observed["lookup_grant"] == 1, (
+        "shipped design grants this lookup (nothing to coalesce onto). "
+        f"lookup_grant=0 means the `branch_i || coalesce_ic0` rewrite is in "
+        f"place -- update this expectation in the same commit. {observed}"
+    )
