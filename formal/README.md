@@ -94,3 +94,39 @@ rather than this small model. A candidate rewrite needs both:
 
 Plus the existing regression: `tests/cocotb_tests/test_icache_bench.py` and
 the `sw_isr` / `multictx_isr` / `pmp_load_isr` scenarios the source cites.
+
+## 3. Retiming the comparison (`icache_grant_retime.sv`)
+
+Can the coalesce compare be moved a cycle earlier? The answer splits by mux
+leg, because `lookup_line_ic0 = (branch_i ? addr_i : prefetch_addr_q)[31:3]`.
+
+Run with `formal/run_retime.sh "<defines>"`.
+
+| defines | result | meaning |
+|---|---|---|
+| `-DRETIME_SOUND` | **pass** | Retiming the **prefetch leg** is sound: evaluate the compare on the D side in cycle N-1 and register the result — provably equal to computing it live. Every input on that leg is a register, so there is something to retime across. |
+| `-DRETIME_BRANCH_ATTEMPT` | **FAIL** | Retiming the **branch leg** is not. `addr_i` is the ALU adder's output in cycle N; no register sits between the adder and the compare, so there is no earlier copy to compute from. |
+| `-DCANDIDATE_INDEP` | **pass** | Candidate = retimed prefetch leg + a conservative constant on the branch leg (`branch_i ? 1'b1 : retimed_prefetch_q`). Address-independent, so the adder comes off the RAM path. |
+| `-DCANDIDATE_CONSERVATIVE` | **pass** | The candidate yields at least as often as today (`coalesce_today ⇒ coalesce_candidate`), so fill is never starved *more* than it is now — the Bug C direction. |
+
+So a viable rewrite exists: retime the prefetch leg, and on a branch stop
+asking "is this exact line in flight?" and just yield. It is conservative,
+which is the safe direction for Bug C.
+
+### What these results do and do not establish
+
+- BMC to depth 12, not unbounded proofs.
+- The register D-side inputs are driven as *free* inputs, which
+  over-approximates the real design (more behaviours than can actually
+  occur). A **pass** is therefore stronger than needed; a FAIL would need
+  checking against the real next-state logic before believing it.
+- `CANDIDATE_CONSERVATIVE` is the safe *direction*, not the liveness
+  property itself. Bounded liveness still has to be checked on the full
+  `ibex_icache` (see above).
+- The candidate **costs lookup throughput**: on any branch coinciding with
+  `fill_write_req` it yields even when the line would not have matched.
+  That is a performance question — measure it on `test_icache_bench.py` /
+  CoreMark, it cannot be proved here.
+- It assumes `branch_i` arrives earlier than `addr_i`. `branch_i` is a
+  control signal and `addr_i` is the adder output, so this is very likely,
+  but confirm it in the timing report before relying on it.
