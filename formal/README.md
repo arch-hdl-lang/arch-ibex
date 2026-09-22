@@ -127,6 +127,29 @@ which is the safe direction for Bug C.
   `fill_write_req` it yields even when the line would not have matched.
   That is a performance question — measure it on `test_icache_bench.py` /
   CoreMark, it cannot be proved here.
-- It assumes `branch_i` arrives earlier than `addr_i`. `branch_i` is a
-  control signal and `addr_i` is the adder output, so this is very likely,
-  but confirm it in the timing report before relying on it.
+### The `branch_i` timing assumption — measured, holds
+
+The candidate keeps the mux select (`branch_i`) on the grant path while
+taking the address off it, so it only helps if the select arrives well
+before the address. Measured with OpenSTA on the routed design
+(`flow/out/arch/openroad/results/*.v` + `.spef`, propagated clock):
+
+| signal | arrival |
+|---|---|
+| `id_stage_i.branch_set_raw` (branch control, flop Q) | **3.755 ns** |
+| `icache.prefetch_addr_q[13]` (prefetch leg, flop Q) | **3.960 ns** |
+| `icache.lookup_addr_ic0[13]` (mux output) | **15.493 ns** |
+| `icache.lookup_grant` | 18.788 ns |
+
+The mux output is late because of the **data** leg, not a late select: the
+path reaching it starts at the IF/ID instruction register and contains the
+5-deep `maj3` carry chain plus xor/xnor stages -- the ALU adder. Both
+*registered* mux inputs arrive at ~3.8-4.0 ns, so the ~11.5 ns of extra
+delay can only come from `addr_i`.
+
+So the branch control leads the address by **~11.7 ns**. The assumption
+holds with a very large margin.
+
+Caveat: the icache's `branch_i` port name does not survive flattening, so
+`id_stage_i.branch_set_raw` is a proxy for it. Any logic between the two
+would have to burn 11.7 ns to invalidate the conclusion.
