@@ -288,3 +288,61 @@ that retry path is evidently not robust enough to survive *every* branch
 being deferred. The candidate defers only on `branch_i && fill_write_req`,
 which is far rarer -- but "the retry path exists" should not be read as
 "deferring is always safe".
+
+## 6. Measured: the candidate delivers 3.07 ns
+
+The form measured in section 5 (`branch_i or coalesce_ic0`) is
+behaviourally correct but would **not** have fixed the timing:
+`coalesce_ic0` compares against `lookup_addr_ic0[31:3]`, the *mux output*,
+whose branch leg is the ALU adder. A logical `or` does not remove a
+structural path. The timing-correct form compares against
+`prefetch_addr_q[31:3]` -- a register -- and forces the term true on a
+branch:
+
+```arch
+let prefetch_line_ic0: UInt<29> = prefetch_addr_q[31:3];
+let inflight_line_match_pf: Bool = /* 4x FB tag compare vs prefetch_line_ic0 */;
+let pending_alloc_match_pf: Bool = lookup_alloc_ic1_q and (lookup_addr_ic1_q[31:3] == prefetch_line_ic0);
+let coalesce_cand: Bool = branch_i or inflight_line_match_pf or pending_alloc_match_pf;
+```
+
+Behaviourally identical (the section-7 sensitizer fires the same way,
+`icache_bench` = 14,491 unchanged); structurally free of the adder.
+
+| metric | shipped | upper-bound probe (deadlocks) | **candidate** |
+|---|---|---|---|
+| WNS setup | -15.074 ns | -12.270 ns | **-12.006 ns** |
+| WNS hold | -0.550 ns | -0.597 ns | **-0.273 ns** |
+| TNS setup | -912,634 | -289,326 | -418,772 |
+| clock skew | -1.012 ns | -0.631 ns | +0.856 ns |
+| design area | 2,449,039 um2 | 2,418,304 um2 | 2,435,337 um2 |
+
+**Gain: 3.068 ns of WNS.** Fmax 39.9 -> 45.4 MHz (+13.8 %). Hold improves
+too. The SV lane is at -9.660 ns, so this closes 3.07 of the 5.41 ns lane
+gap -- about 57 %.
+
+### The "upper bound" was not a bound
+
+The candidate *beats* the probe that was supposed to bound it (-12.006 vs
+-12.270). That is not a paradox, it is a correction: P&R is heuristic, and
+each row here is a single sample of a different netlist. Clock skew alone
+swung from -0.631 to +0.856 ns between the two runs. The honest reading is
+that the two are within ~0.26 ns of each other -- the candidate captures
+essentially all of the available gain -- and that single-sample P&R results
+should not be quoted to three decimal places as bounds. Treat 3.07 ns as
+"about 3 ns", and treat anything under ~0.3 ns as noise.
+
+### The ceiling is now elsewhere
+
+The worst path no longer touches the icache grant. It is
+`_170862_ -> data_req_o` (an output port), -12.006 ns, carrying 7 `maj3`
+stages -- an LSU address path. The icache RAM endpoints have dropped to
+-11.261 and -10.955 and are adder-free.
+
+**Further icache work buys nothing until `data_req_o` is addressed.** In
+particular, the retiming in section 3 (evaluating the compare a cycle early
+and registering the result) is now pointless for WNS: it would improve paths
+that are already 1.0+ ns better than the binding one. It also carries its
+own risk -- a true D-side retiming computes on `prefetch_addr_d`, which on a
+granted branch is `(lookup_addr_ic0 + 8) & ~7`, i.e. the adder again, one
+cycle earlier.
