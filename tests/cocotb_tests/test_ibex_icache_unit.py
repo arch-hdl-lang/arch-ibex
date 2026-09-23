@@ -2990,14 +2990,14 @@ async def test_r_ext_2b_req_held_across_branch_until_gnt(dut):
 # the ALU adder's output -- that is what puts the adder on the icache RAM
 # grant and costs ~2.8 ns of WNS post-P&R.
 #
-# The proposed rewrite replaces the term with `branch_i || coalesce_ic0`,
-# i.e. on a branch stop comparing and just yield to the fill. NEITHER
-# CoreMark NOR icache_bench distinguishes the two designs -- both score
-# identically even with the term forced permanently on -- so without a
-# directed test the rewrite is behaviourally unobservable and could ship
-# wrong silently.
+# The yield term now uses `coalesce_grant_ic0` = `branch_i` OR a compare
+# against the registered `prefetch_addr_q`, i.e. on a branch it stops
+# comparing and just yields to the fill (+3.07 ns WNS post-P&R). NEITHER
+# CoreMark NOR icache_bench distinguishes that from the previous exact-line
+# form -- both score identically even with the term forced permanently on --
+# so without this directed test the behaviour change would be unobservable.
 #
-# This test builds the one cycle where the two designs disagree.
+# This test builds the one cycle where the two forms disagree.
 
 
 async def _bus_auto_serve(dut, rdata: int = 0x0000_0013):
@@ -3019,8 +3019,8 @@ async def _bus_auto_serve(dut, rdata: int = 0x0000_0013):
 
 @cocotb.test()
 async def test_grant_coalesce_term_is_observable_on_branch(dut):
-    """Pins `lookup_grant` at the cycle that discriminates the shipped
-    design from the `branch_i || coalesce_ic0` rewrite.
+    """Pins `lookup_grant` at the cycle that discriminates the current
+    branch-yield form from the previous exact-line-compare form.
 
     Discriminating state:
         fill_write_req = 1   (a fill buffer is writing back)
@@ -3028,12 +3028,14 @@ async def test_grant_coalesce_term_is_observable_on_branch(dut):
         coalesce_ic0   = 0   (so there is nothing to coalesce onto)
         fb_full        = 0
 
-    Shipped design  -> lookup_grant = 1 (nothing to coalesce; lookup wins).
-    Rewrite         -> lookup_grant = 0 (yields to the fill unconditionally).
+    Current form    -> lookup_grant = 0 (on a branch, yields to the fill
+                       without comparing the adder-fed address).
+    Previous form   -> lookup_grant = 1 (compared exactly; nothing to
+                       coalesce onto, so the lookup won).
 
-    The test asserts the SHIPPED behaviour. A rewrite must flip the
-    expectation here in the same commit -- that visible edit is the whole
-    point, because no benchmark in the tree produces one.
+    Any future change to the yield term must flip the expectation here in
+    the same commit -- that visible edit is the point, because no
+    benchmark in the tree produces one.
 
     It also asserts the discriminating state was actually REACHED. That is
     the more important half: if the scenario cannot be constructed the test
@@ -3101,8 +3103,9 @@ async def test_grant_coalesce_term_is_observable_on_branch(dut):
         f"fb_full would mask the coalesce term, making this non-discriminating: {observed}"
     )
     # The discriminating observation.
-    assert observed["lookup_grant"] == 1, (
-        "shipped design grants this lookup (nothing to coalesce onto). "
-        f"lookup_grant=0 means the `branch_i || coalesce_ic0` rewrite is in "
-        f"place -- update this expectation in the same commit. {observed}"
+    assert observed["lookup_grant"] == 0, (
+        "on a branch the yield term must fire without comparing the "
+        "adder-fed lookup address, so this lookup yields to the fill. "
+        "lookup_grant=1 means the exact-line compare (which puts the ALU "
+        f"adder on the icache RAM grant) is back. {observed}"
     )

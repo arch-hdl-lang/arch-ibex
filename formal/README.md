@@ -248,38 +248,46 @@ which needs no retiming work to measure.
 | variant | `icache_bench` cycles | CoreMark dut_ticks |
 |---|---|---|
 | baseline (current, Bug C fixed) | 14,491 | 112,855 |
-| **candidate** (`branch_i or coalesce_ic0`) | **14,491** | **112,855** |
-| control: always yield (`coalesce_cand = true`) | 14,491 | 112,855 |
+| **candidate** (`branch_i or coalesce_ic0`) | **14,491** | **112,894** (+39, +0.035 %) |
+| control: always yield (`coalesce_cand = true`) | 14,491 | 112,982 (+127) |
 | control: suppress grant on every branch | **hang** | -- |
 | pre-Bug-C (`lookup_grant = lookup_req_ic0`) | **hang** | -- |
 
-**Zero cost on both.** And it is a bound, not a point measurement: the
-candidate yields on `branch_i or coalesce_ic0`, "always yield" yields on
-everything, so the candidate suppresses a strict subset. Since the strictly
-more aggressive variant also costs nothing, the candidate cannot cost
-anything either.
+**Zero cost on `icache_bench`; +39 ticks (+0.035 %) on CoreMark.** The
+CoreMark column is monotonic in how often the term yields -- baseline <
+candidate < always-yield -- which is what a real measurement of this knob
+should look like, and it bounds the candidate's cost well below the
+always-yield ceiling. Against +13.8 % Fmax (section 6) the net is about
++13.7 % CoreMark per second.
+
+> **Correction (2026-09-22).** This section originally reported 112,855 for
+> all three CoreMark rows and concluded "zero cost on both". Those three
+> numbers were never measured: they were read with `grep` from
+> `review-package/reports/gate_coremark.log`, a file the pytest run does not
+> write, so every read returned the same stale line from an earlier gate
+> run. The give-away was a control that made the simulation *fail* while
+> the "result" still said `validated=True`. The figures above were re-run
+> fresh and read from each run's own stdout. The `icache_bench` column was
+> always read from live simulation output and is unchanged.
 
 ### Why the controls matter
-
-The first three rows being identical is, on its own, indistinguishable from
-"the benchmark never exercises this logic". The last two rows rule that out:
 
 - Suppressing the grant on every branch **hangs** `icache_bench`.
 - The pre-`da9059f` form **hangs** it too, with zero loop commits --
   independently reproducing Bug C, and confirming the benchmark really does
   exercise the writeback-starvation scenario.
+- CoreMark moves by +127 ticks with the term forced permanently on, so it
+  is sensitive to this logic too, not blind to it.
 
-So the benchmark is sensitive to this signal in the *dangerous* direction
-(less yielding -> deadlock) while showing no cost in the *conservative*
-direction (more yielding -> free). That asymmetry is exactly what the
-candidate relies on.
+So both benchmarks exercise this signal: less yielding deadlocks, more
+yielding costs a small, monotonic number of cycles.
 
 ### What this does NOT establish
 
-Neither benchmark moves even with the term forced permanently on, so these
-workloads never reach a state where extra yielding costs a cycle. The
-zero-cost result is valid for `icache_bench` and CoreMark; it is **not** a
-general claim. A workload with a higher fill-writeback rate could pay.
+`icache_bench` does not move even with the term forced permanently on, so
+that workload never reaches a state where extra yielding costs a cycle; its
+zero is specific to it. CoreMark's +39 ticks is one workload. A workload
+with a higher fill-writeback rate could pay more.
 
 Also note the "suppress on every branch" hang: the design does capture a
 branch target on a non-granted branch (`prefetch_addr_q <= addr_i`, which
