@@ -328,8 +328,19 @@ module ibex_icache
   // lookup_req_ic0 high every cycle, and the priority arb
   // (fill_grant = fill_write_req ∧ ¬lookup_req_ic0) starves the
   // writeback indefinitely — the FB can never release.
+  //
+  // Timing: the yield term must NOT depend on `lookup_addr_ic0`. On a
+  // branch that address is `addr_i`, the ALU adder's output, and anything
+  // compared against it lands the adder in front of the icache RAM request
+  // (post-P&R this was the whole top-5 critical path, -15.07 ns WNS). So
+  // the yield uses `coalesce_grant_ic0` (defined with `coalesce_ic0`
+  // below), which compares against the registered `prefetch_addr_q` and,
+  // on a branch, yields without comparing at all. That is conservative for
+  // Bug C -- it yields at least as often as an exact-line compare would --
+  // and costs +39 CoreMark ticks (+0.035 %) and nothing on icache_bench,
+  // against +3.07 ns WNS. See formal/README.md.
   let lookup_grant: Bool =
-    lookup_req_ic0 and (not ((coalesce_ic0 or fb_full) and fill_write_req));
+    lookup_req_ic0 and (not ((coalesce_grant_ic0 or fb_full) and fill_write_req));
   let inval_grant:  Bool = inval_write_req;
   let fill_grant:   Bool =
     fill_write_req and (not lookup_grant) and (not inval_write_req);
@@ -582,6 +593,24 @@ module ibex_icache
 
   let coalesce_ic0: Bool =
     inflight_line_match_ic0 or pending_alloc_match_ic0;
+
+  // The grant's copy of the coalesce test (see `lookup_grant`). Same
+  // comparisons as `coalesce_ic0`, but against `prefetch_addr_q` -- a
+  // register -- instead of the `lookup_addr_ic0` mux, whose branch leg is
+  // the ALU adder. Off a branch `lookup_addr_ic0 == prefetch_addr_q`, so
+  // the two agree; on a branch this one is forced true (yield) rather than
+  // compared. `coalesce_ic0` itself is unchanged and still gates FB
+  // allocation, which is registered and off the RAM path.
+  let prefetch_line_ic0: UInt<29> = prefetch_addr_q[31:3];
+  let inflight_line_match_pf: Bool =
+    (fb_busy_recent_mask[0] and (not stale_q[0]) and (fb0_addr[31:3] == prefetch_line_ic0)) or
+    (fb_busy_recent_mask[1] and (not stale_q[1]) and (fb1_addr[31:3] == prefetch_line_ic0)) or
+    (fb_busy_recent_mask[2] and (not stale_q[2]) and (fb2_addr[31:3] == prefetch_line_ic0)) or
+    (fb_busy_recent_mask[3] and (not stale_q[3]) and (fb3_addr[31:3] == prefetch_line_ic0));
+  let pending_alloc_match_pf: Bool =
+    lookup_alloc_ic1_q and (lookup_addr_ic1_q[31:3] == prefetch_line_ic0);
+  let coalesce_grant_ic0: Bool =
+    branch_i or inflight_line_match_pf or pending_alloc_match_pf;
 
   // Per-FB IC0 allocate pulses. R-LK-4 (strengthened): suppress when
   // the lookup line is already covered by an in-flight FB. The lookup
