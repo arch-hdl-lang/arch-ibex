@@ -1,0 +1,64 @@
+# Bounded-liveness checks for the icache fill-writeback (Bug C).
+# Generate inputs first: formal/icache_liveness/run.sh does both.
+# One task per line; task TAGS (after the name) select mode/env, because
+# SBY honours only the first `~task:` prefix on a line.
+[tasks]
+nothrottle        bmc unfair
+exact             bmc unfair
+branchyield       bmc unfair
+exact_fair        bmc fair
+branchyield_fair  bmc fair
+tight17           bmc fair
+tight14           bmc fair
+prove17           prove fair
+upstream          bmc unfair
+upstream_fair     bmc fair
+cover             cov fair
+
+[options]
+aigsmt z3
+bmc: mode bmc
+bmc: depth 100
+prove: mode prove
+cov: mode cover
+cov: depth 60
+
+[engines]
+bmc: abc bmc3
+prove: abc pdr
+cov: smtbmc boolector
+
+[script]
+nothrottle:       read_verilog -formal -DSTARVE_N=64 icache_nothrottle.v
+exact:            read_verilog -formal -DSTARVE_N=64 icache_exact.v
+branchyield:      read_verilog -formal -DSTARVE_N=64 icache_branchyield.v
+exact_fair:       read_verilog -formal -DSTARVE_N=64 icache_exact.v
+branchyield_fair: read_verilog -formal -DSTARVE_N=64 icache_branchyield.v
+tight17:          read_verilog -formal -DSTARVE_N=17 icache_branchyield.v
+tight14:          read_verilog -formal -DSTARVE_N=14 icache_branchyield.v
+prove17:          read_verilog -formal -DSTARVE_N=17 icache_branchyield.v
+upstream:         read_verilog -formal -DSTARVE_N=64 icache_upstream.v
+upstream_fair:    read_verilog -formal -DSTARVE_N=64 icache_upstream.v
+cover:            read_verilog -formal -DSTARVE_N=64 -DCOVERS icache_branchyield.v
+unfair: read_verilog -formal live_top.v
+fair:   read_verilog -formal -DBRANCH_FAIR -DBRANCH_K=16 live_top.v
+prep -top live_top
+async2sync
+# Map memories and arithmetic HERE, then resolve 'x: SBY's own later
+# techmap (maccmap) otherwise emits constant-x AND inputs the AIG backend
+# rejects. setundef -anyseq makes every x a free value -- conservative.
+flatten
+memory -nomap
+memory_map
+opt -full
+techmap
+opt -fast
+setundef -undriven -anyseq
+setundef -anyseq
+
+[files]
+icache_nothrottle.v
+icache_exact.v
+icache_branchyield.v
+live_top.v
+icache_upstream.v
