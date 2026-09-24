@@ -9,7 +9,8 @@
 #          as <lane>_sky130_synth_area.rpt / <lane>_sky130_sta_*.rpt
 #
 # Env: SKY130_LIB (liberty), STA_BIN (OpenSTA), CLOCK_NS (default 10.0),
-#      REPORT_DIR (default flow/out/reports).
+#      REPORT_DIR (default flow/out/reports),
+#      ABC_DELAY_PS (default unset; experiment only, see below).
 #
 # Recipe (same as the 2026-05 notes in changes/2026-05-07-icache-area-restructure):
 # proc; per-module `memory -nomap` BEFORE flatten so parallel write ports on the
@@ -26,6 +27,13 @@ mkdir -p "$REPORT_DIR"
 SKY130_LIB="${SKY130_LIB:-$HOME/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib}"
 STA_BIN="${STA_BIN:-$HOME/OpenSTA/build/sta}"
 CLOCK_NS="${CLOCK_NS:-10.0}"
+# ABC_DELAY_PS=<ps> (off by default): timing-driven mapping. `synth` runs with
+# -noabc so its generic ABC pass does not fix the logic structure first, and the
+# liberty mapping becomes `abc -D <ps>` (ABC maps for that delay target). Both
+# lanes get the same setting when both run; the default script is unchanged.
+ABC_DELAY_PS="${ABC_DELAY_PS:-}"
+SYNTH_OPTS=""; ABC_OPTS=""
+if [ -n "$ABC_DELAY_PS" ]; then SYNTH_OPTS=" -noabc"; ABC_OPTS=" -D $ABC_DELAY_PS"; fi
 [ -f "$SKY130_LIB" ] || { echo "liberty not found: $SKY130_LIB" >&2; exit 2; }
 [ -x "$STA_BIN" ] || { echo "OpenSTA not found: $STA_BIN" >&2; exit 2; }
 lanes=("$@"); [ ${#lanes[@]} -eq 0 ] && lanes=(sv arch)
@@ -61,10 +69,10 @@ memory -nomap
 flatten
 memory_map
 opt
-synth -top ibex_top
+synth -top ibex_top${SYNTH_OPTS}
 dfflibmap -liberty $SKY130_LIB
 techmap -map $REPO_ROOT/flow/sky130_latch_map.v
-abc -liberty $SKY130_LIB
+abc${ABC_OPTS} -liberty $SKY130_LIB
 # Undefined bits ('x, e.g. unused multiplier intermediate bits) become 0, and
 # constant drivers become conb_1 tie cells (one HI, one LO); OpenROAD's reader
 # otherwise turns them into unroutable zero_/one_ power nets (TritonRoute
