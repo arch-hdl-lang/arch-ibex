@@ -3,17 +3,23 @@
 #   flow/ecp5_pnr.sh [synth|pnr|all] [sv|arch ...]      (default: all, both lanes)
 # Inputs : flow/out/<lane>/ibex_top.v (sv2v output)
 # Outputs: flow/out/<lane>/ecp5/{synth.log,ibex_top.json,nextpnr_seed<N>.log,report_seed<N>.json}
-#          and copies under review-package/reports/<lane>_ecp5_*.
-# Env: NEXTPNR (default ~/github/nextpnr/build/nextpnr-ecp5), YOSYS (default yosys), FREQ (50 MHz), SEEDS (1 2 3).
+#          and copies under $REPORT_DIR/<lane>_ecp5_*.
+# Env: NEXTPNR (default ~/github/nextpnr/build/nextpnr-ecp5), YOSYS (default yosys), FREQ (50 MHz), SEEDS (1 2 3),
+#      REPORT_DIR (default flow/out/reports).
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Reports are copied to REPORT_DIR (default flow/out/reports/, untracked), never into
+# review-package/ unless asked: that directory is the submitted paper's evidence and
+# is regenerated only deliberately, with REPORT_DIR="$REPO_ROOT/review-package/reports".
+REPORT_DIR="${REPORT_DIR:-$REPO_ROOT/flow/out/reports}"
+mkdir -p "$REPORT_DIR"
 NEXTPNR="${NEXTPNR:-$HOME/github/nextpnr/build/nextpnr-ecp5}"
 YOSYS="${YOSYS:-yosys}"
 FREQ="${FREQ:-50}"
 SEEDS="${SEEDS:-1 2 3}"
 stage="${1:-all}"; shift || true
 lanes=("$@"); [ ${#lanes[@]} -eq 0 ] && lanes=(sv arch)
-R="$REPO_ROOT/review-package/reports"
+R="$REPORT_DIR"
 rc=0
 for lane in "${lanes[@]}"; do
   in="$REPO_ROOT/flow/out/$lane/ibex_top.v"

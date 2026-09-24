@@ -5,12 +5,18 @@
 # Inputs : flow/out/<lane>/sky130/netlist_sta.v (from flow/sky130_synth.sh) and its
 #          synth.stat (the die is sized from the synthesised area at UTIL %).
 # Outputs: flow/out/<lane>/openroad/{results/,openroad.log,final_*.rpt} and copies
-#          review-package/reports/<lane>_openroad_final_{area,timing,power}.rpt,
+#          $REPORT_DIR/<lane>_openroad_final_{area,timing,power}.rpt,
 #          <lane>_openroad_final_metrics.txt
-# Env: OPENROAD_EXE, OPENROAD_TEST (default ~/github/OpenROAD/test), UTIL (default 50).
+# Env: OPENROAD_EXE, OPENROAD_TEST (default ~/github/OpenROAD/test), UTIL (default 50),
+#      REPORT_DIR (default flow/out/reports).
 set -uo pipefail
 lane="${1:?lane (sv|arch)}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# Reports are copied to REPORT_DIR (default flow/out/reports/, untracked), never into
+# review-package/ unless asked: that directory is the submitted paper's evidence and
+# is regenerated only deliberately, with REPORT_DIR="$REPO_ROOT/review-package/reports".
+REPORT_DIR="${REPORT_DIR:-$REPO_ROOT/flow/out/reports}"
+mkdir -p "$REPORT_DIR"
 export OPENROAD_TEST="${OPENROAD_TEST:-$HOME/github/OpenROAD/test}"
 OPENROAD_EXE="${OPENROAD_EXE:-$HOME/.local/bin/openroad}"
 # UTIL is the ratio of the *synthesised* cell area to the core area. 25 % is
@@ -45,7 +51,7 @@ start=$(date +%s)
 rc=$?
 echo "[$lane] report exit=$rc in $(( $(date +%s) - start )) s"
 awk -v out="$out" '/^##### /{f=$2; if(f=="end")f=""; next} f{print > (out"/"f)}' "$out/report.log"
-R="$REPO_ROOT/review-package/reports"
+R="$REPORT_DIR"
 for f in final_area.rpt final_timing.rpt final_power.rpt final_checks.rpt final_metrics.txt; do
   [ -f "$out/$f" ] && cp "$out/$f" "$R/${lane}_openroad_$f"
 done
