@@ -5,10 +5,11 @@
 #
 # Inputs : flow/out/<lane>/ibex_top.v            (from flow/sv2v.sh)
 # Outputs: flow/out/<lane>/sky130/{synth.log,synth.stat,netlist.v,sta.log,
-#          sta_checks.rpt,sta_wns_tns.rpt} and copies in review-package/reports/
+#          sta_checks.rpt,sta_wns_tns.rpt} and copies in $REPORT_DIR
 #          as <lane>_sky130_synth_area.rpt / <lane>_sky130_sta_*.rpt
 #
-# Env: SKY130_LIB (liberty), STA_BIN (OpenSTA), CLOCK_NS (default 10.0).
+# Env: SKY130_LIB (liberty), STA_BIN (OpenSTA), CLOCK_NS (default 10.0),
+#      REPORT_DIR (default flow/out/reports).
 #
 # Recipe (same as the 2026-05 notes in changes/2026-05-07-icache-area-restructure):
 # proc; per-module `memory -nomap` BEFORE flatten so parallel write ports on the
@@ -17,6 +18,11 @@
 # inferred (prim_generic_* models), never black-boxed.
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Reports are copied to REPORT_DIR (default flow/out/reports/, untracked), never into
+# review-package/ unless asked: that directory is the submitted paper's evidence and
+# is regenerated only deliberately, with REPORT_DIR="$REPO_ROOT/review-package/reports".
+REPORT_DIR="${REPORT_DIR:-$REPO_ROOT/flow/out/reports}"
+mkdir -p "$REPORT_DIR"
 SKY130_LIB="${SKY130_LIB:-$HOME/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib}"
 STA_BIN="${STA_BIN:-$HOME/OpenSTA/build/sta}"
 CLOCK_NS="${CLOCK_NS:-10.0}"
@@ -96,7 +102,7 @@ TCL
   "$STA_BIN" -no_init -exit "$out/sta.tcl" > "$out/sta.log" 2>&1 || { echo "[$lane] OpenSTA FAILED (see $out/sta.log)"; tail -5 "$out/sta.log"; rc=1; }
   bb=$(grep -cE 'not found\. Creating black box|black box' "$out/sta.log" || true)
   echo "[$lane] black-boxed cells in STA: ${bb:-0}"
-  R="$REPO_ROOT/review-package/reports"
+  R="$REPORT_DIR"
   cp "$out/synth.stat" "$R/${lane}_sky130_synth_area.rpt"
   cp "$out/sta_checks.rpt" "$R/${lane}_sky130_sta_checks.rpt"
   cp "$out/sta_wns_tns.rpt" "$R/${lane}_sky130_sta_wns_tns.rpt"
