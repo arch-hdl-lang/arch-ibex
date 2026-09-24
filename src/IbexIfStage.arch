@@ -109,6 +109,12 @@ module ibex_if_stage
   /// ResetAll=0.
   port instr_rdata_id_o: out pipe_reg<UInt<32>, 1>;
   port instr_rdata_alu_id_o: out pipe_reg<UInt<32>, 1>;
+  /// One-hot rs1 register-file select, `1 << instr_rdata_id_o[19:15]`,
+  /// registered under the same write enable as `instr_rdata_id_o`. Moves the
+  /// 5->32 decode of the register-file read address in front of the IF/ID
+  /// register (retiming; ibex_register_file_ff ReadOneHotA = 1). Not an
+  /// upstream port.
+  port rf_raddr_a_oh_id_o: out pipe_reg<UInt<32>, 1>;
   port instr_rdata_c_id_o: out pipe_reg<UInt<16>, 1>;
   port instr_is_compressed_id_o: out pipe_reg<Bool, 1>;
   /// `gets_expanded_o` from `IbexCompressedDecoder` is `UInt<2>` per its
@@ -397,6 +403,7 @@ module ibex_if_stage
     if if_id_pipe_reg_we
       instr_rdata_id_o          <= instr_decompressed;
       instr_rdata_alu_id_o      <= instr_decompressed;
+      rf_raddr_a_oh_id_o        <= onehot(instr_decompressed[19:15]);
       instr_rdata_c_id_o        <= if_instr_rdata[15:0];
       instr_is_compressed_id_o  <= instr_is_compressed;
       instr_gets_expanded_id_o  <= instr_gets_expanded;

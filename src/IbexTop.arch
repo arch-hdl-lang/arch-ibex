@@ -299,6 +299,7 @@ module ibex_top
   wire dummy_instr_id: Bool;
   wire dummy_instr_wb: Bool;
   wire rf_raddr_a:     UInt<5>;
+  wire rf_raddr_a_oh:  UInt<32>;
   wire rf_raddr_b:     UInt<5>;
   wire rf_waddr_wb:    UInt<5>;
   wire rf_we_wb:       Bool;
@@ -545,6 +546,7 @@ module ibex_top
     dummy_instr_id_o   -> dummy_instr_id;
     dummy_instr_wb_o   -> dummy_instr_wb;
     rf_raddr_a_o       -> rf_raddr_a;
+    rf_raddr_a_oh_o    -> rf_raddr_a_oh;
     rf_raddr_b_o       -> rf_raddr_b;
     rf_waddr_wb_o      -> rf_waddr_wb;
     rf_we_wb_o         -> rf_we_wb;
@@ -637,6 +639,7 @@ module ibex_top
     param DataWidth         = RegFileDataWidth;
     param DummyInstructions = DummyInstructions;
     param WordZeroVal       = 0;
+    param ReadOneHotA       = 1;
 
     clk_i             <- clk;
     rst_ni            <- rst_ni;
@@ -644,6 +647,7 @@ module ibex_top
     dummy_instr_id_i  <- dummy_instr_id;
     dummy_instr_wb_i  <- dummy_instr_wb;
     raddr_a_i         <- rf_raddr_a;
+    raddr_a_oh_i      <- rf_raddr_a_oh;
     rdata_a_o         -> rf_rdata_a;
     raddr_b_i         <- rf_raddr_b;
     rdata_b_o         -> rf_rdata_b;

@@ -212,6 +212,9 @@ module ibex_core
   port dummy_instr_id_o: out Bool;
   port dummy_instr_wb_o: out Bool;
   port rf_raddr_a_o:     out UInt<5>;
+  /// One-hot copy of rf_raddr_a_o registered in the IF stage; drives the
+  /// register file's ReadOneHotA read select. Not an upstream port.
+  port rf_raddr_a_oh_o:  out UInt<32>;
   port rf_raddr_b_o:     out UInt<5>;
   port rf_waddr_wb_o:    out UInt<5>;
   port rf_we_wb_o:       out Bool;
@@ -589,6 +592,7 @@ module ibex_core
     instr_new_id_o       -> instr_new_id;
     instr_rdata_id_o     -> instr_rdata_id;
     instr_rdata_alu_id_o -> instr_rdata_alu_id;
+    rf_raddr_a_oh_id_o   -> rf_raddr_a_oh_o;
     instr_rdata_c_id_o   -> instr_rdata_c_id;
     instr_is_compressed_id_o -> instr_is_compressed_id;
     instr_gets_expanded_id_o -> instr_gets_expanded_id;
