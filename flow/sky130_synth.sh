@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# sky130 logic synthesis + STA for ibex_top, both lanes, identical settings.
+# sky130 logic synthesis + STA for ibex_top, both lanes, each with its own recipe
+# (flow/recipes/<lane>.env; FLOW_RECIPE=none = identical plain settings).
 #
 #   flow/sky130_synth.sh [sv|arch ...]      (default: both lanes)
 #
@@ -9,7 +10,8 @@
 #          as <lane>_sky130_synth_area.rpt / <lane>_sky130_sta_*.rpt
 #
 # Env: SKY130_LIB (liberty), STA_BIN (OpenSTA), CLOCK_NS (default 10.0),
-#      REPORT_DIR (default flow/out/reports).
+#      REPORT_DIR (default flow/out/reports),
+#      SYNTH_NOABC (default 0, or the lane's recipe; see below), FLOW_RECIPE.
 #
 # Recipe (same as the 2026-05 notes in changes/2026-05-07-icache-area-restructure):
 # proc; per-module `memory -nomap` BEFORE flatten so parallel write ports on the
@@ -26,6 +28,12 @@ mkdir -p "$REPORT_DIR"
 SKY130_LIB="${SKY130_LIB:-$HOME/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib}"
 STA_BIN="${STA_BIN:-$HOME/OpenSTA/build/sta}"
 CLOCK_NS="${CLOCK_NS:-10.0}"
+# SYNTH_NOABC=1: run `synth` with -noabc, so the logic is restructured once, by
+# the liberty `abc` below, instead of first by synth's generic ABC pass.
+# Measured depth flop->data_addr_o[31]: arch 39->36, sv 30->32. (`abc -D <ps>`
+# on top of this changed neither depth, so it is not offered.) Resolved per
+# lane: environment, then flow/recipes/<lane>.env, then 0.
+source "$REPO_ROOT/flow/recipes/recipe.sh"
 [ -f "$SKY130_LIB" ] || { echo "liberty not found: $SKY130_LIB" >&2; exit 2; }
 [ -x "$STA_BIN" ] || { echo "OpenSTA not found: $STA_BIN" >&2; exit 2; }
 lanes=("$@"); [ ${#lanes[@]} -eq 0 ] && lanes=(sv arch)
@@ -34,6 +42,10 @@ for lane in "${lanes[@]}"; do
   in="$REPO_ROOT/flow/out/$lane/ibex_top.v"
   out="$REPO_ROOT/flow/out/$lane/sky130"; mkdir -p "$out"
   [ -f "$in" ] || { echo "[$lane] missing $in (run flow/sv2v.sh)"; rc=1; continue; }
+  SYNTH_OPTS=""
+  [ "$(recipe_value "$lane" SYNTH_NOABC 0)" = "1" ] && SYNTH_OPTS=" -noabc"
+  recipe_describe "$lane" SYNTH_NOABC > "$out/recipe_synth.txt"
+  echo "[$lane] recipe: $(tr '\n' ' ' < "$out/recipe_synth.txt")"
   # The port's configuration (01-inventory.md §1), forced identically on both
   # lanes. Enum-typed parameters are integers after sv2v (ibex_pkg encodings:
   # RV32M: 2 = RV32MFast; RV32B: 0 = RV32BNone; RV32ZC: 3 = RV32ZcaZcbZcmp;
@@ -61,7 +73,7 @@ memory -nomap
 flatten
 memory_map
 opt
-synth -top ibex_top
+synth -top ibex_top${SYNTH_OPTS}
 dfflibmap -liberty $SKY130_LIB
 techmap -map $REPO_ROOT/flow/sky130_latch_map.v
 abc -liberty $SKY130_LIB
