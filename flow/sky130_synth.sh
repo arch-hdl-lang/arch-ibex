@@ -11,7 +11,9 @@
 #
 # Env: SKY130_LIB (liberty), STA_BIN (OpenSTA), CLOCK_NS (default 10.0),
 #      REPORT_DIR (default flow/out/reports),
-#      SYNTH_NOABC (default 0, or the lane's recipe; see below), FLOW_RECIPE.
+#      SYNTH_NOABC (default 0, or the lane's recipe; see below),
+#      SYNTH_ADDER, SYNTH_ADDR_ADDER (default bk, or the lane's recipe; see
+#      below), FLOW_RECIPE.
 #
 # Recipe (same as the 2026-05 notes in changes/2026-05-07-icache-area-restructure):
 # proc; per-module `memory -nomap` BEFORE flatten so parallel write ports on the
@@ -33,6 +35,19 @@ CLOCK_NS="${CLOCK_NS:-10.0}"
 # Measured depth flop->data_addr_o[31]: arch 39->36, sv 30->32. (`abc -D <ps>`
 # on top of this changed neither depth, so it is not offered.) Resolved per
 # lane: environment, then flow/recipes/<lane>.env, then 0.
+# SYNTH_ADDER=bk|ks|hc|sklansky: carry network for every $alu adder. bk is
+# Yosys's default Brent-Kung $lcu; the others are Yosys's +/choices/ maps
+# (Kogge-Stone, Han-Carlson, Sklansky), injected with `synth -extra-map`.
+# Standalone 32-bit add, sky130 mapped: bk 24 levels / 6.35 ns, ks 19 / 4.23,
+# hc 18 / 4.69, sklansky 25 / 6.37. Resolved per lane like SYNTH_NOABC.
+# SYNTH_ADDR_ADDER=bk|ks|hc|sklansky: the same choice for ONE adder only, the
+# ALU adder (the $alu cell driving ibex_alu's adder_result_ext_o: load/store
+# addresses, and branch targets under BranchTargetALU = 0). synth stops before
+# its fine stage, that cell alone is techmapped with the chosen $lcu, and synth
+# resumes; the flow fails unless the selection matches exactly one cell.
+# Measured (Arch recipe, pre-route estimate, ks): ALU adder alone -7.335 ns;
+# plus the 4 data-side PMP TOR compares after it -7.675 (no better); all 68
+# adders -6.216; none -8.176.
 source "$REPO_ROOT/flow/recipes/recipe.sh"
 [ -f "$SKY130_LIB" ] || { echo "liberty not found: $SKY130_LIB" >&2; exit 2; }
 [ -x "$STA_BIN" ] || { echo "OpenSTA not found: $STA_BIN" >&2; exit 2; }
@@ -44,7 +59,28 @@ for lane in "${lanes[@]}"; do
   [ -f "$in" ] || { echo "[$lane] missing $in (run flow/sv2v.sh)"; rc=1; continue; }
   SYNTH_OPTS=""
   [ "$(recipe_value "$lane" SYNTH_NOABC 0)" = "1" ] && SYNTH_OPTS=" -noabc"
-  recipe_describe "$lane" SYNTH_NOABC > "$out/recipe_synth.txt"
+  case "$(recipe_value "$lane" SYNTH_ADDER bk)" in
+    bk) ;;
+    ks) SYNTH_OPTS="$SYNTH_OPTS -extra-map +/choices/kogge-stone.v" ;;
+    hc) SYNTH_OPTS="$SYNTH_OPTS -extra-map +/choices/han-carlson.v" ;;
+    sklansky) SYNTH_OPTS="$SYNTH_OPTS -extra-map +/choices/sklansky.v" ;;
+    *) echo "[$lane] unknown SYNTH_ADDER '$(recipe_value "$lane" SYNTH_ADDER bk)' (bk|ks|hc|sklansky)"; rc=1; continue ;;
+  esac
+  ADDR_SEL='w:*alu_i.adder_result_ext_o %ci1 t:$alu %i'
+  case "$(recipe_value "$lane" SYNTH_ADDR_ADDER bk)" in
+    bk) SYNTH_CMDS="synth -top ibex_top${SYNTH_OPTS}" ;;
+    ks|hc|sklansky)
+      case "$(recipe_value "$lane" SYNTH_ADDR_ADDER bk)" in
+        ks) m=kogge-stone ;; hc) m=han-carlson ;; sklansky) m=sklansky ;;
+      esac
+      SYNTH_CMDS="synth -top ibex_top -run begin:fine
+select -assert-count 1 $ADDR_SEL
+techmap -map +/techmap.v -map +/choices/$m.v $ADDR_SEL
+select -assert-none t:\$lcu
+synth -top ibex_top -run fine:${SYNTH_OPTS}" ;;
+    *) echo "[$lane] unknown SYNTH_ADDR_ADDER '$(recipe_value "$lane" SYNTH_ADDR_ADDER bk)' (bk|ks|hc|sklansky)"; rc=1; continue ;;
+  esac
+  recipe_describe "$lane" SYNTH_NOABC SYNTH_ADDER=bk SYNTH_ADDR_ADDER=bk > "$out/recipe_synth.txt"
   echo "[$lane] recipe: $(tr '\n' ' ' < "$out/recipe_synth.txt")"
   # The port's configuration (01-inventory.md §1), forced identically on both
   # lanes. Enum-typed parameters are integers after sv2v (ibex_pkg encodings:
@@ -73,7 +109,7 @@ memory -nomap
 flatten
 memory_map
 opt
-synth -top ibex_top${SYNTH_OPTS}
+${SYNTH_CMDS}
 dfflibmap -liberty $SKY130_LIB
 techmap -map $REPO_ROOT/flow/sky130_latch_map.v
 abc -liberty $SKY130_LIB

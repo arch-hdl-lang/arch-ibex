@@ -9,7 +9,9 @@
 # paper's flow (identical settings on both lanes; review-package/).
 #
 #   recipe_value <lane> <KNOB> <default>   prints the value to use
-#   recipe_describe <lane> <KNOB>...       prints "KNOB=value (source)" lines
+#   recipe_describe <lane> <KNOB>[=default]...
+#                                          prints "KNOB=value (source)" lines
+#                                          (default 0 when not given)
 recipe_value() {
   local lane="$1" knob="$2" def="$3" f v
   if [ -n "${!knob+x}" ]; then printf '%s\n' "${!knob}"; return; fi
@@ -21,12 +23,13 @@ recipe_value() {
   printf '%s\n' "$def"
 }
 recipe_describe() {
-  local lane="$1" knob src; shift
-  for knob in "$@"; do
+  local lane="$1" arg knob def src; shift
+  for arg in "$@"; do
+    knob="${arg%%=*}"; def=0; [ "$arg" != "$knob" ] && def="${arg#*=}"
     if [ -n "${!knob+x}" ]; then src=env
     elif [ "${FLOW_RECIPE:-lane}" != none ] && [ -f "$REPO_ROOT/flow/recipes/$lane.env" ] \
          && grep -q "^$knob=" "$REPO_ROOT/flow/recipes/$lane.env"; then src="flow/recipes/$lane.env"
     else src=default; fi
-    printf '%s=%s (%s)\n' "$knob" "$(recipe_value "$lane" "$knob" 0)" "$src"
+    printf '%s=%s (%s)\n' "$knob" "$(recipe_value "$lane" "$knob" "$def")" "$src"
   done
 }
