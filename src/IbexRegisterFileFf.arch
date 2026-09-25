@@ -29,6 +29,12 @@ module ibex_register_file_ff
   param DataWidth:         const = 32;
   param DummyInstructions: const = 0;
   param WordZeroVal:       const = 0;
+  /// ReadOneHotA = 1: read port A is selected by `raddr_a_oh_i`, a one-hot
+  /// copy of raddr_a_i that the IF stage registers alongside the instruction
+  /// (timing retime: the 5->32 decode moves in front of the IF/ID register).
+  /// ReadOneHotA = 0 (default, upstream port contract): `raddr_a_i` selects
+  /// and `raddr_a_oh_i` is ignored.
+  param ReadOneHotA:       const = 0;
 
   local param NUM_WORDS: const = 32;
 
@@ -41,6 +47,9 @@ module ibex_register_file_ff
 
   port raddr_a_i:        in  UInt<5>;
   port rdata_a_o:        out UInt<DataWidth>;
+  /// One-hot read select for port A (bit i selects x_i); used only when
+  /// ReadOneHotA = 1, where it must equal `1 << raddr_a_i`.
+  port raddr_a_oh_i:     in  UInt<NUM_WORDS>;
   port raddr_b_i:        in  UInt<5>;
   port rdata_b_o:        out UInt<DataWidth>;
 
@@ -78,8 +87,18 @@ module ibex_register_file_ff
   // is automatic: rf_reg[waddr_a_i] is sampled at the start of the
   // cycle (rising-edge NBA semantics), so a read on the same address
   // sees the pre-write value.
+  // ReadOneHotA = 1: AND-OR read. Bit 0 of the select is dropped so x0
+  // reads as WordZeroVal, as in the raddr_a_i == 0 arm below.
+  wire rdata_a_oh_terms: Vec<UInt<DataWidth>, NUM_WORDS>;
   comb
-    if raddr_a_i == 5'd0
+    rdata_a_oh_terms[0] = WordZeroVal;
+    for i in 1..NUM_WORDS - 1
+      rdata_a_oh_terms[i] = raddr_a_oh_i[i] ? rf_reg[i] : 0;
+    end for
+
+    if ReadOneHotA == 1
+      rdata_a_o = rdata_a_oh_terms.reduce_or();
+    elsif raddr_a_i == 5'd0
       rdata_a_o = WordZeroVal;
     else
       rdata_a_o = rf_reg[raddr_a_i];
