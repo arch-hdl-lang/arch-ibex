@@ -26,6 +26,25 @@ set slew_margin 30
 set cap_margin 25
 set global_place_density 0.5
 
+# TIMING_DRIVEN_GPL=1 (set by run.sh from the lane's flow/recipes/<lane>.env):
+# make flow.tcl's final, routability-driven global placement timing-driven as
+# well, without editing the stock flow.tcl. flow.tcl sets the wire RC only after global
+# placement, so it is set here first (the same commands flow.tcl runs later),
+# otherwise the placer's timing analysis would see no wire delay.
+if { [info exists ::env(TIMING_DRIVEN_GPL)] && $::env(TIMING_DRIVEN_GPL) == 1 } {
+  rename global_placement _stock_global_placement
+  proc global_placement { args } {
+    if { [lsearch -exact $args -routability_driven] >= 0 } {
+      source $::layer_rc_file
+      set_wire_rc -signal -layer $::wire_rc_layer
+      set_wire_rc -clock -layer $::wire_rc_layer_clk
+      lappend args -timing_driven
+      puts "lane.tcl: global_placement $args"
+    }
+    uplevel 1 [list _stock_global_placement {*}$args]
+  }
+}
+
 include -echo "flow.tcl"
 
 # Final reports: flow/openroad/report.tcl (run by run.sh on the saved design).

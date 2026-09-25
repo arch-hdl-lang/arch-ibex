@@ -8,7 +8,8 @@
 #          $REPORT_DIR/<lane>_openroad_final_{area,timing,power}.rpt,
 #          <lane>_openroad_final_metrics.txt
 # Env: OPENROAD_EXE, OPENROAD_TEST (default ~/github/OpenROAD/test), UTIL (default 50),
-#      REPORT_DIR (default flow/out/reports).
+#      REPORT_DIR (default flow/out/reports), TIMING_DRIVEN_GPL (default 0, or the
+#      lane's flow/recipes/<lane>.env), FLOW_RECIPE (none = plain flow).
 set -uo pipefail
 lane="${1:?lane (sv|arch)}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -37,6 +38,11 @@ area=$(grep -oE "Chip area for module '\\\\ibex_top': [0-9.]+" "$in/synth.stat" 
 # CORE_UTILIZATION semantics), rounded up to a whole micron.
 side=$(python3 -c "import math; print(math.ceil(math.sqrt($area/($UTIL/100.0))) + 20)")
 out="$REPO_ROOT/flow/out/$lane/openroad"; mkdir -p "$out/results"
+source "$REPO_ROOT/flow/recipes/recipe.sh"
+{ recipe_describe "$lane" TIMING_DRIVEN_GPL
+  [ -f "$in/recipe_synth.txt" ] && sed 's/^/synth: /' "$in/recipe_synth.txt"; } > "$out/recipe.txt"
+export TIMING_DRIVEN_GPL="$(recipe_value "$lane" TIMING_DRIVEN_GPL 0)"
+echo "[$lane] recipe: $(tr '\n' ' ' < "$out/recipe.txt")"
 export LANE="$lane" NETLIST="$in/netlist_sta.v" SDC="$REPO_ROOT/flow/openroad/constraint.sdc" DIE_SIDE="$side" RESULTS_DIR="$out/results" OUT="$out"
 echo "[$lane] synthesised area ${area} um2, UTIL=${UTIL}% -> die ${side}x${side} um"
 start=$(date +%s)
@@ -55,4 +61,5 @@ R="$REPORT_DIR"
 for f in final_area.rpt final_timing.rpt final_power.rpt final_checks.rpt final_metrics.txt; do
   [ -f "$out/$f" ] && cp "$out/$f" "$R/${lane}_openroad_$f"
 done
+cp "$out/recipe.txt" "$R/${lane}_openroad_recipe.txt"
 exit $rc
