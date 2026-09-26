@@ -16,7 +16,9 @@ upstream_fair     bmc fair
 cover             cov fair
 
 [options]
-aigsmt z3
+# aigsmt is rejected in cover mode ("Unused option"), so only for bmc/prove
+bmc: aigsmt z3
+prove: aigsmt z3
 bmc: mode bmc
 bmc: depth 100
 prove: mode prove
