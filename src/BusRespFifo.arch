@@ -6,6 +6,8 @@
 fifo BusRespFifo
   param DEPTH: const = 8;
   param T: type = UInt<2>;
+  // registered head: the rvalid route comes from a flop, not a read mux
+  latency 1;
 
   port clk_i:      in Clock<SysDomain>;
   port rst_ni:     in Reset<Async, Low>;
