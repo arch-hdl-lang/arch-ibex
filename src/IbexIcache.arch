@@ -811,25 +811,40 @@ module ibex_icache
   // currently-arbitrating FB — otherwise rvalid data is captured by the
   // wrong fill buffer (root cause of R-FB-5 / R-EXT-4 release-never).
   //
-  // Track the in-flight requester via a small in-flight queue. For a
-  // 1-deep upstream bus model (test stimulus drives gnt + rvalid back
-  // to back), one register suffices.
-  // Gated by bus_inflight_valid_q; reset value never observed.
-  reg bus_inflight_fb_q:    UInt<2> guard bus_inflight_valid_q reset none;
-  reg bus_inflight_valid_q: Bool reset rst_ni => false;
-  seq on clk_i rising
-    if bus_grant_valid and instr_gnt_i
-      bus_inflight_fb_q    <= bus_grant_requester;
-      bus_inflight_valid_q <= true;
-    elsif instr_rvalid_i and bus_inflight_valid_q
-      bus_inflight_valid_q <= false;
-    end if
-  end seq
+  // Track the requesters in grant order. OBI answers requests in order,
+  // so the oldest granted-but-unanswered request names the FB the next
+  // rvalid beat belongs to. The memory may grant a new request before it
+  // answers earlier ones (upstream supports this: fill_rvd_exp /
+  // fill_rvd_arb, ibex_icache.sv); a single register would be overwritten
+  // by the second grant and route the first response to the wrong FB,
+  // which deadlocks the fill (tests: test_bus_pipelined_latency{2,3}).
+  // Pushed on every grant, popped on every rvalid; at most 4 FBs x 2 beats
+  // are outstanding, which is the FIFO depth.
+  wire bus_resp_valid:  Bool;
+  wire bus_resp_fb:     UInt<2>;
+  wire bus_resp_ready:  Bool;
+  wire bus_resp_full:   Bool;
+  wire bus_resp_empty:  Bool;
+  inst bus_resp_q: BusRespFifo
+    clk_i      <- clk_i;
+    rst_ni     <- rst_ni;
+    push_valid <- bus_grant_valid and instr_gnt_i;
+    push_ready -> bus_resp_ready;
+    push_data  <- bus_grant_requester;
+    pop_valid  -> bus_resp_valid;
+    pop_ready  <- instr_rvalid_i;
+    pop_data   -> bus_resp_fb;
+    full       -> bus_resp_full;
+    empty      -> bus_resp_empty;
+  end inst bus_resp_q
+  // push_ready / full / empty: never exercised (depth = max outstanding);
+  // absorbed so lint stays quiet.
+  let _unused_bus_resp: Bool = bus_resp_ready ^ bus_resp_full ^ bus_resp_empty;
 
-  let rvalid_route_0: Bool = bus_inflight_valid_q and (bus_inflight_fb_q == 2'd0);
-  let rvalid_route_1: Bool = bus_inflight_valid_q and (bus_inflight_fb_q == 2'd1);
-  let rvalid_route_2: Bool = bus_inflight_valid_q and (bus_inflight_fb_q == 2'd2);
-  let rvalid_route_3: Bool = bus_inflight_valid_q and (bus_inflight_fb_q == 2'd3);
+  let rvalid_route_0: Bool = bus_resp_valid and (bus_resp_fb == 2'd0);
+  let rvalid_route_1: Bool = bus_resp_valid and (bus_resp_fb == 2'd1);
+  let rvalid_route_2: Bool = bus_resp_valid and (bus_resp_fb == 2'd2);
+  let rvalid_route_3: Bool = bus_resp_valid and (bus_resp_fb == 2'd3);
 
   // Forward-declared: out_done pulses (driven from output stream
   // logic below, but consumed by FB instances above their definition).

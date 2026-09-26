@@ -3109,3 +3109,101 @@ async def test_grant_coalesce_term_is_observable_on_branch(dut):
         "lookup_grant=1 means the exact-line compare (which puts the ALU "
         f"adder on the icache RAM grant) is back. {observed}"
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Pipelined instruction bus (OBI, several outstanding requests)
+# ─────────────────────────────────────────────────────────────────────────
+#
+# Upstream ibex_icache tracks responses per fill buffer and accepts any
+# OBI-compliant memory, including one that grants a new request before it
+# has answered the previous one. These tests drive such a memory: every
+# request is granted in the cycle it is made and answered, in order, LATENCY
+# cycles later. LATENCY = 1 is the back-to-back memory of the SoC tests.
+# Every fetched word is a unique function of its address with bits [1:0] =
+# 2'b11, so each output is a full 32-bit instruction whose value is exactly
+# _pipelined_word(addr_o); a response delivered to the wrong fill buffer
+# shows up as a wrong rdata_o. The tag RAM always misses, so every fetch
+# goes to the bus, and the core branches every few instructions so that
+# stale fill buffers still have responses outstanding.
+
+def _pipelined_word(addr: int) -> int:
+    return (((addr & MASK32) * 0x9E3779B1) & MASK32) | 0x3
+
+
+async def _run_pipelined_bus(dut, latency: int, n_instr: int = 120):
+    """One loop per cycle: drive this cycle's bus inputs, let them settle, then
+    check the output the core accepts at the coming edge, then branch every 7
+    instructions. The memory grants every request at once and answers in order
+    `latency` cycles later."""
+    from collections import deque
+    await _start_clock(dut)
+    await _reset(dut)
+    await _wait_until_idle(dut)
+    targets = [0x0000_1000, 0x0000_2044, 0x0000_1018, 0x0000_3ff0, 0x0000_2040]
+    pending = deque()   # (due_cycle, addr)
+    max_out = 0
+    seen = 0
+    branch_next = True
+    for cycle in range(40 * n_instr):
+        # this cycle's core-side inputs
+        if branch_next:
+            dut.branch_i.value = 1
+            dut.addr_i.value = targets[(seen // 7) % len(targets)]
+            branch_next = False
+        else:
+            dut.branch_i.value = 0
+        dut.req_i.value = 1
+        dut.ready_i.value = 1
+        # this cycle's response, if one is due
+        if pending and pending[0][0] <= cycle:
+            _, a = pending.popleft()
+            dut.instr_rvalid_i.value = 1
+            dut.instr_rdata_i.value = _pipelined_word(a)
+        else:
+            dut.instr_rvalid_i.value = 0
+            dut.instr_rdata_i.value = 0
+        await _settle(dut)
+        # grant whatever is requested now
+        if int(dut.instr_req_o.value):
+            dut.instr_gnt_i.value = 1
+            pending.append((cycle + latency, int(dut.instr_addr_o.value)))
+            max_out = max(max_out, len(pending))
+        else:
+            dut.instr_gnt_i.value = 0
+        await _settle(dut)
+        # the instruction the core accepts at the coming edge (not on a branch cycle)
+        if int(dut.valid_o.value) and not int(dut.branch_i.value):
+            a, d = int(dut.addr_o.value), int(dut.rdata_o.value)
+            assert int(dut.err_o.value) == 0, f"err_o at addr {a:#010x}"
+            assert d == _pipelined_word(a), (
+                f"LATENCY={latency}: instruction #{seen} at {a:#010x} is {d:#010x}, "
+                f"memory holds {_pipelined_word(a):#010x} (a response went to the wrong "
+                f"fill buffer); max outstanding so far {max_out}")
+            seen += 1
+            if seen >= n_instr:
+                break
+            branch_next = seen % 7 == 0
+        await RisingEdge(dut.clk_i)
+    assert seen >= n_instr, f"LATENCY={latency}: only {seen} of {n_instr} instructions in {40 * n_instr} cycles"
+    return {"max_outstanding": max_out}
+
+
+@cocotb.test()
+async def test_bus_pipelined_latency1_back_to_back(dut):
+    """Control: the SoC's back-to-back memory (one outstanding request)."""
+    await _run_pipelined_bus(dut, 1)
+
+
+@cocotb.test()
+async def test_bus_pipelined_latency2(dut):
+    """Two-cycle memory, new grants before earlier responses: data must still match addresses."""
+    stats = await _run_pipelined_bus(dut, 2)
+    assert stats["max_outstanding"] >= 2, "stimulus never had 2 requests outstanding"
+
+
+@cocotb.test()
+async def test_bus_pipelined_latency3(dut):
+    """Three-cycle memory."""
+    stats = await _run_pipelined_bus(dut, 3)
+    assert stats["max_outstanding"] >= 2, "stimulus never had 2 requests outstanding"

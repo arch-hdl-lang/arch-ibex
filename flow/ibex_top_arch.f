@@ -121,6 +121,7 @@ ${IBEX_ROOT}/rtl/ibex_register_file_fpga.sv
 ${IBEX_ROOT}/rtl/ibex_register_file_latch.sv
 ${IBEX_ROOT}/rtl/ibex_lockstep.sv
 ${REPO_ROOT}/build-synth/ibex_core_shared_pkg.sv
+${REPO_ROOT}/build-synth/bus_resp_fifo.sv
 ${REPO_ROOT}/build-synth/fb_age_arb.sv
 ${REPO_ROOT}/build-synth/ibex_alu.sv
 ${REPO_ROOT}/build-synth/ibex_compressed_decoder.sv
