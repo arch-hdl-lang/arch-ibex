@@ -21,7 +21,7 @@ repo = here.parent.parent
 out = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else repo / "flow/out/formal_live")
 out.mkdir(parents=True, exist_ok=True)
 b = repo / "build"
-srcs = [b / f for f in ("ibex_core_shared_pkg.sv", "fb_age_arb.sv", "ram_port_arb.sv",
+srcs = [b / f for f in ("ibex_core_shared_pkg.sv", "fb_age_arb.sv", "ram_port_arb.sv", "bus_resp_fifo.sv",
                         "inval_ctrl.sv", "ibex_icache_output_stage.sv", "ibex_icache.sv")]
 v = subprocess.run(["sv2v", *map(str, srcs)], check=True, capture_output=True, text=True).stdout
 # the endmodule closing `module ibex_icache (`
