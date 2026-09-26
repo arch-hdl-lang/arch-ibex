@@ -5,7 +5,10 @@
 # Outputs: flow/out/<lane>/ecp5/{synth.log,ibex_top.json,nextpnr_seed<N>.log,report_seed<N>.json}
 #          and copies under $REPORT_DIR/<lane>_ecp5_*.
 # Env: NEXTPNR (default ~/github/nextpnr/build/nextpnr-ecp5), YOSYS (default yosys), FREQ (50 MHz), SEEDS (1 2 3),
-#      REPORT_DIR (default flow/out/reports).
+#      REPORT_DIR (default flow/out/reports),
+#      ECP5_SYNTH_OPTS (extra synth_ecp5 flags), NEXTPNR_OPTS (extra nextpnr-ecp5
+#      flags), ECP5_TAG (outputs go to flow/out/<lane>/ecp5_<tag>); all empty by
+#      default, which leaves the flow unchanged.
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Reports are copied to REPORT_DIR (default flow/out/reports/, untracked), never into
@@ -17,13 +20,16 @@ NEXTPNR="${NEXTPNR:-$HOME/github/nextpnr/build/nextpnr-ecp5}"
 YOSYS="${YOSYS:-yosys}"
 FREQ="${FREQ:-50}"
 SEEDS="${SEEDS:-1 2 3}"
+ECP5_SYNTH_OPTS="${ECP5_SYNTH_OPTS:-}"
+NEXTPNR_OPTS="${NEXTPNR_OPTS:-}"
+ECP5_TAG="${ECP5_TAG:-}"
 stage="${1:-all}"; shift || true
 lanes=("$@"); [ ${#lanes[@]} -eq 0 ] && lanes=(sv arch)
 R="$REPORT_DIR"
 rc=0
 for lane in "${lanes[@]}"; do
   in="$REPO_ROOT/flow/out/$lane/ibex_top.v"
-  out="$REPO_ROOT/flow/out/$lane/ecp5"; mkdir -p "$out"
+  out="$REPO_ROOT/flow/out/$lane/ecp5${ECP5_TAG:+_$ECP5_TAG}"; mkdir -p "$out"
   [ -f "$in" ] || { echo "[$lane] missing $in (run flow/sv2v.sh)"; rc=1; continue; }
   if [ "$stage" = synth ] || [ "$stage" = all ]; then
     # Same parameter overrides as the sky130 flow (the port's configuration).
@@ -32,7 +38,7 @@ for lane in "${lanes[@]}"; do
 read_verilog -sv $in
 read_verilog -sv -overwrite $REPO_ROOT/flow/ecp5_prim_clock_gating.v
 hierarchy -check -top ibex_top -chparam ICache 1 -chparam PMPEnable 1 -chparam PMPNumRegions 4 -chparam PMPGranularity 0 -chparam DbgTriggerEn 1 -chparam DbgHwBreakNum 1 -chparam RV32E 0 -chparam RV32M 2 -chparam RV32B 0 -chparam RV32ZC 3 -chparam RegFile 0 -chparam BranchTargetALU 0 -chparam WritebackStage 0 -chparam BranchPredictor 0 -chparam SecureIbex 0 -chparam ICacheECC 0 -chparam ICacheScramble 0 -chparam MHPMCounterNum 0 -chparam MHPMCounterWidth 40 -chparam MemECC 0 -chparam DmBaseAddr 0 -chparam DmAddrMask 3 -chparam DmHaltAddr 0 -chparam DmExceptionAddr 0
-synth_ecp5 -top ibex_top -json $out/ibex_top.json
+synth_ecp5 -top ibex_top${ECP5_SYNTH_OPTS:+ $ECP5_SYNTH_OPTS} -json $out/ibex_top.json
 tee -o $out/synth.stat stat
 YS
     echo "[$lane] yosys synth_ecp5 ..."; start=$(date +%s)
@@ -56,7 +62,7 @@ YS
     for seed in $SEEDS; do
       echo "[$lane] nextpnr seed $seed ..."; start=$(date +%s)
       "$NEXTPNR" --85k --package CABGA381 --speed 6 --json "$out/ibex_top.json" --lpf "$out/ibex_top.lpf" \
-        --out-of-context --lpf-allow-unconstrained --freq "$FREQ" --timing-allow-fail --report "$out/report_seed${seed}.json" --seed "$seed" \
+        --out-of-context --lpf-allow-unconstrained --freq "$FREQ" --timing-allow-fail --report "$out/report_seed${seed}.json" --seed "$seed" $NEXTPNR_OPTS \
         > "$out/nextpnr_seed${seed}.log" 2>&1   # no --textcfg: bitstreams are not produced out-of-context
       st=$?
       echo "[$lane] nextpnr seed $seed exit=$st in $(( $(date +%s) - start )) s; $(grep -oE 'Max frequency for clock[^:]*: [0-9.]+ MHz \(PASS|FAIL[^)]*\)' "$out/nextpnr_seed${seed}.log" | tail -1)"
