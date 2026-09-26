@@ -1,0 +1,20 @@
+/// BusRespFifo -- in-order record of which fill buffer each granted
+/// instruction-bus request belongs to. OBI answers requests in order, so
+/// the head names the fill buffer the next rvalid beat is for. Pushed on
+/// every grant, popped on every rvalid. DEPTH covers the worst case: 4 fill
+/// buffers x 2 beats per line outstanding at once.
+fifo BusRespFifo
+  param DEPTH: const = 8;
+  param T: type = UInt<2>;
+
+  port clk_i:      in Clock<SysDomain>;
+  port rst_ni:     in Reset<Async, Low>;
+  port push_valid: in Bool;
+  port push_ready: out Bool;
+  port push_data:  in T;
+  port pop_valid:  out Bool;
+  port pop_ready:  in Bool;
+  port pop_data:   out T;
+  port full:       out Bool;
+  port empty:      out Bool;
+end fifo BusRespFifo
