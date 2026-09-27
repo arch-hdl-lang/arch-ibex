@@ -40,7 +40,7 @@ def icache_full_runner(verilator_bin, tmp_path_factory):
     for sib in (
         "fb_age_arb.sv",
         "ram_port_arb.sv",
-        "bus_resp_fifo.sv",
+        "bus_resp_fifo.sv", "recent_line_ram.sv",
         "inval_ctrl.sv",
         "ibex_icache_output_stage.sv",
     ):

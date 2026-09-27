@@ -65,6 +65,7 @@ ICACHE_SV             = BUILD_DIR / "ibex_icache.sv"
 FB_AGE_ARB_SV         = BUILD_DIR / "fb_age_arb.sv"
 RAM_PORT_ARB_SV       = BUILD_DIR / "ram_port_arb.sv"
 BUS_RESP_FIFO_SV      = BUILD_DIR / "bus_resp_fifo.sv"
+RECENT_LINE_RAM_SV    = BUILD_DIR / "recent_line_ram.sv"
 INVAL_CTRL_SV         = BUILD_DIR / "inval_ctrl.sv"
 ICACHE_OUTPUT_STAGE_SV = BUILD_DIR / "ibex_icache_output_stage.sv"
 # D2-flip: IbexCore now `inst`s `ibex_pmp` under PMPEnable=1.
@@ -104,6 +105,7 @@ ARCH_SV_FILES = [
     FB_AGE_ARB_SV,
     RAM_PORT_ARB_SV,
     BUS_RESP_FIFO_SV,
+    RECENT_LINE_RAM_SV,
     INVAL_CTRL_SV,
     ICACHE_OUTPUT_STAGE_SV,
     ICACHE_SV,

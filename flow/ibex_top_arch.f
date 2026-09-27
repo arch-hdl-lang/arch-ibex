@@ -144,3 +144,4 @@ ${REPO_ROOT}/build-synth/ibex_top.sv
 ${REPO_ROOT}/build-synth/ibex_wb_stage.sv
 ${REPO_ROOT}/build-synth/inval_ctrl.sv
 ${REPO_ROOT}/build-synth/ram_port_arb.sv
+${REPO_ROOT}/build-synth/recent_line_ram.sv

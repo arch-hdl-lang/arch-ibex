@@ -12,7 +12,7 @@ repo = here.parent.parent
 out = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else repo / "flow/out/formal_fbsel")
 out.mkdir(parents=True, exist_ok=True)
 b = repo / "build"
-srcs = [b / f for f in ("ibex_core_shared_pkg.sv", "fb_age_arb.sv", "ram_port_arb.sv", "bus_resp_fifo.sv",
+srcs = [b / f for f in ("ibex_core_shared_pkg.sv", "fb_age_arb.sv", "ram_port_arb.sv", "bus_resp_fifo.sv", "recent_line_ram.sv",
                         "inval_ctrl.sv", "ibex_icache_output_stage.sv", "ibex_icache.sv")]
 v = subprocess.run(["sv2v", *map(str, srcs)], check=True, capture_output=True, text=True).stdout
 m = re.search(r"^module IbexIcacheOutputStage \(", v, re.M)
@@ -50,6 +50,16 @@ v = v[:z1] + "\n\tinput wire [7:0] f_age;" + v[z1:]
 oinst = "\tIbexIcacheOutputStage output_stage(\n"
 assert v.count(oinst) == 1
 v = v.replace(oinst, oinst + "\t\t.f_age(fb_age_q),\n")
+# Formal-only observation port on RecentLineRam (its 8 x 93-bit array),
+# wired to f_rl_mem in the output stage (EQUIV3 shadow comparison).
+hdr = "module RecentLineRam (\n\tclk_i,"
+assert v.count(hdr) == 1
+v = v.replace(hdr, "module RecentLineRam (\n\tf_mem_flat,\n\tclk_i,")
+a2 = v.index("module RecentLineRam ("); z2 = v.index("\nendmodule", a2)
+v = v[:z2] + "\n\toutput wire [743:0] f_mem_flat;\n\tassign f_mem_flat = {mem[7], mem[6], mem[5], mem[4], mem[3], mem[2], mem[1], mem[0]};" + v[z2:]
+rinst = "\tRecentLineRam recent_ram(\n"
+assert v.count(rinst) == 1
+v = v.replace(rinst, "\twire [743:0] f_rl_mem;\n" + rinst + "\t\t.f_mem_flat(f_rl_mem),\n")
 a = v.index("module InvalCtrl"); z = v.index("endmodule", a)
 assert v[a:z].count("8'd255") == 2, "expected 2 walk terminators in InvalCtrl"
 v = v[:a] + v[a:z].replace("8'd255", "8'd3") + v[z:]
@@ -70,4 +80,8 @@ assert n == 4, f"noopen: expected 4 selects, found {n}"
 g = "assign raw_fb_idx = (fb_any ? fb_sel_idx : 2'd0);"
 assert v.count(g) == 1, "nogate: raw_fb_idx gating not found"
 (out / "icache_nogate.v").write_text(v.replace(g, "assign raw_fb_idx = fb_sel_idx;"))
+# Mutant for EQUIV3: the recent-line write address ignores the IC1-hit index.
+w = "assign recent_waddr = (recent_hit_we ? lookup_recent_idx : recent_idx);"
+assert v.count(w) == 1, "rraddr: recent_waddr not found"
+(out / "icache_rraddr.v").write_text(v.replace(w, "assign recent_waddr = recent_idx;"))
 

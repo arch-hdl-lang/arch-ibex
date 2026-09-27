@@ -1,0 +1,29 @@
+/// RecentLineRam -- storage for the icache output stage's recent-line buffer:
+/// DEPTH direct-mapped entries of {line address, line data}. One write port,
+/// one combinational (latency 0) read port, so FPGA flows map it to
+/// distributed RAM instead of DEPTH x 93 flops plus a read mux. The per-entry
+/// valid bits stay in the output stage as flops: a branch clears them all in
+/// one cycle.
+ram RecentLineRam
+  kind simple_dual;
+  latency 0;
+  param DEPTH: const = 8;
+  param T: type = UInt<93>;
+  port clk_i: in Clock<SysDomain>;
+
+  store
+    lines: Vec<T, DEPTH>;
+  end store
+
+  ports rd
+    addr: in UInt<3>;
+    data: out T;
+  end ports rd
+
+  ports wr
+    en:   in Bool;
+    addr: in UInt<3>;
+    data: in T;
+  end ports wr
+
+end ram RecentLineRam

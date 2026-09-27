@@ -32,7 +32,42 @@
     assert (!fb_any || fb_sel_idx == f_old_idx);
   end
 `endif
+`ifdef EQUIV3
+  // Shadow of the pre-RecentLineRam storage: the old recent_addr_q /
+  // recent_line_q registers, updated by the old logic (same priority:
+  // clear writes nothing; IC1 hit capture; else completed FB line).
+  reg [28:0] f_sa [0:7];
+  reg [63:0] f_sl [0:7];
+  always @(posedge clk_i)
+    if (!(icache_inval_i || !icache_enable_i)) begin
+      if (lookup_valid_ic1_q && any_hit_ic1) begin
+        f_sa[lookup_recent_idx] <= lookup_addr_ic1_q[31:3];
+        f_sl[lookup_recent_idx] <= hit_data_ic1;
+      end else if (raw_complete_noerr && fb_any) begin
+        f_sa[recent_idx] <= source_line_addr;
+        f_sl[recent_idx] <= raw_line;
+      end
+    end
+  wire f_old_recent_covers = recent_valid_q[recent_idx] && (f_sa[recent_idx] == source_line_addr);
+  wire [63:0] f_old_raw_line = ic1_covers ? hit_data_ic1 :
+                               (ic1_hold_covers ? ic1_hold_line_q :
+                               (fb_any ? fb_sel_line : f_sl[recent_idx]));
+  always @(posedge clk_i) if (rst_ni) begin
+    assert (!recent_valid_q[0] || f_rl_mem[92:0] == {f_sa[0], f_sl[0]});
+    assert (!recent_valid_q[1] || f_rl_mem[185:93] == {f_sa[1], f_sl[1]});
+    assert (!recent_valid_q[2] || f_rl_mem[278:186] == {f_sa[2], f_sl[2]});
+    assert (!recent_valid_q[3] || f_rl_mem[371:279] == {f_sa[3], f_sl[3]});
+    assert (!recent_valid_q[4] || f_rl_mem[464:372] == {f_sa[4], f_sl[4]});
+    assert (!recent_valid_q[5] || f_rl_mem[557:465] == {f_sa[5], f_sl[5]});
+    assert (!recent_valid_q[6] || f_rl_mem[650:558] == {f_sa[6], f_sl[6]});
+    assert (!recent_valid_q[7] || f_rl_mem[743:651] == {f_sa[7], f_sl[7]});
+    assert (recent_covers == f_old_recent_covers);
+    assert (!raw_valid || raw_line == f_old_raw_line);
+  end
+`endif
 `ifdef COVERS
+  // an output served from the recent-line buffer (EQUIV3 is about this source)
+  always @(posedge clk_i) if (rst_ni) cover (raw_valid && recent_covers && !ic1_any_covers && !fb_any);
   // Non-vacuity: several FBs wanting out at once (so uniqueness is not
   // trivially implied by a single live FB), and a candidate whose beat is not
   // ready this cycle (the case a registered select would treat differently).
