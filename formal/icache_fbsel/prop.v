@@ -32,7 +32,23 @@
     assert (!fb_any || fb_sel_idx == f_old_idx);
   end
 `endif
+`ifdef EQUIV2
+  // Data-path fb_any_d (bus-only views) vs fb_any (live views). With these,
+  // raw_valid / raw_line / raw_beats / raw_err0/1 equal their fb_any forms:
+  //   A0: fb_any_d implies fb_any;
+  //   A1: where they differ, ic1_covers holds (IC1 source has priority in
+  //       raw_line and is part of ic1_any_covers in raw_valid);
+  //   A2: where they differ, the selected FB's line is complete and
+  //       error-free, so raw_beats = 2 and raw_err0/1 = 0 either way.
+  always @(posedge clk_i) if (rst_ni) begin
+    assert (!fb_any_d || fb_any);
+    assert (!(fb_any && !fb_any_d) || ic1_covers);
+    assert (!(fb_any && !fb_any_d) || (fb_sel_beats == 2'd2 && !fb_sel_err0 && !fb_sel_err1));
+  end
+`endif
 `ifdef COVERS
+  // the case EQUIV2 is about: an FB covers only through the IC1-hit capture
+  always @(posedge clk_i) if (rst_ni) cover (fb_any && !fb_any_d);
   // Non-vacuity: several FBs wanting out at once (so uniqueness is not
   // trivially implied by a single live FB), and a candidate whose beat is not
   // ready this cycle (the case a registered select would treat differently).

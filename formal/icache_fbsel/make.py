@@ -70,4 +70,12 @@ assert n == 4, f"noopen: expected 4 selects, found {n}"
 g = "assign raw_fb_idx = (fb_any ? fb_sel_idx : 2'd0);"
 assert v.count(g) == 1, "nogate: raw_fb_idx gating not found"
 (out / "icache_nogate.v").write_text(v.replace(g, "assign raw_fb_idx = fb_sel_idx;"))
+# Mutant for EQUIV2: the bus-only views also drop the same-cycle bus beat,
+# so an FB covering through rvalid is missed by fb_any_d (A1 must FAIL).
+nr = v
+for i in range(4):
+    a = f"assign fb{i}_beats_bus = (rvalid_v[{i}] ? fb{i}_beats_rcvd + 2'd1 : fb{i}_beats_rcvd);"
+    assert nr.count(a) == 1, f"norv: fb{i}_beats_bus not found"
+    nr = nr.replace(a, f"assign fb{i}_beats_bus = fb{i}_beats_rcvd;")
+(out / "icache_norv.v").write_text(nr)
 

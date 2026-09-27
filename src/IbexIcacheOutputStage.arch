@@ -52,6 +52,15 @@ module IbexIcacheOutputStage
   /// Allocated and not stale (registered). At most one open FB holds any
   /// given line (proved, formal/icache_fbsel), so it names the only FB that
   /// can supply the source line, without the same-cycle beat terms.
+  /// Bus-only views (no same-cycle IC1-hit capture): drive the data path.
+  port fb0_wants_out_bus: in Bool;
+  port fb0_beats_bus:     in UInt<2>;
+  port fb1_wants_out_bus: in Bool;
+  port fb1_beats_bus:     in UInt<2>;
+  port fb2_wants_out_bus: in Bool;
+  port fb2_beats_bus:     in UInt<2>;
+  port fb3_wants_out_bus: in Bool;
+  port fb3_beats_bus:     in UInt<2>;
   port fb0_open:       in Bool;
   port fb1_open:       in Bool;
   port fb2_open:       in Bool;
@@ -158,6 +167,21 @@ module IbexIcacheOutputStage
   let fb_sel_idx: UInt<2> =
     fb1_sel ? 2'd1 : (fb2_sel ? 2'd2 : (fb3_sel ? 2'd3 : 2'd0));
   let fb_any: Bool = fb0_covers or fb1_covers or fb2_covers or fb3_covers;
+  // Data-path copy of fb_any from the bus-only views. It differs from fb_any
+  // only when an FB covers through the same-cycle IC1-hit capture; then
+  // ic1_covers holds and has priority in raw_line, and the captured line is
+  // complete and error-free, so every raw_* value is unchanged -- but the tag
+  // compare no longer reaches the data muxes through the FB's beat count.
+  // fb_any keeps the lifecycle (raw_is_fb, raw_fb_idx, recent-line update).
+  let fb0_covers_d: Bool = fb0_wants_out_bus and (fb0_addr[31:3] == source_line_addr)
+    and (source_beat1 ? (fb0_beats_bus == 2'd2) : (fb0_beats_bus != 2'd0));
+  let fb1_covers_d: Bool = fb1_wants_out_bus and (fb1_addr[31:3] == source_line_addr)
+    and (source_beat1 ? (fb1_beats_bus == 2'd2) : (fb1_beats_bus != 2'd0));
+  let fb2_covers_d: Bool = fb2_wants_out_bus and (fb2_addr[31:3] == source_line_addr)
+    and (source_beat1 ? (fb2_beats_bus == 2'd2) : (fb2_beats_bus != 2'd0));
+  let fb3_covers_d: Bool = fb3_wants_out_bus and (fb3_addr[31:3] == source_line_addr)
+    and (source_beat1 ? (fb3_beats_bus == 2'd2) : (fb3_beats_bus != 2'd0));
+  let fb_any_d: Bool = fb0_covers_d or fb1_covers_d or fb2_covers_d or fb3_covers_d;
 
   let fb_sel_line: UInt<64> =
     (fb_sel_idx == 2'd0) ? fb0_line :
@@ -183,18 +207,18 @@ module IbexIcacheOutputStage
   // IC1 has data priority, but a same-line FB remains associated for
   // lifecycle completion when the accepted output consumes the FB's
   // last beat.
-  let raw_valid: Bool = ic1_any_covers or fb_any or recent_covers;
+  let raw_valid: Bool = ic1_any_covers or fb_any_d or recent_covers;
   let raw_line: UInt<64> =
     ic1_covers ? hit_data_ic1 :
     (ic1_hold_covers ? ic1_hold_line_q :
-    (fb_any ? fb_sel_line : recent_line_q[recent_idx]));
+    (fb_any_d ? fb_sel_line : recent_line_q[recent_idx]));
   let raw_is_fb: Bool = fb_any;
   // lifecycle index: the covering FB, 0 when none covers (as before)
   let raw_fb_idx: UInt<2> = fb_any ? fb_sel_idx : 2'd0;
   let raw_fb_addr: UInt<32> = fb_sel_addr;
-  let raw_beats: UInt<2> = fb_any ? fb_sel_beats : 2'd2;
-  let raw_err0: Bool = fb_any ? fb_sel_err0 : false;
-  let raw_err1: Bool = fb_any ? fb_sel_err1 : false;
+  let raw_beats: UInt<2> = fb_any_d ? fb_sel_beats : 2'd2;
+  let raw_err0: Bool = fb_any_d ? fb_sel_err0 : false;
+  let raw_err1: Bool = fb_any_d ? fb_sel_err1 : false;
   let raw_complete_noerr: Bool =
     raw_valid and (raw_beats == 2'd2) and (not raw_err0) and (not raw_err1);
 

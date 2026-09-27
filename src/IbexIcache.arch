@@ -1112,6 +1112,20 @@ module ibex_icache
   let fb2_err_beat1_live: Bool = fb2_data_we_beat1 ? instr_err_i : fb2_err_beat1;
   let fb3_err_beat1_live: Bool = fb3_data_we_beat1 ? instr_err_i : fb3_err_beat1;
 
+  // Bus-only views of each FB for the output stage's data path: the live
+  // views minus the same-cycle IC1-hit capture (data_we_ic1_hit). When an FB
+  // covers the output only through that capture, the output stage's IC1
+  // source covers too and takes priority, so the data path never needs the
+  // tag-hit term routed through the FB (proved: formal/icache_fbsel EQUIV2).
+  let fb0_beats_bus: UInt<2> = rvalid_v[0] ? ((fb0_beats_rcvd + 2'd1).trunc<2>()) : fb0_beats_rcvd;
+  let fb0_wants_out_bus: Bool = fb0_wants_out or (rvalid_v[0] and (not fb0_stale));
+  let fb1_beats_bus: UInt<2> = rvalid_v[1] ? ((fb1_beats_rcvd + 2'd1).trunc<2>()) : fb1_beats_rcvd;
+  let fb1_wants_out_bus: Bool = fb1_wants_out or (rvalid_v[1] and (not fb1_stale));
+  let fb2_beats_bus: UInt<2> = rvalid_v[2] ? ((fb2_beats_rcvd + 2'd1).trunc<2>()) : fb2_beats_rcvd;
+  let fb2_wants_out_bus: Bool = fb2_wants_out or (rvalid_v[2] and (not fb2_stale));
+  let fb3_beats_bus: UInt<2> = rvalid_v[3] ? ((fb3_beats_rcvd + 2'd1).trunc<2>()) : fb3_beats_rcvd;
+  let fb3_wants_out_bus: Bool = fb3_wants_out or (rvalid_v[3] and (not fb3_stale));
+
   let fb0_wants_out_live: Bool =
     fb0_wants_out or ((rvalid_v[0] or fb0_data_we_ic1_hit) and (not fb0_stale));
   let fb1_wants_out_live: Bool =
@@ -1215,6 +1229,14 @@ module ibex_icache
     lookup_valid_ic1_q <- lookup_valid_ic1_q;
     any_hit_ic1        <- any_hit_ic1;
     hit_data_ic1       <- hit_data_ic1;
+    fb0_wants_out_bus  <- fb0_wants_out_bus;
+    fb0_beats_bus      <- fb0_beats_bus;
+    fb1_wants_out_bus  <- fb1_wants_out_bus;
+    fb1_beats_bus      <- fb1_beats_bus;
+    fb2_wants_out_bus  <- fb2_wants_out_bus;
+    fb2_beats_bus      <- fb2_beats_bus;
+    fb3_wants_out_bus  <- fb3_wants_out_bus;
+    fb3_beats_bus      <- fb3_beats_bus;
     fb0_wants_out      <- fb0_wants_out_live;
     fb1_wants_out      <- fb1_wants_out_live;
     fb2_wants_out      <- fb2_wants_out_live;
