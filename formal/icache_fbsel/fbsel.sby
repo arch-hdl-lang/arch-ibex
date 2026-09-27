@@ -1,0 +1,78 @@
+# Fill-buffer selection uniqueness (see prop.v). Inputs: make.py.
+[tasks]
+bmc    bmc
+prove  prove
+cover  cov
+kind   ktag
+kbmc   bmctag
+cti    cov2
+kstrong ktag
+equiv ktag
+noopen bmctag
+nogate bmctag
+misroute cov3
+lcover cov
+nocoal ktag
+nocoalbmc bmctag
+nocoalprop bmctag
+
+[options]
+bmc: aigsmt z3
+prove: aigsmt z3
+bmc: mode bmc
+bmc: depth 40
+prove: mode prove
+ktag: mode prove
+ktag: depth 4
+bmctag: mode bmc
+bmctag: depth 12
+cov: mode cover
+cov: depth 40
+cov2: mode cover
+cov2: depth 30
+cov3: mode cover
+cov3: depth 20
+
+[engines]
+bmc: abc bmc3
+prove: abc pdr
+cov: smtbmc boolector
+ktag: smtbmc boolector
+bmctag: smtbmc boolector
+cov2: smtbmc boolector
+cov3: smtbmc boolector
+
+[script]
+cover: read_verilog -formal -DCOVERS icache_fbsel.v
+bmc: read_verilog -formal icache_fbsel.v
+prove: read_verilog -formal icache_fbsel.v
+kind: read_verilog -formal -DLEMMA icache_fbsel.v
+kbmc: read_verilog -formal -DLEMMA icache_fbsel.v
+noopen: read_verilog -formal -DLEMMA -DLEMMA_STRONG -DEQUIV icache_noopen.v
+nogate: read_verilog -formal -DLEMMA -DLEMMA_STRONG -DEQUIV icache_nogate.v
+equiv: read_verilog -formal -DLEMMA -DLEMMA_STRONG -DEQUIV icache_fbsel.v
+kstrong: read_verilog -formal -DLEMMA -DLEMMA_STRONG icache_fbsel.v
+lcover: read_verilog -formal -DLEMMA -DLEMMA_STRONG -DCOVERS icache_fbsel.v
+nocoalprop: read_verilog -formal icache_nocoal.v
+nocoalbmc: read_verilog -formal -DLEMMA -DLEMMA_STRONG icache_nocoal.v
+nocoal: read_verilog -formal -DLEMMA -DLEMMA_STRONG icache_nocoal.v
+misroute: read_verilog -formal -DLEMMA -DMISROUTE_COVER icache_fbsel.v
+cti: read_verilog -formal -DLEMMA -DCTI_COVER icache_fbsel.v
+read_verilog -formal live_top.v
+prep -top live_top
+async2sync
+flatten
+memory -nomap
+memory_map
+opt -full
+techmap
+opt -fast
+setundef -undriven -anyseq
+setundef -anyseq
+
+[files]
+icache_fbsel.v
+icache_nocoal.v
+icache_noopen.v
+icache_nogate.v
+live_top.v

@@ -1239,10 +1239,10 @@ module ibex_icache
     fb1_beats_live     <- fb1_beats_live;
     fb2_beats_live     <- fb2_beats_live;
     fb3_beats_live     <- fb3_beats_live;
-    fb0_age            <- fb_age_q[0];
-    fb1_age            <- fb_age_q[1];
-    fb2_age            <- fb_age_q[2];
-    fb3_age            <- fb_age_q[3];
+    fb0_open           <- fb0_busy and (not fb0_stale);
+    fb1_open           <- fb1_busy and (not fb1_stale);
+    fb2_open           <- fb2_busy and (not fb2_stale);
+    fb3_open           <- fb3_busy and (not fb3_stale);
     valid_o            -> valid_o;
     rdata_o            -> rdata_o;
     addr_o             -> addr_o;
