@@ -49,10 +49,13 @@ module IbexIcacheOutputStage
   port fb1_beats_live: in UInt<2>;
   port fb2_beats_live: in UInt<2>;
   port fb3_beats_live: in UInt<2>;
-  port fb0_age:        in UInt<2>;
-  port fb1_age:        in UInt<2>;
-  port fb2_age:        in UInt<2>;
-  port fb3_age:        in UInt<2>;
+  /// Allocated and not stale (registered). At most one open FB holds any
+  /// given line (proved, formal/icache_fbsel), so it names the only FB that
+  /// can supply the source line, without the same-cycle beat terms.
+  port fb0_open:       in Bool;
+  port fb1_open:       in Bool;
+  port fb2_open:       in Bool;
+  port fb3_open:       in Bool;
 
   port valid_o:     out Bool;
   port rdata_o:     out UInt<32>;
@@ -140,16 +143,20 @@ module IbexIcacheOutputStage
   let fb3_covers: Bool =
     fb3_wants_out and (fb3_addr[31:3] == source_line_addr) and fb3_beat_ready;
 
-  let fb0_cost: UInt<3> = fb0_covers ? {1'd0, fb0_age} : 3'd4;
-  let fb1_cost: UInt<3> = fb1_covers ? {1'd0, fb1_age} : 3'd4;
-  let fb2_cost: UInt<3> = fb2_covers ? {1'd0, fb2_age} : 3'd4;
-  let fb3_cost: UInt<3> = fb3_covers ? {1'd0, fb3_age} : 3'd4;
-  let fb_min01_cost: UInt<3> = fb0_cost <= fb1_cost ? fb0_cost : fb1_cost;
-  let fb_min01_idx:  UInt<2> = fb0_cost <= fb1_cost ? 2'd0 : 2'd1;
-  let fb_min23_cost: UInt<3> = fb2_cost <= fb3_cost ? fb2_cost : fb3_cost;
-  let fb_min23_idx:  UInt<2> = fb2_cost <= fb3_cost ? 2'd2 : 2'd3;
+  // FB select. Two open (allocated, non-stale) FBs never hold the same
+  // line (proved by k-induction, formal/icache_fbsel), and a covering FB is
+  // always open, so the open FB holding the source line is the only one
+  // that can cover it. The select therefore needs only registered state and
+  // the line compare; the same-cycle terms (live wants_out, beat ready)
+  // only decide fb_any. This replaces the age-cost minimum over the
+  // covering FBs, which put the IC1 tag hit and the bus rvalid in front of
+  // the 64-bit line/address/beats/error muxes.
+  let fb0_sel: Bool = fb0_open and (fb0_addr[31:3] == source_line_addr);
+  let fb1_sel: Bool = fb1_open and (fb1_addr[31:3] == source_line_addr);
+  let fb2_sel: Bool = fb2_open and (fb2_addr[31:3] == source_line_addr);
+  let fb3_sel: Bool = fb3_open and (fb3_addr[31:3] == source_line_addr);
   let fb_sel_idx: UInt<2> =
-    fb_min01_cost <= fb_min23_cost ? fb_min01_idx : fb_min23_idx;
+    fb1_sel ? 2'd1 : (fb2_sel ? 2'd2 : (fb3_sel ? 2'd3 : 2'd0));
   let fb_any: Bool = fb0_covers or fb1_covers or fb2_covers or fb3_covers;
 
   let fb_sel_line: UInt<64> =
@@ -182,7 +189,8 @@ module IbexIcacheOutputStage
     (ic1_hold_covers ? ic1_hold_line_q :
     (fb_any ? fb_sel_line : recent_line_q[recent_idx]));
   let raw_is_fb: Bool = fb_any;
-  let raw_fb_idx: UInt<2> = fb_sel_idx;
+  // lifecycle index: the covering FB, 0 when none covers (as before)
+  let raw_fb_idx: UInt<2> = fb_any ? fb_sel_idx : 2'd0;
   let raw_fb_addr: UInt<32> = fb_sel_addr;
   let raw_beats: UInt<2> = fb_any ? fb_sel_beats : 2'd2;
   let raw_err0: Bool = fb_any ? fb_sel_err0 : false;
