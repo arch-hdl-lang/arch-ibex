@@ -13,7 +13,7 @@ select.
 
 ```bash
 make build
-formal/icache_fbsel/run.sh kstrong equiv lcover nocoalbmc nocoalprop noopen nogate
+formal/icache_fbsel/run.sh kstrong equiv equiv3 lcover nocoalbmc nocoalprop noopen nogate hraddr nosrc noprio
 ```
 
 ## Proof
@@ -102,5 +102,16 @@ the recent-line buffer once from each bank.
 Before #17 the induction could not close: its counterexample was a bus
 response routed to an idle fill buffer, which led to finding the
 single-register response tracker bug fixed there.
+
+### Two-bank recent-line buffer (2026-09-27, branch icache/recent-line-lvt)
+
+| task | result |
+|---|---|
+| `equiv3` (two banks + live-value bits vs the old flop storage) | **PASS** — base case and induction (37 s) |
+| `hraddr` (mutant: hit bank written at the FB index) | **FAIL at step 6** (per-entry storage assert) |
+| `nosrc` (mutant: FB capture leaves the live-value bit alone) | **FAIL** (per-entry storage assert) |
+| `noprio` (mutant: FB bank written when an IC1 hit wins) | **FAIL at step 10** (storage and `raw_line` asserts) |
+| `lcover` | all five covers reached by step 6, including an output served from the recent-line buffer from each bank |
+| `kstrong`, `equiv` | **PASS** (unchanged by the storage change) |
 
 `cti.py <trace.vcd>` prints the fill-buffer state per step of an SBY trace.
