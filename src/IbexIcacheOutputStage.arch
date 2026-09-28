@@ -98,9 +98,15 @@ module IbexIcacheOutputStage
   // IC1 lookup bubble in small hot loops that branch to the upper word
   // of one line and immediately fall through into the next line.
   reg recent_valid_q: Vec<Bool, 8> reset rst_ni => false;
-  // {line address, line data} per entry live in RecentLineRam (one write,
-  // one combinational read), so FPGA flows map them to distributed RAM.
-  wire recent_rd_word: UInt<93>;
+  // {line address, line data} per entry live in two RecentLineRam banks, one
+  // per writer (IC1-hit capture, completed-FB-line capture), so neither bank
+  // needs a write-data mux. recent_src_hit_q[i] records which bank wrote
+  // entry i last (live value table); the read picks that bank.
+  reg recent_src_hit_q: Vec<Bool, 8> reset rst_ni => false;
+  wire recent_hit_rd_word: UInt<93>;
+  wire recent_fill_rd_word: UInt<93>;
+  let recent_rd_word: UInt<93> =
+    recent_src_hit_q[recent_idx] ? recent_hit_rd_word : recent_fill_rd_word;
 
   let out_line_addr: UInt<29> = addr_out_q[31:3];
   let out_beat1: Bool = addr_out_q[2];
@@ -340,20 +346,29 @@ module IbexIcacheOutputStage
   let recent_clear: Bool = icache_inval_i or (not icache_enable_i);
   let recent_hit_we: Bool = lookup_valid_ic1_q and any_hit_ic1;
   let recent_fb_we: Bool = raw_complete_noerr and fb_any;
-  let recent_we: Bool = (not recent_clear) and (recent_hit_we or recent_fb_we);
-  let recent_waddr: UInt<3> = recent_hit_we ? lookup_recent_idx : recent_idx;
-  let recent_wdata: UInt<93> =
-    recent_hit_we ? {lookup_addr_ic1_q[31:3], hit_data_ic1}
-                  : {source_line_addr, raw_line};
+  // Hit wins over a same-cycle FB capture, as before, so at most one bank
+  // is written per cycle.
+  let recent_hit_wen: Bool = (not recent_clear) and recent_hit_we;
+  let recent_fill_wen: Bool =
+    (not recent_clear) and (not recent_hit_we) and recent_fb_we;
 
-  inst recent_ram: RecentLineRam
+  inst recent_hit_ram: RecentLineRam
     clk_i   <- clk_i;
     rd.addr <- recent_idx;
-    rd.data -> recent_rd_word;
-    wr.en   <- recent_we;
-    wr.addr <- recent_waddr;
-    wr.data <- recent_wdata;
-  end inst recent_ram
+    rd.data -> recent_hit_rd_word;
+    wr.en   <- recent_hit_wen;
+    wr.addr <- lookup_recent_idx;
+    wr.data <- {lookup_addr_ic1_q[31:3], hit_data_ic1};
+  end inst recent_hit_ram
+
+  inst recent_fill_ram: RecentLineRam
+    clk_i   <- clk_i;
+    rd.addr <- recent_idx;
+    rd.data -> recent_fill_rd_word;
+    wr.en   <- recent_fill_wen;
+    wr.addr <- recent_idx;
+    wr.data <- {source_line_addr, raw_line};
+  end inst recent_fill_ram
 
   seq on clk_i rising
     if recent_clear
@@ -362,8 +377,10 @@ module IbexIcacheOutputStage
       end for
     elsif recent_hit_we
       recent_valid_q[lookup_recent_idx] <= true;
+      recent_src_hit_q[lookup_recent_idx] <= true;
     elsif recent_fb_we
       recent_valid_q[recent_idx] <= true;
+      recent_src_hit_q[recent_idx] <= false;
     end if
   end seq
 
