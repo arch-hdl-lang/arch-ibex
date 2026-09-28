@@ -50,16 +50,25 @@ v = v[:z1] + "\n\tinput wire [7:0] f_age;" + v[z1:]
 oinst = "\tIbexIcacheOutputStage output_stage(\n"
 assert v.count(oinst) == 1
 v = v.replace(oinst, oinst + "\t\t.f_age(fb_age_q),\n")
-# Formal-only observation port on RecentLineRam (its 8 x 93-bit array),
-# wired to f_rl_mem in the output stage (EQUIV3 shadow comparison).
+# Formal-only observation port on RecentLineRam (its 8 x 93-bit array). The
+# output stage has two banks (IC1-hit writer, FB-line writer) plus the
+# live-value bits recent_src_hit_q; f_rl_mem is the resolved buffer -- entry i
+# from the bank recent_src_hit_q[i] names -- which is what the output stage
+# reads, and is what EQUIV3 compares against the old flop storage.
 hdr = "module RecentLineRam (\n\tclk_i,"
 assert v.count(hdr) == 1
 v = v.replace(hdr, "module RecentLineRam (\n\tf_mem_flat,\n\tclk_i,")
 a2 = v.index("module RecentLineRam ("); z2 = v.index("\nendmodule", a2)
 v = v[:z2] + "\n\toutput wire [743:0] f_mem_flat;\n\tassign f_mem_flat = {mem[7], mem[6], mem[5], mem[4], mem[3], mem[2], mem[1], mem[0]};" + v[z2:]
-rinst = "\tRecentLineRam recent_ram(\n"
-assert v.count(rinst) == 1
-v = v.replace(rinst, "\twire [743:0] f_rl_mem;\n" + rinst + "\t\t.f_mem_flat(f_rl_mem),\n")
+hinst = "\tRecentLineRam recent_hit_ram(\n"
+finst = "\tRecentLineRam recent_fill_ram(\n"
+assert v.count(hinst) == 1 and v.count(finst) == 1
+resolve = "".join(
+    f"\tassign f_rl_mem[{93*i+92}:{93*i}] = recent_src_hit_q[{i}] ? f_rl_hit_mem[{93*i+92}:{93*i}] : f_rl_fill_mem[{93*i+92}:{93*i}];\n"
+    for i in range(8))
+v = v.replace(hinst, "\twire [743:0] f_rl_hit_mem;\n\twire [743:0] f_rl_fill_mem;\n\twire [743:0] f_rl_mem;\n"
+              + resolve + hinst + "\t\t.f_mem_flat(f_rl_hit_mem),\n")
+v = v.replace(finst, finst + "\t\t.f_mem_flat(f_rl_fill_mem),\n")
 a = v.index("module InvalCtrl"); z = v.index("endmodule", a)
 assert v[a:z].count("8'd255") == 2, "expected 2 walk terminators in InvalCtrl"
 v = v[:a] + v[a:z].replace("8'd255", "8'd3") + v[z:]
@@ -80,8 +89,17 @@ assert n == 4, f"noopen: expected 4 selects, found {n}"
 g = "assign raw_fb_idx = (fb_any ? fb_sel_idx : 2'd0);"
 assert v.count(g) == 1, "nogate: raw_fb_idx gating not found"
 (out / "icache_nogate.v").write_text(v.replace(g, "assign raw_fb_idx = fb_sel_idx;"))
-# Mutant for EQUIV3: the recent-line write address ignores the IC1-hit index.
-w = "assign recent_waddr = (recent_hit_we ? lookup_recent_idx : recent_idx);"
-assert v.count(w) == 1, "rraddr: recent_waddr not found"
-(out / "icache_rraddr.v").write_text(v.replace(w, "assign recent_waddr = recent_idx;"))
-
+# Mutants for EQUIV3 (all must FAIL):
+#   hraddr: the hit bank is written at the FB index instead of the IC1-hit index
+#   nosrc:  an FB-line capture leaves the entry's live-value bit alone, so a
+#           later read can return the hit bank's older copy
+#   noprio: the FB bank is written even when an IC1-hit capture wins the cycle
+w = "\t\t.wr_addr(lookup_recent_idx),\n"
+assert v.count(w) == 1, "hraddr: hit-bank write address not found"
+(out / "icache_hraddr.v").write_text(v.replace(w, "\t\t.wr_addr(recent_idx),\n"))
+w = "\t\t\trecent_src_hit_q[recent_idx] <= 1'b0;\n"
+assert v.count(w) == 1, "nosrc: FB-capture live-value update not found"
+(out / "icache_nosrc.v").write_text(v.replace(w, ""))
+w = "assign recent_fill_wen = (!recent_clear && !recent_hit_we) && recent_fb_we;"
+assert v.count(w) == 1, "noprio: recent_fill_wen not found"
+(out / "icache_noprio.v").write_text(v.replace(w, "assign recent_fill_wen = !recent_clear && recent_fb_we;"))

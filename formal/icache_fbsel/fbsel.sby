@@ -9,7 +9,9 @@ cti    cov2
 kstrong ktag
 equiv ktag
 equiv3 ktag
-rraddr bmctag
+hraddr bmctag
+nosrc bmctag
+noprio bmctag
 noopen bmctag
 nogate bmctag
 misroute cov3
@@ -52,7 +54,9 @@ kind: read_verilog -formal -DLEMMA icache_fbsel.v
 kbmc: read_verilog -formal -DLEMMA icache_fbsel.v
 noopen: read_verilog -formal -DLEMMA -DLEMMA_STRONG -DEQUIV icache_noopen.v
 nogate: read_verilog -formal -DLEMMA -DLEMMA_STRONG -DEQUIV icache_nogate.v
-rraddr: read_verilog -formal -DLEMMA -DLEMMA_STRONG -DEQUIV3 icache_rraddr.v
+hraddr: read_verilog -formal -DLEMMA -DLEMMA_STRONG -DEQUIV3 icache_hraddr.v
+nosrc: read_verilog -formal -DLEMMA -DLEMMA_STRONG -DEQUIV3 icache_nosrc.v
+noprio: read_verilog -formal -DLEMMA -DLEMMA_STRONG -DEQUIV3 icache_noprio.v
 equiv3: read_verilog -formal -DLEMMA -DLEMMA_STRONG -DEQUIV3 icache_fbsel.v
 equiv: read_verilog -formal -DLEMMA -DLEMMA_STRONG -DEQUIV icache_fbsel.v
 kstrong: read_verilog -formal -DLEMMA -DLEMMA_STRONG icache_fbsel.v
@@ -79,5 +83,7 @@ icache_fbsel.v
 icache_nocoal.v
 icache_noopen.v
 icache_nogate.v
-icache_rraddr.v
+icache_hraddr.v
+icache_nosrc.v
+icache_noprio.v
 live_top.v

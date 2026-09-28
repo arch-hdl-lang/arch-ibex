@@ -66,8 +66,10 @@
   end
 `endif
 `ifdef COVERS
-  // an output served from the recent-line buffer (EQUIV3 is about this source)
-  always @(posedge clk_i) if (rst_ni) cover (raw_valid && recent_covers && !ic1_any_covers && !fb_any);
+  // an output served from the recent-line buffer (EQUIV3 is about this
+  // source), once from each bank the live-value bit can name
+  always @(posedge clk_i) if (rst_ni) cover (raw_valid && recent_covers && !ic1_any_covers && !fb_any && recent_src_hit_q[recent_idx]);
+  always @(posedge clk_i) if (rst_ni) cover (raw_valid && recent_covers && !ic1_any_covers && !fb_any && !recent_src_hit_q[recent_idx]);
   // Non-vacuity: several FBs wanting out at once (so uniqueness is not
   // trivially implied by a single live FB), and a candidate whose beat is not
   // ready this cycle (the case a registered select would treat differently).

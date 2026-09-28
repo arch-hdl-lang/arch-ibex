@@ -58,6 +58,35 @@ same lemmas and k-induction:
 under `fb_any` / `raw_is_fb`), so (1) and (2) make every output and every
 register update identical to the old select.
 
+## Recent-line buffer storage (`equiv3`)
+
+The recent-line buffer's {line address, line data} entries live in two
+`RecentLineRam` banks instead of flops: one written only by the IC1-hit
+capture, one only by the completed-FB-line capture, so neither bank has a
+write-data mux (FPGA flows map each to single-write-port distributed RAM).
+Per entry, the flop `recent_src_hit_q[i]` records which bank wrote it last
+(a live value table) and the read takes that bank. The valid bits stay in
+flops.
+
+`-DEQUIV3` keeps a shadow of the old flop storage (`f_sa`/`f_sl`), updated by
+the old logic (clear writes nothing; else IC1-hit capture; else FB-line
+capture), and asserts under the same lemmas and k-induction:
+
+1. for every valid entry, the resolved buffer `f_rl_mem` (entry i from the
+   bank `recent_src_hit_q[i]` names; `make.py` builds it from formal-only
+   observation ports on both banks) equals the shadow;
+2. `recent_covers` equals the old covers test;
+3. whenever the output is valid, `raw_line` equals the old output line.
+
+Invalid entries are never read (`recent_covers` is gated by the valid bit),
+so these make every output identical to the flop version.
+
+Mutants (all must FAIL): `hraddr` writes the hit bank at the FB index,
+`nosrc` leaves the live-value bit alone on an FB-line capture (a later read
+returns the hit bank's older copy), `noprio` writes the FB bank even when an
+IC1-hit capture wins the cycle. `lcover` also covers an output served from
+the recent-line buffer once from each bank.
+
 ## Results (2026-09-26, arch-ibex 6acb8d3 = after #17)
 
 | task | result |
