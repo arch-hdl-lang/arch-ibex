@@ -113,5 +113,6 @@ single-register response tracker bug fixed there.
 | `noprio` (mutant: FB bank written when an IC1 hit wins) | **FAIL at step 10** (storage and `raw_line` asserts) |
 | `lcover` | all five covers reached by step 6, including an output served from the recent-line buffer from each bank |
 | `kstrong`, `equiv` | **PASS** (unchanged by the storage change) |
+| `noopen`, `nogate`, `nocoalbmc`, `nocoalprop` (select/coalesce mutants, re-run on this base) | all **FAIL** as before (steps 4, 5, 5, 5) |
 
 `cti.py <trace.vcd>` prints the fill-buffer state per step of an SBY trace.
