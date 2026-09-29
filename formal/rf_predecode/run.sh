@@ -1,21 +1,25 @@
 #!/bin/bash
 # Proofs for the register-file read-select retime (ibex_register_file_ff
-# ReadOneHotA = 1, fed by the IF stage's registered one-hot rs1 select).
+# ReadOneHotA = ReadOneHotB = 1, fed by the IF stage's registered one-hot rs1
+# and rs2 selects).
 #
-#   formal/rf_predecode/run.sh [--mutant]
+#   formal/rf_predecode/run.sh [--mutant | --mutant-b]
 #
 # 1. core invariant (SymbiYosys, abc pdr, unbounded): the two ibex_core
 #    outputs that drive the register file always satisfy
 #        rf_raddr_a_oh_o == 1 << rf_raddr_a_o
+#        rf_raddr_b_oh_o == 1 << rf_raddr_b_o
 #    from any initial state that satisfies it. The IF/ID registers have no
 #    reset, so the initial state is constrained by that same relation (the
 #    retimed register's initial value is the image of the original one).
 # 2. register file (formal/equiv_module.sh-style equiv_make/equiv_induct):
-#    ReadOneHotA = 1 with raddr_a_oh_i = 1 << raddr_a_i is equivalent to the
-#    upstream-shaped read (ReadOneHotA = 0), i.e. to origin/main's module.
+#    ReadOneHotA = ReadOneHotB = 1 with raddr_{a,b}_oh_i = 1 << raddr_{a,b}_i
+#    is equivalent to the upstream-shaped read (both 0).
 # Together: ibex_top's register-file read data is unchanged, cycle for cycle.
-# --mutant runs the same core proof with the select taken from the rs2 field
-# (instr[24:20]); it must FAIL, showing the proof can see the register.
+# --mutant takes port A's select from the rs2 field (instr[24:20]), --mutant-b
+# port B's from the rs1 field (instr[19:15]); the register-file step shifts
+# that port's select by one. Both steps must FAIL on either mutant, showing
+# the proofs can see each register.
 # Needs: flow/sv2v.sh output (flow/out/arch/ibex_top.v), sby, yosys, sv2v.
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; REPO="$(cd "$HERE/../.." && pwd)"
@@ -26,10 +30,15 @@ python3 - "$SRC" "$W/core.v" "${1:-}" <<'PY'
 import sys, re
 src, dst, mode = sys.argv[1], sys.argv[2], sys.argv[3]
 s = open(src).read()
-if mode == "--mutant":
-    a = "rf_raddr_a_oh_id_o <= 1 << instr_decompressed[19:15];"
-    assert s.count(a) == 1, "mutation site not found"
-    s = s.replace(a, "rf_raddr_a_oh_id_o <= 1 << instr_decompressed[24:20];")
+sites = {"--mutant": ("rf_raddr_a_oh_id_o <= 1 << instr_decompressed[19:15];",
+                      "rf_raddr_a_oh_id_o <= 1 << instr_decompressed[24:20];"),
+         "--mutant-b": ("rf_raddr_b_oh_id_o <= 1 << instr_decompressed[24:20];",
+                        "rf_raddr_b_oh_id_o <= 1 << instr_decompressed[19:15];")}
+for a, _ in sites.values():
+    assert s.count(a) == 1, f"select site not found: {a}"
+if mode in sites:
+    a, b = sites[mode]
+    s = s.replace(a, b)
 m = re.search(r"^module ibex_core\b", s, re.M); assert m
 end = s.index("\nendmodule", m.start())
 prop = """
@@ -37,7 +46,9 @@ prop = """
 \t// retime invariant: the register file's one-hot select is the decode
 \t// of its binary select, from any initial state where that holds
 \talways @(*) if ($initstate) assume (rf_raddr_a_oh_o == (32'd1 << rf_raddr_a_o));
+\talways @(*) if ($initstate) assume (rf_raddr_b_oh_o == (32'd1 << rf_raddr_b_o));
 \talways @(*) if (!$initstate) assert (rf_raddr_a_oh_o == (32'd1 << rf_raddr_a_o));
+\talways @(*) if (!$initstate) assert (rf_raddr_b_oh_o == (32'd1 << rf_raddr_b_o));
 `endif"""
 open(dst, "w").write(s[:end] + prop + s[end:])
 PY
@@ -77,22 +88,27 @@ case $rc in
   *) echo "core invariant: ERROR (rc=$rc, see $W/core/logfile.txt)" ;;
 esac
 
-# ── 2. register file: ReadOneHotA = 1 (select = 1 << raddr_a) == ReadOneHotA = 0
+# ── 2. register file: ReadOneHotA/B = 1 (select = 1 << raddr) == ReadOneHotA/B = 0
 RF="$REPO/build/ibex_register_file_ff.sv"
 [ -f "$RF" ] || { echo "missing $RF (run make build)"; exit 2; }
-SHIFT=1; [ "${1:-}" = "--mutant" ] && SHIFT=2
+SHIFT_A=1; [ "${1:-}" = "--mutant" ] && SHIFT_A=2
+SHIFT_B=1; [ "${1:-}" = "--mutant-b" ] && SHIFT_B=2
 sed -E 's/^(module[[:space:]]+)ibex_register_file_ff([^A-Za-z0-9_]|$)/\1gold_top\2/' "$RF" > "$W/rf_gold.sv"
-# gate: the same module with ReadOneHotA = 1 and the one-hot select driven by
-# the premise proved in step 1 instead of by a port
+# gate: the same module with ReadOneHotA = ReadOneHotB = 1 and the one-hot
+# selects driven by the premise proved in step 1 instead of by ports
 sed -E -e 's/^(module[[:space:]]+)ibex_register_file_ff([^A-Za-z0-9_]|$)/\1gate_top\2/' \
        -e 's/parameter int ReadOneHotA = 0,/parameter int ReadOneHotA = 1,/' \
-       -e '/^  input logic \[NUM_WORDS-1:0\] raddr_a_oh_i,$/d' "$RF" > "$W/rf_gate.sv"
-python3 - "$W/rf_gate.sv" "$SHIFT" <<'PY'
+       -e 's/parameter int ReadOneHotB = 0,/parameter int ReadOneHotB = 1,/' \
+       -e '/^  input logic \[NUM_WORDS-1:0\] raddr_a_oh_i,$/d' \
+       -e '/^  input logic \[NUM_WORDS-1:0\] raddr_b_oh_i,$/d' "$RF" > "$W/rf_gate.sv"
+python3 - "$W/rf_gate.sv" "$SHIFT_A" "$SHIFT_B" <<'PY'
 import sys
-p, k = sys.argv[1], sys.argv[2]; s = open(p).read()
+p, ka, kb = sys.argv[1], sys.argv[2], sys.argv[3]; s = open(p).read()
 a = "  logic [NUM_WORDS-1:0] [DataWidth-1:0] rdata_a_oh_terms;\n"
-assert s.count(a) == 1 and "ReadOneHotA = 1," in s and "raddr_a_oh_i," not in s
-s = s.replace(a, a + f"  logic [NUM_WORDS-1:0] raddr_a_oh_i;\n  assign raddr_a_oh_i = NUM_WORDS'({k}) << raddr_a_i;\n")
+assert s.count(a) == 1 and "ReadOneHotA = 1," in s and "ReadOneHotB = 1," in s
+assert "raddr_a_oh_i," not in s and "raddr_b_oh_i," not in s
+s = s.replace(a, a + f"  logic [NUM_WORDS-1:0] raddr_a_oh_i;\n  assign raddr_a_oh_i = NUM_WORDS'({ka}) << raddr_a_i;\n"
+                 + f"  logic [NUM_WORDS-1:0] raddr_b_oh_i;\n  assign raddr_b_oh_i = NUM_WORDS'({kb}) << raddr_b_i;\n")
 open(p, "w").write(s)
 PY
 grep -q "module gold_top" "$W/rf_gold.sv" && grep -q "module gate_top" "$W/rf_gate.sv" || { echo "module rename failed"; exit 2; }
