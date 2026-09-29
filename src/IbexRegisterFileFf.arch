@@ -35,6 +35,10 @@ module ibex_register_file_ff
   /// ReadOneHotA = 0 (default, upstream port contract): `raddr_a_i` selects
   /// and `raddr_a_oh_i` is ignored.
   param ReadOneHotA:       const = 0;
+  /// ReadOneHotB = 1: the same for read port B, selected by `raddr_b_oh_i`
+  /// (the IF stage's registered one-hot rs2). ReadOneHotB = 0 (default,
+  /// upstream port contract): `raddr_b_i` selects, `raddr_b_oh_i` ignored.
+  param ReadOneHotB:       const = 0;
 
   local param NUM_WORDS: const = 32;
 
@@ -52,6 +56,9 @@ module ibex_register_file_ff
   port raddr_a_oh_i:     in  UInt<NUM_WORDS>;
   port raddr_b_i:        in  UInt<5>;
   port rdata_b_o:        out UInt<DataWidth>;
+  /// One-hot read select for port B; used only when ReadOneHotB = 1, where
+  /// it must equal `1 << raddr_b_i`.
+  port raddr_b_oh_i:     in  UInt<NUM_WORDS>;
 
   port waddr_a_i:        in  UInt<5>;
   port wdata_a_i:        in  UInt<DataWidth>;
@@ -87,13 +94,16 @@ module ibex_register_file_ff
   // is automatic: rf_reg[waddr_a_i] is sampled at the start of the
   // cycle (rising-edge NBA semantics), so a read on the same address
   // sees the pre-write value.
-  // ReadOneHotA = 1: AND-OR read. Bit 0 of the select is dropped so x0
-  // reads as WordZeroVal, as in the raddr_a_i == 0 arm below.
+  // ReadOneHotA / ReadOneHotB = 1: AND-OR read. Bit 0 of the select is
+  // dropped so x0 reads as WordZeroVal, as in the raddr == 0 arms below.
   wire rdata_a_oh_terms: Vec<UInt<DataWidth>, NUM_WORDS>;
+  wire rdata_b_oh_terms: Vec<UInt<DataWidth>, NUM_WORDS>;
   comb
     rdata_a_oh_terms[0] = WordZeroVal;
+    rdata_b_oh_terms[0] = WordZeroVal;
     for i in 1..NUM_WORDS - 1
       rdata_a_oh_terms[i] = raddr_a_oh_i[i] ? rf_reg[i] : 0;
+      rdata_b_oh_terms[i] = raddr_b_oh_i[i] ? rf_reg[i] : 0;
     end for
 
     if ReadOneHotA == 1
@@ -104,7 +114,9 @@ module ibex_register_file_ff
       rdata_a_o = rf_reg[raddr_a_i];
     end if
 
-    if raddr_b_i == 5'd0
+    if ReadOneHotB == 1
+      rdata_b_o = rdata_b_oh_terms.reduce_or();
+    elsif raddr_b_i == 5'd0
       rdata_b_o = WordZeroVal;
     else
       rdata_b_o = rf_reg[raddr_b_i];
