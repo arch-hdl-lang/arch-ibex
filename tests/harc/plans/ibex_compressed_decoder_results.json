@@ -1,0 +1,76 @@
+{
+  "backend": "default TBIR / native ARCH",
+  "reference_revision": "eede2fbbef007d53cafbd85d937b897751c40a54",
+  "parameters": {
+    "RV32ZC": 3,
+    "ResetAll": 0
+  },
+  "rows_checked": 682537,
+  "vectors_sha256": "5de453552edef7dd876cb61a224bee8b2b300e2222abc7758d61d9862ec5789d",
+  "reference_sha256": {
+    "rtl/ibex_pkg.sv": "7d84f1485c880471cf218ff92a20f00c1fc053cb097b4d73a63ed752b424a6d8",
+    "rtl/ibex_compressed_decoder.sv": "91186cc0b90e190fcb6c261a6bccf03c422e328aa5e0e6c4c5853865900eea96",
+    "vendor/lowrisc_ip/ip/prim/rtl/prim_assert.sv": "d717d5dbcba3b5aa8a731ef9f8af18b036b49edef282f0a43a51f5ad2dd9bb40",
+    "vendor/lowrisc_ip/ip/prim/rtl/prim_assert_dummy_macros.svh": "cac4a930105da662547de873f0b80246074fb22df9a398663e1c8ac3e7998218",
+    "vendor/lowrisc_ip/ip/prim/rtl/prim_assert_sec_cm.svh": "25db89fe5f250c1bcbd808d0b4808206b9e85ac337b26e4ebb23f2ad569e1a13",
+    "vendor/lowrisc_ip/ip/prim/rtl/prim_assert_standard_macros.svh": "4835706249e017eae999256ea807c526a39a49729196fc0aa18bb8818de86ab6",
+    "vendor/lowrisc_ip/ip/prim/rtl/prim_assert_yosys_macros.svh": "d1fd8c350785a7c6d8cccc0b0c385392b71575397e7dc58c70f07716c8f9f3a3"
+  },
+  "generator_sha256": "60abe5fef0edc118c9b92625d413df7e28c995cfeb26f72742b85a016f7869ca",
+  "verilator": "Verilator 5.048 2026-04-26 rev vUNKNOWN-built20260426",
+  "toolchain": {
+    "arch": "arch 0.72.6 (git 1b029068e6d4)",
+    "harc": "harc 0.2.0",
+    "arch_sha256": "3995efbdd8b9faa84dbebf48036061239e64b1c502756f5fd88aa11ff9d6ec04",
+    "harc_sha256": "ab84f6fe56329287acc7990cc2b013426d96589d4b98688259274d103fbcd64a"
+  },
+  "supporting_harc_commit": "5af1b6b1db3cffbf851bdbf178d1ae994dd08c28",
+  "source": {
+    "line_hit": 3,
+    "line_found": 3,
+    "branch_hit": 110,
+    "branch_found": 110,
+    "source_records": 113,
+    "matched_sources": [
+      "src/IbexCompressedDecoder.arch"
+    ]
+  },
+  "functional": [
+    {
+      "group": "DecoderScenarios",
+      "coverpoint_hit": 66,
+      "coverpoint_total": 66,
+      "declared_cross_hit": 0,
+      "declared_cross_waived": 0,
+      "declared_cross_total": 0,
+      "declared_crosses": 0
+    },
+    {
+      "group": "DecoderProtocol",
+      "coverpoint_hit": 11,
+      "coverpoint_total": 11,
+      "declared_cross_hit": 20,
+      "declared_cross_waived": 0,
+      "declared_cross_total": 20,
+      "declared_crosses": 2
+    },
+    {
+      "group": "DecoderStack",
+      "coverpoint_hit": 8,
+      "coverpoint_total": 8,
+      "declared_cross_hit": 16,
+      "declared_cross_waived": 0,
+      "declared_cross_total": 16,
+      "declared_crosses": 1
+    }
+  ],
+  "diagnostic_exclusions": [
+    "cp_pure_pass_through_when_instr_i_1_0_is_unknown_any.specified_behavior"
+  ],
+  "validation": {
+    "pytest": "47 passed",
+    "native_ref_and_cli": "18 passed",
+    "emitted_sv_replay": "passed with final corpus",
+    "corrupted_expected_flag": "failed as required"
+  }
+}

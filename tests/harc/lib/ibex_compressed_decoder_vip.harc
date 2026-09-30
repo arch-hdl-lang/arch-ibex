@@ -1,0 +1,604 @@
+// Reference vectors come from pinned upstream SystemVerilog, never ARCH output.
+extern function cd_count() -> uint<32>
+extern function cd_field(row: uint<32>, col: uint<32>) -> uint<32>
+extern function cd_accept(row: uint<32>) -> uint<32>
+extern function cd_finish() -> uint<32>
+
+transaction DecoderCycle
+    previous_instr : uint<32> default 0
+    previous_expected : uint<32> default 0
+    previous_rst_n : bool default false
+    cp_32_bit_pass_through : uint<8>
+    cp_zca_quadrant_0_c_addi4spn : uint<8>
+    cp_zca_quadrant_0_c_lw : uint<8>
+    cp_zca_quadrant_0_c_sw : uint<8>
+    cp_zcb_quadrant_0_c_lbu_c_lh_c_lhu_c_sb_c_sh : uint<8>
+    cp_zca_quadrant_0_reserved_funct3_codes : uint<8>
+    cp_zca_quadrant_1_c_addi_c_nop : uint<8>
+    cp_zca_quadrant_1_c_jal_c_j : uint<8>
+    cp_zca_quadrant_1_c_li : uint<8>
+    cp_zca_quadrant_1_c_lui_c_addi16sp : uint<8>
+    cp_zca_quadrant_1_c_srli_c_srai : uint<8>
+    cp_zca_quadrant_1_c_andi : uint<8>
+    cp_zca_quadrant_1_c_sub_c_xor_c_or_c_and : uint<8>
+    cp_zcb_quadrant_1_c_mul : uint<8>
+    cp_zcb_quadrant_1_zext_b_sext_b_zext_h_sext_h_not : uint<8>
+    cp_zca_quadrant_1_c_beqz_c_bnez : uint<8>
+    cp_zca_quadrant_2_c_slli : uint<8>
+    cp_zca_quadrant_2_c_lwsp : uint<8>
+    cp_zca_quadrant_2_c_mv_c_jr_c_add_c_jalr_c_ebreak : uint<8>
+    cp_zca_quadrant_2_c_swsp : uint<8>
+    cp_zca_quadrant_2_reserved_funct3_codes : uint<8>
+    cp_zcmp_cm_push_multi_cycle_expansion : uint<8>
+    cp_zcmp_cm_pop_cm_popret_cm_popretz_multi_cycle_expansion : uint<8>
+    cp_zcmp_cm_mvsa01_cm_mva01s : uint<8>
+    cp_zcmp_default_reserved_encodings : uint<8>
+    cp_is_compressed_o_is_a_pure_lsb_decode : uint<8>
+    cp_gets_expanded_o_gating_on_valid_i : uint<8>
+    cp_zcmp_fsm_stability_when_valid_i_0 : uint<8>
+    row : uint<32>
+    rst_n : bool
+    valid : bool
+    ready : bool
+    instr : uint<32>
+    expected : uint<32>
+    compressed : bool
+    illegal : bool
+    expanded : uint<2>
+    phase : uint<2>
+    rlist_group : uint<3>
+    spimm : uint<3>
+end transaction DecoderCycle
+
+transactor DecoderDriver
+    dut : ibex_compressed_decoder
+    when active
+        hookable drive(t: DecoderCycle)
+            dut.rst_ni = t.rst_n
+            dut.valid_i = t.valid
+            dut.id_in_ready_i = t.ready
+            dut.instr_i = t.instr
+            wait 1 cycle
+        end drive
+    end when
+end transactor DecoderDriver
+
+transactor DecoderMonitor
+    dut : ibex_compressed_decoder
+    instr : uint<32> default 0
+    compressed : bool default false
+    illegal : bool default false
+    expanded : uint<2> default 0
+    hookable observe()
+        instr = dut.instr_o
+        compressed = dut.is_compressed_o != 0
+        illegal = dut.illegal_instr_o != 0
+        expanded = dut.gets_expanded_o
+    end observe
+end transactor DecoderMonitor
+
+scoreboard DecoderScoreboard
+    passed : bool default false
+    checked : uint<32> default 0
+    hookable compare(t: DecoderCycle, instr: uint<32>, compressed: bool, illegal: bool, expanded: uint<2>)
+        passed = (t.illegal || instr == t.expected) && compressed == t.compressed && illegal == t.illegal && expanded == t.expanded
+        assert t.illegal || instr == t.expected
+            else fail("row ${t.row}, input 0x${t.instr:08x}: got 0x${instr:08x}, expected 0x${t.expected:08x}")
+        assert compressed == t.compressed && illegal == t.illegal && expanded == t.expanded
+            else fail("row ${t.row}, input 0x${t.instr:08x}: flags got ${compressed}/${illegal}/${expanded}, expected ${t.compressed}/${t.illegal}/${t.expanded}")
+        checked = checked + 1
+    end compare
+    // Called only after comparison, and only outside reset.
+    hookable accepted(t: DecoderCycle)
+    end accepted
+end scoreboard DecoderScoreboard
+
+// Named scenario predicates: coverage follows a successful independent comparison.
+function cp_32_bit_pass_through_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x00100093 && t.valid == true
+        return 0
+    end if
+    if t.instr == 0x00100073 && t.valid == true
+        return 1
+    end if
+    return 255
+end function cp_32_bit_pass_through_select
+
+function cp_zca_quadrant_0_c_addi4spn_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x00000040 && t.valid == true
+        return 0
+    end if
+    if t.instr == 0x00000000 && t.valid == true
+        return 1
+    end if
+    return 255
+end function cp_zca_quadrant_0_c_addi4spn_select
+
+function cp_zca_quadrant_0_c_lw_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x00004080 && t.valid == true
+        return 0
+    end if
+    if t.instr == 0x00005f7c && t.valid == true
+        return 1
+    end if
+    return 255
+end function cp_zca_quadrant_0_c_lw_select
+
+function cp_zca_quadrant_0_c_sw_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x0000c080 && t.valid == true
+        return 0
+    end if
+    if t.instr == 0x0000c35c && t.valid == true
+        return 1
+    end if
+    return 255
+end function cp_zca_quadrant_0_c_sw_select
+
+function cp_zcb_quadrant_0_c_lbu_c_lh_c_lhu_c_sb_c_sh_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x00008080 && t.valid == true
+        return 0
+    end if
+    if t.instr == 0x000084e0 && t.valid == true
+        return 1
+    end if
+    if t.instr == 0x00008c40 && t.valid == true
+        return 2
+    end if
+    if t.instr == 0x00009800 && t.valid == true
+        return 3
+    end if
+    return 255
+end function cp_zcb_quadrant_0_c_lbu_c_lh_c_lhu_c_sb_c_sh_select
+
+function cp_zca_quadrant_0_reserved_funct3_codes_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x00002000 && t.valid == true
+        return 0
+    end if
+    if t.instr == 0x0000e000 && t.valid == true
+        return 1
+    end if
+    return 255
+end function cp_zca_quadrant_0_reserved_funct3_codes_select
+
+function cp_zca_quadrant_1_c_addi_c_nop_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x00000001 && t.valid == true
+        return 0
+    end if
+    if t.instr == 0x000010fd && t.valid == true
+        return 1
+    end if
+    return 255
+end function cp_zca_quadrant_1_c_addi_c_nop_select
+
+function cp_zca_quadrant_1_c_jal_c_j_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x0000a001 && t.valid == true
+        return 0
+    end if
+    if t.instr == 0x00002001 && t.valid == true
+        return 1
+    end if
+    return 255
+end function cp_zca_quadrant_1_c_jal_c_j_select
+
+function cp_zca_quadrant_1_c_li_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x00004081 && t.valid == true
+        return 0
+    end if
+    if t.instr == 0x0000517d && t.valid == true
+        return 1
+    end if
+    return 255
+end function cp_zca_quadrant_1_c_li_select
+
+function cp_zca_quadrant_1_c_lui_c_addi16sp_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x00006185 && t.valid == true
+        return 0
+    end if
+    if t.instr == 0x00006141 && t.valid == true
+        return 1
+    end if
+    if t.instr == 0x00006181 && t.valid == true
+        return 2
+    end if
+    return 255
+end function cp_zca_quadrant_1_c_lui_c_addi16sp_select
+
+function cp_zca_quadrant_1_c_srli_c_srai_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x00008005 && t.valid == true
+        return 0
+    end if
+    if t.instr == 0x000084fd && t.valid == true
+        return 1
+    end if
+    if t.instr == 0x00009001 && t.valid == true
+        return 2
+    end if
+    return 255
+end function cp_zca_quadrant_1_c_srli_c_srai_select
+
+function cp_zca_quadrant_1_c_andi_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x0000987d && t.valid == true
+        return 0
+    end if
+    if t.instr == 0x00008b81 && t.valid == true
+        return 1
+    end if
+    return 255
+end function cp_zca_quadrant_1_c_andi_select
+
+function cp_zca_quadrant_1_c_sub_c_xor_c_or_c_and_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x00008c05 && t.valid == true
+        return 0
+    end if
+    if t.instr == 0x00008c25 && t.valid == true
+        return 1
+    end if
+    if t.instr == 0x00008c45 && t.valid == true
+        return 2
+    end if
+    if t.instr == 0x00008c65 && t.valid == true
+        return 3
+    end if
+    if t.instr == 0x00009c01 && t.valid == true
+        return 4
+    end if
+    return 255
+end function cp_zca_quadrant_1_c_sub_c_xor_c_or_c_and_select
+
+function cp_zcb_quadrant_1_c_mul_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x00009c45 && t.valid == true
+        return 0
+    end if
+    return 255
+end function cp_zcb_quadrant_1_c_mul_select
+
+function cp_zcb_quadrant_1_zext_b_sext_b_zext_h_sext_h_not_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x00009c61 && t.valid == true
+        return 0
+    end if
+    if t.instr == 0x00009c75 && t.valid == true
+        return 1
+    end if
+    if t.instr == 0x00009c71 && t.valid == true
+        return 2
+    end if
+    return 255
+end function cp_zcb_quadrant_1_zext_b_sext_b_zext_h_sext_h_not_select
+
+function cp_zca_quadrant_1_c_beqz_c_bnez_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x0000c001 && t.valid == true
+        return 0
+    end if
+    if t.instr == 0x0000e011 && t.valid == true
+        return 1
+    end if
+    return 255
+end function cp_zca_quadrant_1_c_beqz_c_bnez_select
+
+function cp_zca_quadrant_2_c_slli_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x00000086 && t.valid == true
+        return 0
+    end if
+    if t.instr == 0x00001002 && t.valid == true
+        return 1
+    end if
+    return 255
+end function cp_zca_quadrant_2_c_slli_select
+
+function cp_zca_quadrant_2_c_lwsp_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x00004082 && t.valid == true
+        return 0
+    end if
+    if t.instr == 0x00004002 && t.valid == true
+        return 1
+    end if
+    return 255
+end function cp_zca_quadrant_2_c_lwsp_select
+
+function cp_zca_quadrant_2_c_mv_c_jr_c_add_c_jalr_c_ebreak_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x00008426 && t.valid == true
+        return 0
+    end if
+    if t.instr == 0x00008082 && t.valid == true
+        return 1
+    end if
+    if t.instr == 0x00008002 && t.valid == true
+        return 2
+    end if
+    if t.instr == 0x00009426 && t.valid == true
+        return 3
+    end if
+    if t.instr == 0x00009002 && t.valid == true
+        return 4
+    end if
+    if t.instr == 0x00009082 && t.valid == true
+        return 5
+    end if
+    return 255
+end function cp_zca_quadrant_2_c_mv_c_jr_c_add_c_jalr_c_ebreak_select
+
+function cp_zca_quadrant_2_c_swsp_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x0000c006 && t.valid == true
+        return 0
+    end if
+    return 255
+end function cp_zca_quadrant_2_c_swsp_select
+
+function cp_zca_quadrant_2_reserved_funct3_codes_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x00006002 && t.valid == true
+        return 0
+    end if
+    return 255
+end function cp_zca_quadrant_2_reserved_funct3_codes_select
+
+function cp_zcmp_cm_push_multi_cycle_expansion_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x0000b842 && t.valid == true && t.expected == 0xfe112e23 && !t.illegal
+        return 0
+    end if
+    if t.instr == 0x0000b842 && t.valid == true && t.expected == 0xff010113 && !t.illegal
+        return 1
+    end if
+    if t.instr == 0x0000b822 && t.valid == true
+        return 2
+    end if
+    return 255
+end function cp_zcmp_cm_push_multi_cycle_expansion_select
+
+function cp_zcmp_cm_pop_cm_popret_cm_popretz_multi_cycle_expansion_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x0000ba42 && t.valid == true && t.expected == 0x00c12083 && !t.illegal
+        return 0
+    end if
+    if t.instr == 0x0000be42 && t.valid == true && t.expected == 0x00008067 && !t.illegal
+        return 1
+    end if
+    if t.instr == 0x0000bc42 && t.valid == true && t.expected == 0x00000513 && !t.illegal
+        return 2
+    end if
+    return 255
+end function cp_zcmp_cm_pop_cm_popret_cm_popretz_multi_cycle_expansion_select
+
+function cp_zcmp_cm_mvsa01_cm_mva01s_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x0000ac22 && t.valid == true && t.expected == 0x00050413 && !t.illegal
+        return 0
+    end if
+    if t.instr == 0x0000ac62 && t.valid == true && t.expected == 0x00040593 && !t.illegal
+        return 1
+    end if
+    if t.instr == 0x0000ac02 && t.valid == true
+        return 2
+    end if
+    return 255
+end function cp_zcmp_cm_mvsa01_cm_mva01s_select
+
+function cp_zcmp_default_reserved_encodings_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x0000a002 && t.valid == true
+        return 0
+    end if
+    return 255
+end function cp_zcmp_default_reserved_encodings_select
+
+function cp_is_compressed_o_is_a_pure_lsb_decode_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x00000001 && t.valid == true
+        return 0
+    end if
+    if t.instr == 0x00000003 && t.valid == true
+        return 1
+    end if
+    return 255
+end function cp_is_compressed_o_is_a_pure_lsb_decode_select
+
+function cp_gets_expanded_o_gating_on_valid_i_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x0000b842 && t.valid == false && t.expected == 0xfe112e23 && !t.illegal
+        return 0
+    end if
+    if t.instr == 0x0000b842 && t.valid == true && t.expected == 0xfe112e23 && !t.illegal
+        return 1
+    end if
+    return 255
+end function cp_gets_expanded_o_gating_on_valid_i_select
+
+function cp_zcmp_fsm_stability_when_valid_i_0_select(t: DecoderCycle) -> uint<8>
+    if t.instr == 0x0000b852 && t.valid == false && t.expected == 0xfe112c23 && !t.illegal && t.ready == false && t.previous_rst_n && t.previous_instr == t.instr && t.previous_expected == t.expected
+        return 0
+    end if
+    return 255
+end function cp_zcmp_fsm_stability_when_valid_i_0_select
+
+covergroup DecoderScenarios @(sb.accepted(t) post)
+    cp_32_bit_pass_through : cover t.cp_32_bit_pass_through
+        bins
+            pass_through_addi = {0}
+            pass_through_ebreak = {1}
+        end bins
+    cp_zca_quadrant_0_c_addi4spn : cover t.cp_zca_quadrant_0_c_addi4spn
+        bins
+            c_addi4spn_x8_sp_4 = {0}
+            c_addi4spn_reserved_zero_immediate = {1}
+        end bins
+    cp_zca_quadrant_0_c_lw : cover t.cp_zca_quadrant_0_c_lw
+        bins
+            c_lw_x8_0_x9 = {0}
+            c_lw_x15_124_x14_max_immediate = {1}
+        end bins
+    cp_zca_quadrant_0_c_sw : cover t.cp_zca_quadrant_0_c_sw
+        bins
+            c_sw_x8_0_x9 = {0}
+            c_sw_x15_4_x14 = {1}
+        end bins
+    cp_zcb_quadrant_0_c_lbu_c_lh_c_lhu_c_sb_c_sh : cover t.cp_zcb_quadrant_0_c_lbu_c_lh_c_lhu_c_sb_c_sh
+        bins
+            c_lbu_x8_0_x9 = {0}
+            c_lh_x8_2_x9 = {1}
+            c_sh_with_reserved_instr_i_6_1 = {2}
+            reserved_q0_funct3_100_instr_i_12_10_110 = {3}
+        end bins
+    cp_zca_quadrant_0_reserved_funct3_codes : cover t.cp_zca_quadrant_0_reserved_funct3_codes
+        bins
+            reserved_funct3_001 = {0}
+            reserved_funct3_111 = {1}
+        end bins
+    cp_zca_quadrant_1_c_addi_c_nop : cover t.cp_zca_quadrant_1_c_addi_c_nop
+        bins
+            c_nop = {0}
+            c_addi_x1_x1_1 = {1}
+        end bins
+    cp_zca_quadrant_1_c_jal_c_j : cover t.cp_zca_quadrant_1_c_jal_c_j
+        bins
+            c_j_0 = {0}
+            c_jal_0_rv32_only = {1}
+        end bins
+    cp_zca_quadrant_1_c_li : cover t.cp_zca_quadrant_1_c_li
+        bins
+            c_li_x1_0 = {0}
+            c_li_x2_1 = {1}
+        end bins
+    cp_zca_quadrant_1_c_lui_c_addi16sp : cover t.cp_zca_quadrant_1_c_lui_c_addi16sp
+        bins
+            c_lui_x3_1 = {0}
+            c_addi16sp_16 = {1}
+            c_lui_zero_imm_reserved = {2}
+        end bins
+    cp_zca_quadrant_1_c_srli_c_srai : cover t.cp_zca_quadrant_1_c_srli_c_srai
+        bins
+            c_srli_x8_x8_1 = {0}
+            c_srai_x9_x9_31 = {1}
+            c_srli_with_shamt_5_1_reserved = {2}
+        end bins
+    cp_zca_quadrant_1_c_andi : cover t.cp_zca_quadrant_1_c_andi
+        bins
+            c_andi_x8_x8_1 = {0}
+            c_andi_x15_x15_0 = {1}
+        end bins
+    cp_zca_quadrant_1_c_sub_c_xor_c_or_c_and : cover t.cp_zca_quadrant_1_c_sub_c_xor_c_or_c_and
+        bins
+            c_sub_x8_x8_x9 = {0}
+            c_xor_x8_x8_x9 = {1}
+            c_or_x8_x8_x9 = {2}
+            c_and_x8_x8_x9 = {3}
+            c_subw_reserved_on_rv32 = {4}
+        end bins
+    cp_zcb_quadrant_1_c_mul : cover t.cp_zcb_quadrant_1_c_mul
+        bins
+            c_mul_x8_x8_x9 = {0}
+        end bins
+    cp_zcb_quadrant_1_zext_b_sext_b_zext_h_sext_h_not : cover t.cp_zcb_quadrant_1_zext_b_sext_b_zext_h_sext_h_not
+        bins
+            c_zext_b_x8 = {0}
+            c_not_x8 = {1}
+            c_zext_w_rv64_only_reserved_on_rv32 = {2}
+        end bins
+    cp_zca_quadrant_1_c_beqz_c_bnez : cover t.cp_zca_quadrant_1_c_beqz_c_bnez
+        bins
+            c_beqz_x8_0 = {0}
+            c_bnez_x8_4 = {1}
+        end bins
+    cp_zca_quadrant_2_c_slli : cover t.cp_zca_quadrant_2_c_slli
+        bins
+            c_slli_x1_x1_1 = {0}
+            c_slli_with_shamt_5_1_reserved = {1}
+        end bins
+    cp_zca_quadrant_2_c_lwsp : cover t.cp_zca_quadrant_2_c_lwsp
+        bins
+            c_lwsp_x1_0 = {0}
+            c_lwsp_with_rd_x0_reserved = {1}
+        end bins
+    cp_zca_quadrant_2_c_mv_c_jr_c_add_c_jalr_c_ebreak : cover t.cp_zca_quadrant_2_c_mv_c_jr_c_add_c_jalr_c_ebreak
+        bins
+            c_mv_x8_x9 = {0}
+            c_jr_x1 = {1}
+            c_jr_x0_reserved = {2}
+            c_add_x8_x8_x9 = {3}
+            c_ebreak = {4}
+            c_jalr_x1 = {5}
+        end bins
+    cp_zca_quadrant_2_c_swsp : cover t.cp_zca_quadrant_2_c_swsp
+        bins
+            c_swsp_x1_0 = {0}
+        end bins
+    cp_zca_quadrant_2_reserved_funct3_codes : cover t.cp_zca_quadrant_2_reserved_funct3_codes
+        bins
+            reserved_q2_funct3_011 = {0}
+        end bins
+    cp_zcmp_cm_push_multi_cycle_expansion : cover t.cp_zcmp_cm_push_multi_cycle_expansion
+        bins
+            cm_push_ra_16_first_sub_step = {0}
+            cm_push_ra_16_final_sub_step = {1}
+            cm_push_reserved_rlist_2 = {2}
+        end bins
+    cp_zcmp_cm_pop_cm_popret_cm_popretz_multi_cycle_expansion : cover t.cp_zcmp_cm_pop_cm_popret_cm_popretz_multi_cycle_expansion
+        bins
+            cm_pop_ra_16_first_sub_step = {0}
+            cm_popret_final_sub_step = {1}
+            cm_popretz_a0_zeroing_sub_step = {2}
+        end bins
+    cp_zcmp_cm_mvsa01_cm_mva01s : cover t.cp_zcmp_cm_mvsa01_cm_mva01s
+        bins
+            cm_mvsa01_step_1_mvsa01_a0_s0 = {0}
+            cm_mva01s_step_2 = {1}
+            zcmp_011_sub_quadrant_reserved = {2}
+        end bins
+    cp_zcmp_default_reserved_encodings : cover t.cp_zcmp_default_reserved_encodings
+        bins
+            zcmp_unmapped_funct5 = {0}
+        end bins
+    cp_is_compressed_o_is_a_pure_lsb_decode : cover t.cp_is_compressed_o_is_a_pure_lsb_decode
+        bins
+            compressed_bit_set = {0}
+            compressed_bit_clear = {1}
+        end bins
+    cp_gets_expanded_o_gating_on_valid_i : cover t.cp_gets_expanded_o_gating_on_valid_i
+        bins
+            spurious_cm_push_pattern_with_valid_i_0 = {0}
+            cm_push_with_valid_i_1 = {1}
+        end bins
+    cp_zcmp_fsm_stability_when_valid_i_0 : cover t.cp_zcmp_fsm_stability_when_valid_i_0
+        bins
+            fsm_frozen_with_valid_i_0 = {0}
+        end bins
+end covergroup DecoderScenarios
+
+covergroup DecoderProtocol @(sb.accepted(t) post)
+    cp_decode_path : cover (t.instr & 3)
+        bins
+            quadrant_0 = {0}
+            quadrant_1 = {1}
+            quadrant_2 = {2}
+            rv32_passthrough = {3}
+        end bins
+    cp_valid : cover t.valid
+        bins
+            low = {0}
+            high = {1}
+        end bins
+    cp_ready : cover t.ready
+        bins
+            low = {0}
+            high = {1}
+        end bins
+    cp_zcmp_phase : cover t.phase
+        bins
+            idle = {0}
+            intermediate = {1}
+            final = {2}
+        end bins
+    cross cp_decode_path, cp_valid
+    cross cp_zcmp_phase, cp_valid, cp_ready
+end covergroup DecoderProtocol
+
+covergroup DecoderStack @(sb.accepted(t) post)
+    cp_zcmp_rlist : cover t.rlist_group
+        bins
+            reserved_0_to_3 = {0}
+            minimum_4 = {1}
+            middle_5_to_14 = {2}
+            maximum_15 = {3}
+        end bins
+    cp_zcmp_spimm : cover t.spimm
+        bins
+            spimm_0 = {0}
+            spimm_1 = {1}
+            spimm_2 = {2}
+            spimm_3 = {3}
+        end bins
+    cross cp_zcmp_rlist, cp_zcmp_spimm
+end covergroup DecoderStack

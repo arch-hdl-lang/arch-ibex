@@ -961,26 +961,25 @@ Then `gets_expanded_o == INSTR_EXPANDED`.
 
 ### Requirement: Zcmp FSM stability when `valid_i = 0`
 
-The decoder MUST hold `cm_state_d == cm_state_q` whenever
-`valid_i = 0` (no register-level state advance unless a valid input
-is being processed). This is enforced via the `IbexPushPopFSMStable`
-SVA in upstream and is implicit in the FSM advance conditions which
-all gate on `valid_i && id_in_ready_i` (out of CmIdle) or on
-`id_in_ready_i` (during sub-steps where `valid_i` is assumed)
-(ref: ibex_compressed_decoder.sv:571, 583, 639, 648, 715, 741, 845).
+Idle-state entry requires both valid and ready. With ready low, every
+reachable expansion state holds, including when valid is low. Non-idle
+advancement depends on ready alone; valid-low/ready-high is outside the legal
+producer contract and must not be interpreted as a decoder freeze guarantee.
 
-Note: in non-CmIdle states the upstream code does NOT explicitly gate
-the `id_in_ready_i` advance on `valid_i`. It relies on the producer
-contract that `valid_i` will remain 1 across an active Zcmp expansion
-because the IF stage holds the same compressed encoding stable. The
-ARCH port MAY mirror this assumption (gating only on `id_in_ready_i`
-in non-idle states) so long as it preserves the SVA's intent that no
-state update happens with `!valid_i`. See **Integration constraints
-→ Producer-side**.
+In non-CmIdle states, upstream and the ARCH port gate advancement on
+`id_in_ready_i` alone. The producer contract requires valid to remain high
+through an active expansion. The decoder does not independently enforce that
+contract: driving valid low while ready stays high can still advance the FSM.
+The upstream SVA describes the legal producer environment, not an additional
+valid gate in the decoder. Ready-low stalls hold the non-idle state at either
+valid level.
 
 #### Scenario: FSM frozen with valid_i=0
-Given `cm_state_q = CmPushStoreReg`, `valid_i = 1'b0`, `id_in_ready_i = 1'b1`
+Given `cm_state_q = CmPushStoreReg`, `valid_i = 1'b0`, `id_in_ready_i = 1'b0`
 Then `cm_state_d == cm_state_q` (FSM does not advance).
+The executable scenario compares the same non-first store on consecutive
+checked cycles. With ready=1 instead, a diagnostic sequence checks the
+upstream advancement behavior; it must not credit a freeze bin.
 
 ---
 
