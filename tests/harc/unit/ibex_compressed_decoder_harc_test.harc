@@ -1,0 +1,194 @@
+domain DecoderDomain
+    freq_mhz: 100
+end domain DecoderDomain
+
+testbench DecoderTb
+    dut : ibex_compressed_decoder
+    drv : DecoderDriver active
+    mon : DecoderMonitor passive
+    sb : DecoderScoreboard
+    scenarios : DecoderScenarios
+    protocol_cov : DecoderProtocol
+    stack_cov : DecoderStack
+
+    function replay()
+        drv.dut = dut
+        mon.dut = dut
+        let count = cd_count()
+        assert count > 0 else fail("empty corpus")
+        let t : DecoderCycle
+        for row in 0 .. count - 1
+            t.row = row
+            t.rst_n = cd_field(row, 0) != 0
+            t.valid = cd_field(row, 1) != 0
+            t.ready = cd_field(row, 2) != 0
+            t.instr = cd_field(row, 3)
+            t.expected = cd_field(row, 4)
+            t.compressed = cd_field(row, 5) != 0
+            t.illegal = cd_field(row, 6) != 0
+            t.expanded = cd_field(row, 7).trunc<2>()
+            t.phase = cd_field(row, 8).trunc<2>()
+            t.rlist_group = 7
+            t.spimm = 7
+            let family = t.instr & 0xff03
+            if family == 0xb802 || family == 0xba02 || family == 0xbc02 || family == 0xbe02
+                let rlist = (t.instr >> 4) & 15
+                t.rlist_group = 2
+                if rlist < 4
+                    t.rlist_group = 0
+                elsif rlist == 4
+                    t.rlist_group = 1
+                elsif rlist == 15
+                    t.rlist_group = 3
+                end if
+                t.spimm = ((t.instr >> 2) & 3).trunc<3>()
+            end if
+            drv.drive(t)
+            mon.observe()
+            sb.compare(t, mon.instr, mon.compressed, mon.illegal, mon.expanded)
+            if t.rst_n && sb.passed
+                t.cp_32_bit_pass_through = cp_32_bit_pass_through_select(t)
+                t.cp_zca_quadrant_0_c_addi4spn = cp_zca_quadrant_0_c_addi4spn_select(t)
+                t.cp_zca_quadrant_0_c_lw = cp_zca_quadrant_0_c_lw_select(t)
+                t.cp_zca_quadrant_0_c_sw = cp_zca_quadrant_0_c_sw_select(t)
+                t.cp_zcb_quadrant_0_c_lbu_c_lh_c_lhu_c_sb_c_sh = cp_zcb_quadrant_0_c_lbu_c_lh_c_lhu_c_sb_c_sh_select(t)
+                t.cp_zca_quadrant_0_reserved_funct3_codes = cp_zca_quadrant_0_reserved_funct3_codes_select(t)
+                t.cp_zca_quadrant_1_c_addi_c_nop = cp_zca_quadrant_1_c_addi_c_nop_select(t)
+                t.cp_zca_quadrant_1_c_jal_c_j = cp_zca_quadrant_1_c_jal_c_j_select(t)
+                t.cp_zca_quadrant_1_c_li = cp_zca_quadrant_1_c_li_select(t)
+                t.cp_zca_quadrant_1_c_lui_c_addi16sp = cp_zca_quadrant_1_c_lui_c_addi16sp_select(t)
+                t.cp_zca_quadrant_1_c_srli_c_srai = cp_zca_quadrant_1_c_srli_c_srai_select(t)
+                t.cp_zca_quadrant_1_c_andi = cp_zca_quadrant_1_c_andi_select(t)
+                t.cp_zca_quadrant_1_c_sub_c_xor_c_or_c_and = cp_zca_quadrant_1_c_sub_c_xor_c_or_c_and_select(t)
+                t.cp_zcb_quadrant_1_c_mul = cp_zcb_quadrant_1_c_mul_select(t)
+                t.cp_zcb_quadrant_1_zext_b_sext_b_zext_h_sext_h_not = cp_zcb_quadrant_1_zext_b_sext_b_zext_h_sext_h_not_select(t)
+                t.cp_zca_quadrant_1_c_beqz_c_bnez = cp_zca_quadrant_1_c_beqz_c_bnez_select(t)
+                t.cp_zca_quadrant_2_c_slli = cp_zca_quadrant_2_c_slli_select(t)
+                t.cp_zca_quadrant_2_c_lwsp = cp_zca_quadrant_2_c_lwsp_select(t)
+                t.cp_zca_quadrant_2_c_mv_c_jr_c_add_c_jalr_c_ebreak = cp_zca_quadrant_2_c_mv_c_jr_c_add_c_jalr_c_ebreak_select(t)
+                t.cp_zca_quadrant_2_c_swsp = cp_zca_quadrant_2_c_swsp_select(t)
+                t.cp_zca_quadrant_2_reserved_funct3_codes = cp_zca_quadrant_2_reserved_funct3_codes_select(t)
+                t.cp_zcmp_cm_push_multi_cycle_expansion = cp_zcmp_cm_push_multi_cycle_expansion_select(t)
+                t.cp_zcmp_cm_pop_cm_popret_cm_popretz_multi_cycle_expansion = cp_zcmp_cm_pop_cm_popret_cm_popretz_multi_cycle_expansion_select(t)
+                t.cp_zcmp_cm_mvsa01_cm_mva01s = cp_zcmp_cm_mvsa01_cm_mva01s_select(t)
+                t.cp_zcmp_default_reserved_encodings = cp_zcmp_default_reserved_encodings_select(t)
+                t.cp_is_compressed_o_is_a_pure_lsb_decode = cp_is_compressed_o_is_a_pure_lsb_decode_select(t)
+                t.cp_gets_expanded_o_gating_on_valid_i = cp_gets_expanded_o_gating_on_valid_i_select(t)
+                t.cp_zcmp_fsm_stability_when_valid_i_0 = cp_zcmp_fsm_stability_when_valid_i_0_select(t)
+                sb.accepted(t)
+            end if
+            t.previous_instr = t.instr
+            t.previous_expected = t.expected
+            t.previous_rst_n = t.rst_n
+            assert cd_accept(row) == row + 1 else fail("corpus acceptance mismatch")
+        end for
+        assert cd_finish() == sb.checked else fail("corpus not fully checked")
+    end function replay
+end testbench DecoderTb
+
+impl DecoderCoverage for DecoderTb
+    clock clk_i = DecoderDomain
+    run
+        replay()
+    end run
+    check
+        scenarios.report()
+        protocol_cov.report()
+        stack_cov.report()
+        assert scenarios.cp_32_bit_pass_through.pass_through_addi > 0 else fail("missing cp_32_bit_pass_through.pass_through_addi")
+        assert scenarios.cp_32_bit_pass_through.pass_through_ebreak > 0 else fail("missing cp_32_bit_pass_through.pass_through_ebreak")
+        assert scenarios.cp_zca_quadrant_0_c_addi4spn.c_addi4spn_x8_sp_4 > 0 else fail("missing cp_zca_quadrant_0_c_addi4spn.c_addi4spn_x8_sp_4")
+        assert scenarios.cp_zca_quadrant_0_c_addi4spn.c_addi4spn_reserved_zero_immediate > 0 else fail("missing cp_zca_quadrant_0_c_addi4spn.c_addi4spn_reserved_zero_immediate")
+        assert scenarios.cp_zca_quadrant_0_c_lw.c_lw_x8_0_x9 > 0 else fail("missing cp_zca_quadrant_0_c_lw.c_lw_x8_0_x9")
+        assert scenarios.cp_zca_quadrant_0_c_lw.c_lw_x15_124_x14_max_immediate > 0 else fail("missing cp_zca_quadrant_0_c_lw.c_lw_x15_124_x14_max_immediate")
+        assert scenarios.cp_zca_quadrant_0_c_sw.c_sw_x8_0_x9 > 0 else fail("missing cp_zca_quadrant_0_c_sw.c_sw_x8_0_x9")
+        assert scenarios.cp_zca_quadrant_0_c_sw.c_sw_x15_4_x14 > 0 else fail("missing cp_zca_quadrant_0_c_sw.c_sw_x15_4_x14")
+        assert scenarios.cp_zcb_quadrant_0_c_lbu_c_lh_c_lhu_c_sb_c_sh.c_lbu_x8_0_x9 > 0 else fail("missing cp_zcb_quadrant_0_c_lbu_c_lh_c_lhu_c_sb_c_sh.c_lbu_x8_0_x9")
+        assert scenarios.cp_zcb_quadrant_0_c_lbu_c_lh_c_lhu_c_sb_c_sh.c_lh_x8_2_x9 > 0 else fail("missing cp_zcb_quadrant_0_c_lbu_c_lh_c_lhu_c_sb_c_sh.c_lh_x8_2_x9")
+        assert scenarios.cp_zcb_quadrant_0_c_lbu_c_lh_c_lhu_c_sb_c_sh.c_sh_with_reserved_instr_i_6_1 > 0 else fail("missing cp_zcb_quadrant_0_c_lbu_c_lh_c_lhu_c_sb_c_sh.c_sh_with_reserved_instr_i_6_1")
+        assert scenarios.cp_zcb_quadrant_0_c_lbu_c_lh_c_lhu_c_sb_c_sh.reserved_q0_funct3_100_instr_i_12_10_110 > 0 else fail("missing cp_zcb_quadrant_0_c_lbu_c_lh_c_lhu_c_sb_c_sh.reserved_q0_funct3_100_instr_i_12_10_110")
+        assert scenarios.cp_zca_quadrant_0_reserved_funct3_codes.reserved_funct3_001 > 0 else fail("missing cp_zca_quadrant_0_reserved_funct3_codes.reserved_funct3_001")
+        assert scenarios.cp_zca_quadrant_0_reserved_funct3_codes.reserved_funct3_111 > 0 else fail("missing cp_zca_quadrant_0_reserved_funct3_codes.reserved_funct3_111")
+        assert scenarios.cp_zca_quadrant_1_c_addi_c_nop.c_nop > 0 else fail("missing cp_zca_quadrant_1_c_addi_c_nop.c_nop")
+        assert scenarios.cp_zca_quadrant_1_c_addi_c_nop.c_addi_x1_x1_1 > 0 else fail("missing cp_zca_quadrant_1_c_addi_c_nop.c_addi_x1_x1_1")
+        assert scenarios.cp_zca_quadrant_1_c_jal_c_j.c_j_0 > 0 else fail("missing cp_zca_quadrant_1_c_jal_c_j.c_j_0")
+        assert scenarios.cp_zca_quadrant_1_c_jal_c_j.c_jal_0_rv32_only > 0 else fail("missing cp_zca_quadrant_1_c_jal_c_j.c_jal_0_rv32_only")
+        assert scenarios.cp_zca_quadrant_1_c_li.c_li_x1_0 > 0 else fail("missing cp_zca_quadrant_1_c_li.c_li_x1_0")
+        assert scenarios.cp_zca_quadrant_1_c_li.c_li_x2_1 > 0 else fail("missing cp_zca_quadrant_1_c_li.c_li_x2_1")
+        assert scenarios.cp_zca_quadrant_1_c_lui_c_addi16sp.c_lui_x3_1 > 0 else fail("missing cp_zca_quadrant_1_c_lui_c_addi16sp.c_lui_x3_1")
+        assert scenarios.cp_zca_quadrant_1_c_lui_c_addi16sp.c_addi16sp_16 > 0 else fail("missing cp_zca_quadrant_1_c_lui_c_addi16sp.c_addi16sp_16")
+        assert scenarios.cp_zca_quadrant_1_c_lui_c_addi16sp.c_lui_zero_imm_reserved > 0 else fail("missing cp_zca_quadrant_1_c_lui_c_addi16sp.c_lui_zero_imm_reserved")
+        assert scenarios.cp_zca_quadrant_1_c_srli_c_srai.c_srli_x8_x8_1 > 0 else fail("missing cp_zca_quadrant_1_c_srli_c_srai.c_srli_x8_x8_1")
+        assert scenarios.cp_zca_quadrant_1_c_srli_c_srai.c_srai_x9_x9_31 > 0 else fail("missing cp_zca_quadrant_1_c_srli_c_srai.c_srai_x9_x9_31")
+        assert scenarios.cp_zca_quadrant_1_c_srli_c_srai.c_srli_with_shamt_5_1_reserved > 0 else fail("missing cp_zca_quadrant_1_c_srli_c_srai.c_srli_with_shamt_5_1_reserved")
+        assert scenarios.cp_zca_quadrant_1_c_andi.c_andi_x8_x8_1 > 0 else fail("missing cp_zca_quadrant_1_c_andi.c_andi_x8_x8_1")
+        assert scenarios.cp_zca_quadrant_1_c_andi.c_andi_x15_x15_0 > 0 else fail("missing cp_zca_quadrant_1_c_andi.c_andi_x15_x15_0")
+        assert scenarios.cp_zca_quadrant_1_c_sub_c_xor_c_or_c_and.c_sub_x8_x8_x9 > 0 else fail("missing cp_zca_quadrant_1_c_sub_c_xor_c_or_c_and.c_sub_x8_x8_x9")
+        assert scenarios.cp_zca_quadrant_1_c_sub_c_xor_c_or_c_and.c_xor_x8_x8_x9 > 0 else fail("missing cp_zca_quadrant_1_c_sub_c_xor_c_or_c_and.c_xor_x8_x8_x9")
+        assert scenarios.cp_zca_quadrant_1_c_sub_c_xor_c_or_c_and.c_or_x8_x8_x9 > 0 else fail("missing cp_zca_quadrant_1_c_sub_c_xor_c_or_c_and.c_or_x8_x8_x9")
+        assert scenarios.cp_zca_quadrant_1_c_sub_c_xor_c_or_c_and.c_and_x8_x8_x9 > 0 else fail("missing cp_zca_quadrant_1_c_sub_c_xor_c_or_c_and.c_and_x8_x8_x9")
+        assert scenarios.cp_zca_quadrant_1_c_sub_c_xor_c_or_c_and.c_subw_reserved_on_rv32 > 0 else fail("missing cp_zca_quadrant_1_c_sub_c_xor_c_or_c_and.c_subw_reserved_on_rv32")
+        assert scenarios.cp_zcb_quadrant_1_c_mul.c_mul_x8_x8_x9 > 0 else fail("missing cp_zcb_quadrant_1_c_mul.c_mul_x8_x8_x9")
+        assert scenarios.cp_zcb_quadrant_1_zext_b_sext_b_zext_h_sext_h_not.c_zext_b_x8 > 0 else fail("missing cp_zcb_quadrant_1_zext_b_sext_b_zext_h_sext_h_not.c_zext_b_x8")
+        assert scenarios.cp_zcb_quadrant_1_zext_b_sext_b_zext_h_sext_h_not.c_not_x8 > 0 else fail("missing cp_zcb_quadrant_1_zext_b_sext_b_zext_h_sext_h_not.c_not_x8")
+        assert scenarios.cp_zcb_quadrant_1_zext_b_sext_b_zext_h_sext_h_not.c_zext_w_rv64_only_reserved_on_rv32 > 0 else fail("missing cp_zcb_quadrant_1_zext_b_sext_b_zext_h_sext_h_not.c_zext_w_rv64_only_reserved_on_rv32")
+        assert scenarios.cp_zca_quadrant_1_c_beqz_c_bnez.c_beqz_x8_0 > 0 else fail("missing cp_zca_quadrant_1_c_beqz_c_bnez.c_beqz_x8_0")
+        assert scenarios.cp_zca_quadrant_1_c_beqz_c_bnez.c_bnez_x8_4 > 0 else fail("missing cp_zca_quadrant_1_c_beqz_c_bnez.c_bnez_x8_4")
+        assert scenarios.cp_zca_quadrant_2_c_slli.c_slli_x1_x1_1 > 0 else fail("missing cp_zca_quadrant_2_c_slli.c_slli_x1_x1_1")
+        assert scenarios.cp_zca_quadrant_2_c_slli.c_slli_with_shamt_5_1_reserved > 0 else fail("missing cp_zca_quadrant_2_c_slli.c_slli_with_shamt_5_1_reserved")
+        assert scenarios.cp_zca_quadrant_2_c_lwsp.c_lwsp_x1_0 > 0 else fail("missing cp_zca_quadrant_2_c_lwsp.c_lwsp_x1_0")
+        assert scenarios.cp_zca_quadrant_2_c_lwsp.c_lwsp_with_rd_x0_reserved > 0 else fail("missing cp_zca_quadrant_2_c_lwsp.c_lwsp_with_rd_x0_reserved")
+        assert scenarios.cp_zca_quadrant_2_c_mv_c_jr_c_add_c_jalr_c_ebreak.c_mv_x8_x9 > 0 else fail("missing cp_zca_quadrant_2_c_mv_c_jr_c_add_c_jalr_c_ebreak.c_mv_x8_x9")
+        assert scenarios.cp_zca_quadrant_2_c_mv_c_jr_c_add_c_jalr_c_ebreak.c_jr_x1 > 0 else fail("missing cp_zca_quadrant_2_c_mv_c_jr_c_add_c_jalr_c_ebreak.c_jr_x1")
+        assert scenarios.cp_zca_quadrant_2_c_mv_c_jr_c_add_c_jalr_c_ebreak.c_jr_x0_reserved > 0 else fail("missing cp_zca_quadrant_2_c_mv_c_jr_c_add_c_jalr_c_ebreak.c_jr_x0_reserved")
+        assert scenarios.cp_zca_quadrant_2_c_mv_c_jr_c_add_c_jalr_c_ebreak.c_add_x8_x8_x9 > 0 else fail("missing cp_zca_quadrant_2_c_mv_c_jr_c_add_c_jalr_c_ebreak.c_add_x8_x8_x9")
+        assert scenarios.cp_zca_quadrant_2_c_mv_c_jr_c_add_c_jalr_c_ebreak.c_ebreak > 0 else fail("missing cp_zca_quadrant_2_c_mv_c_jr_c_add_c_jalr_c_ebreak.c_ebreak")
+        assert scenarios.cp_zca_quadrant_2_c_mv_c_jr_c_add_c_jalr_c_ebreak.c_jalr_x1 > 0 else fail("missing cp_zca_quadrant_2_c_mv_c_jr_c_add_c_jalr_c_ebreak.c_jalr_x1")
+        assert scenarios.cp_zca_quadrant_2_c_swsp.c_swsp_x1_0 > 0 else fail("missing cp_zca_quadrant_2_c_swsp.c_swsp_x1_0")
+        assert scenarios.cp_zca_quadrant_2_reserved_funct3_codes.reserved_q2_funct3_011 > 0 else fail("missing cp_zca_quadrant_2_reserved_funct3_codes.reserved_q2_funct3_011")
+        assert scenarios.cp_zcmp_cm_push_multi_cycle_expansion.cm_push_ra_16_first_sub_step > 0 else fail("missing cp_zcmp_cm_push_multi_cycle_expansion.cm_push_ra_16_first_sub_step")
+        assert scenarios.cp_zcmp_cm_push_multi_cycle_expansion.cm_push_ra_16_final_sub_step > 0 else fail("missing cp_zcmp_cm_push_multi_cycle_expansion.cm_push_ra_16_final_sub_step")
+        assert scenarios.cp_zcmp_cm_push_multi_cycle_expansion.cm_push_reserved_rlist_2 > 0 else fail("missing cp_zcmp_cm_push_multi_cycle_expansion.cm_push_reserved_rlist_2")
+        assert scenarios.cp_zcmp_cm_pop_cm_popret_cm_popretz_multi_cycle_expansion.cm_pop_ra_16_first_sub_step > 0 else fail("missing cp_zcmp_cm_pop_cm_popret_cm_popretz_multi_cycle_expansion.cm_pop_ra_16_first_sub_step")
+        assert scenarios.cp_zcmp_cm_pop_cm_popret_cm_popretz_multi_cycle_expansion.cm_popret_final_sub_step > 0 else fail("missing cp_zcmp_cm_pop_cm_popret_cm_popretz_multi_cycle_expansion.cm_popret_final_sub_step")
+        assert scenarios.cp_zcmp_cm_pop_cm_popret_cm_popretz_multi_cycle_expansion.cm_popretz_a0_zeroing_sub_step > 0 else fail("missing cp_zcmp_cm_pop_cm_popret_cm_popretz_multi_cycle_expansion.cm_popretz_a0_zeroing_sub_step")
+        assert scenarios.cp_zcmp_cm_mvsa01_cm_mva01s.cm_mvsa01_step_1_mvsa01_a0_s0 > 0 else fail("missing cp_zcmp_cm_mvsa01_cm_mva01s.cm_mvsa01_step_1_mvsa01_a0_s0")
+        assert scenarios.cp_zcmp_cm_mvsa01_cm_mva01s.cm_mva01s_step_2 > 0 else fail("missing cp_zcmp_cm_mvsa01_cm_mva01s.cm_mva01s_step_2")
+        assert scenarios.cp_zcmp_cm_mvsa01_cm_mva01s.zcmp_011_sub_quadrant_reserved > 0 else fail("missing cp_zcmp_cm_mvsa01_cm_mva01s.zcmp_011_sub_quadrant_reserved")
+        assert scenarios.cp_zcmp_default_reserved_encodings.zcmp_unmapped_funct5 > 0 else fail("missing cp_zcmp_default_reserved_encodings.zcmp_unmapped_funct5")
+        assert scenarios.cp_is_compressed_o_is_a_pure_lsb_decode.compressed_bit_set > 0 else fail("missing cp_is_compressed_o_is_a_pure_lsb_decode.compressed_bit_set")
+        assert scenarios.cp_is_compressed_o_is_a_pure_lsb_decode.compressed_bit_clear > 0 else fail("missing cp_is_compressed_o_is_a_pure_lsb_decode.compressed_bit_clear")
+        assert scenarios.cp_gets_expanded_o_gating_on_valid_i.spurious_cm_push_pattern_with_valid_i_0 > 0 else fail("missing cp_gets_expanded_o_gating_on_valid_i.spurious_cm_push_pattern_with_valid_i_0")
+        assert scenarios.cp_gets_expanded_o_gating_on_valid_i.cm_push_with_valid_i_1 > 0 else fail("missing cp_gets_expanded_o_gating_on_valid_i.cm_push_with_valid_i_1")
+        assert scenarios.cp_zcmp_fsm_stability_when_valid_i_0.fsm_frozen_with_valid_i_0 > 0 else fail("missing cp_zcmp_fsm_stability_when_valid_i_0.fsm_frozen_with_valid_i_0")
+    end check
+end impl DecoderCoverage
+
+// Parameter-contract source probe: the disabled-Zcmp output branch is not
+// reachable in RV32ZC=3. This run is merged for source coverage only.
+impl DecoderZcmpDisabled for DecoderTb
+    clock clk_i = DecoderDomain
+    run
+        drv.dut = dut
+        mon.dut = dut
+        let t : DecoderCycle
+        t.rst_n = false
+        t.valid = false
+        t.ready = false
+        t.instr = 0
+        drv.drive(t)
+        t.rst_n = true
+        t.valid = true
+        t.instr = 0x00000001
+        t.expected = 0x00000013
+        t.compressed = true
+        t.illegal = false
+        t.expanded = 0
+        drv.drive(t)
+        mon.observe()
+        sb.compare(t, mon.instr, mon.compressed, mon.illegal, mon.expanded)
+    end run
+    check
+        assert sb.checked == 1 else fail("parameter probe did not check output")
+    end check
+end impl DecoderZcmpDisabled

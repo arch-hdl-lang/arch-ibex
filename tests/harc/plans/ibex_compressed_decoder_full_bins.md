@@ -1,10 +1,10 @@
 # Compressed-decoder HARC coverage inventory
 
-This is a requirements-derived migration plan, not measured coverage. It
-restores the inventory referenced by the runner test; it is not a recovered
-historical artifact. No compressed-decoder HARC VIP or unit suite is currently
-checked in. The existing Python/cocotb scenarios provide stimulus references,
-not evidence that HARC bins have been hit.
+This requirements-derived inventory is implemented by the oracle-backed HARC
+suite. See [execution and review](ibex_compressed_decoder_execution.md) and
+[measured status](ibex_compressed_decoder_full_coverage_status.md). The archive
+was recovered during implementation, but its historical coverage claims were
+not imported: independent review found unchecked/counterfactual hit accounting.
 
 Sources:
 
@@ -16,17 +16,17 @@ Scope follows the specification's fixed RV32ZcaZcbZcmp / ResetAll=0
 configuration. Each specification Requirement has a coverpoint below; each
 named Scenario has a bin. This inventory is a starting coverage contract,
 not proof that those scenarios exhaust every encoding or temporal behavior.
-Implementing the HARC suite must refine it against the DUT and reference model,
+The HARC suite refines it against the DUT and reference model,
 including hint encodings, exhaustive reserved selectors, register/immediate
 boundaries, reset during expansion, and backpressure sequences.
 
 A scenario bin may be credited only after its inputs, timing conditions, and
 expected outputs have been checked. Illegal-instruction scenarios check the
 illegal flag and defined outputs, not don't-care instr_o bits. Protocol points
-sample the driven input and reference-model expansion phase, before valid_i
-masks gets_expanded_o. Do not use an opcode observation alone to claim a
-scenario bin. The unknown-input requirement needs a separate decision about
-four-state observability; it is not silently waived on a two-state simulator.
+sample the driven input and reference-model expansion phase, with valid and ready forced high combinationally, before either masks the
+final-expansion indication. Illegal instructions use the idle phase. Do not use an opcode observation alone to claim a
+scenario bin. The unknown-input requirement is a reviewed diagnostic-only scope exclusion
+for this native two-state gate, as permitted by the specification.
 
 ## Coverpoints and Bins
 
@@ -234,7 +234,7 @@ Zcmp default reserved encodings
 
 Zcmp FSM stability when `valid_i = 0`
 
-- `fsm_frozen_with_valid_i_0` — Scenario: FSM frozen with valid_i=0
+- `fsm_frozen_with_valid_i_0` — Scenario: FSM frozen with valid_i=0 and ready=0 in a non-idle store step
 
 ### `cp_pure_pass_through_when_instr_i_1_0_is_unknown_any`
 

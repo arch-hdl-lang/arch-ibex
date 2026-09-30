@@ -347,7 +347,7 @@ module ibex_compressed_decoder
         elsif f210 == 3'b011 and not i6
           // c.sh — sh rs2', uimm(rs1') ; instr_i[6] required = 0
           instr_d = {7'b0, 2'b01, instr_i[4:2], 2'b01, instr_i[9:7],
-                     3'b001, 4'b0, instr_i[5], OPCODE_STORE};
+                     3'b001, 3'b0, instr_i[5], 1'b0, OPCODE_STORE};
 
         elsif f210 == 3'b011 and i6
           // c.sh reserved — instr_i[6] must be zero
@@ -600,13 +600,16 @@ module ibex_compressed_decoder
               // cm.mva01s step 2: addi a1, r2s', 0
               instr_d = {12'b0, r2s_reg, 3'b000, 5'd11, OPCODE_OP_IMM};
             else
-              // unreachable — illegal would have prevented entry
+              // Outside the stable-instruction producer contract.
               instr_d = instr_i;
               illegal_d = true;
             end if
-            gets_exp_d = INSTR_EXPANDED_LAST;
-            if id_in_ready_i
-              cm_state_d = CM_IDLE;
+            if mv_sel == 2'b01 or mv_sel == 2'b11
+              gets_exp_d = INSTR_EXPANDED;
+              if id_in_ready_i
+                gets_exp_d = INSTR_EXPANDED_LAST;
+                cm_state_d = CM_IDLE;
+              end if
             end if
           end if
 
@@ -618,6 +621,7 @@ module ibex_compressed_decoder
 
           // Illegal if rlist < 4.
 
+          gets_exp_d = INSTR_EXPANDED;
           if not rlist_legal
             illegal_d = true;
           else
@@ -666,8 +670,9 @@ module ibex_compressed_decoder
             else
               // cm_state_q == CM_PUSH_DECR_SP — emit addi sp, sp, -adj.
               instr_d = {neg_stack_adj_12, 5'h02, 3'b000, 5'h02, OPCODE_OP_IMM};
-              gets_exp_d = INSTR_EXPANDED_LAST;
+              gets_exp_d = INSTR_EXPANDED;
               if id_in_ready_i
+                gets_exp_d = INSTR_EXPANDED_LAST;
                 cm_state_d = CM_IDLE;
               end if
             end if
@@ -678,6 +683,7 @@ module ibex_compressed_decoder
               instr_i[12:8] == 5'b11110
           // ----- cm.pop / cm.popretz / cm.popret -------------------
 
+          gets_exp_d = INSTR_EXPANDED;
           if not rlist_legal
             illegal_d = true;
           else
@@ -694,7 +700,7 @@ module ibex_compressed_decoder
                   cm_state_d = CM_POP_LOAD_REG;
                   cm_rlist_d     = (rlist_init_now -% 5'd1);
                   // Next offset is one word below current top.
-                  cm_sp_offset_d = unsigned(pop_top_word_off).sext<7>() -% signed(7'd1);
+                  cm_sp_offset_d = signed(pop_top_word_off.zext<7>()) -% signed(7'd1);
                 end if
               end if
             elsif cm_state_q == CM_POP_LOAD_REG
@@ -725,8 +731,9 @@ module ibex_compressed_decoder
                 end if
               else
                 // plain cm.pop — final sub-step.
-                gets_exp_d = INSTR_EXPANDED_LAST;
+                gets_exp_d = INSTR_EXPANDED;
                 if id_in_ready_i
+                  gets_exp_d = INSTR_EXPANDED_LAST;
                   cm_state_d = CM_IDLE;
                 end if
               end if
@@ -740,8 +747,9 @@ module ibex_compressed_decoder
             else
               // CM_POP_RET_RA — jalr x0, x1, 0  (cm_ret_ra helper)
               instr_d = {12'b0, 5'd1, 3'b000, 5'b0, OPCODE_JALR};
-              gets_exp_d = INSTR_EXPANDED_LAST;
+              gets_exp_d = INSTR_EXPANDED;
               if id_in_ready_i
+                gets_exp_d = INSTR_EXPANDED_LAST;
                 cm_state_d = CM_IDLE;
               end if
             end if
