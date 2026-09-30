@@ -76,7 +76,7 @@ PHASE1_CANARIES = (
 def test_harc_phase1_canary(canary: HarcCanary, tmp_path: Path) -> None:
     dut_file = REPO_ROOT / canary.dut_file
     harc_files = [REPO_ROOT / path for path in canary.harc_files]
-    extra_args = ("--arch-bin", resolve_arch_bin(), "--codegen", "v1")
+    extra_args = ("--arch-bin", resolve_arch_bin())
 
     harc_check(harc_files=harc_files, cwd=REPO_ROOT)
     harc_sim_emit_only(
