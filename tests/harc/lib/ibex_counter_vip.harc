@@ -105,9 +105,12 @@ scoreboard CounterScoreboard
             errors = errors + 1
             fail("counter op ${t.op_class}: counter_val_o=0x${got_val:016x}, expected 0x${t.expect_val:016x}")
         end if
-        if got_upd != t.expect_upd
+        // expect_upd is the ProvideValUpd = 1 value; ProvideValUpd = 0 ties
+        // counter_val_upd_o to zero (spec: counter_val_upd_o gating).
+        let want_upd : uint<64> = t.provide_upd ? t.expect_upd : 0
+        if got_upd != want_upd
             errors = errors + 1
-            fail("counter op ${t.op_class}: counter_val_upd_o=0x${got_upd:016x}, expected 0x${t.expect_upd:016x}")
+            fail("counter op ${t.op_class}: counter_val_upd_o=0x${got_upd:016x}, expected 0x${want_upd:016x}")
         end if
     end check_sample
 end scoreboard CounterScoreboard
