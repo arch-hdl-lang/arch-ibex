@@ -78,8 +78,10 @@ PHASE1_CANARIES = (
         ),
         configs=(
             CanaryConfig("IbexRegisterFileFfCanary"),
-            # the one-hot port-A read ibex_top instantiates (#14)
-            CanaryConfig("IbexRegisterFileFfCanary", (("ReadOneHotA", 1),)),
+            # the one-hot port-A/B reads ibex_top instantiates (#14, #21)
+            CanaryConfig(
+                "IbexRegisterFileFfCanary", (("ReadOneHotA", 1), ("ReadOneHotB", 1))
+            ),
         ),
     ),
     HarcCanary(
