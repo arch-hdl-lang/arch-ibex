@@ -54,6 +54,7 @@ transactor RfDriver
             dut.dummy_instr_id_i = 0
             dut.dummy_instr_wb_i = 0
             dut.raddr_a_i = 0
+            dut.raddr_a_oh_i = 1
             dut.raddr_b_i = 0
             dut.waddr_a_i = 0
             dut.wdata_a_i = 0
@@ -89,6 +90,7 @@ transactor RfDriver
             dut.test_en_i = t.test_en
             dut.dummy_instr_id_i = t.dummy_id
             dut.raddr_a_i = t.raddr_a
+            dut.raddr_a_oh_i = 1 << t.raddr_a
             dut.raddr_b_i = t.raddr_b
             wait 1 cycle
         end drive_read
@@ -97,6 +99,7 @@ transactor RfDriver
             dut.test_en_i = t.test_en
             dut.dummy_instr_id_i = t.dummy_id
             dut.raddr_a_i = t.raddr_a
+            dut.raddr_a_oh_i = 1 << t.raddr_a
             dut.raddr_b_i = t.raddr_b
         end drive_read_now
 
@@ -105,6 +108,7 @@ transactor RfDriver
             dut.dummy_instr_id_i = t.dummy_id
             dut.dummy_instr_wb_i = t.dummy_wb
             dut.raddr_a_i = t.raddr_a
+            dut.raddr_a_oh_i = 1 << t.raddr_a
             dut.raddr_b_i = t.raddr_b
             dut.we_a_i = t.we
             dut.waddr_a_i = t.waddr
