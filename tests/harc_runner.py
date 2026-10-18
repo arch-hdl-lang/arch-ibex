@@ -5,6 +5,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field, replace
 from itertools import product
+import functools
 import json
 import os
 from pathlib import Path
@@ -16,7 +17,10 @@ from typing import Iterable, Mapping, NamedTuple, Sequence
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_HARC_BIN = REPO_ROOT.parent / "harc-com" / "target" / "release" / "harc"
+# The HARC release this repo is tested against: "<version> <commit>", where
+# <commit> is the release tag's commit as `harc --version` prints it.
+HARC_VERSION_FILE = REPO_ROOT / ".harc-version"
+HARC_RELEASES_URL = "https://github.com/arch-hdl-lang/harc-com/releases"
 DEFAULT_ARCH_BIN = REPO_ROOT.parent / "arch-com" / "target" / "release" / "arch"
 
 PathLike = str | os.PathLike[str]
@@ -363,27 +367,90 @@ _COVERAGE_STATUS_VALUES = {
 }
 
 
+_HARC_VERSION_OUTPUT_RE = re.compile(
+    r"^harc (?P<version>\S+) \(git (?P<commit>[0-9a-f]+|unknown)(?P<dirty>\+dirty)?\)$"
+)
+
+
+def pinned_harc_release() -> tuple[str, str]:
+    """Return the `(version, commit)` pinned in `.harc-version`."""
+
+    fields = HARC_VERSION_FILE.read_text().split()
+    if len(fields) != 2:
+        raise AssertionError(
+            f"{HARC_VERSION_FILE} must hold `<version> <commit>`, got {fields!r}"
+        )
+    return fields[0], fields[1]
+
+
+@functools.lru_cache(maxsize=None)
+def _checked_harc_bin(path: str, mtime_ns: int, version: str, commit: str) -> str:
+    """Fail unless `path` is the pinned HARC release build (cached per binary
+    and pin, so a rebuilt binary or an edited `.harc-version` is re-checked)."""
+
+    install = (
+        f"Install harc v{version}: curl --proto '=https' --tlsv1.2 -LsSf "
+        f"{HARC_RELEASES_URL}/download/v{version}/harc-installer.sh | sh "
+        f"(or set HARC_BIN to it). To test an unreleased harc on purpose, "
+        f"set HARC_SKIP_PIN_CHECK=1."
+    )
+    proc = subprocess.run([path, "--version"], capture_output=True, text=True)
+    reported = proc.stdout.strip()
+    match = _HARC_VERSION_OUTPUT_RE.match(reported)
+    if proc.returncode != 0 or match is None:
+        raise AssertionError(
+            f"{path} --version printed {reported!r}; expected "
+            f"`harc {version} (git {commit})`. {install}"
+        )
+    problems = []
+    if match["version"] != version:
+        problems.append(f"version {match['version']} != pinned {version}")
+    if match["dirty"]:
+        problems.append("built from a checkout with uncommitted changes (+dirty)")
+    if match["commit"] == "unknown":
+        problems.append("built without Git provenance (git unknown)")
+    elif not (match["commit"].startswith(commit) or commit.startswith(match["commit"])):
+        problems.append(f"commit {match['commit']} != pinned release commit {commit}")
+    if problems:
+        raise AssertionError(
+            f"{path} is not the pinned HARC release ({reported!r}): "
+            + "; ".join(problems)
+            + f". {install}"
+        )
+    return path
+
+
 def resolve_harc_bin() -> str:
-    """Resolve the HARC executable from HARC_BIN, sibling checkout, or PATH."""
+    """Resolve the pinned HARC release from HARC_BIN or PATH.
+
+    The binary must report exactly the version and commit in `.harc-version`
+    (and no `+dirty`), the same way `scripts/build.sh` enforces
+    `.arch-version`. There is deliberately no fallback to a sibling
+    `harc-com` checkout: that checkout's build drifts with whatever branch or
+    uncommitted edits it holds. `HARC_SKIP_PIN_CHECK=1` bypasses the check, for
+    testing an unreleased harc against this repo on purpose.
+    """
 
     env = os.environ.get("HARC_BIN")
     if env:
         path = Path(env).expanduser()
-        if path.is_file():
-            return str(path)
-        raise AssertionError(f"HARC_BIN points to a missing file: {path}")
+        if not path.is_file():
+            raise AssertionError(f"HARC_BIN points to a missing file: {path}")
+        binary = str(path)
+    else:
+        found = shutil.which("harc")
+        if not found:
+            version, _ = pinned_harc_release()
+            raise AssertionError(
+                f"HARC binary not found on PATH; install harc v{version} from "
+                f"{HARC_RELEASES_URL}/tag/v{version} or set HARC_BIN"
+            )
+        binary = found
 
-    if DEFAULT_HARC_BIN.is_file():
-        return str(DEFAULT_HARC_BIN)
-
-    which = shutil.which("harc")
-    if which:
-        return which
-
-    raise AssertionError(
-        "HARC binary not found; set HARC_BIN or build "
-        f"{DEFAULT_HARC_BIN}"
-    )
+    if os.environ.get("HARC_SKIP_PIN_CHECK") == "1":
+        return binary
+    version, commit = pinned_harc_release()
+    return _checked_harc_bin(binary, Path(binary).stat().st_mtime_ns, version, commit)
 
 
 def resolve_arch_bin() -> str:
