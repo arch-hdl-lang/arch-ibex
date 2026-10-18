@@ -56,6 +56,7 @@ transactor RfDriver
             dut.raddr_a_i = 0
             dut.raddr_a_oh_i = 1
             dut.raddr_b_i = 0
+            dut.raddr_b_oh_i = 1
             dut.waddr_a_i = 0
             dut.wdata_a_i = 0
             dut.we_a_i = 0
@@ -92,6 +93,7 @@ transactor RfDriver
             dut.raddr_a_i = t.raddr_a
             dut.raddr_a_oh_i = 1 << t.raddr_a
             dut.raddr_b_i = t.raddr_b
+            dut.raddr_b_oh_i = 1 << t.raddr_b
             wait 1 cycle
         end drive_read
 
@@ -101,6 +103,7 @@ transactor RfDriver
             dut.raddr_a_i = t.raddr_a
             dut.raddr_a_oh_i = 1 << t.raddr_a
             dut.raddr_b_i = t.raddr_b
+            dut.raddr_b_oh_i = 1 << t.raddr_b
         end drive_read_now
 
         hookable drive_read_write_now(t: RfAccessTxn)
@@ -110,6 +113,7 @@ transactor RfDriver
             dut.raddr_a_i = t.raddr_a
             dut.raddr_a_oh_i = 1 << t.raddr_a
             dut.raddr_b_i = t.raddr_b
+            dut.raddr_b_oh_i = 1 << t.raddr_b
             dut.we_a_i = t.we
             dut.waddr_a_i = t.waddr
             dut.wdata_a_i = t.wdata
