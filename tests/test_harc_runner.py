@@ -2,6 +2,7 @@ import json
 import os
 from pathlib import Path
 import re
+import subprocess
 
 import pytest
 
@@ -1519,4 +1520,91 @@ def test_resolve_harc_bin_skip_pin_check_and_no_sibling_fallback(
     monkeypatch.setenv("PATH", str(tmp_path / "empty"))
     with pytest.raises(AssertionError, match=r"install harc v0\.3\.0"):
         harc_runner.resolve_harc_bin()
+
+
+@pytest.mark.parametrize(
+    ("version_line", "problem"),
+    [
+        ("arch 0.72.6 (git 1b029068e6d4)", None),
+        ("arch 0.70.7 (git 1b029068e6d4)", "version 0.70.7 != pinned 0.72.6"),
+        ("arch 0.72.6 (git 1b029068e6d4+dirty)", "uncommitted changes (+dirty)"),
+        ("arch 0.72.6 (git unknown)", "without Git provenance"),
+        ("arch 0.72.6 (git 3db727d7aaaa)", "!= pinned release commit"),
+        ("arch 0.70.7", "expected `arch 0.72.6 (git 1b029068e6d4)`"),
+    ],
+)
+def test_resolve_arch_bin_enforces_the_pinned_release(
+    tmp_path: Path, monkeypatch, version_line: str, problem: str | None
+) -> None:
+    pin = tmp_path / ".arch-version"
+    pin.write_text("0.72.6 1b029068e6d4\n")
+    monkeypatch.setattr(harc_runner, "ARCH_VERSION_FILE", pin)
+    fake = _fake_harc(tmp_path, f"arch_{abs(hash(version_line))}", version_line)
+    monkeypatch.setenv("ARCH_BIN", str(fake))
+    monkeypatch.delenv("ARCH_SKIP_PIN_CHECK", raising=False)
+    if problem is None:
+        assert harc_runner.resolve_arch_bin() == str(fake)
+    else:
+        with pytest.raises(AssertionError, match=re.escape(problem)):
+            harc_runner.resolve_arch_bin()
+
+
+def test_resolve_arch_bin_scans_path_past_the_system_arch(
+    tmp_path: Path, monkeypatch
+) -> None:
+    # macOS ships an unrelated /usr/bin/arch, often earlier on PATH than the
+    # compiler. The PATH scan must skip it and keep looking.
+    pin = tmp_path / ".arch-version"
+    pin.write_text("0.72.6 1b029068e6d4\n")
+    monkeypatch.setattr(harc_runner, "ARCH_VERSION_FILE", pin)
+    system_dir, tool_dir = tmp_path / "system", tmp_path / "tools"
+    system_dir.mkdir()
+    tool_dir.mkdir()
+    system_arch = _fake_harc(system_dir, "arch", "arm64")
+    good = _fake_harc(tool_dir, "arch", "arch 0.72.6 (git 1b029068e6d4)")
+    monkeypatch.setattr(harc_runner, "ARCH_PATH_SKIP", frozenset({str(system_arch)}))
+    monkeypatch.delenv("ARCH_BIN", raising=False)
+    monkeypatch.delenv("ARCH_SKIP_PIN_CHECK", raising=False)
+    monkeypatch.setenv("PATH", f"{system_dir}{os.pathsep}{tool_dir}")
+    assert harc_runner.resolve_arch_bin() == str(good)
+    # Nothing but the skipped tool on PATH: "not installed" (ToolNotFoundError,
+    # which conftest turns into a skip), never the system tool.
+    monkeypatch.setenv("PATH", str(system_dir))
+    with pytest.raises(harc_runner.ToolNotFoundError, match=r"install arch v0\.72\.6"):
+        harc_runner.resolve_arch_bin()
+
+
+@pytest.mark.parametrize(
+    ("suffix", "problem"),
+    [
+        ("+dirty)", "uncommitted changes (+dirty)"),
+        ("COMMIT_OTHER", "!= pinned release commit"),
+        ("UNKNOWN", "without Git provenance"),
+        ("OLD", "expected 'arch "),
+    ],
+)
+def test_build_sh_rejects_a_non_release_compiler(
+    tmp_path: Path, suffix: str, problem: str
+) -> None:
+    # scripts/build.sh applies the same pin rule before building anything.
+    version, commit = harc_runner.pinned_arch_release()
+    line = {
+        "+dirty)": f"arch {version} (git {commit}+dirty)",
+        "COMMIT_OTHER": f"arch {version} (git 0123456789ab)",
+        "UNKNOWN": f"arch {version} (git unknown)",
+        "OLD": "arch 0.70.7",
+    }[suffix]
+    fake = _fake_harc(tmp_path, "arch", line)
+    env = {k: v for k, v in os.environ.items() if k != "ARCH_SKIP_PIN_CHECK"}
+    env["ARCH_BIN"] = str(fake)
+    env["BUILD_DIR"] = str(tmp_path / "build")
+    proc = subprocess.run(
+        ["bash", str(harc_runner.REPO_ROOT / "scripts" / "build.sh"), "IbexAlu"],
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert problem in proc.stderr, proc.stderr
+    assert not (tmp_path / "build").exists(), "build.sh built with a rejected compiler"
 

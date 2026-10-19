@@ -6,8 +6,8 @@
 #   scripts/build.sh IbexAlu          # build a single module by stem
 #
 # Environment:
-#   ARCH_BIN   path to `arch` binary (default: ../arch-com/target/{release,debug}/arch
-#              if present; otherwise `arch` on PATH, ignoring macOS /usr/bin/arch)
+#   ARCH_BIN   path to `arch` binary (default: first `arch` on PATH other than
+#              /usr/bin/arch); must be the release pinned in .arch-version
 #   ARCH_BUILD_PROFILE   sim (default) | synth.  `sim` builds IbexTop together with
 #              src/sim/IbexTopRvfiSim.arch so `ibex_top` is elaborated with RVFI = 1
 #              (the harness's ibex_top_tracing wrapper needs the rvfi_* ports);
@@ -25,42 +25,65 @@ case "${ARCH_BUILD_PROFILE}" in
   *) echo "error: ARCH_BUILD_PROFILE must be sim or synth (got '${ARCH_BUILD_PROFILE}')" >&2; exit 1 ;;
 esac
 
+# The compiler: ARCH_BIN, else the first `arch` on PATH that is not macOS's
+# unrelated /usr/bin/arch. No fallback to a sibling arch-com checkout or
+# worktree: those builds drift with whatever branch or edits they hold.
 resolve_arch_bin() {
-  if [[ -n "${ARCH_BIN:-}" && -x "${ARCH_BIN}" ]]; then
-    echo "${ARCH_BIN}"; return
+  if [[ -n "${ARCH_BIN:-}" ]]; then
+    [[ -x "${ARCH_BIN}" ]] && echo "${ARCH_BIN}"
+    return
   fi
-  for cand in \
-      "${REPO_ROOT}/../arch-com/target/release/arch" \
-      "${REPO_ROOT}/../arch-com/target/debug/arch"; do
-    if [[ -x "${cand}" ]]; then
-      echo "${cand}"; return
+  local dir IFS=:
+  for dir in ${PATH}; do
+    if [[ -n "${dir}" && "${dir}/arch" != "/usr/bin/arch" && -f "${dir}/arch" && -x "${dir}/arch" ]]; then
+      echo "${dir}/arch"; return
     fi
   done
-  # Fall back to PATH, but skip macOS /usr/bin/arch (an unrelated system tool).
-  local found
-  found="$(command -v arch || true)"
-  if [[ -n "${found}" && "${found}" != "/usr/bin/arch" ]]; then
-    echo "${found}"; return
-  fi
-  echo ""
 }
 
-ARCH_BIN="$(resolve_arch_bin)"
-if [[ -z "${ARCH_BIN}" ]]; then
-  echo "error: arch compiler not found." >&2
-  echo "  Build arch-com (cargo build --release in ~/github/arch-com) or set ARCH_BIN." >&2
+PIN_FILE="${REPO_ROOT}/.arch-version"
+read -r want_version want_commit < "${PIN_FILE}"
+install_hint="Install arch v${want_version}: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/arch-hdl-lang/arch-com/releases/download/v${want_version}/arch-installer.sh | sh (or set ARCH_BIN to it). To test an unreleased compiler on purpose, set ARCH_SKIP_PIN_CHECK=1."
+
+ARCH_BIN_FOUND="$(resolve_arch_bin)"
+if [[ -z "${ARCH_BIN_FOUND}" ]]; then
+  if [[ -n "${ARCH_BIN:-}" ]]; then
+    echo "error: ARCH_BIN=${ARCH_BIN} is not an executable file." >&2
+  else
+    echo "error: arch compiler not found on PATH." >&2
+  fi
+  echo "  ${install_hint}" >&2
   exit 1
 fi
+ARCH_BIN="${ARCH_BIN_FOUND}"
 
-# Compiler pin: refuse to build with any `arch` whose version differs from
-# .arch-version (the reproducibility guard the reviewer package asked for).
-PIN_FILE="${REPO_ROOT}/.arch-version"
-if [[ -f "${PIN_FILE}" ]]; then
-  want="$(tr -d '[:space:]' < "${PIN_FILE}")"
-  have="$("${ARCH_BIN}" --version 2>/dev/null | awk '{print $2}')"
-  if [[ "${have}" != "${want}" ]]; then
-    echo "error: arch version mismatch: ${ARCH_BIN} reports '${have:-unknown}', .arch-version pins '${want}'." >&2
-    echo "  Install arch v${want} (https://github.com/arch-hdl-lang/arch-com/releases/tag/v${want}) and set ARCH_BIN to it." >&2
+# Compiler pin (the reproducibility guard the reviewer package asked for):
+# `arch --version` must be exactly `arch <version> (git <commit>)` as pinned
+# in .arch-version -- same version, same release commit, not +dirty, not
+# (git unknown). tests/harc_runner.py resolve_arch_bin applies the same rule.
+if [[ "${ARCH_SKIP_PIN_CHECK:-}" != "1" ]]; then
+  reported="$("${ARCH_BIN}" --version 2>/dev/null | head -1)"
+  version_re='^arch ([^ ]+) \(git ([0-9a-f]+|unknown)(\+dirty)?\)$'
+  if [[ ! "${reported}" =~ ${version_re} ]]; then
+    echo "error: ${ARCH_BIN} --version printed '${reported}'; expected 'arch ${want_version} (git ${want_commit})'." >&2
+    echo "  ${install_hint}" >&2
+    exit 1
+  fi
+  have_version="${BASH_REMATCH[1]}"
+  have_commit="${BASH_REMATCH[2]}"
+  have_dirty="${BASH_REMATCH[3]}"
+  problems=()
+  [[ "${have_version}" == "${want_version}" ]] || problems+=("version ${have_version} != pinned ${want_version}")
+  [[ -z "${have_dirty}" ]] || problems+=("built from a checkout with uncommitted changes (+dirty)")
+  if [[ "${have_commit}" == "unknown" ]]; then
+    problems+=("built without Git provenance (git unknown)")
+  elif [[ "${have_commit}" != "${want_commit}"* && "${want_commit}" != "${have_commit}"* ]]; then
+    problems+=("commit ${have_commit} != pinned release commit ${want_commit}")
+  fi
+  if (( ${#problems[@]} )); then
+    printf 'error: %s is not the pinned arch release (%s): ' "${ARCH_BIN}" "${reported}" >&2
+    (IFS=';'; printf '%s\n' "${problems[*]}" >&2)
+    echo "  ${install_hint}" >&2
     exit 1
   fi
 fi

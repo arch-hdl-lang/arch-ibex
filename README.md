@@ -17,16 +17,19 @@ tests green throughout.
 ## Quick start
 
 ```bash
-# 1. Clone + sibling deps. Defaults assume ~/github/{arch-com,ibex,rdl2arch-riscv};
+# 1. Clone + sibling deps. Defaults assume ~/github/{ibex,rdl2arch-riscv};
 #    override via env vars below if your layout differs.
 mkdir -p ~/github && cd ~/github
 git clone git@github.com:arch-hdl-lang/arch-ibex.git
-git clone git@github.com:arch-hdl-lang/arch-com.git
 git clone https://github.com/lowRISC/ibex.git
 git clone git@github.com:arch-hdl-lang/rdl2arch-riscv.git
 
-# 2. Build the arch compiler.
-cd arch-com && cargo build --release && cd ..
+# 2. Install the pinned compiler and testbench tool releases. The build and
+#    the tests use exactly the releases in .arch-version / .harc-version
+#    (version + release commit, as `--version` prints it) and refuse any
+#    other build, including a dev or dirty arch-com/harc-com checkout.
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/arch-hdl-lang/arch-com/releases/download/v$(cut -d' ' -f1 arch-ibex/.arch-version)/arch-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/arch-hdl-lang/harc-com/releases/download/v$(cut -d' ' -f1 arch-ibex/.harc-version)/harc-installer.sh | sh
 
 # 3. Python deps.
 cd arch-ibex
@@ -44,10 +47,15 @@ make test       # parallel pytest: SoC lint + 4 ISR programs + per-module units
 If your checkouts live elsewhere, set:
 
 ```bash
-export ARCH_BIN=/path/to/arch-com/target/release/arch
 export IBEX_ROOT=/path/to/ibex
 export RDL2ARCH_RISCV_ROOT=/path/to/rdl2arch-riscv
 ```
+
+`arch` and `harc` are found on PATH (macOS's unrelated `/usr/bin/arch` is
+skipped), or via `ARCH_BIN` / `HARC_BIN`. Either way the binary must be the
+pinned release. To run an unreleased compiler or harc on purpose, e.g. to
+validate an arch-com or harc-com change against this repo, set
+`ARCH_SKIP_PIN_CHECK=1` / `HARC_SKIP_PIN_CHECK=1`.
 
 ## Layout
 
@@ -75,9 +83,8 @@ Path-referenced for now (no submodules / lockfile):
 
 - **Ibex** at `$IBEX_ROOT` (default `~/github/ibex`) — provides upstream
   `.sv` for all modules not yet swapped, plus `ibex_pkg.sv`.
-- **arch compiler** at `$ARCH_COM_ROOT` (default `~/github/arch-com`) —
-  built via `cargo build --release`. The `arch` binary is auto-discovered
-  by the test harness; override with `$ARCH_BIN`.
+- **arch compiler**: the release pinned in `.arch-version`, on PATH or at
+  `$ARCH_BIN` (see Quick start step 2).
 - **rdl2arch-riscv** at `$RDL2ARCH_RISCV_ROOT` (default
   `~/github/rdl2arch-riscv`) — CSR-file generator + RDL fixtures.
   Install editable: `pip install -e $RDL2ARCH_RISCV_ROOT`. It depends
