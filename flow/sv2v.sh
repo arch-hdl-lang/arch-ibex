@@ -20,7 +20,10 @@ for lane in sv arch; do
     esac
   done < "$REPO_ROOT/flow/ibex_top_${lane}.f"
   echo "sv2v [$lane]: ${#files[@]} files"
-  if sv2v --define=SYNTHESIS --define=YOSYS "${args[@]}" --write="$out/ibex_top.v" "${files[@]}" > "$out/sv2v.log" 2>&1; then
+  # ${a[@]+"${a[@]}"}: an empty array under `set -u` is an unbound-variable
+  # error in bash < 4.4 (macOS /bin/bash 3.2), e.g. a filelist with no
+  # +incdir+/-D lines.
+  if sv2v --define=SYNTHESIS --define=YOSYS ${args[@]+"${args[@]}"} --write="$out/ibex_top.v" ${files[@]+"${files[@]}"} > "$out/sv2v.log" 2>&1; then
     echo "  ok: $out/ibex_top.v ($(wc -l < "$out/ibex_top.v" | tr -d ' ') lines)"
   else
     echo "  FAILED (see $out/sv2v.log)"; tail -5 "$out/sv2v.log"; rc=1
