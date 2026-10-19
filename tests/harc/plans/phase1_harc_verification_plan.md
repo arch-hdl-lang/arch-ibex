@@ -46,7 +46,9 @@ new stimulus or a reviewed exclusion with a written design rationale.
 
 The shared pytest runner must:
 
-- resolve `HARC_BIN` from the environment, sibling `harc-com`, or `PATH`;
+- resolve harc from `HARC_BIN` or `PATH` and require the release pinned in
+  `.harc-version` (version and commit, no `+dirty`); `HARC_SKIP_PIN_CHECK=1`
+  deliberately tests an unreleased harc;
 - run `harc check` before simulation;
 - support `harc sim --emit-only`;
 - support `harc sim --dut ... --top ... --test ... --coverage` for ARCH

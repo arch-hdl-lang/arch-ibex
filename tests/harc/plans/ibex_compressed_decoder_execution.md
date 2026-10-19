@@ -29,7 +29,8 @@ belongs exclusively to RV32ZC=3. Unknown X/Z values are not representable by
 the native two-state backend. That specification bin requires an explicitly
 reviewed scope exclusion, not a fabricated hit. No cocotb retirement is implied.
 
-Run with HARC_BIN, ARCH_BIN (pinned .arch-version), and IBEX_REFERENCE_ROOT:
+Run with harc (pinned `.harc-version`, on PATH or via HARC_BIN), ARCH_BIN (pinned
+`.arch-version`), and IBEX_REFERENCE_ROOT:
 
 ```
 python -m pytest -q tests/test_harc_compressed_decoder.py

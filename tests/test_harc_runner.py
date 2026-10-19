@@ -1,8 +1,11 @@
 import json
 import os
 from pathlib import Path
+import re
 
 import pytest
+
+from tests import harc_runner
 
 from tests.harc_runner import (
     ArchCoverageWaiver,
@@ -1463,3 +1466,57 @@ def test_compressed_decoder_coverage_status_rejects_shorthand(tmp_path: Path) ->
 
     with pytest.raises(AssertionError, match="must name bins explicitly"):
         compressed_decoder_coverage_status(status)
+
+
+def _fake_harc(tmp_path: Path, name: str, version_line: str) -> Path:
+    script = tmp_path / name
+    script.write_text(f"#!/bin/sh\necho '{version_line}'\n")
+    script.chmod(0o755)
+    return script
+
+
+@pytest.mark.parametrize(
+    ("version_line", "problem"),
+    [
+        ("harc 0.3.0 (git abcdef012345)", None),
+        ("harc 0.2.0 (git abcdef012345)", "version 0.2.0 != pinned 0.3.0"),
+        ("harc 0.3.0 (git abcdef012345+dirty)", "uncommitted changes (+dirty)"),
+        ("harc 0.3.0 (git unknown)", "without Git provenance"),
+        ("harc 0.3.0 (git 999999999999)", "!= pinned release commit"),
+        ("harc 0.3.0", "expected `harc 0.3.0 (git abcdef012345)`"),
+    ],
+)
+def test_resolve_harc_bin_enforces_the_pinned_release(
+    tmp_path: Path, monkeypatch, version_line: str, problem: str | None
+) -> None:
+    pin = tmp_path / ".harc-version"
+    pin.write_text("0.3.0 abcdef012345\n")
+    monkeypatch.setattr(harc_runner, "HARC_VERSION_FILE", pin)
+    fake = _fake_harc(tmp_path, f"harc_{abs(hash(version_line))}", version_line)
+    monkeypatch.setenv("HARC_BIN", str(fake))
+    monkeypatch.delenv("HARC_SKIP_PIN_CHECK", raising=False)
+    if problem is None:
+        assert harc_runner.resolve_harc_bin() == str(fake)
+    else:
+        with pytest.raises(AssertionError, match=re.escape(problem)):
+            harc_runner.resolve_harc_bin()
+
+
+def test_resolve_harc_bin_skip_pin_check_and_no_sibling_fallback(
+    tmp_path: Path, monkeypatch
+) -> None:
+    pin = tmp_path / ".harc-version"
+    pin.write_text("0.3.0 abcdef012345\n")
+    monkeypatch.setattr(harc_runner, "HARC_VERSION_FILE", pin)
+    dev = _fake_harc(tmp_path, "harc_dev", "harc 0.3.0 (git 123456789abc+dirty)")
+    monkeypatch.setenv("HARC_BIN", str(dev))
+    monkeypatch.setenv("HARC_SKIP_PIN_CHECK", "1")
+    assert harc_runner.resolve_harc_bin() == str(dev)
+    # Without HARC_BIN the only source is PATH: an empty PATH is an error that
+    # names the pinned release, never a fall back to a sibling checkout.
+    monkeypatch.delenv("HARC_BIN")
+    monkeypatch.delenv("HARC_SKIP_PIN_CHECK")
+    monkeypatch.setenv("PATH", str(tmp_path / "empty"))
+    with pytest.raises(AssertionError, match=r"install harc v0\.3\.0"):
+        harc_runner.resolve_harc_bin()
+
