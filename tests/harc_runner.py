@@ -21,7 +21,11 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 # <commit> is the release tag's commit as `harc --version` prints it.
 HARC_VERSION_FILE = REPO_ROOT / ".harc-version"
 HARC_RELEASES_URL = "https://github.com/arch-hdl-lang/harc-com/releases"
-DEFAULT_ARCH_BIN = REPO_ROOT.parent / "arch-com" / "target" / "release" / "arch"
+# The ARCH compiler release this repo is built and tested with, same format.
+ARCH_VERSION_FILE = REPO_ROOT / ".arch-version"
+ARCH_RELEASES_URL = "https://github.com/arch-hdl-lang/arch-com/releases"
+# `/usr/bin/arch` on macOS is an unrelated system tool, never the compiler.
+ARCH_PATH_SKIP = frozenset({"/usr/bin/arch"})
 
 PathLike = str | os.PathLike[str]
 
@@ -367,40 +371,48 @@ _COVERAGE_STATUS_VALUES = {
 }
 
 
-_HARC_VERSION_OUTPUT_RE = re.compile(
-    r"^harc (?P<version>\S+) \(git (?P<commit>[0-9a-f]+|unknown)(?P<dirty>\+dirty)?\)$"
-)
+class ToolNotFoundError(AssertionError):
+    """The tool is not installed (as opposed to installed in the wrong version)."""
 
 
-def pinned_harc_release() -> tuple[str, str]:
-    """Return the `(version, commit)` pinned in `.harc-version`."""
+def _pinned_release(pin_file: Path) -> tuple[str, str]:
+    """Return the `(version, commit)` pinned in `.harc-version`/`.arch-version`."""
 
-    fields = HARC_VERSION_FILE.read_text().split()
+    fields = pin_file.read_text().split()
     if len(fields) != 2:
         raise AssertionError(
-            f"{HARC_VERSION_FILE} must hold `<version> <commit>`, got {fields!r}"
+            f"{pin_file} must hold `<version> <commit>`, got {fields!r}"
         )
     return fields[0], fields[1]
 
 
-@functools.lru_cache(maxsize=None)
-def _checked_harc_bin(path: str, mtime_ns: int, version: str, commit: str) -> str:
-    """Fail unless `path` is the pinned HARC release build (cached per binary
-    and pin, so a rebuilt binary or an edited `.harc-version` is re-checked)."""
+def pinned_harc_release() -> tuple[str, str]:
+    return _pinned_release(HARC_VERSION_FILE)
 
-    install = (
-        f"Install harc v{version}: curl --proto '=https' --tlsv1.2 -LsSf "
-        f"{HARC_RELEASES_URL}/download/v{version}/harc-installer.sh | sh "
-        f"(or set HARC_BIN to it). To test an unreleased harc on purpose, "
-        f"set HARC_SKIP_PIN_CHECK=1."
-    )
+
+def pinned_arch_release() -> tuple[str, str]:
+    return _pinned_release(ARCH_VERSION_FILE)
+
+
+@functools.lru_cache(maxsize=None)
+def _checked_tool_bin(
+    tool: str, path: str, mtime_ns: int, version: str, commit: str, install: str
+) -> str:
+    """Fail unless `path --version` is exactly the pinned release build:
+    `<tool> <version> (git <commit>)`, no `+dirty`, no `(git unknown)`.
+    Cached per binary and pin, so a rebuilt binary or edited pin is re-checked."""
+
     proc = subprocess.run([path, "--version"], capture_output=True, text=True)
     reported = proc.stdout.strip()
-    match = _HARC_VERSION_OUTPUT_RE.match(reported)
+    match = re.fullmatch(
+        re.escape(tool)
+        + r" (?P<version>\S+) \(git (?P<commit>[0-9a-f]+|unknown)(?P<dirty>\+dirty)?\)",
+        reported,
+    )
     if proc.returncode != 0 or match is None:
         raise AssertionError(
             f"{path} --version printed {reported!r}; expected "
-            f"`harc {version} (git {commit})`. {install}"
+            f"`{tool} {version} (git {commit})`. {install}"
         )
     problems = []
     if match["version"] != version:
@@ -413,66 +425,97 @@ def _checked_harc_bin(path: str, mtime_ns: int, version: str, commit: str) -> st
         problems.append(f"commit {match['commit']} != pinned release commit {commit}")
     if problems:
         raise AssertionError(
-            f"{path} is not the pinned HARC release ({reported!r}): "
+            f"{path} is not the pinned {tool} release ({reported!r}): "
             + "; ".join(problems)
             + f". {install}"
         )
     return path
 
 
+def _which_skipping(tool: str, skip: frozenset[str] = frozenset()) -> str | None:
+    """Like shutil.which, but keeps scanning PATH past the paths in `skip`."""
+
+    for directory in os.get_exec_path():
+        candidate = os.path.join(directory, tool)
+        if candidate in skip:
+            continue
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    return None
+
+
+def _resolve_pinned_tool(
+    *,
+    tool: str,
+    env_var: str,
+    skip_var: str,
+    pin: tuple[str, str],
+    releases_url: str,
+    path_skip: frozenset[str] = frozenset(),
+) -> str:
+    version, commit = pin
+    install = (
+        f"Install {tool} v{version}: curl --proto '=https' --tlsv1.2 -LsSf "
+        f"{releases_url}/download/v{version}/{tool}-installer.sh | sh "
+        f"(or set {env_var} to it). To test an unreleased {tool} on purpose, "
+        f"set {skip_var}=1."
+    )
+    env = os.environ.get(env_var)
+    if env:
+        path = Path(env).expanduser()
+        if not path.is_file():
+            raise AssertionError(f"{env_var} points to a missing file: {path}")
+        binary = str(path)
+    else:
+        found = _which_skipping(tool, path_skip)
+        if not found:
+            raise ToolNotFoundError(
+                f"{tool} not found on PATH; install {tool} v{version} from "
+                f"{releases_url}/tag/v{version} or set {env_var}"
+            )
+        binary = found
+    if os.environ.get(skip_var) == "1":
+        return binary
+    return _checked_tool_bin(
+        tool, binary, Path(binary).stat().st_mtime_ns, version, commit, install
+    )
+
+
 def resolve_harc_bin() -> str:
     """Resolve the pinned HARC release from HARC_BIN or PATH.
 
     The binary must report exactly the version and commit in `.harc-version`
-    (and no `+dirty`), the same way `scripts/build.sh` enforces
-    `.arch-version`. There is deliberately no fallback to a sibling
+    (and no `+dirty`). There is deliberately no fallback to a sibling
     `harc-com` checkout: that checkout's build drifts with whatever branch or
     uncommitted edits it holds. `HARC_SKIP_PIN_CHECK=1` bypasses the check, for
     testing an unreleased harc against this repo on purpose.
     """
 
-    env = os.environ.get("HARC_BIN")
-    if env:
-        path = Path(env).expanduser()
-        if not path.is_file():
-            raise AssertionError(f"HARC_BIN points to a missing file: {path}")
-        binary = str(path)
-    else:
-        found = shutil.which("harc")
-        if not found:
-            version, _ = pinned_harc_release()
-            raise AssertionError(
-                f"HARC binary not found on PATH; install harc v{version} from "
-                f"{HARC_RELEASES_URL}/tag/v{version} or set HARC_BIN"
-            )
-        binary = found
-
-    if os.environ.get("HARC_SKIP_PIN_CHECK") == "1":
-        return binary
-    version, commit = pinned_harc_release()
-    return _checked_harc_bin(binary, Path(binary).stat().st_mtime_ns, version, commit)
+    return _resolve_pinned_tool(
+        tool="harc",
+        env_var="HARC_BIN",
+        skip_var="HARC_SKIP_PIN_CHECK",
+        pin=pinned_harc_release(),
+        releases_url=HARC_RELEASES_URL,
+    )
 
 
 def resolve_arch_bin() -> str:
-    """Resolve the ARCH executable from ARCH_BIN, sibling checkout, or PATH."""
+    """Resolve the pinned ARCH compiler release from ARCH_BIN or PATH.
 
-    env = os.environ.get("ARCH_BIN")
-    if env:
-        path = Path(env).expanduser()
-        if path.is_file():
-            return str(path)
-        raise AssertionError(f"ARCH_BIN points to a missing file: {path}")
+    Same rule as harc, against `.arch-version` (scripts/build.sh enforces it
+    too). PATH lookup skips macOS's unrelated `/usr/bin/arch`. No fallback to
+    a sibling `arch-com` checkout or worktree. `ARCH_SKIP_PIN_CHECK=1`
+    bypasses the check, for testing an unreleased compiler on purpose.
+    """
 
-    if DEFAULT_ARCH_BIN.is_file():
-        return str(DEFAULT_ARCH_BIN)
-
-    which = shutil.which("arch")
-    if which:
-        return which
-
-    raise AssertionError(
-        "ARCH binary not found; set ARCH_BIN or build "
-        f"{DEFAULT_ARCH_BIN}"
+    return _resolve_pinned_tool(
+        tool="arch",
+        env_var="ARCH_BIN",
+        skip_var="ARCH_SKIP_PIN_CHECK",
+        pin=pinned_arch_release(),
+        releases_url=ARCH_RELEASES_URL,
+        path_skip=ARCH_PATH_SKIP,
     )
 
 

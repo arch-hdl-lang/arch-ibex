@@ -33,6 +33,8 @@ from typing import Optional
 
 import pytest
 
+from tests.harc_runner import ToolNotFoundError, resolve_arch_bin
+
 TESTS_DIR = Path(__file__).parent
 REPO_ROOT = TESTS_DIR.parent
 SOC_DIR = REPO_ROOT / "soc"
@@ -50,38 +52,18 @@ def _find_rdl2arch_riscv_root() -> Path:
 RDL_DIR = _find_rdl2arch_riscv_root() / "tests" / "rdl"
 
 
-def _find_arch_binary() -> Optional[str]:
-    """Locate the `arch` compiler binary. Honors $ARCH_BIN override; otherwise
-    walks the standard sibling-checkout fallbacks (any worktree under
-    github/arch-com* with a built target/{debug,release}/arch). Skips
-    macOS's `/usr/bin/arch` (a system tool, unrelated)."""
-    env = os.environ.get("ARCH_BIN")
-    if env and Path(env).is_file():
-        return env
-    candidates = [
-        REPO_ROOT.parent / "arch-com" / "target" / "release" / "arch",
-        REPO_ROOT.parent / "arch-com" / "target" / "debug" / "arch",
-    ]
-    # Allow any sibling worktree (e.g. arch-com-unpacked-ports) to provide
-    # the binary while the feature is still local.
-    for sibling in REPO_ROOT.parent.glob("arch-com*"):
-        for sub in ("target/release/arch", "target/debug/arch"):
-            candidates.append(sibling / sub)
-    for c in candidates:
-        if c.is_file():
-            return str(c)
-    which = shutil.which("arch")
-    if which and "arch-com" not in which and which != "/usr/bin/arch":
-        return which
-    return None
-
-
 @pytest.fixture(scope="session")
 def arch_bin() -> str:
-    path = _find_arch_binary()
-    if path is None:
-        pytest.skip("ARCH compiler not found (set ARCH_BIN=/path/to/arch)")
-    return path
+    """The pinned ARCH compiler (`.arch-version`), via ARCH_BIN or PATH.
+
+    Same lookup and pin check as tests/harc_runner.py resolve_arch_bin: a
+    compiler that is not installed skips the dependent tests, but one that
+    is the wrong build (other version or commit, `+dirty`) fails them.
+    """
+    try:
+        return resolve_arch_bin()
+    except ToolNotFoundError as exc:
+        pytest.skip(str(exc))
 
 
 def _find_ibex_root() -> Optional[Path]:

@@ -6,7 +6,7 @@ import hashlib
 import pytest
 from tests.compressed_decoder_oracle import build_corpus, REFERENCE
 from tests.harc_runner import (
-    REPO_ROOT, harc_check, harc_sim_dut_coverage, resolve_arch_bin,
+    REPO_ROOT, harc_check, harc_sim_dut_coverage, resolve_arch_bin, pinned_arch_release,
     assert_harc_functional_coverage_100, assert_arch_coverage_dat_100,
     merge_coverage_dat, resolve_harc_bin, compressed_decoder_coverage_inventory,
     harc_functional_coverage_report,
@@ -16,8 +16,8 @@ from tests.harc_runner import (
 def test_compressed_decoder_coverage(tmp_path: Path, monkeypatch) -> None:
     arch_version = subprocess.check_output([resolve_arch_bin(), "--version"], text=True).strip()
     harc_version = subprocess.check_output([resolve_harc_bin(), "--version"], text=True).strip()
-    pinned = (REPO_ROOT / ".arch-version").read_text().strip()
-    assert arch_version.split()[1] == pinned, (arch_version, pinned)
+    pinned_version, pinned_commit = pinned_arch_release()
+    assert arch_version == f"arch {pinned_version} (git {pinned_commit})", arch_version
     (tmp_path / "toolchain.json").write_text(json.dumps({"arch": arch_version, "harc": harc_version,
         "arch_sha256": hashlib.sha256(Path(resolve_arch_bin()).read_bytes()).hexdigest(),
         "harc_sha256": hashlib.sha256(Path(resolve_harc_bin()).read_bytes()).hexdigest()}, indent=2))
