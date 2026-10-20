@@ -40,6 +40,9 @@ module ibex_multdiv_fast
   /// parameter is accepted for port-list compatibility (spec §"Port
   /// contract": `RV32M` ignored — the surrounding port-list pins it).
   param RV32M: const = 2;
+  /// `ShareMac`: 1 computes every `MacRes` call on one shared multiplier,
+  /// 0 inlines one per call site (set from ibex_top's `MultdivShareMac`).
+  param ShareMac[0:0]: const = 1'b1;
 
   // ── Clock & async-low reset (§"Reset behaviour") ───────────────────
   port clk_i:  in Clock<SysDomain>;
@@ -129,9 +132,9 @@ module ibex_multdiv_fast
   /// documented as redundant in the spec — the 2 MSBs of the
   /// multiplicants and the 16 MSBs of `accum` always agree, so
   /// `mac_res_ext[34] == mac_res_ext[33]`.
-  shared function MacRes(sign_a: Bool, op_a16: UInt<16>,
-                  sign_b: Bool, op_b16: UInt<16>,
-                  accum:  UInt<34>) -> UInt<34>
+  shared(when ShareMac) function MacRes(sign_a: Bool, op_a16: UInt<16>,
+                                        sign_b: Bool, op_b16: UInt<16>,
+                                        accum:  UInt<34>) -> UInt<34>
     let a17:    SInt<17> = signed({sign_a, op_a16});
     let b17:    SInt<17> = signed({sign_b, op_b16});
     let prod:   SInt<34> = a17 * b17;

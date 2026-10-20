@@ -85,6 +85,12 @@ module ibex_top
   /// CSR ID params — pure pass-through into `u_ibex_core`.
   param CsrMvendorId[31:0]:       const = 32'd0;
   param CsrMimpId[31:0]:          const = 32'd0;
+  /// `MultdivShareMac`: not an upstream parameter. 1 (default) computes every
+  /// multdiv 16x16 MAC on one shared multiplier (`shared(when ...)` on
+  /// `MacRes`); 0 inlines one multiplier per call site. Per-target synthesis
+  /// choice: sharing saves ~1.6% sky130 area; the ECP5 recipe sets 0
+  /// (flow/recipes/arch.env).
+  param MultdivShareMac[0:0]:    const = 1'd1;
   // Local params (derived constants) — all const-folded under our SoC
   // pinning per spec §"Pinned parameter values" + spec notes N-16..N-19.
   param Lockstep[0:0]:           const = 1'd0;   // = SecureIbex
@@ -494,6 +500,7 @@ module ibex_top
     param RV32E              = RV32E;
     param RV32M              = RV32M;
     param RV32B              = RV32B;
+    param MultdivShareMac    = MultdivShareMac;
     param RV32ZC             = 3;
     param BranchTargetALU    = BranchTargetALU;
     param ICache             = ICache;

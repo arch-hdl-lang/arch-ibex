@@ -26,8 +26,10 @@ MULTDIV_FAST_SV = REPO_ROOT / "build" / "ibex_multdiv_fast.sv"
 pytest.importorskip("cocotb_tools.runner")
 
 
-@pytest.fixture(scope="module")
-def multdiv_fast_full_runner(verilator_bin, tmp_path_factory):
+# ShareMac 1 = one shared 16x16 multiplier (RTL default), 0 = inlined per
+# call site (the ECP5 recipe); both must be functionally identical.
+@pytest.fixture(scope="module", params=[1, 0], ids=["share_mac", "inline_mac"])
+def multdiv_fast_full_runner(request, verilator_bin, tmp_path_factory):
     from cocotb_tools.runner import get_runner
 
     if not MULTDIV_FAST_SV.is_file():
@@ -35,7 +37,7 @@ def multdiv_fast_full_runner(verilator_bin, tmp_path_factory):
             f"missing {MULTDIV_FAST_SV}; run `make build` first"
         )
 
-    sim_build = tmp_path_factory.mktemp("multdiv_fast_full_sim_build")
+    sim_build = tmp_path_factory.mktemp(f"multdiv_fast_full_sim_build_sm{request.param}")
     runner = get_runner("verilator")
     runner.build(
         sources=[str(MULTDIV_FAST_SV)],
@@ -44,6 +46,7 @@ def multdiv_fast_full_runner(verilator_bin, tmp_path_factory):
         always=True,
         parameters={
             "RV32M": 2,
+            "ShareMac": request.param,
         },
         build_args=[
             "--public-flat-rw",
