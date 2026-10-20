@@ -128,7 +128,10 @@ _build_one() {
     fi
   fi
   echo "arch build $(basename "${f}") ${extra_inputs[*]:+(+ $(basename "${extra_inputs[0]}"))}→ $(basename "${BUILD_DIR}")/${sv_stem}.sv"
-  "${ARCH_BIN}" build -o "${BUILD_DIR}/${sv_stem}.sv" "${f}" "${extra_inputs[@]}"
+  # ${a[@]+"${a[@]}"}: expands to nothing for an empty array. Plain
+  # "${a[@]}" on an empty array is an unbound-variable error under `set -u`
+  # in bash < 4.4, which is macOS's /bin/bash 3.2.
+  "${ARCH_BIN}" build -o "${BUILD_DIR}/${sv_stem}.sv" "${f}" ${extra_inputs[@]+"${extra_inputs[@]}"}
 
   # When a consumer `use`s a package via .archi auto-resolution,
   # `arch build -o` inlines the package contents into the consumer's
@@ -256,5 +259,5 @@ while [[ ${#remaining[@]} -gt 0 && $pass -lt $max_passes ]]; do
     done
     exit 1
   fi
-  remaining=("${next_remaining[@]}")
+  remaining=(${next_remaining[@]+"${next_remaining[@]}"})  # empty after the last pass
 done
