@@ -35,6 +35,8 @@ module ibex_ex_block
   /// ternary conditions (pitfall #12 — the width-bracket syntax is
   /// `param NAME[hi:lo]: const = value`).
   param BranchTargetALU[0:0]: const = 1'b0;
+  /// `MultdivShareMac`: passed to `multdiv_i`'s `ShareMac` (see ibex_top).
+  param MultdivShareMac[0:0]: const = 1'b1;
 
   // ── Clock & reset ────────────────────────────────────────────────────
   port clk_i:  in Clock<SysDomain>;
@@ -146,6 +148,7 @@ module ibex_ex_block
   /// (spec §"Sub-module instantiation §multdiv_i: IbexMultdivFast")
   inst multdiv_i: ibex_multdiv_fast
     param RV32M = 2;
+    param ShareMac = MultdivShareMac;
     clk_i              <- clk_i;
     rst_ni             <- rst_ni;
     mult_en_i          <- mult_en_i;

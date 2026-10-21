@@ -7,7 +7,9 @@
 # Env: NEXTPNR (default ~/github/nextpnr/build/nextpnr-ecp5), YOSYS (default yosys), FREQ (50 MHz), SEEDS (1 2 3),
 #      REPORT_DIR (default flow/out/reports),
 #      ECP5_PLACER_TIMINGWEIGHT (nextpnr --placer-heap-timingweight; unset by
-#      default, or the lane's flow/recipes/<lane>.env), FLOW_RECIPE (none =
+#      default, or the lane's flow/recipes/<lane>.env), ECP5_MULTDIV_SHARE_MAC
+#      (ibex_top MultdivShareMac override, Arch lane only; unset = RTL default
+#      1, or the lane's recipe), FLOW_RECIPE (none =
 #      plain flow), and for experiments ECP5_SYNTH_OPTS (extra synth_ecp5
 #      flags), NEXTPNR_OPTS (extra nextpnr-ecp5 flags), ECP5_TAG (outputs go to
 #      flow/out/<lane>/ecp5_<tag>); all empty by default.
@@ -37,6 +39,10 @@ for lane in "${lanes[@]}"; do
   recipe_describe "$lane" ECP5_PLACER_TIMINGWEIGHT=nextpnr-default > "$out/recipe.txt"
   tw="$(recipe_value "$lane" ECP5_PLACER_TIMINGWEIGHT "")"
   PNR_RECIPE_OPTS="${tw:+--placer-heap-timingweight $tw}"
+  # Arch-lane-only ibex_top param (upstream has no such param); empty = keep
+  # the RTL default (shared multiplier).
+  smac="$(recipe_value "$lane" ECP5_MULTDIV_SHARE_MAC "")"
+  [ -n "$smac" ] && recipe_describe "$lane" ECP5_MULTDIV_SHARE_MAC >> "$out/recipe.txt"
   [ -f "$in" ] || { echo "[$lane] missing $in (run flow/sv2v.sh)"; rc=1; continue; }
   if [ "$stage" = synth ] || [ "$stage" = all ]; then
     # Same parameter overrides as the sky130 flow (the port's configuration).
@@ -44,7 +50,7 @@ for lane in "${lanes[@]}"; do
     cat > "$out/synth.ys" <<YS
 read_verilog -sv $in
 read_verilog -sv -overwrite $REPO_ROOT/flow/ecp5_prim_clock_gating.v
-hierarchy -check -top ibex_top -chparam ICache 1 -chparam PMPEnable 1 -chparam PMPNumRegions 4 -chparam PMPGranularity 0 -chparam DbgTriggerEn 1 -chparam DbgHwBreakNum 1 -chparam RV32E 0 -chparam RV32M 2 -chparam RV32B 0 -chparam RV32ZC 3 -chparam RegFile 0 -chparam BranchTargetALU 0 -chparam WritebackStage 0 -chparam BranchPredictor 0 -chparam SecureIbex 0 -chparam ICacheECC 0 -chparam ICacheScramble 0 -chparam MHPMCounterNum 0 -chparam MHPMCounterWidth 40 -chparam MemECC 0 -chparam DmBaseAddr 0 -chparam DmAddrMask 3 -chparam DmHaltAddr 0 -chparam DmExceptionAddr 0
+hierarchy -check -top ibex_top -chparam ICache 1 -chparam PMPEnable 1 -chparam PMPNumRegions 4 -chparam PMPGranularity 0 -chparam DbgTriggerEn 1 -chparam DbgHwBreakNum 1 -chparam RV32E 0 -chparam RV32M 2 -chparam RV32B 0 -chparam RV32ZC 3 -chparam RegFile 0 -chparam BranchTargetALU 0 -chparam WritebackStage 0 -chparam BranchPredictor 0 -chparam SecureIbex 0 -chparam ICacheECC 0 -chparam ICacheScramble 0 -chparam MHPMCounterNum 0 -chparam MHPMCounterWidth 40 -chparam MemECC 0 -chparam DmBaseAddr 0 -chparam DmAddrMask 3 -chparam DmHaltAddr 0 -chparam DmExceptionAddr 0${smac:+ -chparam MultdivShareMac $smac}
 synth_ecp5 -top ibex_top${ECP5_SYNTH_OPTS:+ $ECP5_SYNTH_OPTS} -json $out/ibex_top.json
 tee -o $out/synth.stat stat
 YS
