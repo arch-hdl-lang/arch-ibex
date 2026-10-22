@@ -70,6 +70,13 @@ register update identical to the old select.
 | `noopen` (mutant: the select ignores the open gating) | **FAIL** (BMC from reset) |
 | `nogate` (mutant: lifecycle index not 0 when no FB covers) | **FAIL** (BMC from reset) |
 
+Re-run 2026-10-20 after the output stage's recent-line replay buffer
+(`recent_valid_q` / `recent_addr_q` / `recent_line_q`) was removed: all seven
+tasks give the same verdicts as the table (the three proofs PASS, all four
+mutants FAIL, all three covers reached by step 6). The harness never
+referenced the buffer; it only fed `raw_valid` / `raw_line` and never the FB
+select or `raw_fb_idx`, so the claim and the EQUIV obligations are unchanged.
+
 Before #17 the induction could not close: its counterexample was a bus
 response routed to an idle fill buffer, which led to finding the
 single-register response tracker bug fixed there.
