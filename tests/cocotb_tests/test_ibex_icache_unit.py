@@ -932,6 +932,106 @@ async def test_r_fb_1_pool_full_stalls_lookup(dut):
     )
 
 
+async def _cross_line_32b_stream(dut, *, latency: int, beat1_late: int = 0):
+    """Branch (cold miss) to a 32-bit instruction at line offset 6, whose
+    upper half is the first halfword of the NEXT line, followed by
+    compressed instructions. Bus: same-cycle gnt, rvalid `latency` cycles
+    after the grant (SoC-like for latency=1). Returns the delivered PCs.
+    """
+    await _start_clock(dut)
+    await _reset(dut)
+    await _wait_until_idle(dut)
+    a = 0x0060_0000
+
+    def mem(addr):
+        off = addr - a
+        if off == 4:
+            return 0x0013_0001        # c.nop @A+4, low half of 32-bit @A+6
+        if off == 8:
+            return 0x0001_0000        # high half of the 32-bit, c.nop @A+10
+        return 0x0001_0001            # c.nop pairs
+
+    async def bus():
+        pending = []                  # (ready_cycle, addr)
+        cyc = 0
+        while True:
+            await ReadOnly()
+            req = int(dut.instr_req_o.value) == 1
+            addr = int(dut.instr_addr_o.value) & MASK32
+            await RisingEdge(dut.clk_i)
+            cyc += 1
+            # drive outputs for this new cycle
+            dut.instr_rvalid_i.value = 0
+            if pending and pending[0][0] <= cyc:
+                _, ra = pending.pop(0)
+                dut.instr_rvalid_i.value = 1
+                dut.instr_rdata_i.value = mem(ra)
+            if req and int(dut.instr_gnt_i.value) == 1:
+                pending.append((cyc + latency - 1 + (beat1_late if addr & 4 else 0), addr))
+            dut.instr_gnt_i.value = 1  # same-cycle grant for any request
+    dut.instr_gnt_i.value = 1
+    cocotb.start_soon(bus())
+    dut.ready_i.value = 1
+    await _branch(dut, a + 6)
+    delivered = []
+    for _ in range(80):
+        await ReadOnly()
+        if int(dut.valid_o.value) == 1 and int(dut.ready_i.value) == 1:
+            delivered.append(int(dut.addr_o.value) & MASK32)
+        await RisingEdge(dut.clk_i)
+    return a, delivered
+
+
+@cocotb.test()
+async def test_cross_line_32b_then_next_line_soc_timing(dut):
+    """Main-bug probe: after a 32-bit instruction straddling a line boundary
+    (via the skid), the rest of the next line must still be delivered."""
+    a, d = await _cross_line_32b_stream(dut, latency=1)
+    assert d[:4] == [a + 6, a + 10, a + 12, a + 14], [hex(x) for x in d[:8]]
+
+
+@cocotb.test()
+async def test_cross_line_32b_then_next_line_slow_bus(dut):
+    """Same, bus latency 3."""
+    a, d = await _cross_line_32b_stream(dut, latency=3)
+    assert d[:4] == [a + 6, a + 10, a + 12, a + 14], [hex(x) for x in d[:8]]
+
+
+@cocotb.test()
+async def test_intra_line_32b_beat1_late(dut):
+    """Main-bug probe: 32-bit instruction at line offset 2 whose beat 1
+    arrives late must combine beat 0's upper half with beat 1's lower half."""
+    await _start_clock(dut)
+    await _reset(dut)
+    await _wait_until_idle(dut)
+    a = 0x0070_0000
+    w0, w1 = 0x0013_0001, 0x0001_0000   # c.nop @A; 32-bit {0x0000,0x0013} @A+2
+    accepted = []
+
+    async def mon():
+        while True:
+            await ReadOnly()
+            if int(dut.valid_o.value) == 1 and int(dut.ready_i.value) == 1:
+                accepted.append((int(dut.addr_o.value) & MASK32,
+                                 int(dut.rdata_o.value) & MASK32))
+            await RisingEdge(dut.clk_i)
+    dut.req_i.value = 1
+    dut.ready_i.value = 1
+    await _branch(dut, a + 2)
+    cocotb.start_soon(mon())
+    assert await _bus_grant_and_beat(dut, rdata=w0, max_wait=8)
+    for _ in range(3):                    # beat 1 late
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+    assert await _bus_grant_and_beat(dut, rdata=w1, max_wait=8)
+    for _ in range(10):
+        await RisingEdge(dut.clk_i)
+    got = [d for (ad, d) in accepted if ad == a + 2]
+    assert got[:1] == [0x0000_0013], (
+        f"accepted at A+2: {[hex(x) for x in got]}, expected 0x00000013; "
+        f"all: {[(hex(x), hex(y)) for x, y in accepted]}")
+
+
 @cocotb.test()
 async def test_r_fb_2_each_grant_allocates_one_fb(dut):
     """R-FB-2: each granted lookup allocates exactly one FB. Externally
