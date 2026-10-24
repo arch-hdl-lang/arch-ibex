@@ -22,6 +22,9 @@ test through it, writes `tests/arch_tests/references/<isa>/<name>.signature`,
 and skips the comparison. Subsequent normal runs read those files.
 
 If you change `model_test.h` / link.ld / the macro layout, regenerate.
+Every generated or run signature must pass the vacuity guard (below), and
+`test_arch_test_reference_nonvacuous` checks the committed references
+without simulating, so an empty-body build cannot pass again.
 The references are content-addressed by the test source + env, so a
 .gitignored cache wouldn't be reproducible across machines — we
 commit them.
@@ -110,6 +113,63 @@ def _load_skip_reasons() -> None:
         SKIP_REASONS[key.strip()] = reason.strip()
 
 _load_skip_reasons()
+
+
+# Known failures, tracked as strict xfails (an unexpected pass fails the
+# run, so a fixed test cannot stay silently marked). Same format as
+# skipped.txt, in tests/arch_tests/xfail.txt; each reason points at a repro.
+XFAIL_REASONS: dict[str, str] = {}
+
+def _load_xfail_reasons() -> None:
+    xf = ARCH_TESTS_DIR / "xfail.txt"
+    if not xf.is_file():
+        return
+    for raw in xf.read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or ":" not in line:
+            continue
+        key, _, reason = line.partition(":")
+        XFAIL_REASONS[key.strip()] = reason.strip()
+
+_load_xfail_reasons()
+
+
+# ── vacuity guard ────────────────────────────────────────────────────
+# Until 2026-10 every test here assembled to its init/halt stub (the
+# bodies sit under `#ifdef TEST_CASE_1`, which nothing defined), so each
+# signature was its initial fill and the references were ~99% 0xdeadbeef;
+# all 74 "passed" against references generated the same way. The guard
+# checks the property that failure broke: a test must overwrite its
+# signature. The framework lays the region out as
+#   canary, <main signature: one 0xdeadbeef slot per stored result>,
+#   [canary, trap signature, canary], canary, zero padding
+# and the main signature has exactly as many slots as the body stores, so
+# a test whose body ran leaves almost none of them at the fill value (the
+# worst real case is sb-align-01, 1 of 70: a byte store into a fill word).
+SIG_CANARY = "6f5ca309"
+SIG_FILL = "deadbeef"
+MAX_UNTOUCHED_FRACTION = 0.10
+
+
+def _main_signature(words: list[str]) -> list[str]:
+    """The words between the leading canary and the next one."""
+    if not words or words[0] != SIG_CANARY or SIG_CANARY not in words[1:]:
+        raise AssertionError(
+            f"signature does not start with the framework canary "
+            f"{SIG_CANARY} followed by a closing canary: head {words[:4]!r}"
+        )
+    return words[1:words.index(SIG_CANARY, 1)]
+
+
+def _assert_signature_nonvacuous(words: list[str], what: str) -> None:
+    body = _main_signature(words)
+    untouched = sum(w == SIG_FILL for w in body)
+    assert body and untouched <= MAX_UNTOUCHED_FRACTION * len(body), (
+        f"{what}: {untouched} of {len(body)} signature slots still hold the "
+        f"fill pattern {SIG_FILL} -- the test body most likely did not run "
+        f"(was it assembled? see the RVTEST_CASE defines in "
+        f"tests/arch_tests/Makefile)"
+    )
 
 
 # ── fixtures ─────────────────────────────────────────────────────────
@@ -379,6 +439,7 @@ def _run_one(
     assert failures == 0, (
         f"cocotb failed for {test}; see {results_xml}"
     )
+    _assert_signature_nonvacuous(_read_signature(out_signature), f"{test} run")
 
 
 # ── reference-generation pass ───────────────────────────────────────
@@ -389,9 +450,16 @@ def test_arch_test_generate_reference(
     arch_tests_ref_runner,
     built_arch_tests: dict[str, dict[str, Path]],
     tmp_path: Path,
+    request: pytest.FixtureRequest,
 ) -> None:
     """Run on UPSTREAM Ibex; write the reference signature into the repo."""
-    _run_one(test, arch_tests_ref_runner, built_arch_tests, test.ref_path, tmp_path)
+    if str(test) in XFAIL_REASONS:
+        request.node.add_marker(pytest.mark.xfail(reason=XFAIL_REASONS[str(test)], strict=True))
+    sig_out = tmp_path / f"{test.isa}_{test.name}.signature"
+    # _run_one applies the vacuity guard before anything reaches the repo.
+    _run_one(test, arch_tests_ref_runner, built_arch_tests, sig_out, tmp_path)
+    test.ref_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(sig_out, test.ref_path)
 
 
 # ── DUT pass: run on swap, compare to reference ─────────────────────
@@ -402,20 +470,29 @@ def test_arch_test_on_swap(
     arch_tests_dut_runner,
     built_arch_tests: dict[str, dict[str, Path]],
     tmp_path: Path,
+    request: pytest.FixtureRequest,
 ) -> None:
     """Run on our IbexCore/IbexTop swap; signature must match the reference."""
     skip_key = str(test)
     if skip_key in SKIP_REASONS:
         pytest.skip(SKIP_REASONS[skip_key])
+    xfail = skip_key in XFAIL_REASONS
+    if xfail:
+        request.node.add_marker(pytest.mark.xfail(reason=XFAIL_REASONS[skip_key], strict=True))
 
-    if not test.ref_path.is_file():
-        pytest.skip(
+    if not test.ref_path.is_file() and not xfail:
+        pytest.fail(
             f"no reference at {test.ref_path}; run with "
-            f"ARCH_TESTS_GENERATE_REF=1 first to populate it"
+            f"ARCH_TESTS_GENERATE_REF=1 to generate it on upstream Ibex"
         )
 
     sig_out = tmp_path / f"{test.isa}_{test.name}.signature"
     _run_one(test, arch_tests_dut_runner, built_arch_tests, sig_out, tmp_path)
+    if not test.ref_path.is_file():
+        # A known failure with no reference (it cannot run on upstream Ibex
+        # either) that now completes with a real signature: XPASS, which the
+        # strict xfail turns into a failure asking for a reference.
+        return
 
     # Strict word-for-word comparison.
     actual   = _read_signature(sig_out)
@@ -427,3 +504,20 @@ def test_arch_test_on_swap(
         f"{next((i for i, (a, e) in enumerate(zip(actual, expected)) if a != e), '?')}; "
         f"actual head: {actual[:4]!r}; expected head: {expected[:4]!r}"
     )
+
+
+# ── static guard on the committed references (no simulation) ───────
+@pytest.mark.parametrize("test", ALL_TESTS, ids=str)
+def test_arch_test_reference_nonvacuous(test: ArchTest) -> None:
+    """Every test has a committed reference whose signature was actually
+    written (see the vacuity guard above), unless it is a tracked xfail
+    or skip."""
+    key = str(test)
+    if not test.ref_path.is_file():
+        assert key in XFAIL_REASONS or key in SKIP_REASONS, (
+            f"no reference at {test.ref_path}; generate it with "
+            f"ARCH_TESTS_GENERATE_REF=1, or list the test in "
+            f"tests/arch_tests/xfail.txt with a reason"
+        )
+        pytest.skip(f"no reference: {XFAIL_REASONS.get(key) or SKIP_REASONS.get(key)}")
+    _assert_signature_nonvacuous(_read_signature(test.ref_path), f"reference {test.ref_path.name}")
