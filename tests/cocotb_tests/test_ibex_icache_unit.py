@@ -1093,6 +1093,85 @@ async def test_skid_bridge_err_cross_line(dut):
     assert got and got[0][2:] == (1, 1), _fmt(acc)
 
 
+async def _ic1_false_hit_stream(dut, *, inval: bool, enable: int):
+    """Branch to line B while the RAM read data shows a valid tag for B
+    with another line's data X. The lookup is issued during an
+    invalidation walk (`inval`) or with the cache disabled (`enable=0`),
+    so it must not count as a hit: B must come from the bus (Y), never X.
+    Returns the accepted (addr, rdata) pairs at B.
+    """
+    await _start_clock(dut)
+    await _reset(dut)
+    await _wait_until_idle(dut)
+    b = 0x0040_0100
+    x_line = 0xBAD0_BAD1_BAD2_BAD3
+    y_beats = {b: 0x0000_0013, b + 4: 0x0000_0093}
+    dut.icache_enable_i.value = enable
+    if inval:
+        dut.icache_inval_i.value = 1
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+        dut.icache_inval_i.value = 0
+        for _ in range(4):            # well inside the 256-cycle walk
+            await RisingEdge(dut.clk_i)
+            await _settle(dut)
+        assert int(dut.busy_o.value) == 1, "invalidation walk not running"
+    # Stale RAM read data: a valid way-0 tag for B, line X.
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 0, _tag_word(b, valid=1))
+    _set_unpacked_vec(dut.ic_data_rdata_i, 0, x_line)
+
+    async def bus():
+        pending = []
+        while True:
+            await ReadOnly()
+            req = int(dut.instr_req_o.value) == 1
+            addr = int(dut.instr_addr_o.value) & MASK32
+            await RisingEdge(dut.clk_i)
+            dut.instr_rvalid_i.value = 0
+            if pending:
+                ra = pending.pop(0)
+                dut.instr_rvalid_i.value = 1
+                dut.instr_rdata_i.value = y_beats.get(ra, 0x0000_0013)
+            if req:
+                pending.append(addr)
+            dut.instr_gnt_i.value = 1
+    dut.instr_gnt_i.value = 1
+    cocotb.start_soon(bus())
+    dut.ready_i.value = 1
+    await _branch(dut, b)
+    accepted = []
+    for _ in range(20):
+        await ReadOnly()
+        if int(dut.valid_o.value) == 1:
+            accepted.append((int(dut.addr_o.value) & MASK32,
+                             int(dut.rdata_o.value) & MASK32))
+        await RisingEdge(dut.clk_i)
+    return b, accepted
+
+
+@cocotb.test()
+async def test_ic1_hit_not_qualified_during_inval_walk(dut):
+    """A lookup issued during the invalidation walk must not produce a hit
+    (upstream lookup_actual_ic0): the RAM port belongs to the walk, so
+    the IC1 read data is stale and must not be delivered."""
+    b, acc = await _ic1_false_hit_stream(dut, inval=True, enable=1)
+    got = [d for a, d in acc if a == b]
+    assert got and got[0] == 0x0000_0013, (
+        f"B delivered {[hex(d) for d in got]}, expected bus data 0x13; "
+        f"all: {[(hex(a), hex(d)) for a, d in acc]}")
+
+
+@cocotb.test()
+async def test_ic1_hit_not_qualified_while_disabled(dut):
+    """With icache_enable_i=0 the cache is pass-through: a lookup must not
+    hit even when the RAM shows a valid matching tag."""
+    b, acc = await _ic1_false_hit_stream(dut, inval=False, enable=0)
+    got = [d for a, d in acc if a == b]
+    assert got and got[0] == 0x0000_0013, (
+        f"B delivered {[hex(d) for d in got]}, expected bus data 0x13; "
+        f"all: {[(hex(a), hex(d)) for a, d in acc]}")
+
+
 @cocotb.test()
 async def test_r_fb_2_each_grant_allocates_one_fb(dut):
     """R-FB-2: each granted lookup allocates exactly one FB. Externally
