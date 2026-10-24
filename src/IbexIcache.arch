@@ -449,9 +449,21 @@ module ibex_icache
     end if
   end seq
 
+  // A granted lookup only counts as a cache lookup while the cache is
+  // enabled and no invalidation is in progress (upstream
+  // `lookup_actual_ic0`, ibex_icache.sv:266). During the walk the RAM
+  // port belongs to the tag writes, so the IC1 read data is a stale
+  // earlier read; while disabled the cache is pass-through. Either way
+  // the IC1 tag compare must not count as a hit: `lookup_valid_ic1_q`
+  // gates every hit consumer (FB hit capture, output-stage IC1 source
+  // and its hold line). FB allocation still follows `lookup_grant`, so
+  // the line is fetched from the bus.
+  let lookup_actual_ic0: Bool =
+    lookup_grant and icache_enable_i and (not inval_block_cache);
+
   // IC1 capture (R-LK-1).
   seq on clk_i rising
-    lookup_valid_ic1_q       <= lookup_grant;
+    lookup_valid_ic1_q       <= lookup_actual_ic0;
     lookup_addr_ic1_q        <= lookup_addr_ic0;
     lookup_branch_ic1_q      <= lookup_grant and branch_i;
     lookup_cache_alloc_ic1_q <= lookup_grant and alloc_cache_flag_ic0;
