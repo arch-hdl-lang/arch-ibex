@@ -237,10 +237,16 @@ module IbexIcacheOutputStage
     skid_complete_instr ? false :
     (skid_bridge_valid ? skid_bridge_err_plus2 : normal_err_plus2);
 
+  // The source FB is done when the accept moves addr_out_q off its line.
+  // Only a non-skid accept at beat 1 does: at offset 6 any accept (a
+  // 32-bit there goes through the skid instead), at offset 4 only a
+  // 32-bit instruction. A skid accept leaves addr_out_q on the source
+  // line: the bridge consumes only the low half of the source word and
+  // addr_out_q lands on its upper half. The skid halfword's own line was
+  // already released at skid load (skid_load_done).
   let source_done_on_accept: Bool =
-    raw_is_fb and (
-      out_beat1
-      or (normal_valid and normal_crosses_next and raw_has_next_word));
+    raw_is_fb and (not skid_valid_q) and out_beat1
+    and (out_half1 or (not lower_is_compressed_or_err));
   let skid_load_done: Bool =
     need_skid_load and raw_is_fb and out_beat1;
   let fb0_behind_done: Bool =
