@@ -2351,7 +2351,8 @@ def _snapshot(dut) -> dict:
         "branch_i":          int(dut.branch_i.value),
         "req_i":             int(dut.req_i.value),
         "addr_out_q":        int(out.addr_out_q.value) & MASK32,
-        "hold_valid_q":      int(out.hold_valid_q.value),
+        "hold_valid_q":      (int(out.hold_valid_q.value)
+                              if hasattr(out, "hold_valid_q") else 0),
         "prefetch_addr_q":   int(dut.prefetch_addr_q.value) & MASK32,
         "lookup_addr_ic1_q": int(dut.lookup_addr_ic1_q.value) & MASK32,
         "coalesce_ic0":      int(dut.coalesce_ic0.value),
