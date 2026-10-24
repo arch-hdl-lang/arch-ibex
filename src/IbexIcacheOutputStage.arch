@@ -21,8 +21,12 @@ module IbexIcacheOutputStage
   port any_hit_ic1:        in Bool;
   port hit_data_ic1:       in UInt<64>;
 
-  // Live FB candidates. Parent overlays same-cycle bus rvalid data into
-  // fb*_line_live and fb*_beats_live before driving these ports.
+  // FB candidates. fb*_line is the registered fill_data_q image; the
+  // same-cycle bus beat is applied once, after the select (fb*_we_beat0/1 +
+  // bus_rdata). The parent overlays same-cycle beats and IC1 hits into
+  // fb*_beats_live / fb*_wants_out. An FB capturing an IC1 hit gets no data
+  // overlay: whenever it is the source, ic1_covers is also true and IC1
+  // data has priority in raw_line.
   port fb0_wants_out:  in Bool;
   port fb1_wants_out:  in Bool;
   port fb2_wants_out:  in Bool;
@@ -35,6 +39,15 @@ module IbexIcacheOutputStage
   port fb1_line:       in UInt<64>;
   port fb2_line:       in UInt<64>;
   port fb3_line:       in UInt<64>;
+  port fb0_we_beat0:   in Bool;
+  port fb1_we_beat0:   in Bool;
+  port fb2_we_beat0:   in Bool;
+  port fb3_we_beat0:   in Bool;
+  port fb0_we_beat1:   in Bool;
+  port fb1_we_beat1:   in Bool;
+  port fb2_we_beat1:   in Bool;
+  port fb3_we_beat1:   in Bool;
+  port bus_rdata:      in UInt<32>;
   port fb0_err_beat0:  in Bool;
   port fb1_err_beat0:  in Bool;
   port fb2_err_beat0:  in Bool;
@@ -145,10 +158,22 @@ module IbexIcacheOutputStage
     fb1_sel ? 2'd1 : (fb2_sel ? 2'd2 : (fb3_sel ? 2'd3 : 2'd0));
   let fb_any: Bool = fb0_covers or fb1_covers or fb2_covers or fb3_covers;
 
-  let fb_sel_line: UInt<64> =
+  let fb_sel_line_q: UInt<64> =
     (fb_sel_idx == 2'd0) ? fb0_line :
     ((fb_sel_idx == 2'd1) ? fb1_line :
     ((fb_sel_idx == 2'd2) ? fb2_line : fb3_line));
+  let fb_sel_we0: Bool =
+    (fb_sel_idx == 2'd0) ? fb0_we_beat0 :
+    ((fb_sel_idx == 2'd1) ? fb1_we_beat0 :
+    ((fb_sel_idx == 2'd2) ? fb2_we_beat0 : fb3_we_beat0));
+  let fb_sel_we1: Bool =
+    (fb_sel_idx == 2'd0) ? fb0_we_beat1 :
+    ((fb_sel_idx == 2'd1) ? fb1_we_beat1 :
+    ((fb_sel_idx == 2'd2) ? fb2_we_beat1 : fb3_we_beat1));
+  // Same-cycle bus beat applied once, after the select.
+  let fb_sel_line: UInt<64> =
+    {(fb_sel_we1 ? bus_rdata : fb_sel_line_q[63:32]),
+     (fb_sel_we0 ? bus_rdata : fb_sel_line_q[31:0])};
   let fb_sel_addr: UInt<32> =
     (fb_sel_idx == 2'd0) ? fb0_addr :
     ((fb_sel_idx == 2'd1) ? fb1_addr :
