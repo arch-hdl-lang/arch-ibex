@@ -22,6 +22,23 @@
 #ifndef _COMPLIANCE_MODEL_H
 #define _COMPLIANCE_MODEL_H
 
+// `la x0, <sym>`: jalr-01's TEST_JALR_OP initialises rd with LA(rd, 5b),
+// and one case has rd = x0. Current binutils reject `la` with x0 as the
+// destination ("illegal operands"); older ones assembled it as
+// auipc x0 / addi x0 (both no-ops). This assembler macro restores that for
+// x0 only and is otherwise plain `lla`, which is what `la` assembles to
+// without `.option pic` (every test here is non-PIC). Assembled images of
+// all other tests are byte-identical with and without the macro.
+.macro la rd:req, sym:req
+.ifc \rd,x0
+.Lmodel_la_x0\@:
+  auipc x0, %pcrel_hi(\sym)
+  addi  x0, x0, %pcrel_lo(.Lmodel_la_x0\@)
+.else
+  lla   \rd, \sym
+.endif
+.endm
+
 // Aligned-to-word signature region.
 #define RVMODEL_DATA_BEGIN                                              \
   .align 4; .global begin_signature; begin_signature:

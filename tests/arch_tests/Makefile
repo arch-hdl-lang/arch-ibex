@@ -22,7 +22,23 @@ OBJCOPY   := $(CROSS)objcopy
 OBJDUMP   := $(CROSS)objdump
 NM        := $(CROSS)nm
 
-MARCH     := rv32imc_zicsr
+# Each suite is assembled for its own ISA, as the framework does (riscof
+# builds a test with the ISA it declares): rv32i_m/I as RV32I, M as RV32IM,
+# C as RV32IC. That matters beyond legality: with C enabled the assembler
+# compresses the I/M tests' code, which moves the PC-relative values that
+# jal-01 / jalr-01 store into their signatures, so they would no longer
+# match the suite's reference outputs. Zicsr and Zifencei are added for the
+# framework's trap setup (cebreak-01's handler uses fence.i); they change no
+# encoding. MARCH is only used for linking.
+MARCH     := rv32imc_zicsr_zifencei
+MARCH_I   := rv32i_zicsr_zifencei
+MARCH_M   := rv32im_zicsr_zifencei
+MARCH_C   := rv32ic_zicsr_zifencei
+# Exception: jal-01 pads its jumps with `nop`s and is about 1.7 MB as RV32I,
+# more than the SoC's 1 MB RAM. Assembled with C (compressed nops) it fits,
+# but its PC-relative signature values then differ from the suite's RV32I
+# reference outputs, so it is checked against upstream Ibex only.
+JAL01_MARCH := rv32ic_zicsr_zifencei
 MABI      := ilp32
 
 # Locations.
@@ -35,9 +51,26 @@ ARCH_ENV_DIR  := $(ARCH_TEST_SRC)/env
 # arch_test.h itself lives in the arch-tests env dir.
 INCLUDES  := -I$(ENV_DIR) -I$(ARCH_ENV_DIR)
 
-# `-march` includes Zicsr because some tests use csr* on misa/etc.
 # `--no-relax` keeps `la` from being shrunk via gp-relative addressing.
-ASFLAGS   := -march=$(MARCH) -mabi=$(MABI) -c $(INCLUDES)
+ASFLAGS   := -mabi=$(MABI) -c $(INCLUDES)
+# Test-case defines. Every test body sits under `#ifdef TEST_CASE_1` (and
+# cebreak-01's trap handler under `rvtest_mtrap_routine`); the framework
+# (riscof) turns each `def NAME=VALUE` in the RVTEST_CASE strings of a test
+# whose `check ISA` conditions match the target into -DNAME=VALUE. Without
+# them every test assembles to the init/halt stub and passes vacuously.
+# All RVTEST_CASE conditions in rv32i_m/{I,M,C} match this target
+# (RV32IMC + Zicsr): `.*32.*` with `.*I.*`, `.*I.*M.*`, `.*I.*Zmmul.*`,
+# `.*I.*C.*`, `.*RV32.*I.*C.*` or `.*I.*Zicsr.*.C*`, so every `def` applies.
+case_defs = $(shell grep -o 'RVTEST_CASE.*' $(1) | grep -o 'def [A-Za-z_][A-Za-z0-9_]*=[A-Za-z0-9_]*' | sed 's/^def /-D/' | sort -u)
+# $(call assemble,<march>): assemble one test with its defines. A test
+# with none is refused (it would assemble to an empty body).
+define assemble
+@defs="$(call case_defs,$<)"; \
+	  if [ -z "$$defs" ]; then echo "error: no RVTEST_CASE defines in $<" >&2; exit 1; fi; \
+	  echo "$(AS) -march=$(1) $(ASFLAGS) $$defs -o $@ $<"; \
+	  $(AS) -march=$(1) $(ASFLAGS) $$defs -o $@ $<
+endef
+
 CFLAGS    := -march=$(MARCH) -mabi=$(MABI) -nostdlib -nostartfiles \
              -ffreestanding -Os -g \
              -Wl,-T,$(ENV_DIR)/link.ld -Wl,--no-relax
@@ -73,13 +106,15 @@ $(BUILD)/I $(BUILD)/M $(BUILD)/C:
 # because make's pattern matching only takes one stem.
 
 $(BUILD)/I/%.o: $(ARCH_TEST_SRC)/rv32i_m/I/src/%.S | $(BUILD)/I
-	$(AS) $(ASFLAGS) -o $@ $<
+	$(call assemble,$(MARCH_I))
+
+$(BUILD)/I/jal-01.o: MARCH_I := $(JAL01_MARCH)
 
 $(BUILD)/M/%.o: $(ARCH_TEST_SRC)/rv32i_m/M/src/%.S | $(BUILD)/M
-	$(AS) $(ASFLAGS) -o $@ $<
+	$(call assemble,$(MARCH_M))
 
 $(BUILD)/C/%.o: $(ARCH_TEST_SRC)/rv32i_m/C/src/%.S | $(BUILD)/C
-	$(AS) $(ASFLAGS) -o $@ $<
+	$(call assemble,$(MARCH_C))
 
 # ELF / bin / vmem / disassembly / symbols
 $(BUILD)/%.elf: $(BUILD)/%.o $(ENV_DIR)/link.ld
