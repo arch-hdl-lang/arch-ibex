@@ -137,8 +137,8 @@ R-INV-1. Out of reset the cache MUST advance through
 
 R-INV-2. While the FSM is not in `IDLE` (`ibex_icache.sv:1271`), the
   cache MUST hold `inval_block_cache = 1` (`ibex_icache.sv:1217, 1264`)
-  so lookups MAY proceed but MUST NOT allocate a way (`lookup_actual_ic0
-  = 0`, `ibex_icache.sv:266`).
+  so lookups MAY proceed but MUST NOT allocate a way and MUST NOT hit
+  (`lookup_actual_ic0 = 0`, `ibex_icache.sv:266`; see R-LK-2).
 
 R-INV-3. In `OUT_OF_RESET`, when `ic_scr_key_valid_i = 0` the cache
   MUST assert `ic_scr_key_req_o = 1` (`ibex_icache.sv:1220-1227`);
@@ -196,7 +196,18 @@ R-LK-2. A lookup hits when any way's tag, equal-compared with
   `{1'b1, lookup_addr_ic1[ADDR_W-1:IC_INDEX_HI+1]}`, matches
   (`ibex_icache.sv:498-503`); on hit the IC1 way's data MUST be the
   source for the corresponding fill buffer's output stream
-  (`ibex_icache.sv:941, 1043`).
+  (`ibex_icache.sv:941, 1043`). Only a qualified lookup can hit:
+  upstream's IC1 valid is `lookup_valid_ic1 <= lookup_actual_ic0`, with
+  `lookup_actual_ic0 = lookup_grant_ic0 & icache_enable_i &
+  ~inval_block_cache` (`ibex_icache.sv:266, 469`), and every hit consumer
+  is gated by it (`fill_hit_ic1 = lookup_valid_ic1 & ...`,
+  `ibex_icache.sv:747`). A lookup granted while `icache_enable_i = 0` or
+  while `inval_block_cache = 1` MUST therefore NOT hit, whatever the IC1
+  tag compare returns. Its RAM read data (stale during the invalidation
+  walk, which owns the RAM port) MUST NOT reach a fill buffer, the output
+  stream, or any other output-data source. The lookup is served from the
+  bus like a miss; qualification only removes the hit and the allocation
+  (R-LK-5), not the fill buffer itself (R-EN-2, R-INV-B).
 
 R-LK-3. On miss, the cache MUST select a victim way: the lowest-indexed
   invalid way if any way is invalid, otherwise the global round-robin
@@ -216,7 +227,8 @@ R-LK-4. While a fill buffer is live for line `L`, any subsequent lookup
 
 R-LK-5. A lookup MUST NOT cause a tag/data RAM write or allocate a way
   while `inval_block_cache = 1`, while `icache_enable_i = 0`, or while
-  an ECC-correct write is pending (`ibex_icache.sv:266, 678-683`).
+  an ECC-correct write is pending (`ibex_icache.sv:266, 678-683`). In
+  the first two cases it MUST NOT hit either (R-LK-2).
 
 ### R-FB — Fill buffer pool capacity and arbitration (`icache.rst:150-166`, `ibex_icache.sv:706-906`)
 
@@ -338,7 +350,9 @@ R-OUT-7. On a cache hit at IC1, the hit data MUST drive `valid_o` no
 
 R-EN-1. When `icache_enable_i = 0` AND no invalidation is in progress,
   the cache MUST operate in pass-through mode: lookups MUST NOT allocate
-  (`fill_cache_new = 0`, `ibex_icache.sv:678-683`); a fill buffer
+  (`fill_cache_new = 0`, `ibex_icache.sv:678-683`) and MUST NOT hit, even
+  on a line that is valid in the RAMs (R-LK-2), so every fetch comes from
+  the bus; a fill buffer
   allocated during disable MUST never write back to the RAMs even if
   `icache_enable_i` later goes high (`ibex_icache.sv:743-745`).
 
@@ -358,8 +372,8 @@ R-INV-A. A pulse on `icache_inval_i` MUST eventually cause every cache
   `ibex_icache.sv:1240-1255`).
 
 R-INV-B. While invalidation is in progress, lookups MAY be issued (they
-  go to the bus as in pass-through) but MUST NOT allocate
-  (`ibex_icache.sv:266, 678-683`). The doc note (`icache.rst:288-295`)
+  go to the bus as in pass-through) but MUST NOT allocate and MUST NOT
+  hit (`ibex_icache.sv:266, 678-683`; R-LK-2). The doc note (`icache.rst:288-295`)
   is reflected here as: "to be sure of executing newly fetched code, the
   caller must raise `icache_inval_i` for at least a cycle and then
   branch."
