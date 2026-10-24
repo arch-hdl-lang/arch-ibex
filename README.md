@@ -112,7 +112,10 @@ make clean      # rm -rf build/
 3. `pytest tests/test_cpu_programs.py` — 4 ISR programs (timer, sw, ext,
    multictx) all green
 4. `pytest tests/test_<module>_unit*.py` — per-module unit + regression
-5. After Phase C: `pytest tests/riscv_arch_tests/` — RV32IMC compliance
+5. `pytest tests/test_arch_tests.py` — riscv-arch-test RV32I/M/C suites on the
+   SoC, signatures compared with references from upstream Ibex
+   (`ARCH_TESTS_GENERATE_REF=1` regenerates them; known failures are listed
+   in `tests/arch_tests/xfail.txt`)
 
 `make test` runs items 2–4 in parallel via `pytest -n auto --dist=loadfile`.
 
