@@ -1075,28 +1075,14 @@ module ibex_icache
   let fb3_data_we_beat1:   Bool = data_we_beat1_v[3];
 
   // Live per-FB output candidates for the elastic output resolver.
-  // These overlay same-cycle IC1-hit and bus-rvalid data on top of the
-  // registered fill_data_q image so the output stage can bypass without
-  // waiting an extra clock for fill_data_q / beats_rcvd_q to update.
+  // (exp V3) The 64-bit line is NOT overlaid per FB any more: the output
+  // stage selects fill_data_q and applies the same-cycle bus beat once.
+  // beats/err/wants_out below still overlay same-cycle IC1-hit and
+  // bus-rvalid state so the output stage can bypass without waiting an
+  // extra clock for fill_data_q / beats_rcvd_q to update.
   // A beat returning to a STALE FB must not make it a candidate: its
   // line belongs to a stream the core has abandoned (R-OUT-2/6), and
   // with the cache disabled the data must be re-fetched, never replayed.
-  let fb0_line_live: UInt<64> =
-    fb0_data_we_ic1_hit ? ic1_hit_data_combo :
-    (fb0_data_we_beat0 ? {fill_data_q[0][63:32], instr_rdata_i} :
-    (fb0_data_we_beat1 ? {instr_rdata_i, fill_data_q[0][31:0]} : fill_data_q[0]));
-  let fb1_line_live: UInt<64> =
-    fb1_data_we_ic1_hit ? ic1_hit_data_combo :
-    (fb1_data_we_beat0 ? {fill_data_q[1][63:32], instr_rdata_i} :
-    (fb1_data_we_beat1 ? {instr_rdata_i, fill_data_q[1][31:0]} : fill_data_q[1]));
-  let fb2_line_live: UInt<64> =
-    fb2_data_we_ic1_hit ? ic1_hit_data_combo :
-    (fb2_data_we_beat0 ? {fill_data_q[2][63:32], instr_rdata_i} :
-    (fb2_data_we_beat1 ? {instr_rdata_i, fill_data_q[2][31:0]} : fill_data_q[2]));
-  let fb3_line_live: UInt<64> =
-    fb3_data_we_ic1_hit ? ic1_hit_data_combo :
-    (fb3_data_we_beat0 ? {fill_data_q[3][63:32], instr_rdata_i} :
-    (fb3_data_we_beat1 ? {instr_rdata_i, fill_data_q[3][31:0]} : fill_data_q[3]));
 
   let fb0_beats_live: UInt<2> = fb0_data_we_ic1_hit ? beats_total : (rvalid_v[0] ? ((fb0_beats_rcvd + 2'd1).trunc<2>()) : fb0_beats_rcvd);
   let fb1_beats_live: UInt<2> = fb1_data_we_ic1_hit ? beats_total : (rvalid_v[1] ? ((fb1_beats_rcvd + 2'd1).trunc<2>()) : fb1_beats_rcvd);
@@ -1221,10 +1207,19 @@ module ibex_icache
     fb1_addr           <- fb1_addr;
     fb2_addr           <- fb2_addr;
     fb3_addr           <- fb3_addr;
-    fb0_line           <- fb0_line_live;
-    fb1_line           <- fb1_line_live;
-    fb2_line           <- fb2_line_live;
-    fb3_line           <- fb3_line_live;
+    fb0_line           <- fill_data_q[0];
+    fb1_line           <- fill_data_q[1];
+    fb2_line           <- fill_data_q[2];
+    fb3_line           <- fill_data_q[3];
+    fb0_we_beat0       <- fb0_data_we_beat0;
+    fb1_we_beat0       <- fb1_data_we_beat0;
+    fb2_we_beat0       <- fb2_data_we_beat0;
+    fb3_we_beat0       <- fb3_data_we_beat0;
+    fb0_we_beat1       <- fb0_data_we_beat1;
+    fb1_we_beat1       <- fb1_data_we_beat1;
+    fb2_we_beat1       <- fb2_data_we_beat1;
+    fb3_we_beat1       <- fb3_data_we_beat1;
+    bus_rdata          <- instr_rdata_i;
     fb0_err_beat0      <- fb0_err_beat0_live;
     fb1_err_beat0      <- fb1_err_beat0_live;
     fb2_err_beat0      <- fb2_err_beat0_live;
