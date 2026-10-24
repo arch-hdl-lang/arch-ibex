@@ -28,4 +28,9 @@
 #   (an RVMODEL_BOOT change) still fails: in this framework revision
 #   (a3b7f0c2) the copied range, tramp_sz, ends 16 bytes before the common
 #   handler's exception branch target, so the trap lands on zeros.
+#
+#   This entry can only be removed once both causes are fixed: the mtvec
+#   readback in soc/ and the trampoline relocation. The second may need a
+#   newer riscv-arch-test framework or a model-side workaround. Until then
+#   the test hangs, so it stays an xfail even after the RTL is fixed.
 C/cebreak-01: hangs on DUT and upstream Ibex: hybrid CSR mtvec reads back unmasked (RTL, soc/ibex_cs_registers_hybrid.sv) and the framework's trampoline relocation is broken; repro in tests/arch_tests/xfail.txt
