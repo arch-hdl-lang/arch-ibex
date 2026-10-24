@@ -1005,6 +1005,55 @@ def _cross_line_mem(a: int):
 
 
 @cocotb.test()
+async def test_cross_line_32b_then_next_line_soc_timing(dut):
+    """After a 32-bit instruction straddling a line boundary (via the
+    skid), the rest of the next line must still be delivered. The skid
+    bridge accept must not mark the next line's FB done."""
+    a = 0x0060_0000
+    d = [x[0] for x in await _stream(dut, a + 6, _cross_line_mem(a), latency=1)]
+    assert d[:4] == [a + 6, a + 10, a + 12, a + 14], [hex(x) for x in d[:8]]
+
+
+@cocotb.test()
+async def test_cross_line_32b_then_next_line_slow_bus(dut):
+    """Same, bus latency 3."""
+    a = 0x0060_0000
+    d = [x[0] for x in await _stream(dut, a + 6, _cross_line_mem(a), latency=3)]
+    assert d[:4] == [a + 6, a + 10, a + 12, a + 14], [hex(x) for x in d[:8]]
+
+
+@cocotb.test()
+async def test_compressed_stream_from_miss_no_stall(dut):
+    """A stream of compressed instructions served from fill buffers must
+    keep flowing: the accept at line offset 4 stays on the line, so it
+    must not mark the FB done (that stranded the stream at offset 6)."""
+    a = 0x0060_0000
+    acc = await _stream(dut, a, lambda addr: 0x0001_0001)
+    want = [a + 2 * i for i in range(12)]
+    assert [x[0] for x in acc[:12]] == want, _fmt(acc, 12)
+    assert all(x[1] & 0xFFFF == 0x0001 for x in acc[:12]), _fmt(acc, 12)
+
+
+@cocotb.test()
+async def test_32b_at_offset2_from_miss_no_stall(dut):
+    """A 32-bit instruction at line offset 2 whose two halves are both in
+    the FB (no skid) moves the stream to offset 6 of the same line, so
+    its accept must not mark the FB done."""
+    a = 0x0060_0000
+    def mem(addr):
+        off = addr - a
+        if off == 0:
+            return 0x0013_0001        # c.nop @A, low half of 32-bit @A+2
+        if off == 4:
+            return 0x0001_0000        # high half @A+4, c.nop @A+6
+        return 0x0001_0001
+    acc = await _stream(dut, a, mem)
+    want = [a, a + 2, a + 6, a + 8, a + 10, a + 12, a + 14, a + 16]
+    assert [x[0] for x in acc[:8]] == want, _fmt(acc)
+    assert acc[1][1] == 0x0000_0013, _fmt(acc)
+
+
+@cocotb.test()
 async def test_intra_line_32b_beat1_late(dut):
     """32-bit instruction at line offset 2 whose beat 1 arrives late goes
     through the skid; the bridge must combine beat 0's upper half with
