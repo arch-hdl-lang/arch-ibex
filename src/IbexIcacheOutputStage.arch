@@ -212,8 +212,10 @@ module IbexIcacheOutputStage
 
   let skid_bridge_valid: Bool =
     skid_needs_next_line and raw_valid;
-  let skid_bridge_err: Bool = skid_err_q or raw_next_err;
-  let skid_bridge_err_plus2: Bool = (not skid_err_q) and raw_next_err;
+  // The bridge's upper half is the low half of the source word, so its
+  // fault is that word's error, the same word the data comes from.
+  let skid_bridge_err: Bool = skid_err_q or raw_curr_err;
+  let skid_bridge_err_plus2: Bool = (not skid_err_q) and raw_curr_err;
 
   let need_skid_load: Bool =
     (not hold_valid_q)

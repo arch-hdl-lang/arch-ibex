@@ -991,6 +991,19 @@ def _fmt(accepted, n: int = 10):
     return [(hex(a), hex(d), e, p) for a, d, e, p in accepted[:n]]
 
 
+def _cross_line_mem(a: int):
+    """32-bit instruction at A+6 straddling into the next line, compressed
+    elsewhere."""
+    def mem(addr):
+        off = addr - a
+        if off == 4:
+            return 0x0013_0001        # c.nop @A+4, low half of 32-bit @A+6
+        if off == 8:
+            return 0x0001_0000        # high half of the 32-bit, c.nop @A+10
+        return 0x0001_0001            # c.nop pairs
+    return mem
+
+
 @cocotb.test()
 async def test_intra_line_32b_beat1_late(dut):
     """32-bit instruction at line offset 2 whose beat 1 arrives late goes
@@ -1004,6 +1017,31 @@ async def test_intra_line_32b_beat1_late(dut):
     assert got[:1] == [0x0000_0013], (
         f"accepted at A+2: {[hex(x) for x in got]}, expected 0x00000013; "
         f"all: {_fmt(acc)}")
+
+
+@cocotb.test()
+async def test_skid_bridge_err_intra_line(dut):
+    """A 32-bit instruction at line offset 2 through the skid whose upper
+    half (line beat 1) faulted must report err_o with err_plus2_o
+    (R-OUT-5): the fault belongs to the word the upper half comes from."""
+    a = 0x0070_0000
+    def mem(addr):
+        return 0x0013_0001 if addr == a else 0x0001_0000
+    acc = await _stream(dut, a + 2, mem, beat1_late=3, cycles=30,
+                        err=lambda addr: addr == a + 4)
+    got = [x for x in acc if x[0] == a + 2]
+    assert got and got[0][1:] == (0x0000_0013, 1, 1), _fmt(acc)
+
+
+@cocotb.test()
+async def test_skid_bridge_err_cross_line(dut):
+    """A 32-bit instruction at line offset 6 whose upper half (the next
+    line's beat 0) faulted must report err_o with err_plus2_o."""
+    a = 0x0060_0000
+    acc = await _stream(dut, a + 6, _cross_line_mem(a),
+                        err=lambda addr: addr == a + 8)
+    got = [x for x in acc if x[0] == a + 6]
+    assert got and got[0][2:] == (1, 1), _fmt(acc)
 
 
 @cocotb.test()
