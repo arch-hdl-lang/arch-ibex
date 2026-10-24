@@ -174,10 +174,6 @@ module IbexIcacheOutputStage
   let fb_sel_line: UInt<64> =
     {(fb_sel_we1 ? bus_rdata : fb_sel_line_q[63:32]),
      (fb_sel_we0 ? bus_rdata : fb_sel_line_q[31:0])};
-  let fb_sel_addr: UInt<32> =
-    (fb_sel_idx == 2'd0) ? fb0_addr :
-    ((fb_sel_idx == 2'd1) ? fb1_addr :
-    ((fb_sel_idx == 2'd2) ? fb2_addr : fb3_addr));
   let fb_sel_beats: UInt<2> =
     (fb_sel_idx == 2'd0) ? fb0_beats_live :
     ((fb_sel_idx == 2'd1) ? fb1_beats_live :
@@ -201,7 +197,6 @@ module IbexIcacheOutputStage
   let raw_is_fb: Bool = fb_any;
   // lifecycle index: the covering FB, 0 when none covers (as before)
   let raw_fb_idx: UInt<2> = fb_any ? fb_sel_idx : 2'd0;
-  let raw_fb_addr: UInt<32> = fb_sel_addr;
   let raw_beats: UInt<2> = fb_any ? fb_sel_beats : 2'd2;
   let raw_err0: Bool = fb_any ? fb_sel_err0 : false;
   let raw_err1: Bool = fb_any ? fb_sel_err1 : false;
@@ -231,9 +226,11 @@ module IbexIcacheOutputStage
                                 : {next_word[15:0], raw_word[31:16]});
   let normal_err: Bool =
     normal_crosses_next ? (raw_curr_err or raw_next_err) : raw_curr_err;
+  // R-OUT-5: only an unaligned 32-bit instruction whose upper half (the
+  // next word) faulted while its lower half did not. A compressed or
+  // aligned instruction never sets it, whatever the FB's start address.
   let normal_err_plus2: Bool =
-    (normal_crosses_next and (not raw_curr_err) and raw_next_err)
-    or (raw_is_fb and out_beat1 and raw_fb_addr[1] and raw_err1);
+    normal_crosses_next and (not raw_curr_err) and raw_next_err;
 
   let skid_bridge_valid: Bool =
     skid_needs_next_line and raw_valid;

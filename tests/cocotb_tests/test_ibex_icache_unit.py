@@ -1093,6 +1093,57 @@ async def test_skid_bridge_err_cross_line(dut):
     assert got and got[0][2:] == (1, 1), _fmt(acc)
 
 
+async def _r_out_5_first_fault(dut, start: int, mem, *, beat1_late: int = 0):
+    """Stream from `start` with line beat 1 of 0x0070_0000 faulting;
+    return (first faulting output, all accepted outputs)."""
+    a = 0x0070_0000
+    acc = await _stream(dut, start, mem, beat1_late=beat1_late, cycles=30,
+                        err=lambda addr: addr == a + 4)
+    faults = [x for x in acc if x[2] == 1]
+    return (faults[0] if faults else None), acc
+
+
+def _mem_32b_at_2(addr):
+    # c.nop @A; 32-bit {0x0000,0x0013} @A+2 (upper half in line beat 1)
+    return 0x0013_0001 if addr == 0x0070_0000 else 0x0001_0000
+
+
+@cocotb.test()
+async def test_r_out_5_err_plus2_on_unaligned_32b_upper_half_fault(dut):
+    """R-OUT-5 positive case, no skid: a 32-bit instruction at line offset 2
+    whose upper half (line beat 1, already present) faulted reports
+    err_o = 1 with err_plus2_o = 1."""
+    f, acc = await _r_out_5_first_fault(dut, 0x0070_0000, _mem_32b_at_2)
+    assert f and f[0] == 0x0070_0002 and f[2:] == (1, 1), _fmt(acc)
+
+
+@cocotb.test()
+async def test_r_out_5_err_plus2_on_unaligned_32b_upper_half_fault_skid(dut):
+    """Same through the skid bridge (line beat 1 late)."""
+    f, acc = await _r_out_5_first_fault(dut, 0x0070_0000, _mem_32b_at_2, beat1_late=3)
+    assert f and f[0] == 0x0070_0002 and f[2:] == (1, 1), _fmt(acc)
+
+
+@cocotb.test()
+async def test_r_out_5_no_err_plus2_aligned_32b_fault_misaligned_fill(dut):
+    """R-OUT-5 negative case: the fill starts at a halfword-misaligned
+    address (FB addr[1] = 1, branch to A+2) and the aligned 32-bit
+    instruction at A+4 faults. err_o = 1, err_plus2_o MUST be 0."""
+    a = 0x0070_0000
+    f, acc = await _r_out_5_first_fault(
+        dut, a + 2, lambda addr: 0x0001_0001 if addr == a else 0x0000_0013)
+    assert f and f[0] == a + 4 and f[3] == 0, _fmt(acc)
+
+
+@cocotb.test()
+async def test_r_out_5_no_err_plus2_compressed_fault_at_offset6(dut):
+    """R-OUT-5 negative case: branch to A+6 (FB addr[1] = 1), the compressed
+    instruction there faults. err_o = 1, err_plus2_o MUST be 0."""
+    a = 0x0070_0000
+    f, acc = await _r_out_5_first_fault(dut, a + 6, lambda addr: 0x0001_0001)
+    assert f and f[0] == a + 6 and f[3] == 0, _fmt(acc)
+
+
 async def _ic1_false_hit_stream(dut, *, inval: bool, enable: int):
     """Branch to line B while the RAM read data shows a valid tag for B
     with another line's data X. The lookup is issued during an
@@ -1797,18 +1848,23 @@ async def test_r_out_4_addr_advances_by_2_or_4(dut):
 @cocotb.test()
 async def test_r_out_5_err_plus2_only_on_unaligned_upper_half_fault(dut):
     """R-OUT-5: err_plus2_o = 1 only when the fault is on the UPPER
-    halfword of an unaligned 32-bit instruction. Bus error on line
-    beat 1 (bytes [4..7] of the 8-byte line) AND alloc_addr[1] = 1
-    AND output is line beat 1.
+    halfword of an unaligned 32-bit instruction; it MUST be 0 for a
+    compressed-instruction fault, even when the fill started at a
+    halfword-misaligned address.
 
     Stimulus:
       - Branch to a misaligned address (addr[1]=1) so the FB allocates
         with its halfword position bit set.
       - Hold ready_i = 0 to capture each output cycle.
-      - Bus delivers line beat 0 (bytes [0..3]) cleanly.
-      - Bus delivers line beat 1 (bytes [4..7]) with err_i = 1.
-      - On the FIRST output cycle (beat 0): err_o = 0, err_plus2_o = 0.
-      - On the SECOND output cycle (beat 1): err_o = 1, err_plus2_o = 1.
+      - Bus delivers line beat 0 (bytes [0..3]) cleanly: 0x1234 at +2 is
+        compressed.
+      - Bus delivers line beat 1 (bytes [4..7]) with err_i = 1: 0xdef0 at
+        +4 is compressed.
+      - FIRST output (+2, compressed, clean): err_o = 0, err_plus2_o = 0.
+      - SECOND output (+4, compressed, faulting): err_o = 1,
+        err_plus2_o = 0. (This test used to expect 1 here, matching an
+        output-stage term that keyed err_plus2 on the FB's start address.)
+      The positive case is test_r_out_5_err_plus2_on_unaligned_32b_upper_half_fault.
 
     Spec §R-OUT-5.
     """
@@ -1860,9 +1916,9 @@ async def test_r_out_5_err_plus2_only_on_unaligned_upper_half_fault(dut):
             assert int(dut.err_o.value) == 1, (
                 "second output beat must reflect line beat 1 bus error"
             )
-            assert int(dut.err_plus2_o.value) == 1, (
-                "err_plus2 must be 1 on the upper-half-faulted beat of "
-                "an unaligned RV32 fetch"
+            assert int(dut.err_plus2_o.value) == 0, (
+                "err_plus2 must be 0 for a compressed-instruction fault "
+                "(R-OUT-5), whatever the fill's start address"
             )
             return
         await RisingEdge(dut.clk_i)
