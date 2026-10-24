@@ -98,7 +98,11 @@ module IbexIcacheOutputStage
   let skid_next_addr: UInt<32> = addr_out_q +% 32'd4;
   let source_line_addr: UInt<29> =
     skid_needs_next_line ? skid_next_addr[31:3] : out_line_addr;
-  let source_beat1: Bool = skid_needs_next_line ? false : out_beat1;
+  // With the skid holding a 32-bit low half, the source is the next
+  // 32-bit word: beat 1 of the same line for a skid loaded at offset 2,
+  // beat 0 of the next line for one loaded at offset 6.
+  let source_beat1: Bool =
+    skid_needs_next_line ? skid_next_addr[2] : out_beat1;
 
   let ic1_covers: Bool =
     lookup_valid_ic1_q and any_hit_ic1

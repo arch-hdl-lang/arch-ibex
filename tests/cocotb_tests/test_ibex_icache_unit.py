@@ -932,6 +932,80 @@ async def test_r_fb_1_pool_full_stalls_lookup(dut):
     )
 
 
+# ──────────────────────────────────────────────────────────────────────
+# Output stream regressions: misaligned / compressed streams through the
+# skid and the per-FB out_done lifecycle, and IC1 hit qualification.
+# ──────────────────────────────────────────────────────────────────────
+
+async def _stream(dut, start: int, mem, *, latency: int = 1,
+                  beat1_late: int = 0, err=None, cycles: int = 80):
+    """Branch (cold miss) to `start` and run the stream with ready_i=1.
+
+    Bus model: same-cycle gnt, rvalid `latency` cycles after the grant
+    (latency=1 is the SoC timing); beat-1 responses (addr[2]=1) arrive
+    `beat1_late` cycles later still. `mem(addr)` gives the beat data and
+    `err(addr)` (optional) the beat's bus error. Returns the accepted
+    outputs as (addr, rdata, err, err_plus2) tuples.
+    """
+    await _start_clock(dut)
+    await _reset(dut)
+    await _wait_until_idle(dut)
+
+    async def bus():
+        pending = []                  # (ready_cycle, addr)
+        cyc = 0
+        while True:
+            await ReadOnly()
+            req = int(dut.instr_req_o.value) == 1
+            addr = int(dut.instr_addr_o.value) & MASK32
+            await RisingEdge(dut.clk_i)
+            cyc += 1
+            # drive outputs for this new cycle
+            dut.instr_rvalid_i.value = 0
+            dut.instr_err_i.value = 0
+            if pending and pending[0][0] <= cyc:
+                _, ra = pending.pop(0)
+                dut.instr_rvalid_i.value = 1
+                dut.instr_rdata_i.value = mem(ra) & MASK32
+                dut.instr_err_i.value = int(bool(err and err(ra)))
+            if req and int(dut.instr_gnt_i.value) == 1:
+                pending.append(
+                    (cyc + latency - 1 + (beat1_late if addr & 4 else 0), addr))
+            dut.instr_gnt_i.value = 1  # same-cycle grant for any request
+    dut.instr_gnt_i.value = 1
+    cocotb.start_soon(bus())
+    dut.ready_i.value = 1
+    await _branch(dut, start)
+    accepted = []
+    for _ in range(cycles):
+        await ReadOnly()
+        if int(dut.valid_o.value) == 1 and int(dut.ready_i.value) == 1:
+            accepted.append((int(dut.addr_o.value) & MASK32,
+                             int(dut.rdata_o.value) & MASK32,
+                             int(dut.err_o.value), int(dut.err_plus2_o.value)))
+        await RisingEdge(dut.clk_i)
+    return accepted
+
+
+def _fmt(accepted, n: int = 10):
+    return [(hex(a), hex(d), e, p) for a, d, e, p in accepted[:n]]
+
+
+@cocotb.test()
+async def test_intra_line_32b_beat1_late(dut):
+    """32-bit instruction at line offset 2 whose beat 1 arrives late goes
+    through the skid; the bridge must combine beat 0's upper half with
+    beat 1's lower half (not beat 0's lower half again)."""
+    a = 0x0070_0000
+    def mem(addr):                    # c.nop @A; 32-bit {0x0000,0x0013} @A+2
+        return 0x0013_0001 if addr == a else 0x0001_0000
+    acc = await _stream(dut, a + 2, mem, beat1_late=3, cycles=30)
+    got = [x[1] for x in acc if x[0] == a + 2]
+    assert got[:1] == [0x0000_0013], (
+        f"accepted at A+2: {[hex(x) for x in got]}, expected 0x00000013; "
+        f"all: {_fmt(acc)}")
+
+
 @cocotb.test()
 async def test_r_fb_2_each_grant_allocates_one_fb(dut):
     """R-FB-2: each granted lookup allocates exactly one FB. Externally
