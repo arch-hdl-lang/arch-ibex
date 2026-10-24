@@ -77,6 +77,17 @@ mutants FAIL, all three covers reached by step 6). The harness never
 referenced the buffer; it only fed `raw_valid` / `raw_line` and never the FB
 select or `raw_fb_idx`, so the claim and the EQUIV obligations are unchanged.
 
+Re-run 2026-10-24 after the IC1 hit was qualified with `icache_enable_i` and
+`~inval_block_cache` (upstream `lookup_actual_ic0`): same verdicts (the three
+proofs PASS, all four mutants FAIL, all three covers reached), but the
+witnesses are up to three steps longer. The covers are reached at steps 6, 7
+and 7, `nocoalprop` fails at step 8, `noopen` at step 6 (`nocoalbmc` 5 and
+`nogate` 5 are unchanged). The harness leaves the RAM read data free and
+shortens the invalidation walk, so before the change an IC1 hit could be
+taken while the walk was still running; now the first hit comes after the
+walk ends. Reverting only that change gives back the old step numbers
+(5, 5, 6; `nocoalprop` 5; `noopen` 4).
+
 Before #17 the induction could not close: its counterexample was a bus
 response routed to an idle fill buffer, which led to finding the
 single-register response tracker bug fixed there.
