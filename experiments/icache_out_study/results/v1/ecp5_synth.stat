@@ -1,0 +1,24 @@
+
+6. Printing statistics.
+
+=== ibex_top ===
+
+        +----------Local Count, excluding submodules.
+        | 
+    14528 wires
+    58028 wire bits
+    14528 public wires
+    58028 public wire bits
+       54 ports
+      787 port bits
+    19714 cells
+       57   $scopeinfo
+      514   CCU2C
+        6   DP16KD
+      682   L6MUX21
+    13009   LUT4
+        1   MULT18X18D
+     2778   PFUMX
+        1   TRELLIS_DPR16X4
+     2666   TRELLIS_FF
+

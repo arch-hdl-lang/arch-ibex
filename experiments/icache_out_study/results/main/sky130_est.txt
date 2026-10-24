@@ -1,0 +1,4 @@
+[arch] EST t1_sdc wns_ns=-593.740 tns_ns=-5892507.4 t_s=4 core_wns_ns=-593.740 endpoint=_165136_/D
+[arch] EST t3_placed wns_ns=-6.867 tns_ns=-92209.3 t_s=532 core_wns_ns=-6.867 endpoint=data_req_o
+[arch] EST t3_placed_lat wns_ns=-10.867 tns_ns=-92476.4 t_s=534 core_wns_ns=-10.867 endpoint=data_req_o
+[arch] EST t3_repaired_lat wns_ns=-6.746 tns_ns=-29898.5 t_s=761 core_wns_ns=-6.746 endpoint=data_req_o

@@ -1,0 +1,21 @@
+[main] standalone {'LUT4': 4241, 'TRELLIS_FF': 741, 'PFUMX': 990, 'L6MUX21': 349, 'CCU2C': 108}
+[main] full ecp5 {'LUT4': 12977, 'TRELLIS_FF': 2760, 'PFUMX': 2528, 'L6MUX21': 652, 'CCU2C': 514}
+[main] fmax n=10 mean=32.70 sd=0.36 min=32.03 max=33.20 seeds=[32.5, 32.58, 33.2, 32.03, 32.54, 32.42, 32.82, 33.1, 33.0, 32.82]
+[main] coremark ticks=113413 cm/mhz=8.817331 speed=288.335541031
+[main] sky130 area=1760163.135999 wns(t3_repaired_lat)=-6.746 tns=-29898.5
+[v1] standalone {'LUT4': 3521, 'TRELLIS_FF': 647, 'PFUMX': 630, 'L6MUX21': 127, 'CCU2C': 108}
+[v1] full ecp5 {'LUT4': 13009, 'TRELLIS_FF': 2666, 'PFUMX': 2778, 'L6MUX21': 682, 'CCU2C': 514}
+[v1] fmax n=10 mean=32.64 sd=0.56 min=31.66 max=33.34 seeds=[32.89, 31.66, 32.51, 33.34, 32.85, 33.2, 32.54, 33.15, 32.48, 31.81]
+[v1] coremark ticks=114328 cm/mhz=8.746764 speed=285.520617252
+[v1] sky130 area=1767139.827199 wns(t3_repaired_lat)=-6.9 tns=-43728.6
+[v3] standalone {'LUT4': 3433, 'TRELLIS_FF': 741, 'PFUMX': 740, 'L6MUX21': 260, 'CCU2C': 108}
+[v3] full ecp5 {'LUT4': 12698, 'TRELLIS_FF': 2760, 'PFUMX': 2462, 'L6MUX21': 822, 'CCU2C': 514}
+[v3] fmax n=10 mean=33.34 sd=0.47 min=32.74 max=34.31 seeds=[32.74, 32.79, 32.93, 34.31, 33.12, 33.45, 33.56, 33.38, 33.54, 33.57]
+[v3] coremark ticks=113413 cm/mhz=8.817331 speed=293.96099820899997
+[v3] sky130 area=1757510.591999 wns(t3_repaired_lat)=-7.118 tns=-60214.4
+main ecp5 hier (LUT4,FF): {'InvalCtrl': (27, 13), 'IbexIcacheOutputStage': (1395, 182), 'ibex_icache': (2962, 546), 'FbAgeArb': (45, 0), 'BusRespFifo': (40, 13), 'ibex_top': (3, 1)}
+main sky130 hier area: {'IbexIcacheOutputStage': 17310.352, 'ibex_icache': 37038.0224, 'ibex_top': 46.2944}
+v1 ecp5 hier (LUT4,FF): {'InvalCtrl': (27, 13), 'IbexIcacheOutputStage': (1270, 88), 'ibex_icache': (2927, 546), 'FbAgeArb': (45, 0), 'BusRespFifo': (40, 13), 'ibex_top': (3, 1)}
+v1 sky130 hier area: {'IbexIcacheOutputStage': 11916.4288, 'ibex_icache': 36721.4688, 'ibex_top': 46.2944}
+v3 ecp5 hier (LUT4,FF): {'InvalCtrl': (27, 13), 'IbexIcacheOutputStage': (1468, 182), 'ibex_icache': (2138, 546), 'FbAgeArb': (45, 0), 'BusRespFifo': (40, 13), 'ibex_top': (3, 1)}
+v3 sky130 hier area: {'IbexIcacheOutputStage': 17359.1488, 'ibex_icache': 32438.6112, 'ibex_top': 46.2944}

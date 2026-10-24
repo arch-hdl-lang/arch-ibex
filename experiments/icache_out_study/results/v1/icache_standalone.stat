@@ -1,0 +1,22 @@
+
+4. Printing statistics.
+
+=== ibex_icache ===
+
+        +----------Local Count, excluding submodules.
+        | 
+     3190 wires
+     9511 wire bits
+     3190 public wires
+     9511 public wire bits
+       33 ports
+      458 port bits
+     5039 cells
+        5   $scopeinfo
+      108   CCU2C
+      127   L6MUX21
+     3521   LUT4
+      630   PFUMX
+        1   TRELLIS_DPR16X4
+      647   TRELLIS_FF
+
