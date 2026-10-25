@@ -210,6 +210,9 @@ def main() -> int:
     # build covers both encodings).
     manifest.append(build_rt(a.ibex_root, a.out, "fetchmb", "rv32imc",
                              HERE / "mb" / "fetchmb", kind="mb"))
+    # RV32M latency probe (core side).
+    manifest.append(build_rt(a.ibex_root, a.out, "mdmb", "rv32im",
+                             HERE / "mb" / "mdmb", kind="mb"))
     for m in manifest:
         print(f"{m['name']:24s} {'ok' if m['ok'] else 'BUILD FAILED'}"
               f"{'  text=' + str(m['text_bytes']) if m['ok'] else ''}")

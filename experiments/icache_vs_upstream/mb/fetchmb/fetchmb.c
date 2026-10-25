@@ -54,6 +54,13 @@ KERNEL(k_jmis6, "", ".option norvc\n j 3f\n.balign 16\n.option rvc\n c.nop\n c.n
 // next line (target, target+4, target+8).
 KERNEL(k_jt0, "", ".option norvc\n j 3f\n.balign 16\n3:\n addi t0, t0, 1\n addi t1, t1, 1\n addi t0, t0, 1\n")
 KERNEL(k_jt4, "", ".option norvc\n j 3f\n.balign 16\n nop\n3:\n addi t0, t0, 1\n addi t1, t1, 1\n addi t0, t0, 1\n")
+// Short forward branch (skips one instruction) followed by a 32-byte
+// sequential run: the target and the lines after it are inside the window
+// the prefetcher has already requested.
+#define SEQ8 " addi t0, t0, 1\n addi t1, t1, 1\n addi t0, t0, 1\n addi t1, t1, 1\n addi t0, t0, 1\n addi t1, t1, 1\n addi t0, t0, 1\n addi t1, t1, 1\n"
+KERNEL(k_fwd, "", ".option norvc\n j 3f\n nop\n3:\n" SEQ8)
+// Same run without the branch (falls through), for reference.
+KERNEL(k_nofwd, "", ".option norvc\n nop\n nop\n" SEQ8)
 // 8 KB of straight-line code (twice the 4 KB cache): capacity misses.
 #define KERNEL_BIG(name, body) KERNEL(name, "", BODY32(body))
 KERNEL_BIG(k_big32, ".option norvc\n addi t0, t0, 1\n")
@@ -82,6 +89,8 @@ int main(int argc, char **argv) {
   RUN(k_jmis6, 10);
   RUN(k_jt0, 10);
   RUN(k_jt4, 10);
+  RUN(k_fwd, 10);
+  RUN(k_nofwd, 10);
   RUN(k_big32, 2);
   RUN(k_big16, 2);
   return 0;
