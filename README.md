@@ -17,7 +17,7 @@ tests green throughout.
 ## Quick start
 
 ```bash
-# 1. Clone + sibling deps. Defaults assume ~/github/{ibex,rdl2arch-riscv};
+# 1. Clone + sibling deps. Defaults assume ~/github/{ibex,rdl2arch-riscv,rdl2arch};
 #    override via env vars below if your layout differs.
 mkdir -p ~/github && cd ~/github
 git clone git@github.com:arch-hdl-lang/arch-ibex.git
@@ -26,6 +26,9 @@ git clone git@github.com:arch-hdl-lang/rdl2arch-riscv.git
 # rdl2arch-riscv must sit at the commit pinned in .rdl2arch-riscv-version
 # (the tests refuse any other commit or tracked edits; see below).
 git -C rdl2arch-riscv checkout "$(cut -d' ' -f2 arch-ibex/.rdl2arch-riscv-version)"
+# Same for its dependency rdl2arch and .rdl2arch-version.
+git clone git@github.com:arch-hdl-lang/rdl2arch.git
+git -C rdl2arch checkout "$(cut -d' ' -f2 arch-ibex/.rdl2arch-version)"
 
 # 2. Install the pinned compiler and testbench tool releases. The build and
 #    the tests use exactly the releases in .arch-version / .harc-version
@@ -52,6 +55,7 @@ If your checkouts live elsewhere, set:
 ```bash
 export IBEX_ROOT=/path/to/ibex
 export RDL2ARCH_RISCV_ROOT=/path/to/rdl2arch-riscv
+export RDL2ARCH_ROOT=/path/to/rdl2arch
 ```
 
 `arch` and `harc` are found on PATH (macOS's unrelated `/usr/bin/arch` is
@@ -95,6 +99,32 @@ To bump the pin: land the rdl2arch-riscv change, write its merge commit
 (12 hex digits, plus the pyproject version) into `.rdl2arch-riscv-version`,
 check out that commit in your root, and run `make test` in the same PR.
 
+### The rdl2arch pin
+
+rdl2arch-riscv runs on `rdl2arch` (the register-block exporter, AXI4-Lite
+cpuif and dereferencer behind the CLINT and PLIC). It is pinned the same way:
+`.rdl2arch-version` (`<pyproject version> <commit>`), checkout
+`$RDL2ARCH_ROOT` (default: the sibling `../rdl2arch`), the same HEAD /
+tracked-edits / pyproject-version check (`resolve_rdl2arch_root`), a skip
+when the checkout is missing, and `RDL2ARCH_SKIP_PIN_CHECK=1` to bypass it.
+The tests import `rdl2arch` from `$RDL2ARCH_ROOT/src`, and they do it
+*before* importing `rdl2arch_riscv`, because rdl2arch_riscv binds rdl2arch
+when it is imported. Both module paths are checked afterwards.
+
+A pinned worktree works the same as for rdl2arch-riscv:
+
+```bash
+git -C ~/github/rdl2arch fetch
+git -C ~/github/rdl2arch worktree add ~/github/rdl2arch-pinned \
+    "$(cut -d' ' -f2 .rdl2arch-version)"
+export RDL2ARCH_ROOT=~/github/rdl2arch-pinned
+```
+
+To bump it: land the rdl2arch change, write its merge commit and pyproject
+version into `.rdl2arch-version`, check it out in your root, and run
+`make test` in the same PR. When rdl2arch-riscv's pin moves to a commit that
+needs a newer rdl2arch, bump both pins together.
+
 ## Layout
 
 ```
@@ -128,12 +158,11 @@ Path-referenced for now (no submodules / lockfile):
   commit pinned in `.rdl2arch-riscv-version` (see "The rdl2arch-riscv pin").
   The tests import its code from that checkout's `src/`; installing it
   (`pip install -e $RDL2ARCH_RISCV_ROOT`) is still how its own dependencies
-  (`systemrdl-compiler`, `rdl2arch`) get installed. It depends
-  on `rdl2arch`; if you already have that checked out at
-  `~/github/rdl2arch`, also `pip install -e ~/github/rdl2arch` so the
-  editable install points at the live source tree (otherwise pip will
-  resolve `rdl2arch` from PyPI or, worse, an old `.pth` to a deleted
-  worktree).
+  (`systemrdl-compiler`, `rdl2arch`) get installed.
+- **rdl2arch** at `$RDL2ARCH_ROOT` (default `~/github/rdl2arch`) — the
+  rdl2arch-riscv runtime dependency, at the commit pinned in
+  `.rdl2arch-version` (see "The rdl2arch pin"). The tests import it from
+  that checkout's `src/`, whatever pip has installed.
 - **Toolchain**: `verilator >= 5.0`, `riscv64-elf-gcc`, `fusesoc`,
   Python 3.11+ with `cocotb`, `cocotb-tools`, `pytest`, `pytest-xdist`.
 

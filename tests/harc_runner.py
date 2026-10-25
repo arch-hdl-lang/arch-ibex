@@ -30,6 +30,10 @@ ARCH_PATH_SKIP = frozenset({"/usr/bin/arch"})
 # "<pyproject version> <commit>". It has no releases, so the commit is the pin.
 RDL2ARCH_RISCV_VERSION_FILE = REPO_ROOT / ".rdl2arch-riscv-version"
 RDL2ARCH_RISCV_URL = "https://github.com/arch-hdl-lang/rdl2arch-riscv"
+# rdl2arch, rdl2arch-riscv's runtime dependency (register-block exporter,
+# AXI4-Lite cpuif, dereferencer; used for the CLINT/PLIC), pinned the same way.
+RDL2ARCH_VERSION_FILE = REPO_ROOT / ".rdl2arch-version"
+RDL2ARCH_URL = "https://github.com/arch-hdl-lang/rdl2arch"
 
 PathLike = str | os.PathLike[str]
 
@@ -523,23 +527,57 @@ def resolve_arch_bin() -> str:
     )
 
 
-def pinned_rdl2arch_riscv_release() -> tuple[str, str]:
-    return _pinned_release(RDL2ARCH_RISCV_VERSION_FILE)
+@dataclass(frozen=True)
+class PinnedCheckout:
+    """A dependency used as a source checkout, pinned to a commit in a
+    `<version> <commit>` file (these repos have no releases)."""
+
+    name: str  # repo name, also the default sibling directory
+    pin_attr: str  # module attribute naming the pin file (patchable in tests)
+    env_var: str  # root override
+    skip_var: str  # "1" bypasses the commit check
+    url: str
+    required: tuple[str, ...]  # subdirectories a checkout must have
 
 
-def rdl2arch_riscv_root() -> Path:
-    """The rdl2arch-riscv checkout: `$RDL2ARCH_RISCV_ROOT`, default the
-    sibling `../rdl2arch-riscv` (unverified; see resolve_rdl2arch_riscv_root)."""
+RDL2ARCH_RISCV = PinnedCheckout(
+    name="rdl2arch-riscv",
+    pin_attr="RDL2ARCH_RISCV_VERSION_FILE",
+    env_var="RDL2ARCH_RISCV_ROOT",
+    skip_var="RDL2ARCH_RISCV_SKIP_PIN_CHECK",
+    url=RDL2ARCH_RISCV_URL,
+    required=("src", "tests/rdl"),
+)
+RDL2ARCH = PinnedCheckout(
+    name="rdl2arch",
+    pin_attr="RDL2ARCH_VERSION_FILE",
+    env_var="RDL2ARCH_ROOT",
+    skip_var="RDL2ARCH_SKIP_PIN_CHECK",
+    url=RDL2ARCH_URL,
+    required=("src",),
+)
 
-    env = os.environ.get("RDL2ARCH_RISCV_ROOT")
+
+def pinned_checkout_release(dep: PinnedCheckout) -> tuple[str, str]:
+    return _pinned_release(globals()[dep.pin_attr])
+
+
+def checkout_root(dep: PinnedCheckout) -> Path:
+    """`$<env_var>`, default the sibling `../<name>` (unverified; see
+    resolve_pinned_checkout)."""
+
+    env = os.environ.get(dep.env_var)
     if env:
         return Path(env).expanduser()
-    return REPO_ROOT.parent / "rdl2arch-riscv"
+    return REPO_ROOT.parent / dep.name
 
 
 def _git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    # --no-optional-locks: `git status` must not refresh (write) the index of
+    # a checkout we only inspect, which may be shared with other work.
     return subprocess.run(
-        ["git", "-C", str(root), *args], capture_output=True, text=True
+        ["git", "--no-optional-locks", "-C", str(root), *args],
+        capture_output=True, text=True,
     )
 
 
@@ -554,24 +592,26 @@ def _pyproject_version(root: Path) -> str | None:
 
 
 @functools.lru_cache(maxsize=None)
-def _checked_rdl2arch_riscv_root(root: str, version: str, commit: str) -> Path:
-    """Fail unless `root` is a git checkout of rdl2arch-riscv whose HEAD is
-    the pinned commit and whose tracked files are unmodified (untracked files
-    are ignored), with the pinned pyproject version."""
+def _checked_pinned_checkout(
+    dep: PinnedCheckout, root: str, version: str, commit: str
+) -> Path:
+    """Fail unless `root` is a git checkout whose HEAD is the pinned commit
+    and whose tracked files are unmodified (untracked files are ignored),
+    with the pinned pyproject version."""
 
     path = Path(root)
     fix = (
         f"Check out the pinned commit: `git -C {path} fetch && git -C {path} "
         f"checkout {commit}`, or make a pinned worktree and point "
-        f"RDL2ARCH_RISCV_ROOT at it: `git -C <rdl2arch-riscv clone> worktree add "
-        f"<dir> {commit}` (clone: {RDL2ARCH_RISCV_URL}). To test another "
-        f"rdl2arch-riscv on purpose, set RDL2ARCH_RISCV_SKIP_PIN_CHECK=1."
+        f"{dep.env_var} at it: `git -C <{dep.name} clone> worktree add "
+        f"<dir> {commit}` (clone: {dep.url}). To test another "
+        f"{dep.name} on purpose, set {dep.skip_var}=1."
     )
     head = _git(path, "rev-parse", "HEAD")
     if head.returncode != 0:
         raise AssertionError(
-            f"RDL2ARCH_RISCV_ROOT={path} is not a git checkout, so the pinned "
-            f"rdl2arch-riscv commit {commit} cannot be verified "
+            f"{dep.env_var}={path} is not a git checkout, so the pinned "
+            f"{dep.name} commit {commit} cannot be verified "
             f"({head.stderr.strip() or 'git rev-parse HEAD failed'}). {fix}"
         )
     problems = []
@@ -589,11 +629,37 @@ def _checked_rdl2arch_riscv_root(root: str, version: str, commit: str) -> Path:
         problems.append(f"pyproject version {found!r} != pinned {version}")
     if problems:
         raise AssertionError(
-            f"{path} is not the pinned rdl2arch-riscv ({version} {commit}): "
+            f"{path} is not the pinned {dep.name} ({version} {commit}): "
             + "; ".join(problems)
             + f". {fix}"
         )
     return path
+
+
+def resolve_pinned_checkout(dep: PinnedCheckout) -> Path:
+    """Resolve `dep`'s checkout and verify it against its pin file. A missing
+    checkout raises ToolNotFoundError (callers skip); a wrong one (other
+    commit, tracked edits, other pyproject version, not a git checkout)
+    fails. `<skip_var>=1` bypasses the check."""
+
+    version, commit = pinned_checkout_release(dep)
+    root = checkout_root(dep)
+    if not all((root / sub).is_dir() for sub in dep.required):
+        raise ToolNotFoundError(
+            f"{dep.name} checkout not found at {root}; clone {dep.url} at "
+            f"commit {commit} there or set {dep.env_var}"
+        )
+    if os.environ.get(dep.skip_var) == "1":
+        return root
+    return _checked_pinned_checkout(dep, str(root), version, commit)
+
+
+def pinned_rdl2arch_riscv_release() -> tuple[str, str]:
+    return pinned_checkout_release(RDL2ARCH_RISCV)
+
+
+def rdl2arch_riscv_root() -> Path:
+    return checkout_root(RDL2ARCH_RISCV)
 
 
 def resolve_rdl2arch_riscv_root() -> Path:
@@ -602,22 +668,41 @@ def resolve_rdl2arch_riscv_root() -> Path:
     One root supplies both the RDL fixtures (`<root>/tests/rdl`) and the
     generator code (`<root>/src`, see import_rdl2arch_riscv). It must be at
     the commit in `.rdl2arch-riscv-version`, with no tracked modifications.
-    A missing checkout raises ToolNotFoundError (callers skip); a wrong one
-    fails. `RDL2ARCH_RISCV_SKIP_PIN_CHECK=1` bypasses the commit check, for
-    testing an unpinned rdl2arch-riscv on purpose.
+    `RDL2ARCH_RISCV_SKIP_PIN_CHECK=1` bypasses the commit check, for testing
+    an unpinned rdl2arch-riscv on purpose.
     """
 
-    version, commit = pinned_rdl2arch_riscv_release()
-    root = rdl2arch_riscv_root()
-    if not (root / "tests" / "rdl").is_dir() or not (root / "src").is_dir():
-        raise ToolNotFoundError(
-            f"rdl2arch-riscv checkout not found at {root}; clone "
-            f"{RDL2ARCH_RISCV_URL} at commit {commit} there or set "
-            f"RDL2ARCH_RISCV_ROOT"
+    return resolve_pinned_checkout(RDL2ARCH_RISCV)
+
+
+def pinned_rdl2arch_release() -> tuple[str, str]:
+    return pinned_checkout_release(RDL2ARCH)
+
+
+def rdl2arch_root() -> Path:
+    return checkout_root(RDL2ARCH)
+
+
+def resolve_rdl2arch_root() -> Path:
+    """Resolve and verify the rdl2arch checkout (`$RDL2ARCH_ROOT`, default
+    `../rdl2arch`) against `.rdl2arch-version`; its `src/` supplies the
+    `rdl2arch` package rdl2arch-riscv runs on. `RDL2ARCH_SKIP_PIN_CHECK=1`
+    bypasses the commit check."""
+
+    return resolve_pinned_checkout(RDL2ARCH)
+
+
+def _assert_imported_from(module: str, src: str) -> None:
+    import sys
+
+    mod = sys.modules.get(module)
+    where = Path(getattr(mod, "__file__", None) or "").resolve()
+    if mod is None or not where.is_relative_to(src):
+        raise AssertionError(
+            f"{module} was imported from {where}, not from {src}. Something "
+            f"imported another copy first (an editable install of a different "
+            f"checkout?); run the tests in a fresh interpreter."
         )
-    if os.environ.get("RDL2ARCH_RISCV_SKIP_PIN_CHECK") == "1":
-        return root
-    return _checked_rdl2arch_riscv_root(str(root), version, commit)
 
 
 def import_from_root(module: str, src_dir: Path):
@@ -639,20 +724,25 @@ def import_from_root(module: str, src_dir: Path):
     if src not in parts:
         os.environ["PYTHONPATH"] = os.pathsep.join([src, *[p for p in parts if p]])
     mod = importlib.import_module(module)
-    where = Path(mod.__file__ or "").resolve()
-    if not where.is_relative_to(src):
-        raise AssertionError(
-            f"{module} was imported from {where}, not from {src}. Something "
-            f"imported another copy first (an editable install of a different "
-            f"checkout?); run the tests in a fresh interpreter."
-        )
+    _assert_imported_from(module, src)
     return mod
 
 
-def import_rdl2arch_riscv(root: Path):
-    """The rdl2arch_riscv package from `root`'s `src/` (see import_from_root)."""
+def import_rdl2arch_riscv(root: Path, rdl2arch_root: Path):
+    """The rdl2arch_riscv package from `root`'s `src/`, running on the
+    rdl2arch package from `rdl2arch_root`'s `src/` (see import_from_root).
 
-    return import_from_root("rdl2arch_riscv", root / "src")
+    rdl2arch_riscv binds rdl2arch when it is imported (its package
+    `__init__` imports the exporters, which `from rdl2arch import ...`), so
+    rdl2arch has to be imported from its root first; importing it afterwards
+    would be too late. Both guards are checked again at the end, so neither
+    package can have been swapped for another copy.
+    """
+
+    import_from_root("rdl2arch", rdl2arch_root / "src")
+    mod = import_from_root("rdl2arch_riscv", root / "src")
+    _assert_imported_from("rdl2arch", str(Path(rdl2arch_root / "src").resolve()))
+    return mod
 
 
 def resolve_verilator_coverage_bin() -> str:
