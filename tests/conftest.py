@@ -238,6 +238,17 @@ _SV_SHADOWED_BY_FORKS = {
 }
 
 
+# The Arch icache (build/ibex_icache.sv) and the helper modules it
+# instantiates (InvalCtrl, FbAgeArb x2, BusRespFifo, IbexIcacheOutputStage).
+ARCH_ICACHE_SV = {
+    "ibex_icache.sv",
+    "inval_ctrl.sv",
+    "fb_age_arb.sv",
+    "bus_resp_fifo.sv",
+    "ibex_icache_output_stage.sv",
+}
+
+
 def _arch_swap_sv() -> list[Path]:
     """Every `*.sv` under `build/` is an ARCH-emitted swap that replaces
     an upstream Ibex module of the same basename. Returned files are
@@ -254,6 +265,20 @@ def _arch_swap_sv() -> list[Path]:
     if not ARCH_BUILD_DIR.is_dir():
         return []
     all_sv = sorted(p for p in ARCH_BUILD_DIR.glob("*.sv"))
+    # Experiment hook (exp/icache-vs-upstream): ARCH_IBEX_ICACHE_MATRIX
+    # selects which swaps travel. A (default) = every swap; U = none
+    # (upstream core + upstream icache); UAic = only the Arch icache and the
+    # helper modules it instantiates; AUic = every swap except those, so the
+    # upstream rtl/ibex_icache.sv stays in the fusesoc filelist.
+    variant = os.environ.get("ARCH_IBEX_ICACHE_MATRIX", "A")
+    if variant not in ("A", "U", "UAic", "AUic"):
+        raise ValueError(f"ARCH_IBEX_ICACHE_MATRIX={variant!r} (A|U|UAic|AUic)")
+    if variant == "U":
+        all_sv = []
+    elif variant == "UAic":
+        all_sv = [p for p in all_sv if p.name in ARCH_ICACHE_SV]
+    elif variant == "AUic":
+        all_sv = [p for p in all_sv if p.name not in ARCH_ICACHE_SV]
     pkg_sv: list[Path] = []
     other_sv: list[Path] = []
     for p in all_sv:
