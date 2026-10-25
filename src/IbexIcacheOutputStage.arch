@@ -74,6 +74,11 @@ module IbexIcacheOutputStage
   port err_o:       out Bool;
   port err_plus2_o: out Bool;
 
+  /// The output accepted this cycle moves the stream off its current
+  /// 64-bit line. The parent pins a full-pool prefetch on the output line until this
+  /// fires, so the line is looked up again for its second word.
+  port out_leaves_line: out Bool;
+
   port fb0_out_done_pulse: out Bool;
   port fb1_out_done_pulse: out Bool;
   port fb2_out_done_pulse: out Bool;
@@ -94,13 +99,11 @@ module IbexIcacheOutputStage
   reg skid_valid_q: Bool reset rst_ni => false;
   reg skid_err_q:   Bool guard skid_valid_q reset none;
 
-  // A cache hit is only visible at the IC1 lookup output for one cycle,
-  // but the IF stream may need both 32-bit words from that 64-bit line.
-  // Keep the most recent hit line as an output-source candidate until
-  // addr_out_q advances beyond it or a branch redirects the stream.
-  reg ic1_hold_valid_q: Bool reset rst_ni => false;
-  reg ic1_hold_addr_q:  UInt<29> guard ic1_hold_valid_q reset none;
-  reg ic1_hold_line_q:  UInt<64> guard ic1_hold_valid_q reset none;
+  // An IC1 hit is an output source for its one IC1 cycle only. An FB
+  // allocated by the lookup captures the hit line and serves the rest of
+  // it. A hit with no FB (pool full, or coalesced) is looked up again: the
+  // parent keeps prefetch on the output line until the stream leaves it
+  // (out_leaves_line), and a coalesced lookup does not advance prefetch.
 
   let out_line_addr: UInt<29> = addr_out_q[31:3];
   let out_beat1: Bool = addr_out_q[2];
@@ -120,9 +123,6 @@ module IbexIcacheOutputStage
   let ic1_covers: Bool =
     lookup_valid_ic1_q and any_hit_ic1
     and (lookup_addr_ic1_q[31:3] == source_line_addr);
-  let ic1_hold_covers: Bool =
-    ic1_hold_valid_q and (ic1_hold_addr_q == source_line_addr);
-  let ic1_any_covers: Bool = ic1_covers or ic1_hold_covers;
 
   let fb0_beat_ready: Bool =
     source_beat1 ? (fb0_beats_live == 2'd2) : (fb0_beats_live != 2'd0);
@@ -190,10 +190,8 @@ module IbexIcacheOutputStage
   // IC1 has data priority, but a same-line FB remains associated for
   // lifecycle completion when the accepted output consumes the FB's
   // last beat.
-  let raw_valid: Bool = ic1_any_covers or fb_any;
-  let raw_line: UInt<64> =
-    ic1_covers ? hit_data_ic1 :
-    (ic1_hold_covers ? ic1_hold_line_q : fb_sel_line);
+  let raw_valid: Bool = ic1_covers or fb_any;
+  let raw_line: UInt<64> = ic1_covers ? hit_data_ic1 : fb_sel_line;
   let raw_is_fb: Bool = fb_any;
   // lifecycle index: the covering FB, 0 when none covers (as before)
   let raw_fb_idx: UInt<2> = fb_any ? fb_sel_idx : 2'd0;
@@ -301,6 +299,8 @@ module IbexIcacheOutputStage
     valid_o     = out_valid_comb;
     rdata_o     = out_rdata_comb;
     addr_o      = addr_out_q;
+    out_leaves_line =
+      accept_output and (accepted_next_addr[31:3] != addr_out_q[31:3]);
     err_o       = out_err_comb;
     err_plus2_o = out_err_plus2_comb;
 
@@ -327,20 +327,6 @@ module IbexIcacheOutputStage
       addr_out_q <= addr_i;
     elsif accept_output
       addr_out_q <= accepted_next_addr;
-    end if
-  end seq
-
-  seq on clk_i rising
-    if branch_i
-      ic1_hold_valid_q <= false;
-    elsif ic1_covers
-      ic1_hold_valid_q <= true;
-      ic1_hold_addr_q  <= lookup_addr_ic1_q[31:3];
-      ic1_hold_line_q  <= hit_data_ic1;
-    elsif accept_output and ic1_hold_valid_q
-      if accepted_next_addr[31:3] != ic1_hold_addr_q
-        ic1_hold_valid_q <= false;
-      end if
     end if
   end seq
 

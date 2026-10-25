@@ -427,14 +427,17 @@ module ibex_icache
       prefetch_addr_q <=
         (lookup_addr_ic0 +% 32'h0000_0008) & 32'hFFFF_FFF8;
     elsif (not branch_i)
-          and valid_o and ready_i
+          and out_leaves_line
           and fb_full
           and (prefetch_addr_q[31:3] == addr_o[31:3])
-      // Full-pool output-coupled advance: when the stream actually
-      // accepts the line that prefetch is pinned on, the current line
-      // has a real source (IC1 or FB). Move to the next line even if
-      // the FB pool is full, but keep full-pool misses pinned because
-      // no output can be accepted for an unavailable line.
+      // Full-pool output-coupled advance: once the stream has accepted
+      // the last output on the line prefetch is pinned on (the accept
+      // moves addr_o off that line), move to the next line even though
+      // the FB pool is full. Not earlier: a hit that allocated no FB (pool
+      // full) is an output source for one IC1 cycle only, so while the
+      // stream is still on the line, prefetch must stay on it and look it
+      // up again for the remaining words. Full-pool misses stay pinned
+      // because no output can be accepted for an unavailable line.
       prefetch_addr_q <=
         (addr_o +% 32'h0000_0008) & 32'hFFFF_FFF8;
     elsif branch_i
@@ -455,9 +458,9 @@ module ibex_icache
   // port belongs to the tag writes, so the IC1 read data is a stale
   // earlier read; while disabled the cache is pass-through. Either way
   // the IC1 tag compare must not count as a hit: `lookup_valid_ic1_q`
-  // gates every hit consumer (FB hit capture, output-stage IC1 source
-  // and its hold line). FB allocation still follows `lookup_grant`, so
-  // the line is fetched from the bus.
+  // gates every hit consumer (FB hit capture, output-stage IC1 source).
+  // FB allocation still follows `lookup_grant`, so the line is fetched
+  // from the bus.
   let lookup_actual_ic0: Bool =
     lookup_grant and icache_enable_i and (not inval_block_cache);
 
@@ -860,6 +863,7 @@ module ibex_icache
 
   // Forward-declared: out_done pulses (driven from output stream
   // logic below, but consumed by FB instances above their definition).
+  wire out_leaves_line: Bool;
   wire fb0_out_done_pulse: Bool;
   wire fb1_out_done_pulse: Bool;
   wire fb2_out_done_pulse: Bool;
@@ -1271,6 +1275,7 @@ module ibex_icache
     fb1_out_done_pulse -> fb1_out_done_pulse;
     fb2_out_done_pulse -> fb2_out_done_pulse;
     fb3_out_done_pulse -> fb3_out_done_pulse;
+    out_leaves_line    -> out_leaves_line;
   end inst output_stage
 
   // =================================================================

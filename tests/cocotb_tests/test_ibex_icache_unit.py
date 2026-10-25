@@ -932,6 +932,82 @@ async def test_r_fb_1_pool_full_stalls_lookup(dut):
     )
 
 
+async def _full_pool_hit_both_words(dut, *, stall_cycles: int,
+                                    compressed_lo: bool = False):
+    """Fill the FB pool with unserved misses, then branch to a line that
+    hits in the cache. No FB can be allocated for the hit, so the IC1
+    candidate is the only source of the line. Every instruction of the
+    line must be delivered exactly once, in order, with `stall_cycles`
+    of ready_i=0 after the first one is presented. With `compressed_lo`
+    the low word holds two compressed instructions, so the second word
+    is needed two accepts after the hit (past the in-flight re-lookup).
+    """
+    await _start_clock(dut)
+    await _reset(dut)
+    await _wait_until_idle(dut)
+    dut.req_i.value = 1
+    dut.ready_i.value = 0
+    await _branch(dut, 0x0040_0000)
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 0, 0)
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 1, 0)
+    for _ in range(20):          # never grant the bus: misses stay busy
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+    assert int(dut.fb_busy_mask.value) == 0xF, (
+        f"pool not full: fb_busy_mask={int(dut.fb_busy_mask.value):#x}")
+
+    addr_b = 0x0050_0080
+    pat_hi = 0xBEEF_0003                       # 32-bit instruction at B+4
+    pat_lo = 0x4501_4501 if compressed_lo else 0xCAFE_0003
+    expect = ([(addr_b, pat_lo), (addr_b + 2, 0x4501), (addr_b + 4, pat_hi)]
+              if compressed_lo else [(addr_b, pat_lo), (addr_b + 4, pat_hi)])
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 0, _tag_word(addr_b, valid=1))
+    _set_unpacked_vec(dut.ic_tag_rdata_i, 1, 0)
+    _set_unpacked_vec(dut.ic_data_rdata_i, 0, (pat_hi << 32) | pat_lo)
+    _set_unpacked_vec(dut.ic_data_rdata_i, 1, 0)
+    await _branch(dut, addr_b)
+
+    delivered = []
+    stalled = 0
+    for _ in range(30):
+        first_seen = int(dut.valid_o.value) == 1 and not delivered
+        if first_seen and stalled < stall_cycles:
+            dut.ready_i.value = 0
+            stalled += 1
+        else:
+            dut.ready_i.value = 1
+        await ReadOnly()
+        if int(dut.valid_o.value) == 1 and int(dut.ready_i.value) == 1:
+            delivered.append((int(dut.addr_o.value) & MASK32,
+                              int(dut.rdata_o.value) & MASK32))
+        await RisingEdge(dut.clk_i)
+        await _settle(dut)
+        if len(delivered) >= len(expect):
+            break
+    assert int(dut.fb_busy_mask.value) == 0xF, "pool drained mid-test"
+    assert delivered[:len(expect)] == expect, (
+        f"full-pool IC1 hit line not delivered word-by-word: "
+        f"{[(hex(a), hex(d)) for a, d in delivered]}")
+
+
+@cocotb.test()
+async def test_full_pool_ic1_hit_serves_both_words(dut):
+    """IC1 hit with no FB (pool full): second word still delivered."""
+    await _full_pool_hit_both_words(dut, stall_cycles=0)
+
+
+@cocotb.test()
+async def test_full_pool_ic1_hit_serves_both_words_backpressure(dut):
+    """Same, with ready_i low for 3 cycles while the first word is shown."""
+    await _full_pool_hit_both_words(dut, stall_cycles=3)
+
+
+@cocotb.test()
+async def test_full_pool_ic1_hit_serves_both_words_compressed(dut):
+    """Same, low word = two compressed instructions, then B+4."""
+    await _full_pool_hit_both_words(dut, stall_cycles=0, compressed_lo=True)
+
+
 # ──────────────────────────────────────────────────────────────────────
 # Output stream regressions: misaligned / compressed streams through the
 # skid and the per-FB out_done lifecycle, and IC1 hit qualification.
