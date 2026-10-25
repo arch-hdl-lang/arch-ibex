@@ -33,7 +33,9 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-REPO = HERE.parent.parent
+# MATRIX_REPO: build the models from another arch-ibex checkout (its
+# tests/ and build/), e.g. a fix branch, with this checkout's scripts.
+REPO = Path(os.environ.get("MATRIX_REPO", HERE.parent.parent)).resolve()
 VARIANTS = ["U", "UAic", "A", "AUic"]
 
 
