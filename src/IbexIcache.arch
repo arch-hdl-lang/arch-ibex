@@ -203,6 +203,12 @@ module ibex_icache
   reg beats_sent_q: Vec<UInt<2>, 4> reset none;
   reg out_done_q:   Vec<Bool, 4>    reset rst_ni => false;
   reg wb_done_q:    Vec<Bool, 4>    reset rst_ni => false;
+  /// `released_absent_q[fb]`: the FB's last release left its line OUT of
+  /// the cache RAM (stale non-allocating, bus error, or cache disabled /
+  /// invalidating). Captured on release, cleared on allocate. Only such an
+  /// FB keeps the post-release same-line coalesce window (see
+  /// `fb_coalesce_mask`); a line that was written back simply hits.
+  reg released_absent_q: Vec<Bool, 4> reset rst_ni => false;
 
   // Per-FB output aliases — kept so the rest of the file (200+
   // existing `fb*_signal` references in CAM lookup, age/LRU,
@@ -287,8 +293,19 @@ module ibex_icache
   // be served directly from the IC1 candidate without allocating a new
   // FB. Actual FB allocation remains gated by `fb_full` below.
   // For ICacheECC=0, ecc_write_req is dead-code (always false).
+  let fb_open_b0: UInt<1> = (busy_q[0] and (not stale_q[0])) ? 1'd1 : 1'd0;
+  let fb_open_b1: UInt<1> = (busy_q[1] and (not stale_q[1])) ? 1'd1 : 1'd0;
+  let fb_open_b2: UInt<1> = (busy_q[2] and (not stale_q[2])) ? 1'd1 : 1'd0;
+  let fb_open_b3: UInt<1> = (busy_q[3] and (not stale_q[3])) ? 1'd1 : 1'd0;
+  let fb_open_count: UInt<3> =
+    (fb_open_b0.zext<3>() +% fb_open_b1.zext<3>()) +%
+    (fb_open_b2.zext<3>() +% fb_open_b3.zext<3>());
+  let fb_open_hit_any: Bool =
+    (busy_q[0] and (not stale_q[0]) and hit_q[0]) or (busy_q[1] and (not stale_q[1]) and hit_q[1])
+    or (busy_q[2] and (not stale_q[2]) and hit_q[2]) or (busy_q[3] and (not stale_q[3]) and hit_q[3]);
+  let seq_throttle: Bool = (fb_open_count > 3'd2) and fb_open_hit_any;
   let lookup_req_ic0: Bool =
-    req_i and (branch_i or had_branch_q);
+    req_i and (branch_i or had_branch_q) and (branch_i or (not seq_throttle));
 
   // R-REQ-5: lookup address mux. Branch ⇒ addr_i, else prefetch_addr_q.
   let lookup_addr_ic0: UInt<32> =
@@ -409,7 +426,7 @@ module ibex_icache
   // pull addr_i this cycle, and the granted-line advance pulls the
   // post-line addr from the same source).
   seq on clk_i rising
-    if lookup_grant and (not coalesce_ic0) and (not fb_full)
+    if lookup_grant and (((not coalesce_ic0) and (not fb_full)) or cover_ic0)
       // Advance by line stride from the address that was actually
       // looked up (handles branch-with-grant case correctly per
       // R-REQ-2 second clause). Suppress on coalesced lookups: those
@@ -584,6 +601,21 @@ module ibex_icache
     fb_busy_mask | fb_busy_prev1 | fb_busy_prev2
                  | fb_busy_prev3 | fb_busy_prev4;
 
+  // Which FBs a same-line lookup coalesces onto (no new FB allocated):
+  //   - every live FB (as before): it already holds or fetches the line;
+  //   - a released FB, for the 4-cycle window above, only if it released
+  //     WITHOUT writing its line back (`released_absent_q`: stale
+  //     non-allocating, bus error, cache disabled / invalidating). That is
+  //     the case the window exists for: the line is not in the RAM, and a
+  //     same-line re-lookup inside the window must not issue a redundant
+  //     bus fetch. A released FB that DID write back is in the RAM, so the
+  //     lookup simply hits (allocating a hit FB, no bus traffic).
+  let fb_released_absent_mask: UInt<4> =
+    {released_absent_q[3], released_absent_q[2], released_absent_q[1], released_absent_q[0]};
+  let fb_coalesce_mask: UInt<4> =
+    fb_busy_mask
+    | ((~fb_busy_mask) & fb_busy_recent_mask & fb_released_absent_mask);
+
   // Recently-busy LINE coalesce: extends suppression for >=4 cycles after
   // release, but ONLY for the exact same cache line. Different lines in
   // the same page release the coalesce immediately so a tag-HIT on a
@@ -594,10 +626,10 @@ module ibex_icache
   // The stale FB may still finish its fill (allocating line) or drain
   // (held beat); the new FB re-fetches the target line.
   let inflight_line_match_ic0: Bool =
-    (fb_busy_recent_mask[0] and (not stale_q[0]) and (fb0_addr[31:3] == lookup_line_ic0)) or
-    (fb_busy_recent_mask[1] and (not stale_q[1]) and (fb1_addr[31:3] == lookup_line_ic0)) or
-    (fb_busy_recent_mask[2] and (not stale_q[2]) and (fb2_addr[31:3] == lookup_line_ic0)) or
-    (fb_busy_recent_mask[3] and (not stale_q[3]) and (fb3_addr[31:3] == lookup_line_ic0));
+    (fb_coalesce_mask[0] and (not stale_q[0]) and (fb0_addr[31:3] == lookup_line_ic0)) or
+    (fb_coalesce_mask[1] and (not stale_q[1]) and (fb1_addr[31:3] == lookup_line_ic0)) or
+    (fb_coalesce_mask[2] and (not stale_q[2]) and (fb2_addr[31:3] == lookup_line_ic0)) or
+    (fb_coalesce_mask[3] and (not stale_q[3]) and (fb3_addr[31:3] == lookup_line_ic0));
 
   let pending_alloc_match_ic0: Bool =
     lookup_alloc_ic1_q and
@@ -605,6 +637,25 @@ module ibex_icache
 
   let coalesce_ic0: Bool =
     inflight_line_match_ic0 or pending_alloc_match_ic0;
+
+  // `cover_ic0`: the lookup line is held by a live FB that will deliver it
+  // to the output: open (not stale), allocating (so a branch to this line
+  // does not stale it, see the phase-3 stale rule) with the cache enabled,
+  // no bus error, and its output not finished. Such a coalesced lookup
+  // needs no FB of its own, so prefetch may move on to the next line
+  // instead of re-reading this one until the FB (and the post-release
+  // window) drains -- that re-reading cost ~6 fetch-bubble cycles after
+  // every short forward branch into the prefetched lines (study
+  // 2026-10-25: k_fwd, k_jt0/k_jt4, CoreMark seq-xline1@4). An FB that will
+  // NOT deliver (stale, non-allocating, errored, output done) keeps the
+  // old rule: prefetch stays on the line, so no line is ever skipped.
+  let cover_v0: Bool = busy_q[0] and (not stale_q[0]) and alloc_q[0] and (not err_q[0]) and (not out_done_q[0]) and (fb0_addr[31:3] == lookup_line_ic0);
+  let cover_v1: Bool = busy_q[1] and (not stale_q[1]) and alloc_q[1] and (not err_q[1]) and (not out_done_q[1]) and (fb1_addr[31:3] == lookup_line_ic0);
+  let cover_v2: Bool = busy_q[2] and (not stale_q[2]) and alloc_q[2] and (not err_q[2]) and (not out_done_q[2]) and (fb2_addr[31:3] == lookup_line_ic0);
+  let cover_v3: Bool = busy_q[3] and (not stale_q[3]) and alloc_q[3] and (not err_q[3]) and (not out_done_q[3]) and (fb3_addr[31:3] == lookup_line_ic0);
+  let cover_ic0: Bool =
+    icache_enable_i and (not inval_block_cache)
+    and (cover_v0 or cover_v1 or cover_v2 or cover_v3);
 
   // The grant's copy of the coalesce test (see `lookup_grant`). Same
   // comparisons as `coalesce_ic0`, but against `prefetch_addr_q` -- a
@@ -615,10 +666,10 @@ module ibex_icache
   // allocation, which is registered and off the RAM path.
   let prefetch_line_ic0: UInt<29> = prefetch_addr_q[31:3];
   let inflight_line_match_pf: Bool =
-    (fb_busy_recent_mask[0] and (not stale_q[0]) and (fb0_addr[31:3] == prefetch_line_ic0)) or
-    (fb_busy_recent_mask[1] and (not stale_q[1]) and (fb1_addr[31:3] == prefetch_line_ic0)) or
-    (fb_busy_recent_mask[2] and (not stale_q[2]) and (fb2_addr[31:3] == prefetch_line_ic0)) or
-    (fb_busy_recent_mask[3] and (not stale_q[3]) and (fb3_addr[31:3] == prefetch_line_ic0));
+    (fb_coalesce_mask[0] and (not stale_q[0]) and (fb0_addr[31:3] == prefetch_line_ic0)) or
+    (fb_coalesce_mask[1] and (not stale_q[1]) and (fb1_addr[31:3] == prefetch_line_ic0)) or
+    (fb_coalesce_mask[2] and (not stale_q[2]) and (fb2_addr[31:3] == prefetch_line_ic0)) or
+    (fb_coalesce_mask[3] and (not stale_q[3]) and (fb3_addr[31:3] == prefetch_line_ic0));
   let pending_alloc_match_pf: Bool =
     lookup_alloc_ic1_q and (lookup_addr_ic1_q[31:3] == prefetch_line_ic0);
   let coalesce_grant_ic0: Bool =
@@ -997,11 +1048,25 @@ module ibex_icache
         beats_sent_q[fb] <= 2'd0;
         out_done_q[fb]   <= false;
         wb_done_q[fb]    <= false;
+        released_absent_q[fb] <= false;
       end if
 
       // Phase 1 → 3: Alloc → Running (+ same-edge IC1 capture)
       if phase_q[fb] == 2'd1
         phase_q[fb] <= 2'd3;
+        // A branch stales this FB exactly as it does a running one (same
+        // rule as phase 3 below; upstream stales every busy FB,
+        // ibex_icache.sv fill_stale_d). Without this, an FB allocated by the
+        // last sequential lookup before a branch survived it un-staled: a
+        // live FB for a line the new stream never visits, which no output
+        // consumes, so it held its slot until some later branch.
+        if branch_i and (
+          (addr_q[fb][31:3] != addr_i[31:3])
+          or (not icache_enable_i)
+          or (not alloc_q[fb])
+        )
+          stale_q[fb] <= true;
+        end if
         if ic1_hit_combo
           hit_q[fb]        <= true;
           hit_way_q[fb]    <= ic1_hit_way_combo;
@@ -1054,6 +1119,9 @@ module ibex_icache
         end if
 
         if releasing_v[fb]
+          released_absent_q[fb] <=
+            not (alloc_q[fb] and wb_done_q[fb] and (not err_q[fb])
+                 and (not icache_inval_i) and icache_enable_i);
           phase_q[fb] <= 2'd0;
           busy_q[fb]  <= false;
           alloc_q[fb] <= false;

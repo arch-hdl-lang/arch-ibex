@@ -43,7 +43,7 @@ BUILD     ?= build
 
 PROGS     := timer_isr sw_isr ext_isr multictx_isr wfi_isr \
              ecall_isr pmp_exec_isr pmp_load_isr pmp_misaligned_isr \
-             icache_bench
+             icache_bench fetch_bench
 
 VMEMS     := $(PROGS:%=$(BUILD)/%.vmem)
 DISES     := $(PROGS:%=$(BUILD)/%.dis)
@@ -81,3 +81,8 @@ $(BUILD)/pmp_misaligned_isr.elf: CFLAGS := -march=$(MARCH_C) -mabi=$(MABI) \
 
 clean:
 	rm -rf $(BUILD)
+$(BUILD)/fetch_bench.o: ASFLAGS := -march=$(MARCH_C) -mabi=$(MABI) -c -I.
+$(BUILD)/fetch_bench.elf: CFLAGS := -march=$(MARCH_C) -mabi=$(MABI) \
+                                     -nostdlib -nostartfiles \
+                                     -ffreestanding -Os -g \
+                                     -Wl,-T,link.ld -Wl,--no-relax

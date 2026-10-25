@@ -297,6 +297,12 @@ module IbexIcacheOutputStage
       ? (addr_out_q +% 32'd2)
       : (addr_out_q +% 32'd4);
 
+  // No FB is output-done on a branch cycle. The branch redirects
+  // addr_out_q, so whatever the old stream accepts this cycle is dropped;
+  // an FB of the old stream is staled by the branch anyway, unless it holds
+  // the target line, and that one must stay live to serve the new stream.
+  // (The parent's prefetch advances past a target line covered by a live,
+  // not output-done FB, `cover_ic0`, so such an FB must still deliver.)
   comb
     valid_o     = out_valid_comb;
     rdata_o     = out_rdata_comb;
@@ -304,22 +310,22 @@ module IbexIcacheOutputStage
     err_o       = out_err_comb;
     err_plus2_o = out_err_plus2_comb;
 
-    fb0_out_done_pulse =
+    fb0_out_done_pulse = (not branch_i) and (
       (accept_output and accept_done and (accept_done_idx == 2'd0))
       or (skid_load_done and (raw_fb_idx == 2'd0))
-      or fb0_behind_done;
-    fb1_out_done_pulse =
+      or fb0_behind_done);
+    fb1_out_done_pulse = (not branch_i) and (
       (accept_output and accept_done and (accept_done_idx == 2'd1))
       or (skid_load_done and (raw_fb_idx == 2'd1))
-      or fb1_behind_done;
-    fb2_out_done_pulse =
+      or fb1_behind_done);
+    fb2_out_done_pulse = (not branch_i) and (
       (accept_output and accept_done and (accept_done_idx == 2'd2))
       or (skid_load_done and (raw_fb_idx == 2'd2))
-      or fb2_behind_done;
-    fb3_out_done_pulse =
+      or fb2_behind_done);
+    fb3_out_done_pulse = (not branch_i) and (
       (accept_output and accept_done and (accept_done_idx == 2'd3))
       or (skid_load_done and (raw_fb_idx == 2'd3))
-      or fb3_behind_done;
+      or fb3_behind_done);
   end comb
 
   seq on clk_i rising

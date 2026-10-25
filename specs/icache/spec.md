@@ -616,3 +616,41 @@ scramble plumbing. Under SoC pinning (`ICacheScramble=0`):
    permits same-line double-allocation as a corner case. A CAM-based
    implementation MAY strengthen this to "always coalesce" — this is
    a contract strengthening, not a relaxation.
+
+4. **Coalescing must not stall the prefetch stream (R-LK-4, R-REQ-1).**
+   With "always coalesce" (ambiguity 3), a lookup of line `L` that a
+   live, open FB already covers allocates nothing. Such a lookup still
+   counts as granted for R-REQ-1: when the covering FB will deliver `L`
+   to IF (open, allocating with the cache enabled, no bus error, output
+   not finished), the prefetch address MUST advance past `L`. Re-reading
+   `L` until that FB released stalled the sequential stream by about six
+   cycles after every short forward branch into the prefetched lines.
+   When the covering FB will not deliver (stale, non-allocating,
+   errored, output done), the prefetch address stays on `L`, so no line
+   is skipped. For the same reason, no FB is marked output-done in a
+   cycle with `branch_i = 1`. The branch redirects the stream, so the old
+   stream's accept that cycle is dropped. An FB holding the target line
+   must stay live to serve the new stream; every other FB is staled by
+   the branch. After an FB releases, a same-line lookup keeps
+   coalescing onto it for four cycles only if the FB released without
+   writing `L` to the RAM (stale non-allocating, bus error, cache
+   disabled or invalidating): that window avoids a redundant bus fetch
+   of a line that is not cached. An FB that wrote `L` back does not
+   coalesce: `L` hits.
+
+5. **Branch staleness covers every busy FB (R-FB-3).** Upstream marks
+   every busy fill buffer stale on `branch_i` (`fill_stale_d`), so this
+   includes an FB allocated by the lookup just before the branch, which
+   is still in its IC1 cycle. That FB MUST be staled like a running
+   one. Otherwise it is a live FB for a line the new stream never
+   requests, and it holds its slot until a later branch.
+
+6. **Lookup throttle (R-REQ-3, R-ARB-3).** This implementation issues
+   lookups while FBs are busy (an IC1 hit is served without an FB), so
+   it does not apply the unconditional `lookup_throttle` of R-REQ-3.
+   It throttles non-branch lookups only while more than `FB_THRESHOLD`
+   open (busy, not stale) FBs are live AND at least one of them is a
+   hit FB. Hit FBs running ahead of IF buy no latency, but they fill the
+   pool, and a branch then has no FB for its target's next line. Miss
+   FBs are not throttled, so streaming misses keep four fills in flight.
+   Branches always bypass the throttle.
