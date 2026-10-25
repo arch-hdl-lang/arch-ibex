@@ -654,3 +654,17 @@ scramble plumbing. Under SoC pinning (`ICacheScramble=0`):
    pool, and a branch then has no FB for its target's next line. Miss
    FBs are not throttled, so streaming misses keep four fills in flight.
    Branches always bypass the throttle.
+
+7. **Line-crossing 32-bit instructions cost no extra cycle (R-OUT-6).**
+   A 32-bit instruction at `PC % 8 == 6` takes its low halfword from
+   line `L` and its high halfword from line `L+1`. Upstream keeps its
+   skid loaded while the stream is misaligned (`skid_valid_d`), so the
+   instruction issues as soon as `L+1`'s first word is available. This
+   implementation matches that by preloading the skid. When an accepted
+   instruction leaves the stream at offset 6 of the same line (a
+   compressed instruction at offset 4, or a 32-bit instruction at
+   offset 2), the offset-6 halfword is loaded into the skid on that same
+   accept. It is loaded only if it is the low half of a 32-bit
+   instruction, no branch is taking effect, there is no held output, and
+   beat 1 did not fault. That releases the source line's FB, as a skid
+   load at offset 6 always has.

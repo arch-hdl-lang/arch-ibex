@@ -12,15 +12,18 @@ Measured with arch 0.74.1:
 
   kernel   bound   upstream Ibex   before (main ebf3410)
   k_seq      685        685             689
-  k_fwd     1645       1645            2527
+  k_fwd     1645       1645            2524
   k_jt0      845        844            1319
   k_jt4      854        844            1752
-  k_jmis6    704        686             762
+  k_jmis6    693        686             762
+  k_mis32    694        694            1017
+  k_mix      685        685             768
 
 The k_fwd / k_jt* / k_jmis6 pins come from the branch-coalesce fix
 (prefetch advances past a line a delivering fill buffer covers; branch
-stales phase-1 fill buffers; hit run-ahead throttle). k_jmis6's remaining
-18 cycles over upstream are the line-crossing 32-bit fetch penalty.
+stales phase-1 fill buffers; hit run-ahead throttle). The k_mis32 / k_mix /
+k_jmis6 pins come from the skid preload for a 32-bit instruction at
+PC % 8 == 6 (it spans two 64-bit lines).
 """
 
 from __future__ import annotations
@@ -43,7 +46,9 @@ KERNELS = [
     ("k_fwd",    1645),
     ("k_jt0",     845),
     ("k_jt4",     854),
-    ("k_jmis6",   704),
+    ("k_jmis6",   693),
+    ("k_mis32",   694),
+    ("k_mix",     685),
 ]
 
 

@@ -249,6 +249,30 @@ module IbexIcacheOutputStage
 
   let nonheld_valid: Bool =
     skid_complete_instr or skid_bridge_valid or normal_valid;
+
+  // Skid preload. When an accept leaves addr_out_q at offset 6 of the same
+  // line (a compressed instruction accepted at offset 4, or a 32-bit one at
+  // offset 2), the halfword at offset 6 is already in raw_line (beat 1 of
+  // the source line). If it is the low half of a 32-bit instruction, it is
+  // loaded into the skid on that accept, so the next cycle can bridge it
+  // with the next line's first halfword. Upstream does the same: its skid
+  // stays loaded while the stream is misaligned (ibex_icache.sv
+  // skid_valid_d). Without the preload, the line-crossing instruction first
+  // spent a cycle in need_skid_load, one cycle per 32-bit instruction at
+  // PC % 8 == 6.
+  // There is no preload on a held output (raw_line then belongs to a later
+  // address), while the skid is in use, or on a branch. A faulting beat 1
+  // is left to the normal path (lower_is_compressed_or_err).
+  let next_half6: UInt<16> = raw_line[63:48];
+  let next_half6_err: Bool = source_beat1 ? raw_curr_err : raw_next_err;
+  let preload_skid: Bool =
+    accept_output and (not branch_i) and (not hold_valid_q)
+    and (not skid_valid_q) and normal_valid
+    and (accepted_next_addr[2:1] == 2'b11)
+    and (next_half6[1:0] == 2'd3) and (not next_half6_err);
+  // The preload takes the source line's last halfword, so the source FB is
+  // done, as at a need_skid_load at offset 6 (skid_load_done).
+  let preload_done: Bool = preload_skid and raw_is_fb;
   let nonheld_rdata: UInt<32> =
     skid_complete_instr ? ({16'd0, skid_data_q}).resize<32>() :
     (skid_bridge_valid ? {raw_word[15:0], skid_data_q} : normal_rdata);
@@ -313,18 +337,22 @@ module IbexIcacheOutputStage
     fb0_out_done_pulse = (not branch_i) and (
       (accept_output and accept_done and (accept_done_idx == 2'd0))
       or (skid_load_done and (raw_fb_idx == 2'd0))
+      or (preload_done and (raw_fb_idx == 2'd0))
       or fb0_behind_done);
     fb1_out_done_pulse = (not branch_i) and (
       (accept_output and accept_done and (accept_done_idx == 2'd1))
       or (skid_load_done and (raw_fb_idx == 2'd1))
+      or (preload_done and (raw_fb_idx == 2'd1))
       or fb1_behind_done);
     fb2_out_done_pulse = (not branch_i) and (
       (accept_output and accept_done and (accept_done_idx == 2'd2))
       or (skid_load_done and (raw_fb_idx == 2'd2))
+      or (preload_done and (raw_fb_idx == 2'd2))
       or fb2_behind_done);
     fb3_out_done_pulse = (not branch_i) and (
       (accept_output and accept_done and (accept_done_idx == 2'd3))
       or (skid_load_done and (raw_fb_idx == 2'd3))
+      or (preload_done and (raw_fb_idx == 2'd3))
       or fb3_behind_done);
   end comb
 
@@ -378,6 +406,10 @@ module IbexIcacheOutputStage
     elsif need_skid_load
       skid_data_q  <= raw_word[31:16];
       skid_err_q   <= raw_curr_err;
+      skid_valid_q <= true;
+    elsif preload_skid
+      skid_data_q  <= next_half6;
+      skid_err_q   <= false;
       skid_valid_q <= true;
     end if
   end seq
