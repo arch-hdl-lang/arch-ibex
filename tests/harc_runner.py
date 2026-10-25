@@ -26,6 +26,10 @@ ARCH_VERSION_FILE = REPO_ROOT / ".arch-version"
 ARCH_RELEASES_URL = "https://github.com/arch-hdl-lang/arch-com/releases"
 # `/usr/bin/arch` on macOS is an unrelated system tool, never the compiler.
 ARCH_PATH_SKIP = frozenset({"/usr/bin/arch"})
+# The rdl2arch-riscv commit (CSR generator + RDL fixtures) the SoC tests use:
+# "<pyproject version> <commit>". It has no releases, so the commit is the pin.
+RDL2ARCH_RISCV_VERSION_FILE = REPO_ROOT / ".rdl2arch-riscv-version"
+RDL2ARCH_RISCV_URL = "https://github.com/arch-hdl-lang/rdl2arch-riscv"
 
 PathLike = str | os.PathLike[str]
 
@@ -517,6 +521,138 @@ def resolve_arch_bin() -> str:
         releases_url=ARCH_RELEASES_URL,
         path_skip=ARCH_PATH_SKIP,
     )
+
+
+def pinned_rdl2arch_riscv_release() -> tuple[str, str]:
+    return _pinned_release(RDL2ARCH_RISCV_VERSION_FILE)
+
+
+def rdl2arch_riscv_root() -> Path:
+    """The rdl2arch-riscv checkout: `$RDL2ARCH_RISCV_ROOT`, default the
+    sibling `../rdl2arch-riscv` (unverified; see resolve_rdl2arch_riscv_root)."""
+
+    env = os.environ.get("RDL2ARCH_RISCV_ROOT")
+    if env:
+        return Path(env).expanduser()
+    return REPO_ROOT.parent / "rdl2arch-riscv"
+
+
+def _git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", "-C", str(root), *args], capture_output=True, text=True
+    )
+
+
+def _pyproject_version(root: Path) -> str | None:
+    import tomllib
+
+    try:
+        data = tomllib.loads((root / "pyproject.toml").read_text())
+    except (OSError, tomllib.TOMLDecodeError):
+        return None
+    return data.get("project", {}).get("version")
+
+
+@functools.lru_cache(maxsize=None)
+def _checked_rdl2arch_riscv_root(root: str, version: str, commit: str) -> Path:
+    """Fail unless `root` is a git checkout of rdl2arch-riscv whose HEAD is
+    the pinned commit and whose tracked files are unmodified (untracked files
+    are ignored), with the pinned pyproject version."""
+
+    path = Path(root)
+    fix = (
+        f"Check out the pinned commit: `git -C {path} fetch && git -C {path} "
+        f"checkout {commit}`, or make a pinned worktree and point "
+        f"RDL2ARCH_RISCV_ROOT at it: `git -C <rdl2arch-riscv clone> worktree add "
+        f"<dir> {commit}` (clone: {RDL2ARCH_RISCV_URL}). To test another "
+        f"rdl2arch-riscv on purpose, set RDL2ARCH_RISCV_SKIP_PIN_CHECK=1."
+    )
+    head = _git(path, "rev-parse", "HEAD")
+    if head.returncode != 0:
+        raise AssertionError(
+            f"RDL2ARCH_RISCV_ROOT={path} is not a git checkout, so the pinned "
+            f"rdl2arch-riscv commit {commit} cannot be verified "
+            f"({head.stderr.strip() or 'git rev-parse HEAD failed'}). {fix}"
+        )
+    problems = []
+    sha = head.stdout.strip()
+    if not sha.startswith(commit):
+        problems.append(f"HEAD is {sha[:12]}, pinned commit is {commit}")
+    status = _git(path, "status", "--porcelain", "--untracked-files=no")
+    if status.returncode != 0:
+        problems.append(f"git status failed: {status.stderr.strip()}")
+    elif status.stdout.strip():
+        changed = ", ".join(line[3:] for line in status.stdout.splitlines()[:5])
+        problems.append(f"tracked files are modified ({changed})")
+    found = _pyproject_version(path)
+    if found != version:
+        problems.append(f"pyproject version {found!r} != pinned {version}")
+    if problems:
+        raise AssertionError(
+            f"{path} is not the pinned rdl2arch-riscv ({version} {commit}): "
+            + "; ".join(problems)
+            + f". {fix}"
+        )
+    return path
+
+
+def resolve_rdl2arch_riscv_root() -> Path:
+    """Resolve and verify the rdl2arch-riscv checkout the SoC tests use.
+
+    One root supplies both the RDL fixtures (`<root>/tests/rdl`) and the
+    generator code (`<root>/src`, see import_rdl2arch_riscv). It must be at
+    the commit in `.rdl2arch-riscv-version`, with no tracked modifications.
+    A missing checkout raises ToolNotFoundError (callers skip); a wrong one
+    fails. `RDL2ARCH_RISCV_SKIP_PIN_CHECK=1` bypasses the commit check, for
+    testing an unpinned rdl2arch-riscv on purpose.
+    """
+
+    version, commit = pinned_rdl2arch_riscv_release()
+    root = rdl2arch_riscv_root()
+    if not (root / "tests" / "rdl").is_dir() or not (root / "src").is_dir():
+        raise ToolNotFoundError(
+            f"rdl2arch-riscv checkout not found at {root}; clone "
+            f"{RDL2ARCH_RISCV_URL} at commit {commit} there or set "
+            f"RDL2ARCH_RISCV_ROOT"
+        )
+    if os.environ.get("RDL2ARCH_RISCV_SKIP_PIN_CHECK") == "1":
+        return root
+    return _checked_rdl2arch_riscv_root(str(root), version, commit)
+
+
+def import_from_root(module: str, src_dir: Path):
+    """Import `module` from `src_dir`, and fail if it comes from anywhere else.
+
+    `src_dir` goes first on `sys.path` (and on PYTHONPATH, for subprocesses),
+    which takes precedence over a pip install, editable or not. The module's
+    `__file__` is then checked, so a copy imported earlier from elsewhere, or
+    a finder that bypasses `sys.path`, is reported, not silently used.
+    """
+
+    import importlib
+    import sys
+
+    src = str(Path(src_dir).resolve())
+    if src not in sys.path:
+        sys.path.insert(0, src)
+    parts = os.environ.get("PYTHONPATH", "").split(os.pathsep)
+    if src not in parts:
+        os.environ["PYTHONPATH"] = os.pathsep.join([src, *[p for p in parts if p]])
+    mod = importlib.import_module(module)
+    where = Path(mod.__file__ or "").resolve()
+    if not where.is_relative_to(src):
+        raise AssertionError(
+            f"{module} was imported from {where}, not from {src}. Something "
+            f"imported another copy first (an editable install of a different "
+            f"checkout?); run the tests in a fresh interpreter."
+        )
+    return mod
+
+
+def import_rdl2arch_riscv(root: Path):
+    """The rdl2arch_riscv package from `root`'s `src/` (see import_from_root)."""
+
+    return import_from_root("rdl2arch_riscv", root / "src")
 
 
 def resolve_verilator_coverage_bin() -> str:

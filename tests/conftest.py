@@ -33,7 +33,12 @@ from typing import Optional
 
 import pytest
 
-from tests.harc_runner import ToolNotFoundError, resolve_arch_bin
+from tests.harc_runner import (
+    ToolNotFoundError,
+    import_rdl2arch_riscv,
+    resolve_arch_bin,
+    resolve_rdl2arch_riscv_root,
+)
 
 TESTS_DIR = Path(__file__).parent
 REPO_ROOT = TESTS_DIR.parent
@@ -41,15 +46,15 @@ SOC_DIR = REPO_ROOT / "soc"
 ARCH_BUILD_DIR = REPO_ROOT / "build"
 
 
-def _find_rdl2arch_riscv_root() -> Path:
-    env = os.environ.get("RDL2ARCH_RISCV_ROOT")
-    if env:
-        return Path(env).expanduser()
-    # default sibling layout: github/arch-ibex + github/rdl2arch-riscv
-    return REPO_ROOT.parent / "rdl2arch-riscv"
-
-
-RDL_DIR = _find_rdl2arch_riscv_root() / "tests" / "rdl"
+def _rdl2arch_riscv_root() -> Path:
+    """The pinned rdl2arch-riscv checkout (`.rdl2arch-riscv-version`), from
+    $RDL2ARCH_RISCV_ROOT or the sibling `../rdl2arch-riscv`. It supplies both
+    the RDL fixtures and the generator code; a missing checkout skips the
+    dependent tests, a wrong commit or tracked edits fail them."""
+    try:
+        return resolve_rdl2arch_riscv_root()
+    except ToolNotFoundError as exc:
+        pytest.skip(str(exc))
 
 
 @pytest.fixture(scope="session")
@@ -116,6 +121,13 @@ def _generate_clint_plic_sv(arch_bin: str, out_dir: Path) -> list[Path]:
     files.
     """
     from systemrdl import RDLCompiler
+
+    # Fixtures and generator both come from the one pinned checkout: the
+    # package is imported from `<root>/src`, never from whatever pip install
+    # happens to be on the path.
+    root = _rdl2arch_riscv_root()
+    rdl_dir = root / "tests" / "rdl"
+    import_rdl2arch_riscv(root)
     from rdl2arch_riscv import RiscvClintExporter, RiscvCsrExporter, RiscvPlicExporter
     from rdl2arch_riscv.udps import ALL_UDPS
 
@@ -142,7 +154,7 @@ def _generate_clint_plic_sv(arch_bin: str, out_dir: Path) -> list[Path]:
         rdlc = RDLCompiler()
         for udp in ALL_UDPS:
             rdlc.register_udp(udp, soft=False)
-        rdlc.compile_file(str(RDL_DIR / f"{rdl_name}.rdl"))
+        rdlc.compile_file(str(rdl_dir / f"{rdl_name}.rdl"))
         exporter_cls().export(rdlc.elaborate().top, str(stage))
 
         archs = sorted(stage.glob("*.arch"))

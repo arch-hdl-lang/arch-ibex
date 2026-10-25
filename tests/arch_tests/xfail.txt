@@ -9,8 +9,8 @@
 #   vectors to {mtvec[31:8], 8'h00}. `csrw mtvec, 0x00100241` read back
 #   0x00100241, the framework trusted that vector, and the trap went to
 #   0x00100200. The fixture now has Ibex's WARL ({wdata[31:8], 6'b0, 2'b01},
-#   reset 0x1), so the readback is 0x00100201. Until a given environment's
-#   $RDL2ARCH_RISCV_ROOT has that fixture, cause 1 still applies.
+#   reset 0x1), so the readback is 0x00100201. The rdl2arch-riscv pin
+#   (.rdl2arch-riscv-version, 8bba08c7b1b3 or later) guarantees that fixture.
 #
 #   Cause 2 (open; framework / model side): because mtvec is not freely
 #   writable, the framework copies its trap trampoline to wherever mtvec
