@@ -60,6 +60,7 @@ PROGRAMS: list[CpuProgram] = [
     CpuProgram(name="pmp_load_isr", cocotb_module="test_pmp_load_isr"),
     CpuProgram(name="pmp_misaligned_isr", cocotb_module="test_pmp_misaligned_isr"),
     CpuProgram(name="icache_bench", cocotb_module="test_icache_bench"),
+    CpuProgram(name="fetch_bench",  cocotb_module="test_fetch_bench"),
 ]
 
 
