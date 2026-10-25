@@ -1144,6 +1144,78 @@ async def test_r_out_5_no_err_plus2_compressed_fault_at_offset6(dut):
     assert f and f[0] == a + 6 and f[3] == 0, _fmt(acc)
 
 
+@cocotb.test()
+async def test_fb_releases_after_beat0_bus_error(dut):
+    """R-FB-5 / R-EXT-5: a fill buffer whose beat-0 response faults stops
+    requesting beats (R-EXT-5), so once every beat it did request has come
+    back, it must still be able to release. Otherwise it leaks for good:
+    busy_o stays high and the pool shrinks, and with a full pool a miss can
+    never allocate.
+
+    Recipe (deterministic, seeded): a bus that grants 40% of cycles and
+    answers one cycle after the grant, faulting beat 0 of every line but the
+    first. Three branches with the IF stalled let several prefetch FBs share
+    the bus, so the age arbiter interleaves them: an FB gets its beat-0
+    grant, another FB wins the next cycle, and the fault arrives before the
+    first FB issued beat 1. A final branch with req_i low makes every FB
+    stale; all must drain.
+    """
+    import random
+
+    rng = random.Random(0)
+    await _start_clock(dut)
+    await _reset(dut)
+    await _wait_until_idle(dut)
+    a = 0x0060_0000
+
+    async def bus():
+        pending = []
+        while True:
+            await ReadOnly()
+            req = int(dut.instr_req_o.value) == 1
+            addr = int(dut.instr_addr_o.value) & MASK32
+            gnt = int(dut.instr_gnt_i.value) == 1
+            await RisingEdge(dut.clk_i)
+            dut.instr_rvalid_i.value = 0
+            dut.instr_err_i.value = 0
+            if pending:
+                ra = pending.pop(0)
+                dut.instr_rvalid_i.value = 1
+                dut.instr_rdata_i.value = 0x0000_0013
+                dut.instr_err_i.value = int((ra & 4) == 0 and (ra & ~7) != a)
+            if req and gnt:
+                pending.append(addr)
+            dut.instr_gnt_i.value = int(rng.randrange(100) < 40)
+
+    dut.instr_gnt_i.value = 0
+    cocotb.start_soon(bus())
+    dut.ready_i.value = 0
+    dut.req_i.value = 1
+    for target in (a, a + 0x400, a + 0x800):
+        dut.branch_i.value = 1
+        dut.addr_i.value = target
+        await RisingEdge(dut.clk_i)
+        dut.branch_i.value = 0
+        for _ in range(rng.randrange(8, 30)):
+            await RisingEdge(dut.clk_i)
+    dut.ready_i.value = 1
+    for _ in range(100):
+        await RisingEdge(dut.clk_i)
+    dut.req_i.value = 0
+    dut.branch_i.value = 1
+    dut.addr_i.value = 0x0010_0000
+    await RisingEdge(dut.clk_i)
+    dut.branch_i.value = 0
+    for _ in range(300):
+        await RisingEdge(dut.clk_i)
+    await ReadOnly()
+    assert int(dut.fb_busy_mask.value) == 0 and int(dut.busy_o.value) == 0, (
+        f"fill buffers never released after beat-0 bus errors: "
+        f"fb_busy_mask={int(dut.fb_busy_mask.value):#x} busy_o={int(dut.busy_o.value)} "
+        f"err_q={int(dut.err_q.value):#x} beats_sent_q={int(dut.beats_sent_q.value):#x} "
+        f"beats_rcvd_q={int(dut.beats_rcvd_q.value):#x} alloc_q={int(dut.alloc_q.value):#x}")
+
+
 async def _ic1_false_hit_stream(dut, *, inval: bool, enable: int):
     """Branch to line B while the RAM read data shows a valid tag for B
     with another line's data X. The lookup is issued during an

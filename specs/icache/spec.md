@@ -252,7 +252,12 @@ R-FB-4. Inter-FB arbitration for (i) external requests, (ii) RAM
   and decays as older FBs release (`ibex_icache.sv:724`).
 
 R-FB-5. An FB MUST release (clear `fill_busy_q`) only once (a) all
-  expected bus beats have been received, (b) any cache write-back has
+  expected bus beats have been received, i.e. every external request
+  it issued has returned its beat (`fill_rvd_done`,
+  `ibex_icache.sv:781-783`); when the FB has stopped requesting early
+  (stale and non-allocating per R-FB-6, or after a recorded bus error
+  per R-EXT-5) that is the beats already requested, not the whole
+  line, and such an FB MUST still release, (b) any cache write-back has
   completed or been suppressed by allocate-flag/hit/error, AND (c) all
   output beats have been delivered to IF OR the FB is stale
   (`ibex_icache.sv:728-734`).
