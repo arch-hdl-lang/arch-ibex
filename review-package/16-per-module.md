@@ -293,3 +293,27 @@ emission overhead would be reading it wrongly. Quantifying the two
 separately would need an Arch-lane build with the replay buffer
 bypassed; that variant was **not** built, because it fails the test the
 buffer exists to satisfy and would not be a working design.
+
+> **Erratum (2026-10-24).** The last sentence above is wrong. The
+> buffer-free variant was later built and merged (arch-ibex PR #31, commit
+> adbe54d), and it is a working design.
+>
+> *Tests.* It passes `s4_branch_into_inflight_line_cam_target` and the full
+> test suite (`make test`: 204 passed, 75 skipped, 0 failed). All `formal/`
+> icache suites keep their expected verdicts.
+>
+> *Measurements.* The comparison below is between 429dadc (before) and
+> adbe54d (after), on one machine on one day, with arch 0.73.0. That is a later
+> compiler and commit than this section's 0.72.4 numbers.
+>
+> | | with buffer | without buffer |
+> |---|---|---|
+> | CoreMark ticks | 113,064 | 113,413 (+0.31 %) |
+> | ECP5 LUT4 / TRELLIS_FF | 16,574 / 3,512 | 12,977 (−21.7 %) / 2,760 (−752) |
+> | ECP5 fmax, 10 seeds | 28.71 ± 0.89 MHz | 32.70 ± 0.36 MHz |
+> | sky130 synth area | 1,806,155 µm² | 1,760,163 µm² (−2.55 %) |
+>
+> So the replay buffer bought about 0.3 % CoreMark for about a fifth of the
+> design's ECP5 LUTs. The split this paragraph says was never measured is now
+> measured. The original text is left unchanged above as the submitted
+> evidence.
