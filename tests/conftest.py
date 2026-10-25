@@ -38,6 +38,7 @@ from tests.harc_runner import (
     import_rdl2arch_riscv,
     resolve_arch_bin,
     resolve_rdl2arch_riscv_root,
+    resolve_rdl2arch_root,
 )
 
 TESTS_DIR = Path(__file__).parent
@@ -53,6 +54,16 @@ def _rdl2arch_riscv_root() -> Path:
     dependent tests, a wrong commit or tracked edits fail them."""
     try:
         return resolve_rdl2arch_riscv_root()
+    except ToolNotFoundError as exc:
+        pytest.skip(str(exc))
+
+
+def _rdl2arch_root() -> Path:
+    """The pinned rdl2arch checkout (`.rdl2arch-version`), from $RDL2ARCH_ROOT
+    or the sibling `../rdl2arch`: the `rdl2arch` package rdl2arch-riscv's
+    CLINT/PLIC exporters run on. Same skip / fail rule."""
+    try:
+        return resolve_rdl2arch_root()
     except ToolNotFoundError as exc:
         pytest.skip(str(exc))
 
@@ -122,12 +133,14 @@ def _generate_clint_plic_sv(arch_bin: str, out_dir: Path) -> list[Path]:
     """
     from systemrdl import RDLCompiler
 
-    # Fixtures and generator both come from the one pinned checkout: the
-    # package is imported from `<root>/src`, never from whatever pip install
-    # happens to be on the path.
+    # Fixtures and generator both come from the one pinned rdl2arch-riscv
+    # checkout, and the generator runs on the pinned rdl2arch checkout: both
+    # packages are imported from their `<root>/src`, never from whatever pip
+    # install happens to be on the path (rdl2arch first; see
+    # import_rdl2arch_riscv).
     root = _rdl2arch_riscv_root()
     rdl_dir = root / "tests" / "rdl"
-    import_rdl2arch_riscv(root)
+    import_rdl2arch_riscv(root, _rdl2arch_root())
     from rdl2arch_riscv import RiscvClintExporter, RiscvCsrExporter, RiscvPlicExporter
     from rdl2arch_riscv.udps import ALL_UDPS
 

@@ -1610,7 +1610,15 @@ def test_build_sh_rejects_a_non_release_compiler(
 
 
 
-# ── rdl2arch-riscv pin (.rdl2arch-riscv-version) ──────────────────────
+# ── source-checkout pins: rdl2arch-riscv and rdl2arch ─────────────────
+# (.rdl2arch-riscv-version / .rdl2arch-version, tests/harc_runner.py
+# resolve_pinned_checkout). Every check runs against both pins.
+PINNED_CHECKOUTS = {
+    "rdl2arch-riscv": (harc_runner.RDL2ARCH_RISCV, "resolve_rdl2arch_riscv_root"),
+    "rdl2arch": (harc_runner.RDL2ARCH, "resolve_rdl2arch_root"),
+}
+
+
 def _git_c(root: Path, *args: str) -> str:
     return subprocess.run(
         ["git", "-C", str(root), "-c", "user.name=t", "-c", "user.email=t@t",
@@ -1619,13 +1627,16 @@ def _git_c(root: Path, *args: str) -> str:
     ).stdout.strip()
 
 
-def _fake_rdl2arch_riscv(tmp_path: Path, *, version: str = "0.1.0") -> tuple[Path, str]:
-    """A minimal rdl2arch-riscv-shaped git checkout; returns (root, HEAD sha)."""
-    root = tmp_path / "rdl2arch-riscv"
-    (root / "src" / "fake_rdl2arch_pkg").mkdir(parents=True)
+def _fake_checkout(tmp_path: Path, *, version: str = "0.1.0",
+                   packages: dict[str, str] | None = None) -> tuple[Path, str]:
+    """A minimal git checkout shaped like either repo (src/ + tests/rdl/);
+    returns (root, HEAD sha). `packages` maps package name -> __init__ body."""
+    root = tmp_path / "checkout"
     (root / "tests" / "rdl").mkdir(parents=True)
     (root / "pyproject.toml").write_text(f'[project]\nname = "x"\nversion = "{version}"\n')
-    (root / "src" / "fake_rdl2arch_pkg" / "__init__.py").write_text("WHO = 'pinned'\n")
+    for name, body in (packages or {"fake_pinned_pkg": "WHO = 'pinned'\n"}).items():
+        (root / "src" / name).mkdir(parents=True)
+        (root / "src" / name / "__init__.py").write_text(body)
     (root / "tests" / "rdl" / "f.rdl").write_text("addrmap f {};\n")
     subprocess.run(["git", "init", "-q", str(root)], check=True)
     _git_c(root, "add", "-A")
@@ -1633,93 +1644,121 @@ def _fake_rdl2arch_riscv(tmp_path: Path, *, version: str = "0.1.0") -> tuple[Pat
     return root, _git_c(root, "rev-parse", "HEAD")
 
 
-def _pin_rdl2arch_riscv(tmp_path: Path, monkeypatch, root: Path, commit: str,
-                        version: str = "0.1.0") -> None:
-    pin = tmp_path / ".rdl2arch-riscv-version"
+def _pin(tmp_path: Path, monkeypatch, dep, root: Path, commit: str,
+         version: str = "0.1.0") -> None:
+    pin = tmp_path / f".{dep.name}-version"
     pin.write_text(f"{version} {commit[:12]}\n")
-    monkeypatch.setattr(harc_runner, "RDL2ARCH_RISCV_VERSION_FILE", pin)
-    monkeypatch.setenv("RDL2ARCH_RISCV_ROOT", str(root))
-    monkeypatch.delenv("RDL2ARCH_RISCV_SKIP_PIN_CHECK", raising=False)
-    harc_runner._checked_rdl2arch_riscv_root.cache_clear()
+    monkeypatch.setattr(harc_runner, dep.pin_attr, pin)
+    monkeypatch.setenv(dep.env_var, str(root))
+    monkeypatch.delenv(dep.skip_var, raising=False)
+    harc_runner._checked_pinned_checkout.cache_clear()
 
 
-def test_rdl2arch_riscv_pin_file_names_a_commit() -> None:
-    version, commit = harc_runner.pinned_rdl2arch_riscv_release()
+def _resolve(name: str) -> Path:
+    return getattr(harc_runner, PINNED_CHECKOUTS[name][1])()
+
+
+@pytest.mark.parametrize("name", PINNED_CHECKOUTS)
+def test_pin_file_names_a_commit(name: str) -> None:
+    version, commit = harc_runner.pinned_checkout_release(PINNED_CHECKOUTS[name][0])
     assert re.fullmatch(r"\d+\.\d+\.\d+", version)
     assert re.fullmatch(r"[0-9a-f]{12,40}", commit)
 
 
-def test_resolve_rdl2arch_riscv_root_accepts_the_pinned_checkout(
-    tmp_path: Path, monkeypatch
+@pytest.mark.parametrize("name", PINNED_CHECKOUTS)
+def test_resolve_pinned_checkout_accepts_the_pinned_checkout(
+    name: str, tmp_path: Path, monkeypatch
 ) -> None:
-    root, sha = _fake_rdl2arch_riscv(tmp_path)
-    _pin_rdl2arch_riscv(tmp_path, monkeypatch, root, sha)
-    assert harc_runner.resolve_rdl2arch_riscv_root() == root
+    dep = PINNED_CHECKOUTS[name][0]
+    root, sha = _fake_checkout(tmp_path)
+    _pin(tmp_path, monkeypatch, dep, root, sha)
+    assert _resolve(name) == root
     # Untracked files (someone's scratch notes, build output) are fine.
     (root / "docs").mkdir()
     (root / "docs" / "notes.md").write_text("untracked\n")
-    harc_runner._checked_rdl2arch_riscv_root.cache_clear()
-    assert harc_runner.resolve_rdl2arch_riscv_root() == root
+    harc_runner._checked_pinned_checkout.cache_clear()
+    assert _resolve(name) == root
 
 
-def test_resolve_rdl2arch_riscv_root_rejects_another_commit(
-    tmp_path: Path, monkeypatch
+@pytest.mark.parametrize("name", PINNED_CHECKOUTS)
+def test_resolve_pinned_checkout_rejects_another_commit(
+    name: str, tmp_path: Path, monkeypatch
 ) -> None:
-    root, sha = _fake_rdl2arch_riscv(tmp_path)
+    dep = PINNED_CHECKOUTS[name][0]
+    root, sha = _fake_checkout(tmp_path)
     (root / "tests" / "rdl" / "f.rdl").write_text("addrmap f { };\n")
     _git_c(root, "commit", "-q", "-am", "newer")
-    _pin_rdl2arch_riscv(tmp_path, monkeypatch, root, sha)
+    _pin(tmp_path, monkeypatch, dep, root, sha)
     with pytest.raises(AssertionError) as exc:
-        harc_runner.resolve_rdl2arch_riscv_root()
+        _resolve(name)
     msg = str(exc.value)
+    assert f"is not the pinned {name} (0.1.0 {sha[:12]})" in msg
     assert f"pinned commit is {sha[:12]}" in msg
     assert f"git -C {root} fetch && git -C {root} checkout {sha[:12]}" in msg
-    assert "RDL2ARCH_RISCV_SKIP_PIN_CHECK=1" in msg
+    assert f"point {dep.env_var} at it" in msg
+    assert f"{dep.skip_var}=1" in msg
 
 
-def test_resolve_rdl2arch_riscv_root_rejects_tracked_modifications(
-    tmp_path: Path, monkeypatch
+@pytest.mark.parametrize("name", PINNED_CHECKOUTS)
+def test_resolve_pinned_checkout_rejects_tracked_modifications(
+    name: str, tmp_path: Path, monkeypatch
 ) -> None:
-    root, sha = _fake_rdl2arch_riscv(tmp_path)
-    (root / "tests" / "rdl" / "f.rdl").write_text("addrmap edited {};\n")
-    _pin_rdl2arch_riscv(tmp_path, monkeypatch, root, sha)
-    with pytest.raises(AssertionError, match=r"tracked files are modified \(tests/rdl/f\.rdl\)"):
-        harc_runner.resolve_rdl2arch_riscv_root()
+    dep = PINNED_CHECKOUTS[name][0]
+    root, sha = _fake_checkout(tmp_path)
+    (root / "src" / "fake_pinned_pkg" / "__init__.py").write_text("WHO = 'edited'\n")
+    _pin(tmp_path, monkeypatch, dep, root, sha)
+    with pytest.raises(AssertionError,
+                       match=r"tracked files are modified \(src/fake_pinned_pkg/__init__\.py\)"):
+        _resolve(name)
 
 
-def test_resolve_rdl2arch_riscv_root_rejects_a_version_mismatch(
-    tmp_path: Path, monkeypatch
+@pytest.mark.parametrize("name", PINNED_CHECKOUTS)
+def test_resolve_pinned_checkout_rejects_a_version_mismatch(
+    name: str, tmp_path: Path, monkeypatch
 ) -> None:
-    root, sha = _fake_rdl2arch_riscv(tmp_path, version="0.2.0")
-    _pin_rdl2arch_riscv(tmp_path, monkeypatch, root, sha, version="0.1.0")
+    dep = PINNED_CHECKOUTS[name][0]
+    root, sha = _fake_checkout(tmp_path, version="0.2.0")
+    _pin(tmp_path, monkeypatch, dep, root, sha, version="0.1.0")
     with pytest.raises(AssertionError, match=r"pyproject version '0\.2\.0' != pinned 0\.1\.0"):
-        harc_runner.resolve_rdl2arch_riscv_root()
+        _resolve(name)
 
 
-def test_resolve_rdl2arch_riscv_root_rejects_a_non_git_tree(
-    tmp_path: Path, monkeypatch
+@pytest.mark.parametrize("name", PINNED_CHECKOUTS)
+def test_resolve_pinned_checkout_rejects_a_non_git_tree(
+    name: str, tmp_path: Path, monkeypatch
 ) -> None:
+    dep = PINNED_CHECKOUTS[name][0]
     root = tmp_path / "plain"
     (root / "src").mkdir(parents=True)
     (root / "tests" / "rdl").mkdir(parents=True)
-    _pin_rdl2arch_riscv(tmp_path, monkeypatch, root, "abcdef012345")
+    _pin(tmp_path, monkeypatch, dep, root, "abcdef012345")
     monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path))
-    with pytest.raises(AssertionError, match=r"is not a git checkout"):
-        harc_runner.resolve_rdl2arch_riscv_root()
+    with pytest.raises(AssertionError, match=rf"{dep.env_var}=.* is not a git checkout"):
+        _resolve(name)
 
 
-def test_resolve_rdl2arch_riscv_root_missing_checkout_and_skip_env(
-    tmp_path: Path, monkeypatch
+@pytest.mark.parametrize("name", PINNED_CHECKOUTS)
+def test_resolve_pinned_checkout_missing_checkout_and_skip_env(
+    name: str, tmp_path: Path, monkeypatch
 ) -> None:
-    root, sha = _fake_rdl2arch_riscv(tmp_path)
+    dep = PINNED_CHECKOUTS[name][0]
+    root, sha = _fake_checkout(tmp_path)
     # Missing checkout: "not installed", which the SoC fixtures turn into a skip.
-    _pin_rdl2arch_riscv(tmp_path, monkeypatch, tmp_path / "nowhere", sha)
+    _pin(tmp_path, monkeypatch, dep, tmp_path / "nowhere", sha)
     with pytest.raises(harc_runner.ToolNotFoundError, match=sha[:12]):
-        harc_runner.resolve_rdl2arch_riscv_root()
+        _resolve(name)
     # A wrong commit with the bypass set is accepted as is.
-    _pin_rdl2arch_riscv(tmp_path, monkeypatch, root, "0123456789ab")
-    monkeypatch.setenv("RDL2ARCH_RISCV_SKIP_PIN_CHECK", "1")
-    assert harc_runner.resolve_rdl2arch_riscv_root() == root
+    _pin(tmp_path, monkeypatch, dep, root, "0123456789ab")
+    monkeypatch.setenv(dep.skip_var, "1")
+    assert _resolve(name) == root
+
+
+def test_pins_default_to_sibling_checkouts(monkeypatch) -> None:
+    monkeypatch.delenv("RDL2ARCH_RISCV_ROOT", raising=False)
+    monkeypatch.delenv("RDL2ARCH_ROOT", raising=False)
+    sibling = harc_runner.REPO_ROOT.parent
+    assert harc_runner.rdl2arch_riscv_root() == sibling / "rdl2arch-riscv"
+    assert harc_runner.rdl2arch_root() == sibling / "rdl2arch"
 
 
 def test_import_from_root_uses_that_root_and_rejects_another_copy(
@@ -1727,15 +1766,63 @@ def test_import_from_root_uses_that_root_and_rejects_another_copy(
 ) -> None:
     import sys
 
-    root, _ = _fake_rdl2arch_riscv(tmp_path)
+    root, _ = _fake_checkout(tmp_path)
     monkeypatch.setattr(sys, "path", list(sys.path))
     monkeypatch.setenv("PYTHONPATH", "")
-    monkeypatch.delitem(sys.modules, "fake_rdl2arch_pkg", raising=False)
-    mod = harc_runner.import_from_root("fake_rdl2arch_pkg", root / "src")
+    monkeypatch.delitem(sys.modules, "fake_pinned_pkg", raising=False)
+    mod = harc_runner.import_from_root("fake_pinned_pkg", root / "src")
     assert mod.WHO == "pinned"
     assert os.environ["PYTHONPATH"].split(os.pathsep)[0] == str((root / "src").resolve())
     # A copy already imported from elsewhere is reported, not silently used.
-    other, _ = _fake_rdl2arch_riscv(tmp_path / "other")
+    other, _ = _fake_checkout(tmp_path / "other")
     with pytest.raises(AssertionError, match=r"was imported from .*, not from"):
-        harc_runner.import_from_root("fake_rdl2arch_pkg", other / "src")
-    monkeypatch.delitem(sys.modules, "fake_rdl2arch_pkg", raising=False)
+        harc_runner.import_from_root("fake_pinned_pkg", other / "src")
+    monkeypatch.delitem(sys.modules, "fake_pinned_pkg", raising=False)
+
+
+@pytest.fixture
+def isolated_rdl2arch_modules(monkeypatch):
+    """Run with fake `rdl2arch` / `rdl2arch_riscv` packages, restoring the
+    real modules, sys.path and PYTHONPATH afterwards."""
+    import sys
+
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    monkeypatch.setenv("PYTHONPATH", "")
+    saved = {k: v for k, v in sys.modules.items()
+             if k == "rdl2arch" or k.startswith(("rdl2arch.", "rdl2arch_riscv"))}
+    for k in saved:
+        del sys.modules[k]
+    yield
+    for k in [k for k in sys.modules
+              if k == "rdl2arch" or k.startswith(("rdl2arch.", "rdl2arch_riscv"))]:
+        del sys.modules[k]
+    sys.modules.update(saved)
+
+
+def _fake_pair(tmp_path: Path) -> tuple[Path, Path]:
+    rdl2arch, _ = _fake_checkout(
+        tmp_path / "rdl2arch", packages={"rdl2arch": "WHO = 'pinned rdl2arch'\n"})
+    riscv, _ = _fake_checkout(
+        tmp_path / "riscv",
+        # Like the real package: binds rdl2arch at import time.
+        packages={"rdl2arch_riscv": "from rdl2arch import WHO as DEP\n"})
+    return riscv, rdl2arch
+
+
+def test_import_rdl2arch_riscv_binds_the_pinned_rdl2arch(
+    tmp_path: Path, isolated_rdl2arch_modules
+) -> None:
+    riscv, rdl2arch = _fake_pair(tmp_path)
+    mod = harc_runner.import_rdl2arch_riscv(riscv, rdl2arch)
+    assert mod.DEP == "pinned rdl2arch"
+
+
+def test_import_rdl2arch_riscv_rejects_an_rdl2arch_imported_elsewhere(
+    tmp_path: Path, isolated_rdl2arch_modules
+) -> None:
+    riscv, rdl2arch = _fake_pair(tmp_path)
+    other, _ = _fake_checkout(
+        tmp_path / "other", packages={"rdl2arch": "WHO = 'stale rdl2arch'\n"})
+    harc_runner.import_from_root("rdl2arch", other / "src")
+    with pytest.raises(AssertionError, match=r"rdl2arch was imported from .*, not from"):
+        harc_runner.import_rdl2arch_riscv(riscv, rdl2arch)
