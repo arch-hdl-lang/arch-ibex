@@ -15,6 +15,9 @@
 //   3 k_jt4    jump to word 1 of a 64-bit line, run into the next line
 //   4 k_jmis6  jump to a 32-bit instruction at line offset 6 (it spans two
 //              64-bit lines)
+//   5 k_mis32  32-bit straight-line code at PC % 4 == 2: every other
+//              instruction spans two 64-bit lines
+//   6 k_mix    alternating 16-bit / 32-bit straight-line code
 
 #include "common.h"
 
@@ -63,6 +66,10 @@ _start:
     la     a1, k_jt4
     jal    ra, measure
     la     a1, k_jmis6
+    jal    ra, measure
+    la     a1, k_mis32
+    jal    ra, measure
+    la     a1, k_mix
     jal    ra, measure
 
     la     t0, done_marker
@@ -158,6 +165,32 @@ k_jmis6:
     c.nop
     .option norvc
 2:  addi   t1, t1, 1
+    .endr
+    addi   a0, a0, -1
+    bnez   a0, 1b
+    ret
+
+.balign 64
+k_mis32:
+    .option rvc
+    c.nop                        // shift the loop head to PC % 4 == 2
+    .option norvc
+1:
+    .rept 64
+    addi   t1, t1, 1
+    .endr
+    addi   a0, a0, -1
+    bnez   a0, 1b
+    ret
+
+.balign 64
+k_mix:
+1:
+    .rept 32
+    .option rvc
+    c.addi t1, 1
+    .option norvc
+    addi   t2, t2, 1
     .endr
     addi   a0, a0, -1
     bnez   a0, 1b
