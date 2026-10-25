@@ -57,6 +57,22 @@
 // reset trampoline already do.
 #define RVMODEL_BOOT
 
+// Trap-handler alignment, log2 bytes. Ibex's mtvec BASE is 256-byte
+// aligned and its MODE is always vectored ({wdata[31:8], 6'b0, 2'b01}), so
+// the framework's trap trampoline must start on a 256-byte boundary for its
+// `csrw mtvec, trampoline | mode` to read back unchanged. Otherwise the
+// framework decides mtvec is not writable and falls back to copying the
+// trampoline to wherever mtvec points. Out of reset that is the boot
+// address 0x0010_0000, so the copy overwrites the running init code; and in
+// this framework revision the copied trampoline's return to the common
+// handler is PC-relative, so it never gets back to the original code.
+// RVMODEL_MTVEC_ALIGN is the framework's model hook for this (riscv-arch-test
+// 062a3908da). The vendored revision predates it, so env/arch_test.h.patch
+// backports it. It only affects the trap handler, which is assembled only
+// for tests with a trap handler (cebreak-01), so every other image is
+// unchanged.
+#define RVMODEL_MTVEC_ALIGN 8
+
 // HALT: write 0xFEEDFACE to `done_marker` (placed by RVMODEL_DATA_END
 // at the tail of the signature region) and spin. The cocotb harness
 // polls `done_marker` to know when the test has finished, then dumps

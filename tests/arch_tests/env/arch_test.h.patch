@@ -1,0 +1,30 @@
+Backport of riscv-arch-test 062a3908da ("added macro MTVEC_ALIGN for trap handler
+alignment based on model defined RVMODEL_MTVEC_ALIGN define", 2023-05-23) to the
+vendored framework revision a3b7f0c2 (2023-02-08), which predates it. Applied by
+tests/arch_tests/Makefile to a copy of the vendored arch_test.h; see model_test.h
+RVMODEL_MTVEC_ALIGN.
+
+--- a/riscv-test-suite/env/arch_test.h
++++ b/riscv-test-suite/env/arch_test.h
+@@ -110,6 +110,12 @@
+   #define SIGALIGN REGWIDTH
+ #else
+   #define SIGALIGN FREGWIDTH
++#endif
++
++#ifndef RVMODEL_MTVEC_ALIGN
++  #define MTVEC_ALIGN 6    // ensure that a trampoline is on a typical cacheline boundary, just in case
++#else
++  #define MTVEC_ALIGN RVMODEL_MTVEC_ALIGN  //Let the model defined value be used for required trap handler alignment based on implemented MTVEC
+ #endif
+ 
+ //==============================================================================
+@@ -961,7 +967,7 @@
+ .macro RVTEST_TRAP_HANDLER __MODE__
+ .option push
+ .option rvc     // temporarily allow compress to allow c.nop alignment
+-.align 6        // ensure that a trampoline is on a typical cacheline boundary, just in case
++.align MTVEC_ALIGN
+ .option pop
+ 
+ #define trap_sig_sz     (rvtest_sig_end - mtrap_sigptr)

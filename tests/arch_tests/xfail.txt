@@ -1,33 +1,4 @@
 # Known arch-test failures, run as strict xfails by tests/test_arch_tests.py.
 # Format: <isa>/<name>: <reason>
 #
-# C/cebreak-01 -- the only test with a trap handler (c.ebreak). It hangs on
-# BOTH the DUT and upstream Ibex in this SoC, so it has no reference.
-#
-#   Cause 1 (fixed by rdl2arch-riscv#37, mtrap_ibex.rdl): the generated CSR
-#   file used to keep mtvec base[31:2] and mode as written, while the core
-#   vectors to {mtvec[31:8], 8'h00}. `csrw mtvec, 0x00100241` read back
-#   0x00100241, the framework trusted that vector, and the trap went to
-#   0x00100200. The fixture now has Ibex's WARL ({wdata[31:8], 6'b0, 2'b01},
-#   reset 0x1), so the readback is 0x00100201. The rdl2arch-riscv pin
-#   (.rdl2arch-riscv-version, 8bba08c7b1b3 or later) guarantees that fixture.
-#
-#   Cause 2 (open; framework / model side): because mtvec is not freely
-#   writable, the framework copies its trap trampoline to wherever mtvec
-#   points. Repro: build it (make -C tests/arch_tests BUILD=/tmp/at
-#   /tmp/at/C/cebreak-01.vmem) and run it on the reference runner
-#   (ARCH_TESTS_GENERATE_REF=1); the trace (trace_core_00000000.log) shows
-#     pc 0x1000a0  csrrs x28, mtvec, x0    x28 = 0x00100001  (post-reset init)
-#     pc 0x1000b4  csrrw x0, mtvec, x7     x7  = 0x00100241
-#     pc 0x1000b8  csrrs x30, mtvec, x0    x30 = 0x00100201  (Ibex WARL)
-#     pc 0x1000bc  beq x30, x7 -> not taken: "mtvec not writable"
-#     pc 0x1000d8.. copy loop writes the trampoline to 0x0010_0000..0x0010_0184,
-#                   overwriting the init code at 0x0010_0080 that is
-#                   running it; the test never reaches the c.ebreak.
-#   Moving the target clear of the code (an RVMODEL_BOOT change, tried in a
-#   scratch copy) gets the trap to vector correctly (to the mtvec base), but
-#   still fails: in this framework revision (a3b7f0c2) the copied range,
-#   tramp_sz, ends 16 bytes before the common handler's exception branch
-#   target, so the handler runs into zeros. Fixing this needs a newer
-#   riscv-arch-test framework or a model-side workaround.
-C/cebreak-01: hangs on DUT and upstream Ibex: the arch-test framework's trap-trampoline relocation overwrites its own init code (mtvec readback itself is fixed by rdl2arch-riscv#37); repro in tests/arch_tests/xfail.txt
+# (none at the moment)

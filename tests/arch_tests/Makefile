@@ -47,12 +47,23 @@ ENV_DIR       := $(TESTS_DIR)/env
 ARCH_TEST_SRC ?= $(HOME)/github/ibex/vendor/riscv-arch-tests/riscv-test-suite
 ARCH_ENV_DIR  := $(ARCH_TEST_SRC)/env
 
-# Include path: our model_test.h FIRST so it shadows any in-tree default.
-# arch_test.h itself lives in the arch-tests env dir.
-INCLUDES  := -I$(ENV_DIR) -I$(ARCH_ENV_DIR)
+# Include path: our model_test.h FIRST so it shadows any in-tree default;
+# then the patched arch_test.h (below); then the arch-tests env dir for
+# everything else (encoding.h, test_macros.h).
+#
+# arch_test.h is the vendored framework header with env/arch_test.h.patch
+# applied, built into $(BUILD)/env. The patch backports the framework's
+# RVMODEL_MTVEC_ALIGN hook (upstream 062a3908da), which model_test.h uses to
+# put the trap trampoline where Ibex's 256-byte-aligned mtvec can point.
+# It only affects the trap handler, which is assembled only for tests with
+# a trap handler (cebreak-01), so every other image is unchanged. `patch`
+# fails loudly if the vendored header ever changes under it.
+PATCHED_ENV_DIR = $(BUILD)/env
+PATCHED_ARCH_TEST_H = $(PATCHED_ENV_DIR)/arch_test.h
+INCLUDES  = -I$(ENV_DIR) -I$(PATCHED_ENV_DIR) -I$(ARCH_ENV_DIR)
 
 # `--no-relax` keeps `la` from being shrunk via gp-relative addressing.
-ASFLAGS   := -mabi=$(MABI) -c $(INCLUDES)
+ASFLAGS   = -mabi=$(MABI) -c $(INCLUDES)
 # Test-case defines. Every test body sits under `#ifdef TEST_CASE_1` (and
 # cebreak-01's trap handler under `rvtest_mtrap_routine`); the framework
 # (riscof) turns each `def NAME=VALUE` in the RVTEST_CASE strings of a test
@@ -102,18 +113,24 @@ C:   $(C_VMEMS) $(C_SYMS)
 $(BUILD)/I $(BUILD)/M $(BUILD)/C:
 	mkdir -p $@
 
+$(PATCHED_ARCH_TEST_H): $(ARCH_ENV_DIR)/arch_test.h $(ENV_DIR)/arch_test.h.patch
+	mkdir -p $(@D)
+	cp $(ARCH_ENV_DIR)/arch_test.h $@.tmp
+	patch --quiet --forward $@.tmp $(ENV_DIR)/arch_test.h.patch
+	mv $@.tmp $@
+
 # Per-ISA pattern rules. We can't use a single pattern across I/M/C
 # because make's pattern matching only takes one stem.
 
-$(BUILD)/I/%.o: $(ARCH_TEST_SRC)/rv32i_m/I/src/%.S | $(BUILD)/I
+$(BUILD)/I/%.o: $(ARCH_TEST_SRC)/rv32i_m/I/src/%.S $(PATCHED_ARCH_TEST_H) $(ENV_DIR)/model_test.h | $(BUILD)/I
 	$(call assemble,$(MARCH_I))
 
 $(BUILD)/I/jal-01.o: MARCH_I := $(JAL01_MARCH)
 
-$(BUILD)/M/%.o: $(ARCH_TEST_SRC)/rv32i_m/M/src/%.S | $(BUILD)/M
+$(BUILD)/M/%.o: $(ARCH_TEST_SRC)/rv32i_m/M/src/%.S $(PATCHED_ARCH_TEST_H) $(ENV_DIR)/model_test.h | $(BUILD)/M
 	$(call assemble,$(MARCH_M))
 
-$(BUILD)/C/%.o: $(ARCH_TEST_SRC)/rv32i_m/C/src/%.S | $(BUILD)/C
+$(BUILD)/C/%.o: $(ARCH_TEST_SRC)/rv32i_m/C/src/%.S $(PATCHED_ARCH_TEST_H) $(ENV_DIR)/model_test.h | $(BUILD)/C
 	$(call assemble,$(MARCH_C))
 
 # ELF / bin / vmem / disassembly / symbols
