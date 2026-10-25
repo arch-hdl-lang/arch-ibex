@@ -1,0 +1,302 @@
+[
+ {
+  "variant": "U",
+  "workload": "mb_fetchmb_rv32imc",
+  "isa": "rv32imc",
+  "kind": "mb",
+  "returncode": 0,
+  "sim_cycles": 1047227,
+  "kernels": {
+   "k_al32": {
+    "cycles": 13802,
+    "instrs": 13343
+   },
+   "k_c16": {
+    "cycles": 13803,
+    "instrs": 13343
+   },
+   "k_mis32": {
+    "cycles": 14002,
+    "instrs": 13363
+   },
+   "k_mix": {
+    "cycles": 26602,
+    "instrs": 26143
+   },
+   "k_c32c": {
+    "cycles": 39402,
+    "instrs": 38943
+   },
+   "k_jnext": {
+    "cycles": 26603,
+    "instrs": 13343
+   },
+   "k_jblk": {
+    "cycles": 26610,
+    "instrs": 13343
+   },
+   "k_jmis2": {
+    "cycles": 52202,
+    "instrs": 26143
+   },
+   "k_jmis6": {
+    "cycles": 52204,
+    "instrs": 26143
+   },
+   "k_jt0": {
+    "cycles": 65003,
+    "instrs": 51743
+   },
+   "k_jt4": {
+    "cycles": 65015,
+    "instrs": 51743
+   },
+   "k_fwd": {
+    "cycles": 129004,
+    "instrs": 115743
+   },
+   "k_nofwd": {
+    "cycles": 129436,
+    "instrs": 128543
+   },
+   "k_big32": {
+    "cycles": 92789,
+    "instrs": 82163
+   },
+   "k_big16": {
+    "cycles": 164380,
+    "instrs": 164083
+   }
+  },
+  "cycles": null,
+  "instret": null,
+  "exit_code": 0,
+  "trap": null,
+  "pass": true
+ },
+ {
+  "variant": "UAic",
+  "workload": "mb_fetchmb_rv32imc",
+  "isa": "rv32imc",
+  "kind": "mb",
+  "returncode": 0,
+  "sim_cycles": 1258618,
+  "kernels": {
+   "k_al32": {
+    "cycles": 13802,
+    "instrs": 13343
+   },
+   "k_c16": {
+    "cycles": 13804,
+    "instrs": 13343
+   },
+   "k_mis32": {
+    "cycles": 20443,
+    "instrs": 13363
+   },
+   "k_mix": {
+    "cycles": 29806,
+    "instrs": 26143
+   },
+   "k_c32c": {
+    "cycles": 39424,
+    "instrs": 38943
+   },
+   "k_jnext": {
+    "cycles": 26725,
+    "instrs": 13343
+   },
+   "k_jblk": {
+    "cycles": 26635,
+    "instrs": 13343
+   },
+   "k_jmis2": {
+    "cycles": 52203,
+    "instrs": 26143
+   },
+   "k_jmis6": {
+    "cycles": 53804,
+    "instrs": 26143
+   },
+   "k_jt0": {
+    "cycles": 103304,
+    "instrs": 51743
+   },
+   "k_jt4": {
+    "cycles": 140831,
+    "instrs": 51743
+   },
+   "k_fwd": {
+    "cycles": 205234,
+    "instrs": 115743
+   },
+   "k_nofwd": {
+    "cycles": 129161,
+    "instrs": 128543
+   },
+   "k_big32": {
+    "cycles": 82654,
+    "instrs": 82163
+   },
+   "k_big16": {
+    "cycles": 164360,
+    "instrs": 164083
+   }
+  },
+  "cycles": null,
+  "instret": null,
+  "exit_code": 0,
+  "trap": null,
+  "pass": true
+ },
+ {
+  "variant": "A",
+  "workload": "mb_fetchmb_rv32imc",
+  "isa": "rv32imc",
+  "kind": "mb",
+  "returncode": 0,
+  "sim_cycles": 1259192,
+  "kernels": {
+   "k_al32": {
+    "cycles": 13802,
+    "instrs": 13343
+   },
+   "k_c16": {
+    "cycles": 13804,
+    "instrs": 13343
+   },
+   "k_mis32": {
+    "cycles": 20443,
+    "instrs": 13363
+   },
+   "k_mix": {
+    "cycles": 29806,
+    "instrs": 26143
+   },
+   "k_c32c": {
+    "cycles": 39424,
+    "instrs": 38943
+   },
+   "k_jnext": {
+    "cycles": 26725,
+    "instrs": 13343
+   },
+   "k_jblk": {
+    "cycles": 26635,
+    "instrs": 13343
+   },
+   "k_jmis2": {
+    "cycles": 52203,
+    "instrs": 26143
+   },
+   "k_jmis6": {
+    "cycles": 53804,
+    "instrs": 26143
+   },
+   "k_jt0": {
+    "cycles": 103304,
+    "instrs": 51743
+   },
+   "k_jt4": {
+    "cycles": 140831,
+    "instrs": 51743
+   },
+   "k_fwd": {
+    "cycles": 205234,
+    "instrs": 115743
+   },
+   "k_nofwd": {
+    "cycles": 129161,
+    "instrs": 128543
+   },
+   "k_big32": {
+    "cycles": 82654,
+    "instrs": 82163
+   },
+   "k_big16": {
+    "cycles": 164360,
+    "instrs": 164083
+   }
+  },
+  "cycles": null,
+  "instret": null,
+  "exit_code": 0,
+  "trap": null,
+  "pass": true
+ },
+ {
+  "variant": "AUic",
+  "workload": "mb_fetchmb_rv32imc",
+  "isa": "rv32imc",
+  "kind": "mb",
+  "returncode": 0,
+  "sim_cycles": 1047793,
+  "kernels": {
+   "k_al32": {
+    "cycles": 13802,
+    "instrs": 13343
+   },
+   "k_c16": {
+    "cycles": 13803,
+    "instrs": 13343
+   },
+   "k_mis32": {
+    "cycles": 14002,
+    "instrs": 13363
+   },
+   "k_mix": {
+    "cycles": 26602,
+    "instrs": 26143
+   },
+   "k_c32c": {
+    "cycles": 39402,
+    "instrs": 38943
+   },
+   "k_jnext": {
+    "cycles": 26603,
+    "instrs": 13343
+   },
+   "k_jblk": {
+    "cycles": 26610,
+    "instrs": 13343
+   },
+   "k_jmis2": {
+    "cycles": 52202,
+    "instrs": 26143
+   },
+   "k_jmis6": {
+    "cycles": 52204,
+    "instrs": 26143
+   },
+   "k_jt0": {
+    "cycles": 65003,
+    "instrs": 51743
+   },
+   "k_jt4": {
+    "cycles": 65015,
+    "instrs": 51743
+   },
+   "k_fwd": {
+    "cycles": 129004,
+    "instrs": 115743
+   },
+   "k_nofwd": {
+    "cycles": 129436,
+    "instrs": 128543
+   },
+   "k_big32": {
+    "cycles": 92789,
+    "instrs": 82163
+   },
+   "k_big16": {
+    "cycles": 164380,
+    "instrs": 164083
+   }
+  },
+  "cycles": null,
+  "instret": null,
+  "exit_code": 0,
+  "trap": null,
+  "pass": true
+ }
+]

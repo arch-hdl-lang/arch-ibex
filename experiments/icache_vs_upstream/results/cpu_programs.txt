@@ -1,0 +1,48 @@
+[U]   1710.00ns INFO     cocotb.regression                  test_timer_isr.timer_isr_fires_and_stashes_mcause passed
+[U]    730.00ns INFO     cocotb.regression                  test_sw_isr.msip_fires_and_is_acked_by_writing_zero passed
+[U]   1050.00ns INFO     cocotb.regression                  test_ext_isr.plic_external_irq_via_claim_complete passed
+[U]   1600.00ns INFO     cocotb.regression                  test_multictx_isr.plic_two_contexts_fire_and_are_serviced_independently passed
+[U]   3200.00ns INFO     cocotb.regression                  test_wfi_isr.wfi_drains_and_wakes_on_timer passed
+[U]    460.00ns INFO     cocotb.regression                  test_ecall_isr.ecall_delivers_mcause_11 passed
+[U]    630.00ns INFO     cocotb.regression                  test_pmp_exec_isr.pmp_exec_fault_delivers_to_handler passed
+[U]    650.00ns INFO     cocotb.regression                  test_pmp_load_isr.pmp_load_fault_delivers_to_handler passed
+[U]    660.00ns INFO     cocotb.regression                  test_pmp_misaligned_isr.pmp_misaligned_fault_delivers_to_handler passed
+[U] 184210.00ns INFO     cocotb.ibex_mini_soc               icache_bench result_cycles = 14480
+[U] 184210.00ns INFO     cocotb.regression                  test_icache_bench.icache_bench passed
+[U] 10 passed in 14.42s
+[UAic]   1940.00ns INFO     cocotb.regression                  test_timer_isr.timer_isr_fires_and_stashes_mcause passed
+[UAic]    970.00ns INFO     cocotb.regression                  test_sw_isr.msip_fires_and_is_acked_by_writing_zero passed
+[UAic]   1280.00ns INFO     cocotb.regression                  test_ext_isr.plic_external_irq_via_claim_complete passed
+[UAic]   1980.00ns INFO     cocotb.regression                  test_multictx_isr.plic_two_contexts_fire_and_are_serviced_independently passed
+[UAic]   3420.00ns INFO     cocotb.regression                  test_wfi_isr.wfi_drains_and_wakes_on_timer passed
+[UAic]    620.00ns INFO     cocotb.regression                  test_ecall_isr.ecall_delivers_mcause_11 passed
+[UAic]    880.00ns INFO     cocotb.regression                  test_pmp_exec_isr.pmp_exec_fault_delivers_to_handler passed
+[UAic]    870.00ns INFO     cocotb.regression                  test_pmp_load_isr.pmp_load_fault_delivers_to_handler passed
+[UAic]    920.00ns INFO     cocotb.regression                  test_pmp_misaligned_isr.pmp_misaligned_fault_delivers_to_handler passed
+[UAic] 192680.00ns INFO     cocotb.ibex_mini_soc               icache_bench result_cycles = 14496
+[UAic] 192680.00ns INFO     cocotb.regression                  test_icache_bench.icache_bench passed
+[UAic] 10 passed in 14.59s
+[A]   1950.00ns INFO     cocotb.regression                  test_timer_isr.timer_isr_fires_and_stashes_mcause passed
+[A]    970.00ns INFO     cocotb.regression                  test_sw_isr.msip_fires_and_is_acked_by_writing_zero passed
+[A]   1290.00ns INFO     cocotb.regression                  test_ext_isr.plic_external_irq_via_claim_complete passed
+[A]   1980.00ns INFO     cocotb.regression                  test_multictx_isr.plic_two_contexts_fire_and_are_serviced_independently passed
+[A]   3430.00ns INFO     cocotb.regression                  test_wfi_isr.wfi_drains_and_wakes_on_timer passed
+[A]    620.00ns INFO     cocotb.regression                  test_ecall_isr.ecall_delivers_mcause_11 passed
+[A]    880.00ns INFO     cocotb.regression                  test_pmp_exec_isr.pmp_exec_fault_delivers_to_handler passed
+[A]    870.00ns INFO     cocotb.regression                  test_pmp_load_isr.pmp_load_fault_delivers_to_handler passed
+[A]    920.00ns INFO     cocotb.regression                  test_pmp_misaligned_isr.pmp_misaligned_fault_delivers_to_handler passed
+[A] 192680.00ns INFO     cocotb.ibex_mini_soc               icache_bench result_cycles = 14496
+[A] 192680.00ns INFO     cocotb.regression                  test_icache_bench.icache_bench passed
+[A] 10 passed in 8.99s
+[AUic]   1710.00ns INFO     cocotb.regression                  test_timer_isr.timer_isr_fires_and_stashes_mcause passed
+[AUic]    730.00ns INFO     cocotb.regression                  test_sw_isr.msip_fires_and_is_acked_by_writing_zero passed
+[AUic]   1050.00ns INFO     cocotb.regression                  test_ext_isr.plic_external_irq_via_claim_complete passed
+[AUic]   1600.00ns INFO     cocotb.regression                  test_multictx_isr.plic_two_contexts_fire_and_are_serviced_independently passed
+[AUic]   3200.00ns INFO     cocotb.regression                  test_wfi_isr.wfi_drains_and_wakes_on_timer passed
+[AUic]    460.00ns INFO     cocotb.regression                  test_ecall_isr.ecall_delivers_mcause_11 passed
+[AUic]    630.00ns INFO     cocotb.regression                  test_pmp_exec_isr.pmp_exec_fault_delivers_to_handler passed
+[AUic]    650.00ns INFO     cocotb.regression                  test_pmp_load_isr.pmp_load_fault_delivers_to_handler passed
+[AUic]    660.00ns INFO     cocotb.regression                  test_pmp_misaligned_isr.pmp_misaligned_fault_delivers_to_handler passed
+[AUic] 184210.00ns INFO     cocotb.ibex_mini_soc               icache_bench result_cycles = 14480
+[AUic] 184210.00ns INFO     cocotb.regression                  test_icache_bench.icache_bench passed
+[AUic] 10 passed in 9.17s

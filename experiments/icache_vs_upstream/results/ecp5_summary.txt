@@ -1,0 +1,22 @@
+U     w40 LUT4=9963 FF=2534 CCU2C=546 fmax n=10 33.71+-0.89 [32.44-35.37] crit-path-through-icache 5/10
+      5x  if_stage_i  ->  if_stage_i
+      5x  gen_rams  ->  if_stage_i
+U     def LUT4=9963 FF=2534 CCU2C=546 fmax n=10 33.46+-0.90 [31.72-34.61] crit-path-through-icache 5/10
+      5x  gen_rams  ->  if_stage_i
+      2x  if_stage_i  ->  if_stage_i
+      1x  load_store_unit_i  ->  cs_registers_i
+UAic  w40 LUT4=12570 FF=2692 CCU2C=617 fmax n=10 33.20+-0.72 [32.07-34.15] crit-path-through-icache 10/10
+      7x  gen_rams  ->  if_stage_i
+      1x  gen_rams  ->  if_stage_i.icache_i
+      1x  if_stage_i  ->  if_stage_i.icache_i
+UAic  def LUT4=12570 FF=2692 CCU2C=617 fmax n=10 31.98+-0.99 [30.58-33.95] crit-path-through-icache 9/10
+      8x  gen_rams  ->  if_stage_i
+      1x  if_stage_i  ->  if_stage_i.icache_i
+      1x  if_stage_i  ->  cs_registers_i
+A     w40 LUT4=12955 FF=2755 CCU2C=514 fmax n=10 33.21+-0.62 [32.15-34.29] crit-path-through-icache 10/10
+      8x  tag_bank_w0  ->  if_stage_i
+      2x  tag_bank_w1  ->  if_stage_i
+AUic  w40 LUT4=10178 FF=2597 CCU2C=442 fmax n=10 35.05+-0.97 [33.44-36.30] crit-path-through-icache 9/10
+      8x  tag_bank_w1  ->  if_stage_i
+      1x  if_stage_i  ->  id_stage_i
+      1x  tag_bank_w0  ->  if_stage_i

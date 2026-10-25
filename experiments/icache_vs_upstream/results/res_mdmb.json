@@ -1,0 +1,878 @@
+[
+ {
+  "variant": "U",
+  "workload": "mb_mdmb_rv32im",
+  "isa": "rv32im",
+  "kind": "mb",
+  "returncode": 0,
+  "sim_cycles": 574460,
+  "kernels": {
+   "mul_gap_small": {
+    "cycles": 1328,
+    "instrs": 668
+   },
+   "mulhu_gap_small": {
+    "cycles": 1648,
+    "instrs": 668
+   },
+   "divu_gap_small": {
+    "cycles": 12208,
+    "instrs": 668
+   },
+   "mul_small": {
+    "cycles": 1008,
+    "instrs": 348
+   },
+   "mul_big": {
+    "cycles": 1010,
+    "instrs": 350
+   },
+   "mul_neg": {
+    "cycles": 1008,
+    "instrs": 348
+   },
+   "mul_negneg": {
+    "cycles": 1010,
+    "instrs": 349
+   },
+   "mul_zero": {
+    "cycles": 1009,
+    "instrs": 349
+   },
+   "mul_minus1": {
+    "cycles": 1008,
+    "instrs": 348
+   },
+   "mulh_small": {
+    "cycles": 1328,
+    "instrs": 348
+   },
+   "mulh_big": {
+    "cycles": 1330,
+    "instrs": 350
+   },
+   "mulh_neg": {
+    "cycles": 1328,
+    "instrs": 348
+   },
+   "mulh_negneg": {
+    "cycles": 1331,
+    "instrs": 349
+   },
+   "mulh_zero": {
+    "cycles": 1329,
+    "instrs": 349
+   },
+   "mulh_minus1": {
+    "cycles": 1328,
+    "instrs": 348
+   },
+   "mulhsu_small": {
+    "cycles": 1328,
+    "instrs": 348
+   },
+   "mulhsu_big": {
+    "cycles": 1330,
+    "instrs": 350
+   },
+   "mulhsu_neg": {
+    "cycles": 1328,
+    "instrs": 348
+   },
+   "mulhsu_negneg": {
+    "cycles": 1329,
+    "instrs": 349
+   },
+   "mulhsu_zero": {
+    "cycles": 1329,
+    "instrs": 349
+   },
+   "mulhsu_minus1": {
+    "cycles": 1328,
+    "instrs": 348
+   },
+   "mulhu_small": {
+    "cycles": 1328,
+    "instrs": 348
+   },
+   "mulhu_big": {
+    "cycles": 1330,
+    "instrs": 350
+   },
+   "mulhu_neg": {
+    "cycles": 1328,
+    "instrs": 348
+   },
+   "mulhu_negneg": {
+    "cycles": 1329,
+    "instrs": 349
+   },
+   "mulhu_zero": {
+    "cycles": 1329,
+    "instrs": 349
+   },
+   "mulhu_minus1": {
+    "cycles": 1328,
+    "instrs": 348
+   },
+   "div_small": {
+    "cycles": 11888,
+    "instrs": 348
+   },
+   "div_big": {
+    "cycles": 11890,
+    "instrs": 350
+   },
+   "div_neg": {
+    "cycles": 11888,
+    "instrs": 348
+   },
+   "div_negneg": {
+    "cycles": 11889,
+    "instrs": 349
+   },
+   "div_zero": {
+    "cycles": 690,
+    "instrs": 349
+   },
+   "div_minus1": {
+    "cycles": 11888,
+    "instrs": 348
+   },
+   "divu_small": {
+    "cycles": 11888,
+    "instrs": 348
+   },
+   "divu_big": {
+    "cycles": 11890,
+    "instrs": 350
+   },
+   "divu_neg": {
+    "cycles": 11888,
+    "instrs": 348
+   },
+   "divu_negneg": {
+    "cycles": 11889,
+    "instrs": 349
+   },
+   "divu_zero": {
+    "cycles": 689,
+    "instrs": 349
+   },
+   "divu_minus1": {
+    "cycles": 11888,
+    "instrs": 348
+   },
+   "rem_small": {
+    "cycles": 11888,
+    "instrs": 348
+   },
+   "rem_big": {
+    "cycles": 11890,
+    "instrs": 350
+   },
+   "rem_neg": {
+    "cycles": 11888,
+    "instrs": 348
+   },
+   "rem_negneg": {
+    "cycles": 11890,
+    "instrs": 349
+   },
+   "rem_zero": {
+    "cycles": 690,
+    "instrs": 349
+   },
+   "rem_minus1": {
+    "cycles": 11888,
+    "instrs": 348
+   },
+   "remu_small": {
+    "cycles": 11888,
+    "instrs": 348
+   },
+   "remu_big": {
+    "cycles": 11890,
+    "instrs": 350
+   },
+   "remu_neg": {
+    "cycles": 11888,
+    "instrs": 348
+   },
+   "remu_negneg": {
+    "cycles": 11889,
+    "instrs": 349
+   },
+   "remu_zero": {
+    "cycles": 689,
+    "instrs": 349
+   },
+   "remu_minus1": {
+    "cycles": 11888,
+    "instrs": 348
+   }
+  },
+  "cycles": null,
+  "instret": null,
+  "exit_code": 0,
+  "trap": null,
+  "pass": true
+ },
+ {
+  "variant": "UAic",
+  "workload": "mb_mdmb_rv32im",
+  "isa": "rv32im",
+  "kind": "mb",
+  "returncode": 0,
+  "sim_cycles": 580944,
+  "kernels": {
+   "mul_gap_small": {
+    "cycles": 1328,
+    "instrs": 668
+   },
+   "mulhu_gap_small": {
+    "cycles": 1652,
+    "instrs": 668
+   },
+   "divu_gap_small": {
+    "cycles": 12210,
+    "instrs": 668
+   },
+   "mul_small": {
+    "cycles": 1010,
+    "instrs": 348
+   },
+   "mul_big": {
+    "cycles": 1012,
+    "instrs": 350
+   },
+   "mul_neg": {
+    "cycles": 1010,
+    "instrs": 348
+   },
+   "mul_negneg": {
+    "cycles": 1009,
+    "instrs": 349
+   },
+   "mul_zero": {
+    "cycles": 1011,
+    "instrs": 349
+   },
+   "mul_minus1": {
+    "cycles": 1010,
+    "instrs": 348
+   },
+   "mulh_small": {
+    "cycles": 1330,
+    "instrs": 348
+   },
+   "mulh_big": {
+    "cycles": 1334,
+    "instrs": 350
+   },
+   "mulh_neg": {
+    "cycles": 1328,
+    "instrs": 348
+   },
+   "mulh_negneg": {
+    "cycles": 1333,
+    "instrs": 349
+   },
+   "mulh_zero": {
+    "cycles": 1333,
+    "instrs": 349
+   },
+   "mulh_minus1": {
+    "cycles": 1329,
+    "instrs": 348
+   },
+   "mulhsu_small": {
+    "cycles": 1330,
+    "instrs": 348
+   },
+   "mulhsu_big": {
+    "cycles": 1334,
+    "instrs": 350
+   },
+   "mulhsu_neg": {
+    "cycles": 1331,
+    "instrs": 348
+   },
+   "mulhsu_negneg": {
+    "cycles": 1331,
+    "instrs": 349
+   },
+   "mulhsu_zero": {
+    "cycles": 1329,
+    "instrs": 349
+   },
+   "mulhsu_minus1": {
+    "cycles": 1330,
+    "instrs": 348
+   },
+   "mulhu_small": {
+    "cycles": 1331,
+    "instrs": 348
+   },
+   "mulhu_big": {
+    "cycles": 1334,
+    "instrs": 350
+   },
+   "mulhu_neg": {
+    "cycles": 1328,
+    "instrs": 348
+   },
+   "mulhu_negneg": {
+    "cycles": 1329,
+    "instrs": 349
+   },
+   "mulhu_zero": {
+    "cycles": 1331,
+    "instrs": 349
+   },
+   "mulhu_minus1": {
+    "cycles": 1331,
+    "instrs": 348
+   },
+   "div_small": {
+    "cycles": 11888,
+    "instrs": 348
+   },
+   "div_big": {
+    "cycles": 11894,
+    "instrs": 350
+   },
+   "div_neg": {
+    "cycles": 11891,
+    "instrs": 348
+   },
+   "div_negneg": {
+    "cycles": 11891,
+    "instrs": 349
+   },
+   "div_zero": {
+    "cycles": 689,
+    "instrs": 349
+   },
+   "div_minus1": {
+    "cycles": 11890,
+    "instrs": 348
+   },
+   "divu_small": {
+    "cycles": 11891,
+    "instrs": 348
+   },
+   "divu_big": {
+    "cycles": 11891,
+    "instrs": 350
+   },
+   "divu_neg": {
+    "cycles": 11890,
+    "instrs": 348
+   },
+   "divu_negneg": {
+    "cycles": 11889,
+    "instrs": 349
+   },
+   "divu_zero": {
+    "cycles": 691,
+    "instrs": 349
+   },
+   "divu_minus1": {
+    "cycles": 11891,
+    "instrs": 348
+   },
+   "rem_small": {
+    "cycles": 11890,
+    "instrs": 348
+   },
+   "rem_big": {
+    "cycles": 11894,
+    "instrs": 350
+   },
+   "rem_neg": {
+    "cycles": 11890,
+    "instrs": 348
+   },
+   "rem_negneg": {
+    "cycles": 11894,
+    "instrs": 349
+   },
+   "rem_zero": {
+    "cycles": 693,
+    "instrs": 349
+   },
+   "rem_minus1": {
+    "cycles": 11890,
+    "instrs": 348
+   },
+   "remu_small": {
+    "cycles": 11888,
+    "instrs": 348
+   },
+   "remu_big": {
+    "cycles": 11890,
+    "instrs": 350
+   },
+   "remu_neg": {
+    "cycles": 11888,
+    "instrs": 348
+   },
+   "remu_negneg": {
+    "cycles": 11889,
+    "instrs": 349
+   },
+   "remu_zero": {
+    "cycles": 691,
+    "instrs": 349
+   },
+   "remu_minus1": {
+    "cycles": 11891,
+    "instrs": 348
+   }
+  },
+  "cycles": null,
+  "instret": null,
+  "exit_code": 0,
+  "trap": null,
+  "pass": true
+ },
+ {
+  "variant": "A",
+  "workload": "mb_mdmb_rv32im",
+  "isa": "rv32im",
+  "kind": "mb",
+  "returncode": 0,
+  "sim_cycles": 601559,
+  "kernels": {
+   "mul_gap_small": {
+    "cycles": 1328,
+    "instrs": 668
+   },
+   "mulhu_gap_small": {
+    "cycles": 1652,
+    "instrs": 668
+   },
+   "divu_gap_small": {
+    "cycles": 12210,
+    "instrs": 668
+   },
+   "mul_small": {
+    "cycles": 1320,
+    "instrs": 348
+   },
+   "mul_big": {
+    "cycles": 1321,
+    "instrs": 350
+   },
+   "mul_neg": {
+    "cycles": 1320,
+    "instrs": 348
+   },
+   "mul_negneg": {
+    "cycles": 1319,
+    "instrs": 349
+   },
+   "mul_zero": {
+    "cycles": 1321,
+    "instrs": 349
+   },
+   "mul_minus1": {
+    "cycles": 1320,
+    "instrs": 348
+   },
+   "mulh_small": {
+    "cycles": 1641,
+    "instrs": 348
+   },
+   "mulh_big": {
+    "cycles": 1644,
+    "instrs": 350
+   },
+   "mulh_neg": {
+    "cycles": 1638,
+    "instrs": 348
+   },
+   "mulh_negneg": {
+    "cycles": 1643,
+    "instrs": 349
+   },
+   "mulh_zero": {
+    "cycles": 1643,
+    "instrs": 349
+   },
+   "mulh_minus1": {
+    "cycles": 1639,
+    "instrs": 348
+   },
+   "mulhsu_small": {
+    "cycles": 1640,
+    "instrs": 348
+   },
+   "mulhsu_big": {
+    "cycles": 1644,
+    "instrs": 350
+   },
+   "mulhsu_neg": {
+    "cycles": 1641,
+    "instrs": 348
+   },
+   "mulhsu_negneg": {
+    "cycles": 1641,
+    "instrs": 349
+   },
+   "mulhsu_zero": {
+    "cycles": 1639,
+    "instrs": 349
+   },
+   "mulhsu_minus1": {
+    "cycles": 1640,
+    "instrs": 348
+   },
+   "mulhu_small": {
+    "cycles": 1641,
+    "instrs": 348
+   },
+   "mulhu_big": {
+    "cycles": 1644,
+    "instrs": 350
+   },
+   "mulhu_neg": {
+    "cycles": 1638,
+    "instrs": 348
+   },
+   "mulhu_negneg": {
+    "cycles": 1639,
+    "instrs": 349
+   },
+   "mulhu_zero": {
+    "cycles": 1641,
+    "instrs": 349
+   },
+   "mulhu_minus1": {
+    "cycles": 1641,
+    "instrs": 348
+   },
+   "div_small": {
+    "cycles": 12198,
+    "instrs": 348
+   },
+   "div_big": {
+    "cycles": 12204,
+    "instrs": 350
+   },
+   "div_neg": {
+    "cycles": 12201,
+    "instrs": 348
+   },
+   "div_negneg": {
+    "cycles": 12201,
+    "instrs": 349
+   },
+   "div_zero": {
+    "cycles": 999,
+    "instrs": 349
+   },
+   "div_minus1": {
+    "cycles": 12200,
+    "instrs": 348
+   },
+   "divu_small": {
+    "cycles": 12201,
+    "instrs": 348
+   },
+   "divu_big": {
+    "cycles": 12201,
+    "instrs": 350
+   },
+   "divu_neg": {
+    "cycles": 12200,
+    "instrs": 348
+   },
+   "divu_negneg": {
+    "cycles": 12199,
+    "instrs": 349
+   },
+   "divu_zero": {
+    "cycles": 1001,
+    "instrs": 349
+   },
+   "divu_minus1": {
+    "cycles": 12201,
+    "instrs": 348
+   },
+   "rem_small": {
+    "cycles": 12200,
+    "instrs": 348
+   },
+   "rem_big": {
+    "cycles": 12204,
+    "instrs": 350
+   },
+   "rem_neg": {
+    "cycles": 12200,
+    "instrs": 348
+   },
+   "rem_negneg": {
+    "cycles": 12204,
+    "instrs": 349
+   },
+   "rem_zero": {
+    "cycles": 1003,
+    "instrs": 349
+   },
+   "rem_minus1": {
+    "cycles": 12200,
+    "instrs": 348
+   },
+   "remu_small": {
+    "cycles": 12198,
+    "instrs": 348
+   },
+   "remu_big": {
+    "cycles": 12200,
+    "instrs": 350
+   },
+   "remu_neg": {
+    "cycles": 12198,
+    "instrs": 348
+   },
+   "remu_negneg": {
+    "cycles": 12199,
+    "instrs": 349
+   },
+   "remu_zero": {
+    "cycles": 1001,
+    "instrs": 349
+   },
+   "remu_minus1": {
+    "cycles": 12201,
+    "instrs": 348
+   }
+  },
+  "cycles": null,
+  "instret": null,
+  "exit_code": 0,
+  "trap": null,
+  "pass": true
+ },
+ {
+  "variant": "AUic",
+  "workload": "mb_mdmb_rv32im",
+  "isa": "rv32im",
+  "kind": "mb",
+  "returncode": 0,
+  "sim_cycles": 594090,
+  "kernels": {
+   "mul_gap_small": {
+    "cycles": 1328,
+    "instrs": 668
+   },
+   "mulhu_gap_small": {
+    "cycles": 1648,
+    "instrs": 668
+   },
+   "divu_gap_small": {
+    "cycles": 12208,
+    "instrs": 668
+   },
+   "mul_small": {
+    "cycles": 1318,
+    "instrs": 348
+   },
+   "mul_big": {
+    "cycles": 1320,
+    "instrs": 350
+   },
+   "mul_neg": {
+    "cycles": 1318,
+    "instrs": 348
+   },
+   "mul_negneg": {
+    "cycles": 1320,
+    "instrs": 349
+   },
+   "mul_zero": {
+    "cycles": 1319,
+    "instrs": 349
+   },
+   "mul_minus1": {
+    "cycles": 1318,
+    "instrs": 348
+   },
+   "mulh_small": {
+    "cycles": 1638,
+    "instrs": 348
+   },
+   "mulh_big": {
+    "cycles": 1640,
+    "instrs": 350
+   },
+   "mulh_neg": {
+    "cycles": 1638,
+    "instrs": 348
+   },
+   "mulh_negneg": {
+    "cycles": 1641,
+    "instrs": 349
+   },
+   "mulh_zero": {
+    "cycles": 1639,
+    "instrs": 349
+   },
+   "mulh_minus1": {
+    "cycles": 1638,
+    "instrs": 348
+   },
+   "mulhsu_small": {
+    "cycles": 1638,
+    "instrs": 348
+   },
+   "mulhsu_big": {
+    "cycles": 1640,
+    "instrs": 350
+   },
+   "mulhsu_neg": {
+    "cycles": 1638,
+    "instrs": 348
+   },
+   "mulhsu_negneg": {
+    "cycles": 1639,
+    "instrs": 349
+   },
+   "mulhsu_zero": {
+    "cycles": 1639,
+    "instrs": 349
+   },
+   "mulhsu_minus1": {
+    "cycles": 1638,
+    "instrs": 348
+   },
+   "mulhu_small": {
+    "cycles": 1638,
+    "instrs": 348
+   },
+   "mulhu_big": {
+    "cycles": 1640,
+    "instrs": 350
+   },
+   "mulhu_neg": {
+    "cycles": 1638,
+    "instrs": 348
+   },
+   "mulhu_negneg": {
+    "cycles": 1639,
+    "instrs": 349
+   },
+   "mulhu_zero": {
+    "cycles": 1639,
+    "instrs": 349
+   },
+   "mulhu_minus1": {
+    "cycles": 1638,
+    "instrs": 348
+   },
+   "div_small": {
+    "cycles": 12198,
+    "instrs": 348
+   },
+   "div_big": {
+    "cycles": 12200,
+    "instrs": 350
+   },
+   "div_neg": {
+    "cycles": 12198,
+    "instrs": 348
+   },
+   "div_negneg": {
+    "cycles": 12199,
+    "instrs": 349
+   },
+   "div_zero": {
+    "cycles": 999,
+    "instrs": 349
+   },
+   "div_minus1": {
+    "cycles": 12198,
+    "instrs": 348
+   },
+   "divu_small": {
+    "cycles": 12198,
+    "instrs": 348
+   },
+   "divu_big": {
+    "cycles": 12200,
+    "instrs": 350
+   },
+   "divu_neg": {
+    "cycles": 12198,
+    "instrs": 348
+   },
+   "divu_negneg": {
+    "cycles": 12199,
+    "instrs": 349
+   },
+   "divu_zero": {
+    "cycles": 999,
+    "instrs": 349
+   },
+   "divu_minus1": {
+    "cycles": 12198,
+    "instrs": 348
+   },
+   "rem_small": {
+    "cycles": 12198,
+    "instrs": 348
+   },
+   "rem_big": {
+    "cycles": 12200,
+    "instrs": 350
+   },
+   "rem_neg": {
+    "cycles": 12198,
+    "instrs": 348
+   },
+   "rem_negneg": {
+    "cycles": 12200,
+    "instrs": 349
+   },
+   "rem_zero": {
+    "cycles": 1000,
+    "instrs": 349
+   },
+   "rem_minus1": {
+    "cycles": 12198,
+    "instrs": 348
+   },
+   "remu_small": {
+    "cycles": 12198,
+    "instrs": 348
+   },
+   "remu_big": {
+    "cycles": 12200,
+    "instrs": 350
+   },
+   "remu_neg": {
+    "cycles": 12198,
+    "instrs": 348
+   },
+   "remu_negneg": {
+    "cycles": 12199,
+    "instrs": 349
+   },
+   "remu_zero": {
+    "cycles": 999,
+    "instrs": 349
+   },
+   "remu_minus1": {
+    "cycles": 12198,
+    "instrs": 348
+   }
+  },
+  "cycles": null,
+  "instret": null,
+  "exit_code": 0,
+  "trap": null,
+  "pass": true
+ }
+]

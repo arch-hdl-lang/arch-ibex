@@ -1,0 +1,40 @@
+[U_rsv] Chip area for module '\ibex_top': 1736610.547199
+[U_rsv] EST t1_sdc wns_ns=-804.991 tns_ns=-28528391.3 t_s=5 core_wns_ns=-804.991 endpoint=_115951_/DE
+[U_rsv] EST t3_placed wns_ns=-8.154 tns_ns=-115445.9 t_s=449 core_wns_ns=-8.154 endpoint=data_req_o
+[U_rsv] EST t3_placed_lat wns_ns=-12.154 tns_ns=-115753.3 t_s=450 core_wns_ns=-12.154 endpoint=data_req_o
+[U_rsv] EST t3_repaired_lat wns_ns=-8.235 tns_ns=-58246.2 t_s=735 core_wns_ns=-8.235 endpoint=data_req_o
+[U_rarch] Chip area for module '\ibex_top': 1755105.785599
+[U_rarch] EST t1_sdc wns_ns=-969.518 tns_ns=-27922005.3 t_s=4 core_wns_ns=-969.518 endpoint=_120945_/DE
+[U_rarch] EST t3_placed wns_ns=-6.703 tns_ns=-92320.8 t_s=276 core_wns_ns=-6.703 endpoint=data_req_o
+[U_rarch] EST t3_placed_lat wns_ns=-10.703 tns_ns=-92637.2 t_s=277 core_wns_ns=-10.703 endpoint=data_req_o
+[U_rarch] EST t3_repaired_lat wns_ns=-6.436 tns_ns=-26442.6 t_s=819 core_wns_ns=-6.436 endpoint=data_req_o
+[UAic_rsv] Chip area for module '\ibex_top': 1753314.067199
+[UAic_rsv] EST t1_sdc wns_ns=-400.230 tns_ns=-4202955.1 t_s=6 core_wns_ns=-400.230 endpoint=_162172_/D
+[UAic_rsv] EST t3_placed wns_ns=-7.689 tns_ns=-119441.5 t_s=366 core_wns_ns=-7.689 endpoint=data_req_o
+[UAic_rsv] EST t3_placed_lat wns_ns=-11.689 tns_ns=-119682.7 t_s=367 core_wns_ns=-11.689 endpoint=data_req_o
+[UAic_rsv] EST t3_repaired_lat wns_ns=-7.747 tns_ns=-62097.5 t_s=559 core_wns_ns=-7.747 endpoint=data_req_o
+[UAic_rarch] Chip area for module '\ibex_top': 1761702.111999
+[UAic_rarch] EST t1_sdc wns_ns=-628.664 tns_ns=-11293186.2 t_s=5 core_wns_ns=-628.664 endpoint=_147537_/DE
+[UAic_rarch] EST t3_placed wns_ns=-6.100 tns_ns=-96373.8 t_s=436 core_wns_ns=-6.100 endpoint=data_req_o
+[UAic_rarch] EST t3_placed_lat wns_ns=-10.100 tns_ns=-96618.9 t_s=437 core_wns_ns=-10.100 endpoint=data_req_o
+[UAic_rarch] EST t3_repaired_lat wns_ns=-6.968 tns_ns=-31543.8 t_s=686 core_wns_ns=-6.968 endpoint=data_req_o
+[A_rsv] Chip area for module '\ibex_top': 1752762.287999
+[A_rsv] EST t1_sdc wns_ns=-498.207 tns_ns=-13117689.1 t_s=5 core_wns_ns=-498.207 endpoint=_118168_/DE
+[A_rsv] EST t3_placed wns_ns=-9.090 tns_ns=-79839.0 t_s=369 core_wns_ns=-9.090 endpoint=data_req_o
+[A_rsv] EST t3_placed_lat wns_ns=-13.090 tns_ns=-75534.3 t_s=370 core_wns_ns=-13.090 endpoint=data_req_o
+[A_rsv] EST t3_repaired_lat wns_ns=-9.945 tns_ns=-34293.9 t_s=587 core_wns_ns=-9.945 endpoint=data_req_o
+[A_rarch] Chip area for module '\ibex_top': 1759010.780799
+[A_rarch] EST t1_sdc wns_ns=-388.051 tns_ns=-3442451.2 t_s=5 core_wns_ns=-388.051 endpoint=_163863_/D
+[A_rarch] EST t3_placed wns_ns=-6.345 tns_ns=-97123.0 t_s=274 core_wns_ns=-6.345 endpoint=data_req_o
+[A_rarch] EST t3_placed_lat wns_ns=-10.345 tns_ns=-97404.4 t_s=275 core_wns_ns=-10.345 endpoint=data_req_o
+[A_rarch] EST t3_repaired_lat wns_ns=-6.896 tns_ns=-24211.8 t_s=549 core_wns_ns=-6.896 endpoint=data_req_o
+[AUic_rsv] Chip area for module '\ibex_top': 1735924.889599
+[AUic_rsv] EST t1_sdc wns_ns=-506.246 tns_ns=-22074560.3 t_s=4 core_wns_ns=-506.246 endpoint=_119833_/DE
+[AUic_rsv] EST t3_placed wns_ns=-8.063 tns_ns=-77800.2 t_s=346 core_wns_ns=-8.063 endpoint=data_req_o
+[AUic_rsv] EST t3_placed_lat wns_ns=-12.063 tns_ns=-78130.2 t_s=347 core_wns_ns=-12.063 endpoint=data_req_o
+[AUic_rsv] EST t3_repaired_lat wns_ns=-9.557 tns_ns=-43156.6 t_s=491 core_wns_ns=-9.557 endpoint=data_req_o
+[AUic_rarch] Chip area for module '\ibex_top': 1737321.228799
+[AUic_rarch] EST t1_sdc wns_ns=-530.014 tns_ns=-21579629.4 t_s=4 core_wns_ns=-530.014 endpoint=_119989_/DE
+[AUic_rarch] EST t3_placed wns_ns=-4.885 tns_ns=-52894.2 t_s=348 core_wns_ns=-4.885 endpoint=data_req_o
+[AUic_rarch] EST t3_placed_lat wns_ns=-8.885 tns_ns=-53204.6 t_s=349 core_wns_ns=-8.885 endpoint=data_req_o
+[AUic_rarch] EST t3_repaired_lat wns_ns=-6.786 tns_ns=-17894.4 t_s=599 core_wns_ns=-6.786 endpoint=data_req_o

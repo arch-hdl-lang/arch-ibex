@@ -1,0 +1,198 @@
+[
+ {
+  "name": "coremark_rv32im",
+  "ok": true,
+  "vmem": "<workloads>/coremark_rv32im.vmem",
+  "kind": "coremark",
+  "isa": "rv32im",
+  "text_bytes": 41540
+ },
+ {
+  "name": "rt_median_rv32im",
+  "ok": true,
+  "vmem": "<workloads>/rt_median_rv32im.vmem",
+  "kind": "rt",
+  "bench": "median",
+  "isa": "rv32im",
+  "text_bytes": 5636
+ },
+ {
+  "name": "rt_qsort_rv32im",
+  "ok": true,
+  "vmem": "<workloads>/rt_qsort_rv32im.vmem",
+  "kind": "rt",
+  "bench": "qsort",
+  "isa": "rv32im",
+  "text_bytes": 5944
+ },
+ {
+  "name": "rt_rsort_rv32im",
+  "ok": true,
+  "vmem": "<workloads>/rt_rsort_rv32im.vmem",
+  "kind": "rt",
+  "bench": "rsort",
+  "isa": "rv32im",
+  "text_bytes": 6332
+ },
+ {
+  "name": "rt_towers_rv32im",
+  "ok": true,
+  "vmem": "<workloads>/rt_towers_rv32im.vmem",
+  "kind": "rt",
+  "bench": "towers",
+  "isa": "rv32im",
+  "text_bytes": 7448
+ },
+ {
+  "name": "rt_vvadd_rv32im",
+  "ok": true,
+  "vmem": "<workloads>/rt_vvadd_rv32im.vmem",
+  "kind": "rt",
+  "bench": "vvadd",
+  "isa": "rv32im",
+  "text_bytes": 5616
+ },
+ {
+  "name": "rt_multiply_rv32im",
+  "ok": true,
+  "vmem": "<workloads>/rt_multiply_rv32im.vmem",
+  "kind": "rt",
+  "bench": "multiply",
+  "isa": "rv32im",
+  "text_bytes": 5656
+ },
+ {
+  "name": "rt_mm_rv32im",
+  "ok": true,
+  "vmem": "<workloads>/rt_mm_rv32im.vmem",
+  "kind": "rt",
+  "bench": "mm",
+  "isa": "rv32im",
+  "text_bytes": 72932
+ },
+ {
+  "name": "rt_spmv_rv32im",
+  "ok": true,
+  "vmem": "<workloads>/rt_spmv_rv32im.vmem",
+  "kind": "rt",
+  "bench": "spmv",
+  "isa": "rv32im",
+  "text_bytes": 11644
+ },
+ {
+  "name": "rt_dhrystone_rv32im",
+  "ok": true,
+  "vmem": "<workloads>/rt_dhrystone_rv32im.vmem",
+  "kind": "rt",
+  "bench": "dhrystone",
+  "isa": "rv32im",
+  "text_bytes": 8312
+ },
+ {
+  "name": "coremark_rv32imc",
+  "ok": true,
+  "vmem": "<workloads>/coremark_rv32imc.vmem",
+  "kind": "coremark",
+  "isa": "rv32imc",
+  "text_bytes": 35234
+ },
+ {
+  "name": "rt_median_rv32imc",
+  "ok": true,
+  "vmem": "<workloads>/rt_median_rv32imc.vmem",
+  "kind": "rt",
+  "bench": "median",
+  "isa": "rv32imc",
+  "text_bytes": 4698
+ },
+ {
+  "name": "rt_qsort_rv32imc",
+  "ok": true,
+  "vmem": "<workloads>/rt_qsort_rv32imc.vmem",
+  "kind": "rt",
+  "bench": "qsort",
+  "isa": "rv32imc",
+  "text_bytes": 4930
+ },
+ {
+  "name": "rt_rsort_rv32imc",
+  "ok": true,
+  "vmem": "<workloads>/rt_rsort_rv32imc.vmem",
+  "kind": "rt",
+  "bench": "rsort",
+  "isa": "rv32imc",
+  "text_bytes": 5252
+ },
+ {
+  "name": "rt_towers_rv32imc",
+  "ok": true,
+  "vmem": "<workloads>/rt_towers_rv32imc.vmem",
+  "kind": "rt",
+  "bench": "towers",
+  "isa": "rv32imc",
+  "text_bytes": 5828
+ },
+ {
+  "name": "rt_vvadd_rv32imc",
+  "ok": true,
+  "vmem": "<workloads>/rt_vvadd_rv32imc.vmem",
+  "kind": "rt",
+  "bench": "vvadd",
+  "isa": "rv32imc",
+  "text_bytes": 4674
+ },
+ {
+  "name": "rt_multiply_rv32imc",
+  "ok": true,
+  "vmem": "<workloads>/rt_multiply_rv32imc.vmem",
+  "kind": "rt",
+  "bench": "multiply",
+  "isa": "rv32imc",
+  "text_bytes": 4726
+ },
+ {
+  "name": "rt_mm_rv32imc",
+  "ok": true,
+  "vmem": "<workloads>/rt_mm_rv32imc.vmem",
+  "kind": "rt",
+  "bench": "mm",
+  "isa": "rv32imc",
+  "text_bytes": 60556
+ },
+ {
+  "name": "rt_spmv_rv32imc",
+  "ok": true,
+  "vmem": "<workloads>/rt_spmv_rv32imc.vmem",
+  "kind": "rt",
+  "bench": "spmv",
+  "isa": "rv32imc",
+  "text_bytes": 10432
+ },
+ {
+  "name": "rt_dhrystone_rv32imc",
+  "ok": true,
+  "vmem": "<workloads>/rt_dhrystone_rv32imc.vmem",
+  "kind": "rt",
+  "bench": "dhrystone",
+  "isa": "rv32imc",
+  "text_bytes": 6954
+ },
+ {
+  "name": "mb_fetchmb_rv32imc",
+  "ok": true,
+  "vmem": "<workloads>/mb_fetchmb_rv32imc.vmem",
+  "kind": "mb",
+  "bench": "fetchmb",
+  "isa": "rv32imc",
+  "text_bytes": 36828
+ },
+ {
+  "name": "mb_mdmb_rv32im",
+  "ok": true,
+  "vmem": "<workloads>/mb_mdmb_rv32im.vmem",
+  "kind": "mb",
+  "bench": "mdmb",
+  "isa": "rv32im",
+  "text_bytes": 11940
+ }
+]
