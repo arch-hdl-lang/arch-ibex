@@ -155,11 +155,13 @@ def patched_syscalls(src: Path, dst: Path) -> None:
     dst.write_text(s)
 
 
-def build_rt(ibex: Path, out: Path, bench: str, isa: str) -> dict:
+def build_rt(ibex: Path, out: Path, bench: str, isa: str, src_dir: Path | None = None,
+             kind: str = "rt") -> dict:
     rt = ibex / "vendor" / "riscv-tests" / "benchmarks"
+    src_dir = src_dir or rt / bench
     simple_dir = ibex / "examples" / "sw" / "simple_system" / "common"
     env_dir = ibex / "vendor" / "riscv-test-env"
-    name = f"rt_{bench}_{isa}"
+    name = f"{kind}_{bench}_{isa}"
     work = out / f"{name}.src"
     work.mkdir(parents=True, exist_ok=True)
     patched_syscalls(rt / "common" / "syscalls.c", work / "syscalls.c")
@@ -177,8 +179,8 @@ def build_rt(ibex: Path, out: Path, bench: str, isa: str) -> dict:
             "-ffreestanding", "-nostdlib", "-nostartfiles", "-D__thread=",
             # GCC 15 rejects dhrystone's K&R C by default.
             "-Wno-error=implicit-int", "-Wno-error=implicit-function-declaration"]
-    incs = [f"-I{COMPAT}", f"-I{env_dir}", f"-I{rt / 'common'}", f"-I{rt / bench}"]
-    srcs = sorted((rt / bench).glob("*.c")) + [work / "syscalls.c", SHIM, crt0]
+    incs = [f"-I{COMPAT}", f"-I{env_dir}", f"-I{rt / 'common'}", f"-I{src_dir}"]
+    srcs = sorted(src_dir.glob("*.c")) + [work / "syscalls.c", SHIM, crt0]
     elf = out / f"{name}.elf"
     r = run([GCC, *arch, *opts, *incs, "-o", elf, *srcs,
              f"-Wl,-T,{simple_dir / 'link.ld'}", "-Wl,--no-relax",
@@ -186,7 +188,7 @@ def build_rt(ibex: Path, out: Path, bench: str, isa: str) -> dict:
     if r.returncode != 0:
         return {"name": name, "ok": False, "error": r.stderr[-3000:]}
     vmem = finish(elf, out, name)
-    return {"name": name, "ok": True, "vmem": str(vmem), "kind": "rt", "bench": bench,
+    return {"name": name, "ok": True, "vmem": str(vmem), "kind": kind, "bench": bench,
             "isa": isa, "text_bytes": text_size(elf)}
 
 
@@ -204,6 +206,10 @@ def main() -> int:
         manifest.append(build_coremark(a.ibex_root, a.out, isa))
         for b in RT_BENCHES:
             manifest.append(build_rt(a.ibex_root, a.out, b, isa))
+    # Fetch-path microbenchmarks (explicit .option rvc/norvc assembly, so one
+    # build covers both encodings).
+    manifest.append(build_rt(a.ibex_root, a.out, "fetchmb", "rv32imc",
+                             HERE / "mb" / "fetchmb", kind="mb"))
     for m in manifest:
         print(f"{m['name']:24s} {'ok' if m['ok'] else 'BUILD FAILED'}"
               f"{'  text=' + str(m['text_bytes']) if m['ok'] else ''}")

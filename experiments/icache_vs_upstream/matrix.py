@@ -78,6 +78,9 @@ def parse(kind: str, log: str, stdout: str) -> dict:
         if r["cycles"]:
             r["cm_per_mhz"] = 1e6 * r["iterations"] / r["cycles"]
         return r
+    if kind == "mb":
+        r["kernels"] = {m.group(1): {"cycles": int(m.group(2)), "instrs": int(m.group(3))}
+                        for m in re.finditer(r"^mb (\S+) cycles=(\d+) instrs=(\d+)", log, re.M)}
     mc = re.search(r"^mcycle = (\d+)", log, re.M)
     mi = re.search(r"^minstret = (\d+)", log, re.M)
     if mc is None:  # mm prints its own counters
@@ -88,7 +91,8 @@ def parse(kind: str, log: str, stdout: str) -> dict:
     r["instret"] = int(mi.group(1)) if mi else None
     r["exit_code"] = int(ex.group(1)) if ex else None
     r["trap"] = (re.search(r"rt_trap=.*", log) or [None])[0]
-    r["pass"] = r["exit_code"] == 0 and r["cycles"] is not None and r["trap"] is None
+    r["pass"] = r["exit_code"] == 0 and r["trap"] is None and (
+        r["cycles"] is not None or bool(r.get("kernels")))
     return r
 
 
