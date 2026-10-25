@@ -944,13 +944,21 @@ module ibex_icache
       // the beat would then return to whoever re-uses the slot
       // (upstream: fill_rvd_done counts *granted* beats,
       // ibex_icache.sv:782-783).
+      // External data is complete when the whole line has arrived, or when
+      // the FB has stopped requesting and every beat it did request has
+      // come back (upstream fill_rvd_done: rvd_cnt == ext_cnt once
+      // ext_done, ibex_icache.sv:781-783). An FB stops requesting when it
+      // is stale and non-allocating, or after a recorded bus error
+      // (wants_bus_v, R-EXT-5). Without the error case, an allocating FB
+      // whose beat-0 response faulted before it issued beat 1 never
+      // released: it held busy_o high and shrank the pool for good.
       releasing_v[fb] = (phase_q[fb] == 2'd3)
                         and (not bus_grant_v[fb])
                         and wb_done_q[fb]
                         and ( out_done_q[fb]
                               or (hit_q[fb] and out_done_pulse_v[fb]) )
                         and ( (beats_rcvd_q[fb] == beats_total)
-                          or (stale_q[fb] and (not alloc_q[fb])
+                          or ((err_q[fb] or (stale_q[fb] and (not alloc_q[fb])))
                               and (beats_rcvd_q[fb] == beats_sent_q[fb])) );
     end for
     // rvalid_v split out — refers to rvalid_route_N which is one wire
