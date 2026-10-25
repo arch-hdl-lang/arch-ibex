@@ -1608,3 +1608,134 @@ def test_build_sh_rejects_a_non_release_compiler(
     assert problem in proc.stderr, proc.stderr
     assert not (tmp_path / "build").exists(), "build.sh built with a rejected compiler"
 
+
+
+# ── rdl2arch-riscv pin (.rdl2arch-riscv-version) ──────────────────────
+def _git_c(root: Path, *args: str) -> str:
+    return subprocess.run(
+        ["git", "-C", str(root), "-c", "user.name=t", "-c", "user.email=t@t",
+         "-c", "commit.gpgsign=false", *args],
+        check=True, capture_output=True, text=True,
+    ).stdout.strip()
+
+
+def _fake_rdl2arch_riscv(tmp_path: Path, *, version: str = "0.1.0") -> tuple[Path, str]:
+    """A minimal rdl2arch-riscv-shaped git checkout; returns (root, HEAD sha)."""
+    root = tmp_path / "rdl2arch-riscv"
+    (root / "src" / "fake_rdl2arch_pkg").mkdir(parents=True)
+    (root / "tests" / "rdl").mkdir(parents=True)
+    (root / "pyproject.toml").write_text(f'[project]\nname = "x"\nversion = "{version}"\n')
+    (root / "src" / "fake_rdl2arch_pkg" / "__init__.py").write_text("WHO = 'pinned'\n")
+    (root / "tests" / "rdl" / "f.rdl").write_text("addrmap f {};\n")
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    _git_c(root, "add", "-A")
+    _git_c(root, "commit", "-q", "-m", "init")
+    return root, _git_c(root, "rev-parse", "HEAD")
+
+
+def _pin_rdl2arch_riscv(tmp_path: Path, monkeypatch, root: Path, commit: str,
+                        version: str = "0.1.0") -> None:
+    pin = tmp_path / ".rdl2arch-riscv-version"
+    pin.write_text(f"{version} {commit[:12]}\n")
+    monkeypatch.setattr(harc_runner, "RDL2ARCH_RISCV_VERSION_FILE", pin)
+    monkeypatch.setenv("RDL2ARCH_RISCV_ROOT", str(root))
+    monkeypatch.delenv("RDL2ARCH_RISCV_SKIP_PIN_CHECK", raising=False)
+    harc_runner._checked_rdl2arch_riscv_root.cache_clear()
+
+
+def test_rdl2arch_riscv_pin_file_names_a_commit() -> None:
+    version, commit = harc_runner.pinned_rdl2arch_riscv_release()
+    assert re.fullmatch(r"\d+\.\d+\.\d+", version)
+    assert re.fullmatch(r"[0-9a-f]{12,40}", commit)
+
+
+def test_resolve_rdl2arch_riscv_root_accepts_the_pinned_checkout(
+    tmp_path: Path, monkeypatch
+) -> None:
+    root, sha = _fake_rdl2arch_riscv(tmp_path)
+    _pin_rdl2arch_riscv(tmp_path, monkeypatch, root, sha)
+    assert harc_runner.resolve_rdl2arch_riscv_root() == root
+    # Untracked files (someone's scratch notes, build output) are fine.
+    (root / "docs").mkdir()
+    (root / "docs" / "notes.md").write_text("untracked\n")
+    harc_runner._checked_rdl2arch_riscv_root.cache_clear()
+    assert harc_runner.resolve_rdl2arch_riscv_root() == root
+
+
+def test_resolve_rdl2arch_riscv_root_rejects_another_commit(
+    tmp_path: Path, monkeypatch
+) -> None:
+    root, sha = _fake_rdl2arch_riscv(tmp_path)
+    (root / "tests" / "rdl" / "f.rdl").write_text("addrmap f { };\n")
+    _git_c(root, "commit", "-q", "-am", "newer")
+    _pin_rdl2arch_riscv(tmp_path, monkeypatch, root, sha)
+    with pytest.raises(AssertionError) as exc:
+        harc_runner.resolve_rdl2arch_riscv_root()
+    msg = str(exc.value)
+    assert f"pinned commit is {sha[:12]}" in msg
+    assert f"git -C {root} fetch && git -C {root} checkout {sha[:12]}" in msg
+    assert "RDL2ARCH_RISCV_SKIP_PIN_CHECK=1" in msg
+
+
+def test_resolve_rdl2arch_riscv_root_rejects_tracked_modifications(
+    tmp_path: Path, monkeypatch
+) -> None:
+    root, sha = _fake_rdl2arch_riscv(tmp_path)
+    (root / "tests" / "rdl" / "f.rdl").write_text("addrmap edited {};\n")
+    _pin_rdl2arch_riscv(tmp_path, monkeypatch, root, sha)
+    with pytest.raises(AssertionError, match=r"tracked files are modified \(tests/rdl/f\.rdl\)"):
+        harc_runner.resolve_rdl2arch_riscv_root()
+
+
+def test_resolve_rdl2arch_riscv_root_rejects_a_version_mismatch(
+    tmp_path: Path, monkeypatch
+) -> None:
+    root, sha = _fake_rdl2arch_riscv(tmp_path, version="0.2.0")
+    _pin_rdl2arch_riscv(tmp_path, monkeypatch, root, sha, version="0.1.0")
+    with pytest.raises(AssertionError, match=r"pyproject version '0\.2\.0' != pinned 0\.1\.0"):
+        harc_runner.resolve_rdl2arch_riscv_root()
+
+
+def test_resolve_rdl2arch_riscv_root_rejects_a_non_git_tree(
+    tmp_path: Path, monkeypatch
+) -> None:
+    root = tmp_path / "plain"
+    (root / "src").mkdir(parents=True)
+    (root / "tests" / "rdl").mkdir(parents=True)
+    _pin_rdl2arch_riscv(tmp_path, monkeypatch, root, "abcdef012345")
+    monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path))
+    with pytest.raises(AssertionError, match=r"is not a git checkout"):
+        harc_runner.resolve_rdl2arch_riscv_root()
+
+
+def test_resolve_rdl2arch_riscv_root_missing_checkout_and_skip_env(
+    tmp_path: Path, monkeypatch
+) -> None:
+    root, sha = _fake_rdl2arch_riscv(tmp_path)
+    # Missing checkout: "not installed", which the SoC fixtures turn into a skip.
+    _pin_rdl2arch_riscv(tmp_path, monkeypatch, tmp_path / "nowhere", sha)
+    with pytest.raises(harc_runner.ToolNotFoundError, match=sha[:12]):
+        harc_runner.resolve_rdl2arch_riscv_root()
+    # A wrong commit with the bypass set is accepted as is.
+    _pin_rdl2arch_riscv(tmp_path, monkeypatch, root, "0123456789ab")
+    monkeypatch.setenv("RDL2ARCH_RISCV_SKIP_PIN_CHECK", "1")
+    assert harc_runner.resolve_rdl2arch_riscv_root() == root
+
+
+def test_import_from_root_uses_that_root_and_rejects_another_copy(
+    tmp_path: Path, monkeypatch
+) -> None:
+    import sys
+
+    root, _ = _fake_rdl2arch_riscv(tmp_path)
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    monkeypatch.setenv("PYTHONPATH", "")
+    monkeypatch.delitem(sys.modules, "fake_rdl2arch_pkg", raising=False)
+    mod = harc_runner.import_from_root("fake_rdl2arch_pkg", root / "src")
+    assert mod.WHO == "pinned"
+    assert os.environ["PYTHONPATH"].split(os.pathsep)[0] == str((root / "src").resolve())
+    # A copy already imported from elsewhere is reported, not silently used.
+    other, _ = _fake_rdl2arch_riscv(tmp_path / "other")
+    with pytest.raises(AssertionError, match=r"was imported from .*, not from"):
+        harc_runner.import_from_root("fake_rdl2arch_pkg", other / "src")
+    monkeypatch.delitem(sys.modules, "fake_rdl2arch_pkg", raising=False)
