@@ -84,6 +84,7 @@ global_placement -density $global_place_density \
 place_pins -hor_layers $io_placer_hor_layer -ver_layers $io_placer_ver_layer
 eval global_placement -routability_driven $td_opt -density $global_place_density \
   -pad_left $global_place_pad -pad_right $global_place_pad
+release_place_region
 estimate_parasitics -placement
 repair_design -slew_margin $slew_margin -cap_margin $cap_margin
 repair_tie_fanout -separation $tie_separation $tielo_port

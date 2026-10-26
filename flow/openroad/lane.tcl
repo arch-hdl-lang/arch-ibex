@@ -52,6 +52,13 @@ proc global_placement { args } {
   }
   uplevel 1 [list _stock_global_placement {*}$args]
 }
+# PLACE_REGION_DPL=0 (soft region): released before the first detailed
+# placement, as in estimate.tcl.
+rename detailed_placement _stock_detailed_placement
+proc detailed_placement { args } {
+  release_place_region
+  uplevel 1 [list _stock_detailed_placement {*}$args]
+}
 
 include -echo "flow.tcl"
 
