@@ -32,7 +32,9 @@ in="$REPO_ROOT/flow/out/$lane/sky130"
 # stripped from wire declarations; OpenROAD's Verilog reader, like OpenSTA's,
 # rejects `wire signed`. Identical to netlist.v on the SV lane.
 [ -f "$in/netlist_sta.v" ] || { echo "[$lane] missing $in/netlist_sta.v (run flow/sky130_synth.sh)"; exit 2; }
-area=$(grep -oE "Chip area for module '\\\\ibex_top': [0-9.]+" "$in/synth.stat" | grep -oE '[0-9.]+$')
+# "top module" is the whole-design total when SYNTH_KEEP_HIER kept submodules
+# (stat -top); a flat netlist has only the module line. Last match wins.
+area=$(grep -oE "Chip area for (top )?module '\\\\ibex_top': [0-9.]+" "$in/synth.stat" | tail -1 | grep -oE '[0-9.]+$')
 # Square die holding the synthesised area at UTIL % core utilisation, plus a
 # 10 um core margin on each side; the same rule on both lanes (ORFS's
 # CORE_UTILIZATION semantics), rounded up to a whole micron.
@@ -42,6 +44,9 @@ source "$REPO_ROOT/flow/recipes/recipe.sh"
 { recipe_describe "$lane" TIMING_DRIVEN_GPL
   [ -f "$in/recipe_synth.txt" ] && sed 's/^/synth: /' "$in/recipe_synth.txt"; } > "$out/recipe.txt"
 export TIMING_DRIVEN_GPL="$(recipe_value "$lane" TIMING_DRIVEN_GPL 0)"
+export PLACE_REGION="$(recipe_value "$lane" PLACE_REGION "")"
+[ -n "$PLACE_REGION" ] && echo "PLACE_REGION=$PLACE_REGION" >> "$out/recipe.txt"
+export REGION_TCL="$REPO_ROOT/flow/openroad/region.tcl"
 echo "[$lane] recipe: $(tr '\n' ' ' < "$out/recipe.txt")"
 export LANE="$lane" NETLIST="$in/netlist_sta.v" SDC="$REPO_ROOT/flow/openroad/constraint.sdc" DIE_SIDE="$side" RESULTS_DIR="$out/results" OUT="$out"
 echo "[$lane] synthesised area ${area} um2, UTIL=${UTIL}% -> die ${side}x${side} um"

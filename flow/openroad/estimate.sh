@@ -18,7 +18,9 @@ OPENROAD_EXE="${OPENROAD_EXE:-$HOME/.local/bin/openroad}"
 UTIL="${UTIL:-25}"
 in="${2:-$REPO_ROOT/flow/out/$lane/sky130}"
 [ -f "$in/netlist_sta.v" ] || { echo "[$lane] missing $in/netlist_sta.v (run flow/sky130_synth.sh)"; exit 2; }
-area=$(grep -oE "Chip area for module '\\\\ibex_top': [0-9.]+" "$in/synth.stat" | grep -oE '[0-9.]+$')
+# "top module" is the whole-design total when SYNTH_KEEP_HIER kept submodules
+# (stat -top); a flat netlist has only the module line. Last match wins.
+area=$(grep -oE "Chip area for (top )?module '\\\\ibex_top': [0-9.]+" "$in/synth.stat" | tail -1 | grep -oE '[0-9.]+$')
 # same die rule as run.sh
 side=$(python3 -c "import math; print(math.ceil(math.sqrt($area/($UTIL/100.0))) + 20)")
 out="${EST_OUT:-$REPO_ROOT/flow/out/$lane/estimate}"; mkdir -p "$out"
@@ -26,6 +28,9 @@ export EST_CLOCK_LATENCY="${EST_CLOCK_LATENCY:-4.0}"
 source "$REPO_ROOT/flow/recipes/recipe.sh"
 recipe="$(recipe_describe "$lane" TIMING_DRIVEN_GPL)"
 export TIMING_DRIVEN_GPL="$(recipe_value "$lane" TIMING_DRIVEN_GPL 0)"
+export REGION_TCL="$REPO_ROOT/flow/openroad/region.tcl" EST_OUT="$out"
+export PLACE_REGION="$(recipe_value "$lane" PLACE_REGION "")"
+[ -n "$PLACE_REGION" ] && recipe="$recipe PLACE_REGION=$PLACE_REGION"
 export LANE="$lane" NETLIST="$in/netlist_sta.v" SDC="$REPO_ROOT/flow/openroad/constraint.sdc" DIE_SIDE="$side"
 echo "[$lane] estimate: area ${area} um2 -> die ${side} um, ${recipe}"
 for mode in ${EST_MODES:-pre place}; do

@@ -31,18 +31,26 @@ set global_place_density 0.5
 # well, without editing the stock flow.tcl. flow.tcl sets the wire RC only after global
 # placement, so it is set here first (the same commands flow.tcl runs later),
 # otherwise the placer's timing analysis would see no wire delay.
-if { [info exists ::env(TIMING_DRIVEN_GPL)] && $::env(TIMING_DRIVEN_GPL) == 1 } {
-  rename global_placement _stock_global_placement
-  proc global_placement { args } {
-    if { [lsearch -exact $args -routability_driven] >= 0 } {
-      source $::layer_rc_file
-      set_wire_rc -signal -layer $::wire_rc_layer
-      set_wire_rc -clock -layer $::wire_rc_layer_clk
-      lappend args -timing_driven
-      puts "lane.tcl: global_placement $args"
-    }
-    uplevel 1 [list _stock_global_placement {*}$args]
+# PLACE_REGION (flow/openroad/region.tcl): the region is created just before
+# flow.tcl's first global placement, i.e. after floorplan and tapcells, the
+# same point estimate.tcl creates it.
+source $::env(REGION_TCL)
+set ::lane_region_done 0
+rename global_placement _stock_global_placement
+proc global_placement { args } {
+  if { !$::lane_region_done } {
+    set ::lane_region_done 1
+    apply_place_region
   }
+  if { [info exists ::env(TIMING_DRIVEN_GPL)] && $::env(TIMING_DRIVEN_GPL) == 1
+       && [lsearch -exact $args -routability_driven] >= 0 } {
+    source $::layer_rc_file
+    set_wire_rc -signal -layer $::wire_rc_layer
+    set_wire_rc -clock -layer $::wire_rc_layer_clk
+    lappend args -timing_driven
+    puts "lane.tcl: global_placement $args"
+  }
+  uplevel 1 [list _stock_global_placement {*}$args]
 }
 
 include -echo "flow.tcl"

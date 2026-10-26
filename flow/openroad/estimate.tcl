@@ -77,6 +77,8 @@ if { [info exists ::env(TIMING_DRIVEN_GPL)] && $::env(TIMING_DRIVEN_GPL) == 1 } 
 } else {
   set td_opt ""
 }
+source $::env(REGION_TCL)
+apply_place_region
 global_placement -density $global_place_density \
   -pad_left $global_place_pad -pad_right $global_place_pad -skip_io
 place_pins -hor_layers $io_placer_hor_layer -ver_layers $io_placer_ver_layer
@@ -101,4 +103,11 @@ set_clock_latency $::env(EST_CLOCK_LATENCY) [all_registers -clock_pins]
 est t3_placed_lat
 repair_timing -setup -skip_gate_cloning
 est t3_repaired_lat
+# EST_WRITE=1: keep the repaired placement and its worst paths for geometry
+# (path_hops.py <est.def> <est_timing.rpt>), in EST_OUT.
+if { [info exists ::env(EST_WRITE)] && $::env(EST_WRITE) == 1 } {
+  write_def $::env(EST_OUT)/est.def
+  report_checks -path_delay max -group_path_count 5 -path_group core_clock -digits 3 \
+    > $::env(EST_OUT)/est_timing.rpt
+}
 exit

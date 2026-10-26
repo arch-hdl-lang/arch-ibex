@@ -80,7 +80,19 @@ select -assert-none t:\$lcu
 synth -top ibex_top -run fine:${SYNTH_OPTS}" ;;
     *) echo "[$lane] unknown SYNTH_ADDR_ADDER '$(recipe_value "$lane" SYNTH_ADDR_ADDER bk)' (bk|ks|hc|sklansky)"; rc=1; continue ;;
   esac
-  recipe_describe "$lane" SYNTH_NOABC SYNTH_ADDER=bk SYNTH_ADDR_ADDER=bk > "$out/recipe_synth.txt"
+  # SYNTH_KEEP_HIER="mod ..." (default empty): keep these modules as separate
+  # hierarchy through synthesis (yosys keep_hierarchy), so their cells keep
+  # hierarchical instance names in the netlist (OpenROAD flattens on link:
+  # "<inst path>/<cell>"). Used to select a module's cells for a placement
+  # region (flow/openroad/region.tcl, PLACE_REGION). It also stops ABC from
+  # optimising across that boundary; measure it alone as a control.
+  KEEP_HIER="$(recipe_value "$lane" SYNTH_KEEP_HIER "")"
+  KEEP_CMDS=""
+  for m in $KEEP_HIER; do
+    KEEP_CMDS="${KEEP_CMDS}setattr -mod -set keep_hierarchy 1 $m \$paramod*\\$m
+"
+  done
+  recipe_describe "$lane" SYNTH_NOABC SYNTH_ADDER=bk SYNTH_ADDR_ADDER=bk SYNTH_KEEP_HIER= > "$out/recipe_synth.txt"
   echo "[$lane] recipe: $(tr '\n' ' ' < "$out/recipe_synth.txt")"
   # The port's configuration (01-inventory.md §1), forced identically on both
   # lanes. Enum-typed parameters are integers after sv2v (ibex_pkg encodings:
@@ -102,7 +114,7 @@ synth -top ibex_top -run fine:${SYNTH_OPTS}" ;;
 read_liberty -lib $SKY130_LIB
 read_verilog -sv $in
 hierarchy -check -top ibex_top $HCHPARAM
-proc
+${KEEP_CMDS}proc
 opt_clean
 # keep inferred RAM write ports intact across flatten (see header)
 memory -nomap
@@ -120,7 +132,7 @@ abc -liberty $SKY130_LIB
 setundef -zero
 hilomap -singleton -hicell sky130_fd_sc_hd__conb_1 HI -locell sky130_fd_sc_hd__conb_1 LO
 opt_clean -purge
-tee -o $out/synth.stat stat -liberty $SKY130_LIB
+tee -o $out/synth.stat stat -liberty $SKY130_LIB -top ibex_top
 write_verilog -noattr -noexpr -nohex -nodec $out/netlist.v
 YS
   echo "[$lane] yosys ..."; start=$(date +%s)
